@@ -1,0 +1,57 @@
+$ git clone --recurse-submodules https://github.com/vcmi/vcmi.git
+
+(from vcmi folder)
+(h3 is a renamed "Heroes 3 SOD" or sth folder)
+
+$ bash -x ./vcmibuilder --data game/h3
+$ brew install boost minizip sdl2 sdl2_image sdl2_mixer sdl2_ttf tbb qt
+
+############### building with xcode
+$ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+$ cmake -S . -B build -G Xcode -Wno-dev -DCMAKE_C_COMPILER=(xcrun -f clang) -DCMAKE_CXX_COMPILER=(xcrun -f clang++)
+
+# now open xcode, load build/VCMI.xcodeproj and builds should work
+
+############### building via console
+$ pip3 install conan
+$ conan profile new default --detect
+$ conan profile update settings.compiler.cppstd=11 default
+
+# NOTE: this command WILL FAIL
+# but will first build qt5, and we need it to patch it to fix qmake error
+$ conan install . \
+        --install-folder=conan-generated \
+        --no-imports \
+        --build=missing \
+        --profile:build=default \
+        --profile:host=default
+
+# Apply patch from https://codereview.qt-project.org/c/qt/qtbase/+/503172/1/mkspecs/features/toolchain.prf#295
+# to /Users/simo/.conan/data/qt/5.15.11/_/_/source/qt5/qtbase/mkspecs/features/mac/toolchain.prf
+# (exact qt version may vary)
+
+# Repeat conan install command, should no longer give qmake error
+$ conan install . \
+        --install-folder=conan-generated \
+        --no-imports \
+        --build=missing \
+        --profile:build=default \
+        --profile:host=default
+
+$ cmake -S . -B BUILD_DIR -Wno-dev -G 'Unix Makefiles' \
+    -D CMAKE_BUILD_TYPE=Debug \
+    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake
+
+$ cd BUILD_DIR
+$ make vcmiclient
+
+# Launch! (will auto-start server when needed)
+$ bin/vcmiclient
+
+# OR disable auto-start and launch server separately:
+
+# terminal 1
+$ bin/vcmiserver
+
+# terminal 2
+$ bin/vcmiclient -d

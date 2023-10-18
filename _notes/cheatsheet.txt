@@ -1,0 +1,7 @@
+======= Logging
+
+logGlobal->info("simo test 1");
+
+// supports templating
+logGlobal->info("simo test: %d !!!", i);
+

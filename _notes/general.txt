@@ -1,0 +1,1 @@
+Client renders at ~50Hz every ~0.002s (500 times for 10s)

@@ -1,0 +1,58 @@
+=== DECLARING ===
+
+    // `class` and `typename` are interchangeable!
+    template <typename T> T GetMax(T a, T b) { return (a>b ? a:b); }
+    template <class T> T GetMax(T a, T b) { return (a>b ? a:b); }
+
+=== SPECIALIZATION ===
+
+    // generic, for any T
+    template <class T> T GetMax(T a, T b) { return (a>b ? a:b); }
+
+    // same fn, by redefined for specific T
+    template <> char GetMax<char>(char a, char b) { return (b); }
+
+=== CALLING ===
+
+    int x,y;
+    GetMax<int>(x,y);
+    // <int> can be ommitted because it's the *only* type
+    GetMax(x,y);
+
+    // https://stackoverflow.com/a/12676256
+    // member template functions are called with the `.template` keyword
+    struct A {
+        template <class T> T fna(T arg) { return arg; };
+    };
+    a.template fna<char>('x');  // using a.fna<char>('x') will not work
+
+=== COMBINING TEMPLATE + NON-TEMPLATE FNS ===
+// see https://stackoverflow.com/a/16865452
+
+    class B {
+      int f(int n) { return n+1; }
+      template<typename T> T f(T n) { return n; }
+    };
+
+    B b;
+    b.f(1);       // both are viable, non-template wins
+    b.f<int>(1);  // only the template is viable
+
+
+============ EXAMPLE =============
+// https://cpp.sh/
+
+#include <iostream>
+using namespace std;
+
+// generic, for any T
+template <class T> T GetMax (T a, T b) { return (a>b ? a:b); }
+
+// specific T
+template <> char GetMax <char> (char a, char b) { return (b); }
+
+int main () {
+    cout << GetMax(4, 3) << endl;
+    cout << GetMax('c', 'b') << endl;
+    return 0;
+}

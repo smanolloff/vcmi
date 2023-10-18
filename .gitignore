@@ -63,3 +63,7 @@ CMakeUserPresets.json
 
 # CLion
 .idea/
+
+# simo
+BUILD_DIR
+game

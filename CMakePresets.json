@@ -139,6 +139,21 @@
             }
         },
         {
+          "name": "macos-clang-debug",
+          "displayName": "Clang (debug)",
+          "description": "VCMI MacOS Clang (Debug)",
+          "generator": "Unix Makefiles",
+          "binaryDir": "${sourceDir}/BUILD_DIR",
+          "cacheVariables": {
+            "CMAKE_BUILD_TYPE": "Debug",
+            "CMAKE_C_COMPILER": "/usr/bin/clang",
+            "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+            "CMAKE_INSTALL_PREFIX": "/usr/local",
+            "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/conan-generated/conan_toolchain.cmake",
+            "ENABLE_SINGLE_APP_BUILD": "1"
+          }
+        },
+        {
             "name": "macos-ninja-release",
             "displayName": "Ninja release",
             "description": "VCMI MacOS Ninja",
@@ -366,6 +381,12 @@
             "name": "linux-gcc-test",
             "configurePreset": "linux-gcc-test",
             "inherits": "default-release"
+        },
+        {
+          "name": "macos-clang-debug",
+          "configurePreset": "macos-clang-debug",
+          "inherits": "default-debug",
+          "targets": ["vcmiclient", "vcmiclient/fast", "vcmiserver"]
         },
         {
             "name": "macos-xcode-release",

@@ -1,0 +1,31 @@
+# Start
+
+    $ lldb bin/vcmiserver
+
+# Breakpoint
+
+    (lldb) b server/CGameHandler.cpp:4413
+    Breakpoint 1: where = vcmiserver`CGameHandler::makeBattleAction(BattleAction&) + 368 at CGameHandler.cpp:4413:2, address = 0x000000010003a98c
+
+    # or by func name
+
+    (lldb) b CGameHandler::makeBattleAction
+    Breakpoint 2: where = vcmiserver`CGameHandler::makeBattleAction(BattleAction&) + 72 at CGameHandler.cpp:4403:26, address = 0x000000010003a864
+
+    # Show all function locations
+
+    (lldb) source info -n CGameHandler::makeBattleAction
+
+    # Add a condition on breakpoint
+
+    (lldb) br mod -c "ba.actionType == EActionType::WALK_AND_ATTACK" 1
+
+# Where am I?
+
+    (lldb) f
+
+# Print a variable
+
+    (lldb) print ba.toString()
+    (std::string) "{BattleAction: side '0', stackNumber '0', actionType 'Walk and attack', actionSubtype '-1', target {{BattleHex: x '5', y '0', hex '5'},{BattleHex: x '6', y '0', hex '6'},}}"
+

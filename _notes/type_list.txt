@@ -1,0 +1,38 @@
+Type list is needed for deserialization:
+
+uint16 numbers _representing pointers_ are mapped to the types they point to
+(eg. 13452 -> typeid(LobbyClientConnected))
+
+
+    // 1. Get the pointer to the actual CPackForLobby struct (`pack` is a std::unique_ptr<CPackForLobby>)
+    p = pack.get()
+
+    // map CPackForLobby* to a uint16
+    t = typeList.getTypeID(pack.get())
+
+    // uint16 to a CBaseForServerApply derivative
+    CBaseForServerApply * apply = applier->getApplier(typeList.getTypeID(pack.get()))
+
+    // the above `apply` may be an instance of CApplyOnServer<LobbyClientConnected>
+    // `apply` has a method `applyOnServerBefore` which performs additional calls to pack.visit()
+
+
+  struct TypeDescriptor
+  {
+    ui16 typeID;
+    const char *name;
+    std::vector<WeakTypeInfoPtr> children, parents;
+  };
+
+  CTypeList::TypeInfoPtr CTypeList::registerType(const std::type_info *type) {
+    // ...
+    auto newType = std::make_shared<TypeDescriptor>();
+    newType->typeID = static_cast<ui16>(typeInfos.size() + 1);
+    newType->name = type->name();
+    typeInfos[type] = newType;
+  }
+
+ie. registerType updates "typeInfos[std::type_info k] = TypeDescriptor v".
+
+
+

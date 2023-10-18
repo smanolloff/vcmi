@@ -1,0 +1,31 @@
+***
+
+namespace GameConstants
+{
+  const int BFIELD_WIDTH = 17;
+  const int BFIELD_HEIGHT = 11;
+  const int BFIELD_SIZE = BFIELD_WIDTH * BFIELD_HEIGHT;
+}
+
+***
+
+Rect BattleFieldController::hexPositionLocal(BattleHex hex) const
+{
+  int x = 14 + ((hex.getY())%2==0 ? 22 : 0) + 44*hex.getX();
+  int y = 86 + 42 *hex.getY();
+  int w = cellShade->width();
+  int h = cellShade->height();
+  return Rect(x, y, w, h);
+}
+
+***
+
+width is actually 15. BUT there is +1 on each side due for artillery units
+
+  int x = 14 + ((hex.getY())%2==0 ? 22 : 0) + 44*hex.getX();
+          ^                         ^         ^
+          global offset             |         width of 1 hex (upscaled to 88px)
+                                    half-hex offset of even rows
+
+first and last hex in each row are simply not drawn
+(see void BattleFieldController::showBackgroundImage)

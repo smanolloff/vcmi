@@ -1,0 +1,47 @@
+@startuml "vcmi-1.32-classes"
+
+skinparam defaultTextAlignment center
+
+!procedure $desc($txt)
+<font:Arial><color:Gray><i>// $txt</i></color></font>
+!endprocedure
+
+title "VCMI-1.3.2 class diagram (appliers)"
+
+'''' Declarations to stylize the diagram ''''
+hide circle
+set namespaceSeparator none
+
+skinparam ClassFontStyle bold
+skinparam ClassFontName monospaced
+skinparam ClassAttributeFontName monospaced
+skinparam ClassAttributeIconSize 0
+skinparam DefaultTextAlignment left
+
+
+'''' Attributes and methods '''
+
+
+class CBaseForServerApply {
+    $desc("Used directly by CVCMIServer")
+    --
+    applyOnServerBefore()       bool
+    applyOnServerAfter()        void
+
+    $desc("blank virtual declarations for ALL visitor methods")
+    visitForLobby(CPackForLobby) {}
+    visitForServer(CPackForServer) {}
+    visitYourTurn(YourTurn) {}
+    ...etc
+}
+
+package "server" {
+    ICPackVisitor -- CVCMIServerPackVisitor
+    class CVCMIServerPackVisitor {
+        --
+        callTyped()     $desc("always false")
+
+        visitForLobby()
+        visitForServer()
+        visitForClient()
+    }

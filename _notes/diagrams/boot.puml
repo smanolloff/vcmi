@@ -1,0 +1,70 @@
+@startuml "vcmi-1.32-boot"
+
+skinparam defaultTextAlignment center
+
+title "VCMI-1.3.2 boot process"
+
+' use "w"s to stretch image (VS code preview does not show full diagram)
+title "VCMI-1.3.2 boot process wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+
+!procedure $node($txt, $file, $line)
+  :$txt
+
+  <font color="gray">$file:$line</font>;
+!endprocedure
+
+!procedure $node1($txt, $file, $line, $fun)
+  :$txt
+
+  <font color="gray">$file:$line ""($fun)""</font>;
+!endprocedure
+
+
+!procedure $node2($txt, $file1, $line1, $fun1, $file2, $line2, $fun2)
+  :$txt
+
+  <font color="gray">$file1:$line1 ""($fun1)""</font>
+  <font color="gray">$file2:$line2 ""($fun2)""</font>;
+!endprocedure
+
+!procedure $node3($txt, $file1, $line1, $fun1, $file2, $line2, $fun2, $file3, $line3, $fun3)
+  :$txt
+
+  <font color="gray">$file1:$line1 ""($fun1)""</font>
+  <font color="gray">$file2:$line2 ""($fun2)""</font>
+  <font color="gray">$file3:$line3 ""($fun3)""</font>;
+!endprocedure
+
+!procedure $node4($txt, $file1, $line1, $fun1, $file2, $line2, $fun2, $file3, $line3, $fun3, $file4, $line4, $fun4)
+  :$txt
+
+  <font color="gray">$file1:$line1 ""($fun1)""</font>
+  <font color="gray">$file2:$line2 ""($fun2)""</font>
+  <font color="gray">$file3:$line3 ""($fun3)""</font>
+  <font color="gray">$file4:$line4 ""($fun4)""</font>;
+!endprocedure
+
+skinparam DefaultTextAlignment left
+
+start
+$node1("Program start", "CGameHandler.cpp", 1060, "main")
+$node3("Load <font:monospaced>config/settings.json</font>", "CVCMIServer.cpp", 1078, "main", "VCMI_Lib.cpp", 52, "preinitDLL", "CConfigHandler", 57, "SettingsStorage::init")
+$node2("Bind network socket", "CVCMIServer.cpp", 1092, "main", "CVCMIServer.cpp", 140, "CVCMIServer::CVCMIServer")
+$node1("Start server", "CVCMIServer.cpp", 1098, "main")
+fork
+  $node1("Wait for state == GAMEPLAY ...", "CVCMIServer.cpp", 200, "CVCMIServer::run")
+fork again
+  repeat
+  $node3("Wait client connection ...", "CVCMIServer.cpp", 181, "CVCMIServer::run", "CVCMIServer.cpp", 349, "CVCMIServer::startAsyncAccept", "CVCMIServer.cpp", 369, "CVCMIServer::connectionAccepted")
+  repeat while ()
+  (C)
+  note right: start connection thread
+  detach
+  (C)
+  $node2("Wait for data ...", "CVCMIServer.cpp", 424, "CVCMIServer::threadHandleClient", "Connection.cpp", 272, "CConnection::retrievePack()")
+  $node4("Handle data", "CVCMIServer.cpp", 446, "CVCMIServer::threadHandleClient", "NetPacksLib.cpp", 69, "CPackForServer::visitBasic", "CVCMIServer.cpp", 403, "CVCMIServerPackVisitor::visitForServer")
+  :fdsfas;
+end fork
+$node("Start game", "CVMIServer.cpp", 207)
+stop
+@enduml

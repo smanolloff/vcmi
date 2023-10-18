@@ -1,0 +1,266 @@
+@startuml "vcmi-1.32-classes"
+
+skinparam defaultTextAlignment center
+
+!procedure $desc($txt)
+<font:Arial><color:Gray><i>// $txt</i></color></font>
+!endprocedure
+
+title "VCMI-1.3.2 class diagram (visitors)"
+
+'''' Declarations to stylize the diagram ''''
+hide circle
+set namespaceSeparator none
+
+skinparam ClassFontStyle bold
+skinparam ClassFontName monospaced
+skinparam ClassAttributeFontName monospaced
+skinparam ClassAttributeIconSize 0
+skinparam DefaultTextAlignment left
+
+
+'''' Attributes and methods '''
+
+
+class ICPackVisitor {
+    --
+    callTyped()     $desc("always true")
+
+    $desc("blank virtual declarations for ALL visitor methods")
+    visitForLobby(CPackForLobby) {}
+    visitForServer(CPackForServer) {}
+    visitYourTurn(YourTurn) {}
+    ...etc
+}
+
+package "server" {
+    ICPackVisitor -- CVCMIServerPackVisitor
+    class CVCMIServerPackVisitor {
+        --
+        callTyped()     $desc("always false")
+
+        visitForLobby()
+        visitForServer()
+        visitForClient()
+    }
+
+    ICPackVisitor -- ApplyGhNetPackVisitor
+    class ApplyGhNetPackVisitor {
+        --
+        callTyped()     $desc("always false")
+
+        $desc("declared in ServerNetPackVisitors.h, defined in NetPacksServer.cpp")
+
+        visitArrangeStacks()
+        visitAssembleArtifacts()
+        visitBuildBoat()
+        visitBuildStructure()
+        visitBulkExchangeArtifacts()
+        visitBulkMergeStacks()
+        visitBulkMoveArmy()
+        visitBulkSmartSplitStack()
+        visitBulkSplitStack()
+        visitBuyArtifact()
+        visitCastAdvSpell()
+        visitCastleTeleportHero()
+        visitDigWithHero()
+        visitDisbandCreature()
+        visitDismissHero()
+        visitEndTurn()
+        visitEraseArtifactByClient()
+        visitExchangeArtifacts()
+        visitGarrisonHeroSwap()
+        visitHireHero()
+        visitMakeAction()
+        visitMakeCustomAction()
+        visitMoveHero()
+        visitPlayerMessage()
+        visitQueryReply()
+        visitRecruitCreatures()
+        visitSaveGame()
+        visitSetFormation()
+        visitTradeOnMarketplace()
+        visitUpgradeCreature()
+    }
+
+    package "Lobby (server)" {
+        ICPackVisitor -- ClientPermissionsCheckerNetPackVisitor
+        class ClientPermissionsCheckerNetPackVisitor {
+            --
+            getResult()         bool
+
+            visitForLobby()
+            visitLobbyChangeHost()
+            visitLobbyChangePlayerOption()
+            visitLobbyChatMessage()
+            visitLobbyClientConnected()
+            visitLobbyClientDisconnected()
+            visitLobbyEndGame()
+            visitLobbyGuiAction()
+            visitLobbyStartGame()
+        }
+
+        ICPackVisitor -- ApplyOnServerNetPackVisitor
+        class ApplyOnServerNetPackVisitor {
+            --
+            getResult()         bool
+
+            visitLobbyChangeHost()
+            visitLobbyChangePlayerOption()
+            visitLobbyClientConnected()
+            visitLobbyClientDisconnected()
+            visitLobbyEndGame()
+            visitLobbyForceSetPlayer()
+            visitLobbySetCampaign()
+            visitLobbySetCampaignBonus()
+            visitLobbySetCampaignMap()
+            visitLobbySetDifficulty()
+            visitLobbySetMap()
+            visitLobbySetPlayer()
+            visitLobbySetTurnTime()
+            visitLobbyStartGame()
+        }
+
+        ICPackVisitor -- ApplyOnServerAfterAnnounceNetPackVisitor
+        class ApplyOnServerAfterAnnounceNetPackVisitor {
+            --
+            $desc("declared in NetPackVisitors.h, defined in NetPacksLobbyServer.cpp")
+            visitForLobby()
+            visitLobbyChangeHost()
+            visitLobbyClientConnected()
+            visitLobbyClientDisconnected()
+            visitLobbyEndGame()
+            visitLobbyStartGame()
+        }
+    }
+}
+
+package "client" {
+    ICPackVisitor -- ApplyClientNetPackVisitor
+    class ApplyClientNetPackVisitor {
+        --
+        $desc("declared in ClientNetPackVisitors.h, defined in NetPacksClient.cpp")
+        visitAdvmapSpellCast()
+        visitAssembledArtifact()
+        visitBattleAttack()
+        visitBattleLogMessage()
+        visitBattleNextRound()
+        visitBattleObstaclesChanged()
+        visitBattleResultsApplied()
+        visitBattleSetActiveStack()
+        visitBattleSpellCast()
+        visitBattleStart()
+        visitBattleTriggerEffect()
+        visitBattleUnitsChanged()
+        visitBlockingDialog()
+        visitBulkMoveArtifacts()
+        visitBulkRebalanceStacks()
+        visitBulkSmartRebalanceStacks()
+        visitCatapultAttack()
+        visitCenterView()
+        visitChangeObjPos()
+        visitChangeStackCount()
+        visitCommanderLevelUp()
+        visitDisassembledArtifact()
+        visitEndAction()
+        visitEntitiesChanged()
+        visitEraseArtifact()
+        visitEraseStack()
+        visitExchangeDialog()
+        visitFoWChange()
+        visitGarrisonDialog()
+        visitGiveBonus()
+        visitGiveHero()
+        visitHeroLevelUp()
+        visitHeroRecruited()
+        visitHeroVisit()
+        visitHeroVisitCastle()
+        visitInfoWindow()
+        visitInsertNewStack()
+        visitMapObjectSelectDialog()
+        visitMoveArtifact()
+        visitNewObject()
+        visitNewStructures()
+        visitNewTurn()
+        visitOpenWindow()
+        visitPackageApplied()
+        visitPlayerBlocked()
+        visitPlayerEndsGame()
+        visitPlayerMessageClient()
+        visitPlayerReinitInterface()
+        visitPutArtifact()
+        visitRazeStructures()
+        visitRebalanceStacks()
+        visitRemoveBonus()
+        visitRemoveObject()
+        visitSetAvailableArtifacts()
+        visitSetAvailableCreatures()
+        visitSetHeroesInTown()
+        visitSetMana()
+        visitSetMovePoints()
+        visitSetObjectProperty()
+        visitSetPrimSkill()
+        visitSetResources()
+        visitSetSecSkill()
+        visitSetStackEffect()
+        visitSetStackType()
+        visitShowWorldViewEx()
+        visitStacksInjured()
+        visitSwapStacks()
+        visitSystemMessage()
+        visitTeleportDialog()
+        visitTryMoveHero()
+        visitYourTurn()
+    }
+
+    ICPackVisitor -- ApplyFirstClientNetPackVisitor
+    class ApplyFirstClientNetPackVisitor {
+        --
+        $desc("declared in ClientNetPackVisitors.h, defined in NetPacksClient.cpp")
+        visitBattleAttack()
+        visitBattleNextRound()
+        visitBattleResult()
+        visitBattleStackMoved()
+        visitBattleStart()
+        visitBattleUpdateGateState()
+        visitChangeObjPos()
+        visitGiveHero()
+        visitRemoveObject()
+        visitSetObjectProperty()
+        visitStartAction()
+        visitTryMoveHero()
+    }
+
+
+    package "Lobby (client)" {
+        ICPackVisitor -- ApplyOnLobbyHandlerNetPackVisitor
+        class ApplyOnLobbyHandlerNetPackVisitor {
+            --
+            $desc("declared in LobbyClientNetPackVisitors.h, defined in NetPacksLobbyClient.cpp")
+            getResult()         bool
+
+            visitLobbyClientConnected()
+            visitLobbyClientDisconnected()
+            visitLobbyEndGame()
+            visitLobbyStartGame()
+            visitLobbyUpdateState()
+        }
+
+        ICPackVisitor -- ApplyOnLobbyScreenNetPackVisitor
+        class ApplyOnLobbyScreenNetPackVisitor {
+            --
+            $desc("declared in LobbyClientNetPackVisitors.h, defined in NetPacksLobbyClient.cpp")
+
+            visitLobbyChatMessage()
+            visitLobbyClientDisconnected()
+            visitLobbyGuiAction()
+            visitLobbyShowMessage()
+            visitLobbyStartGame()
+            visitLobbyUpdateState()
+        }
+    }
+
+
+}
+
+@enduml

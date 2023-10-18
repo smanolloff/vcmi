@@ -1,0 +1,14 @@
+Actors:
+  A = "новодошлия"          = LobbyClientConnected
+  B = "посрещача"           = CVCMIServerPackVisitor
+  C = "бюро по регистрация" = CVCMIServer
+  D = "служител в бюрото 1" = CApplyOnServer<LobbyClientConnected>
+
+А: (arrives at doorstep)                                      | c.retrievePack())         // `pack` = A
+B: "Hello, I will be your assistant. How can I help you?"     | pack.visit(visitor)       // `visitor` = B
+A: (looks at his invitation)                                  | this.visitBasic(visitor)
+A: "Will you take me to the registration?"                    | visitor.visitForLobby(this)
+B: (takes A to the registration)                              |
+   "Please register him"                                      | handler.handleReceivedPack(pack)  // `handler` = registration office
+C: "You need to pass security check first. Go to D"           | apply.applyOnServerBefore  // `apply` = security check
+...мързи ме

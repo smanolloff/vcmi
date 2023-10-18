@@ -1,0 +1,69 @@
+
+==================== handler
+Class:
+  CVCMIServer
+
+Purpose:
+  ...
+
+Methods:
+  ...
+
+==================== pack
+Class:
+  Cpack > [CPackForLobby | CPackForClient | CPackForServer] > [...leaf classes]
+
+Purpose:
+  Event data. Knows its own routing by calling the appropriate
+  method of the provided `visitor`.
+
+Methods:
+  visit(visitor)
+    Calls `this.visitBasic(visitor)`, then `this.visitTyped(visitor)` if visitor.callTyped()
+    Called by CVCMIServer several times:
+      in CVCMIServer::handleReceivedPack, visitor is a CVCMIServerPackVisitor
+      in CVCMIServer::applyOnServerBefore, visitor is a ClientPermissionsCheckerNetPackVisitor
+      in CVCMIServer::applyOnServerBefore, visitor is a ApplyOnServerNetPackVisitor
+
+  visitBasic(visitor)
+    Calls visitor.visitFor[Client|Server|Lobby](this) based on this's mid-derivative
+
+  visitTyped(visitor)
+    Calls visitor.[...](this) based on this's leaf derivative (eg. visitor.visitLobbyClientConnected for LobbyClientConnected)
+
+==================== visitor
+Class:
+  ICPackVisitor > [CVCMIServerPackVisitor | ClientPermissionsCheckerNetPackVisitor | ApplyOnServerNetPackVisitor]
+
+Purpose:
+  Manipulator of state. Each method expects a specific event and "applies" it.
+
+Methods:
+  callTyped()
+    See CPack's `visit(visitor)` method notes
+
+  AddQuest()
+  AdvmapSpellCast()
+  BattleAttack()
+  ...
+    ALL of the methods that change the global state. See class diagram (CPack)
+
+==================== applier
+Class:
+  CApplier
+
+Purpose:
+  ...
+
+Methods:
+  ...
+
+==================== apply
+Class:
+  CApplier
+
+Purpose:
+  ...
+
+Methods:
+  ...

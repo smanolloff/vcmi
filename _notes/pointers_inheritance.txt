@@ -1,0 +1,63 @@
+====
+If C1 subclasses C, any pointer to C objects can actually point to C1 objects
+wihtout truncation (as opposed to when using non-pointers)
+
+========= EXAMPLE ========
+
+// Try it in https://cpp.sh/
+// TL; DR a declared pointer to CPack actually points to CPackForServer
+// The editor (intellisense) does not know that and things get confusing
+
+#include <iostream>
+#include <string>
+
+struct CPack
+{
+    void visit();
+protected:
+    public:
+    virtual void visitBasic();
+};
+
+struct CPackForClient : public CPack
+{
+protected:
+  virtual void visitBasic() override;
+};
+
+
+
+
+void CPack::visit()
+{
+  visitBasic();
+}
+
+void CPack::visitBasic()
+{
+  std::cout << "visitBasic of CPack\n";
+};
+
+
+
+
+void CPackForClient::visitBasic()
+{
+  std::cout << "visitBasic of CPackForClient\n";
+};
+
+
+CPack * buildPack() {
+    CPack * pack = nullptr;
+    CPackForClient x;
+    pack = &x;
+    return pack;
+}
+
+
+int main()
+{
+    CPack * pack;
+    pack = buildPack();
+    pack->visit();
+}
