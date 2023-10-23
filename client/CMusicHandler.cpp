@@ -39,6 +39,9 @@ static std::string sounds[] = {
 
 void CAudioBase::init()
 {
+	logGlobal->error("(simo) NOT initializing audio!");
+	return;
+
 	if (initialized)
 		return;
 

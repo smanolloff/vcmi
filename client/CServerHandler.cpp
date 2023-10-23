@@ -188,7 +188,7 @@ void CServerHandler::startLocalServerAndConnect()
 		threadRunLocalServer->join();
 
 	th->update();
-	
+
 	auto errorMsg = CGI->generaltexth->translate("vcmi.server.errors.existingProcess");
 	try
 	{
@@ -201,7 +201,7 @@ void CServerHandler::startLocalServerAndConnect()
 	{
 		//no connection means that port is not busy and we can start local server
 	}
-	
+
 #if defined(SINGLE_PROCESS_APP)
 	boost::condition_variable cond;
 	std::vector<std::string> args{"--uuid=" + uuid, "--port=" + std::to_string(getHostPort())};
@@ -277,7 +277,7 @@ void CServerHandler::startLocalServerAndConnect()
 	logNetwork->trace("\tConnecting to the server: %d ms", th->getDiff());
 }
 
-void CServerHandler::justConnectToServer(const std::string & addr, const ui16 port)
+void CServerHandler::	justConnectToServer(const std::string & addr, const ui16 port)
 {
 	state = EClientState::CONNECTING;
 	while(!c && state != EClientState::CONNECTION_CANCELLED)
@@ -398,10 +398,10 @@ std::string CServerHandler::getHostAddress() const
 {
 	if(settings["session"]["lobby"].isNull() || !settings["session"]["lobby"].Bool())
 		return settings["server"]["server"].String();
-	
+
 	if(settings["session"]["host"].Bool())
 		return localhostAddress;
-	
+
 	return settings["session"]["address"].String();
 }
 
@@ -409,10 +409,10 @@ ui16 CServerHandler::getHostPort() const
 {
 	if(settings["session"]["lobby"].isNull() || !settings["session"]["lobby"].Bool())
 		return getDefaultPort();
-	
+
 	if(settings["session"]["host"].Bool())
 		return getDefaultPort();
-	
+
 	return settings["session"]["port"].Integer();
 }
 
@@ -639,7 +639,7 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 	// After everything initialized we can accept CPackToClient netpacks
 	c->enterGameplayConnectionMode(client->gameState());
 	state = EClientState::GAMEPLAY;
-	
+
 	//store settings to continue game
 	if(!isServerLocal() && isGuest())
 	{
@@ -683,10 +683,10 @@ void CServerHandler::endGameplay(bool closeConnection, bool restart)
 			GH.curInt = CMainMenu::create().get();
 		}
 	}
-	
+
 	c->enterLobbyConnectionMode();
 	c->disableStackSendingByID();
-	
+
 	//reset settings
 	Settings saveSession = settings.write["server"]["reconnect"];
 	saveSession->Bool() = false;
@@ -773,14 +773,14 @@ void CServerHandler::restoreLastSession()
 		screenType = ESelectionScreen::loadGame;
 		justConnectToServer(settings["server"]["server"].String(), settings["server"]["port"].Integer());
 	};
-	
+
 	auto cleanUpSession = []()
 	{
 		//reset settings
 		Settings saveSession = settings.write["server"]["reconnect"];
 		saveSession->Bool() = false;
 	};
-	
+
 	CInfoWindow::showYesNoDialog(VLC->generaltexth->translate("vcmi.server.confirmReconnect"), {}, loadSession, cleanUpSession);
 }
 
@@ -955,7 +955,7 @@ void CServerHandler::threadRunServer()
 		comm += " --lobby-port=" + std::to_string(settings["session"]["port"].Integer());
 		comm += " --lobby-uuid=" + settings["session"]["hostUuid"].String();
 	}
-		
+
 	if(shm)
 	{
 		comm += " --enable-shm";

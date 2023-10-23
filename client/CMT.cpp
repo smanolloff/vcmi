@@ -96,7 +96,9 @@ static void prog_help(const po::options_description &opts)
 	std::cout << opts;
 }
 
-#if defined(VCMI_WINDOWS) && !defined(__GNUC__) && defined(VCMI_WITH_DEBUG_CONSOLE)
+#ifdef MYCLIENT_BUILD
+int nomain(int argc, char * argv[])
+#elif defined(VCMI_WINDOWS) && !defined(__GNUC__) && defined(VCMI_WITH_DEBUG_CONSOLE)
 int wmain(int argc, wchar_t* argv[])
 #elif defined(VCMI_MOBILE)
 int SDL_main(int argc, char *argv[])
@@ -276,7 +278,7 @@ int main(int argc, char * argv[])
 	CCS = new CClientState();
 	CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
 	CSH = new CServerHandler();
-	
+
 	// Initialize video
 #ifdef DISABLE_VIDEO
 	CCS->videoh = new CEmptyVideoPlayer();
@@ -349,7 +351,7 @@ int main(int argc, char * argv[])
 	session["oneGoodAI"].Bool() = vm.count("oneGoodAI");
 	session["aiSolo"].Bool() = false;
 	std::shared_ptr<CMainMenu> mmenu;
-	
+
 	if(vm.count("testmap"))
 	{
 		session["testmap"].String() = vm["testmap"].as<std::string>();
@@ -367,7 +369,7 @@ int main(int argc, char * argv[])
 		mmenu = CMainMenu::create();
 		GH.curInt = mmenu.get();
 	}
-	
+
 	std::vector<std::string> names;
 	session["lobby"].Bool() = false;
 	if(vm.count("lobby"))
@@ -393,17 +395,17 @@ int main(int argc, char * argv[])
 			session["hostUuid"].String() = vm["lobby-uuid"].as<std::string>();
 			logGlobal->info("This client will host session, server uuid is %s", session["hostUuid"].String());
 		}
-		
+
 		//we should not reconnect to previous game in online mode
 		Settings saveSession = settings.write["server"]["reconnect"];
 		saveSession->Bool() = false;
-		
+
 		//start lobby immediately
 		names.push_back(session["username"].String());
 		ESelectionScreen sscreen = session["gamemode"].Integer() == 0 ? ESelectionScreen::newGame : ESelectionScreen::loadGame;
 		mmenu->openLobby(sscreen, session["host"].Bool(), &names, ELoadMode::MULTI);
 	}
-	
+
 	// Restore remote session - start game immediately
 	if(settings["server"]["reconnect"].Bool())
 	{

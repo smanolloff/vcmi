@@ -104,6 +104,10 @@ partition $ms("pack.visit(visitor)") {
       note right
       ""result"" is checked later. However, I believe there's a bug here:
       even if set to ""false"" here, later it may get set to true (before the check)
+
+      Also, the function name `isForServer` is confusing here, as it actually
+      checks if the packet is for a //game// server. A more appropriate name
+      would be "isForGameServer" or "isForGH" (GameHandler)
       end note
 
       :""this.visitTyped(visitor)                  "" $src("NetPacksLib.cpp:50", "CPack::visit")
@@ -127,6 +131,12 @@ partition $ms("pack.visit(visitor)") {
       kill
       else (true)
     endif
+
+    $node("ApplyOnServerNetPackVisitor applier(*srv)", "CVCMIServer.cpp", 89, "CApplyOnServer::applyOnServerBefore")
+    note right
+    Compare to previous two ""visitor""s -- here the visitor is (again) different
+    This will force different behaviour of ""pack->visit""
+    end note
 
     partition $ms("pack.visit(applier)") {
       :""pack->visit(applier)                      "" $src("CVCMIServer.cpp:91", "CVCMIServer::applyOnServerBefore")
@@ -158,12 +168,11 @@ partition $ms("pack.visit(visitor)") {
     $node("return applier.getResult()", "CVCMIServer.cpp", 93, "CApplyOnServer::applyOnServerBefore")
   }
 
-  if (""result"") then (true)
-    $node("addToAnnounceQueue(std::move(pack))", "CVCMIServer.cpp", 467, "CVCMIServer::handleReceivedPack")
-  endif
-    note right
-    appended to a ""CVCMIServer->announceQueue"" (a list)
-    end note
+  $node("if (result) addToAnnounceQueue(std::move(pack))", "CVCMIServer.cpp", 467, "CVCMIServer::handleReceivedPack")
+
+  note right
+  appended to a ""CVCMIServer->announceQueue"" (a list)
+  end note
 }
 :(repeat with next pack);
 stop

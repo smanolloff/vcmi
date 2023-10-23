@@ -66,4 +66,7 @@ CMakeUserPresets.json
 
 # simo
 BUILD_DIR
+BUILD_DIR_MULTI_PROCESS
 game
+ai-testing-maps
+.cmake

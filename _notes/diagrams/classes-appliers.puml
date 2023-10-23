@@ -23,25 +23,18 @@ skinparam DefaultTextAlignment left
 
 
 class CBaseForServerApply {
-    $desc("Used directly by CVCMIServer")
+    $desc("Used only for its getApplier() immediately after packet is received")
     --
-    applyOnServerBefore()       bool
-    applyOnServerAfter()        void
-
-    $desc("blank virtual declarations for ALL visitor methods")
-    visitForLobby(CPackForLobby) {}
-    visitForServer(CPackForServer) {}
-    visitYourTurn(YourTurn) {}
-    ...etc
+    applyOnServerBefore(CVCMIServer*, any*)     bool                $desc("not implemented")
+    applyOnServerAfter(CVCMIServer*, any*)                          $desc("not implemented")
+    <T>getApplier(T*)                           <T>CApplyOnServer   $desc("T is a CPack subclass")
 }
 
-package "server" {
-    ICPackVisitor -- CVCMIServerPackVisitor
-    class CVCMIServerPackVisitor {
-        --
-        callTyped()     $desc("always false")
+CBaseForServerApply -- "<T>CApplyOnServer"
+class "<T>CApplyOnServer" {
+    --
+    applyOnServerBefore(CVCMIServer*, pack*)     $desc("calls pack->visit() twice with with checks")
+    applyOnServerAfter(CVCMIServer*, pack*)      $desc("not implemented")
+}
 
-        visitForLobby()
-        visitForServer()
-        visitForClient()
-    }
+@enduml

@@ -20,31 +20,16 @@ skinparam DefaultTextAlignment left
 
 start
 $node("pack = c->retrievePack()", "CVCMIServer.cpp", 424, "CVCMIServer::threadHandleClient")
-note right
-Server receives packet
-""pack"" is an instance of a ""CPack"" subclass, eg. ""LobbyClientConnected""
-end note
-
-$node("packCVCMIServerPackVisitor visitor(*this, this->gh)", "CVCMIServer.cpp", 445, "CVCMIServer::threadHandleClient")
-note right
-Exists only while processing this packet, but is **not** specific to it
-""visitor"" is an instance of ""ICPackVisitor"" subclass, eg. ""CVCMIServerPackVisitor""
-end note
 
 partition $ms("pack.visit(visitor)") {
-  :""pack.visit(visitor)                       "" $src("CVCMIServer.cpp:446", "CVCMIServer::threadHandleClient")
-  ""this.visitBasic(visitor)                  "" $src("NetPacksLib.cpp:45", "CPack::visit")
-  ""visitor.visitForLobby(this)               "" $src("NetPacksLib.cpp:74", "CPackForLobby::visitBasic")
-  ""handler.handleReceivedPack(packForLobby)  "" $src("CVCMIServer.cpp:397", "CVCMIServerPackVisitor::visitForLobby");
+  $node("pack.visit(visitor)", "CVCMIServer.cpp", 446, "CVCMIServer::threadHandleClient")
 
-  note right
-  NOTE: here the visitor is a ""CVCMIServerPackVisitor""
-  It's the server's entrypoint for packets
-  end note
+  note right: NOTE: here the visitor is a ""CVCMIServerPackVisitor"" (entrypoint)
 
   partition $ms("apply = applier->getApplier(...)") {
     $node("CBaseForServerApply * apply = applier->getApplier(typeList.getTypeID(pack.get()))", "CVCMIServer.cpp", 465, "CVCMIServer::handleReceivedPack")
     note right
+    ""applier"" is a //shared// pointer to CApplier<CBaseForServerApply> and holds
     ""pack"" is actually a ""std::unique_ptr"" (ie. smart, garbage-collectable pointer)
     "pack.get()" returns the pointer to the actual object
     end note

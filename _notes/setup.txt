@@ -40,8 +40,19 @@ $ conan install . \
 
 $ cmake -S . -B BUILD_DIR -Wno-dev -G 'Unix Makefiles' \
     -D CMAKE_BUILD_TYPE=Debug \
-    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake
+    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
+    -D ENABLE_SINGLE_APP_BUILD=1
 
+// add a second build dir - for single process app
+$ cmake -S . -B BUILD_DIR_MULTI_PROCESS -Wno-dev -G 'Unix Makefiles' \
+    -D CMAKE_BUILD_TYPE=Debug \
+    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
+    -D ENABLE_SINGLE_APP_BUILD=0
+
+// BUILD with cmake:
+$ cmake --build BUILD_DIR -- -j$(sysctl -n hw.ncpu)
+
+// <OR> build manually with make:
 $ cd BUILD_DIR
 $ make vcmiclient
 

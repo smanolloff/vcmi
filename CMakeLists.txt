@@ -64,6 +64,8 @@ if(APPLE_IOS)
 else()
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and server as single executable" ${singleProcess})
+	option(ENABLE_MYCLIENT_BUILD "my custom client" OFF)
+	option(ENABLE_DEV_BUILD "set to true in order to run binaries directly from build dir" OFF)
 endif()
 
 option(ENABLE_PCH "Enable compilation using precompiled headers" ON)
@@ -206,6 +208,14 @@ endif()
 
 if(ENABLE_SINGLE_APP_BUILD)
 	add_definitions(-DSINGLE_PROCESS_APP=1)
+endif()
+
+if(ENABLE_MYCLIENT_BUILD)
+	add_definitions(-DMYCLIENT_BUILD=1)
+endif()
+
+if(ENABLE_DEV_BUILD)
+	add_definitions(-DDEV_BUILD=1)
 endif()
 
 if(APPLE_IOS)
@@ -568,6 +578,11 @@ endif()
 if(ENABLE_EDITOR)
 	add_subdirectory(mapeditor)
 endif()
+
+if(ENABLE_MYCLIENT_BUILD)
+	add_subdirectory(myclient)
+endif()
+
 add_subdirectory(client)
 add_subdirectory(server)
 if(ENABLE_TEST)
