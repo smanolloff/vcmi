@@ -112,9 +112,9 @@ Boundary(CVCMIServerPackVisitor, "CVCMIServerPackVisitor < ICPackVisitor") {
 
 Boundary(CGameHandler, "CGameHandler < [IGameCallback, CBattleInfoCallback, Environment]") {
   Container(CGameHandler_handleReceivedPack, $fn("handleReceivedPack", "CPackForServer"))
-  Container(CGameHandler_makeAction, $fn("makeAction", "..."))
+  Container(CGameHandler_makeBattleAction, $fn("makeBattleAction", "..."))
 
-  note top of CGameHandler_makeAction
+  note top of CGameHandler_makeBattleAction
     core processing logic
     (separate diagram for this)
   end note
@@ -153,7 +153,7 @@ Rel(MakeAction_visit, MakeAction_visitBasic, $call("ApplyGhNetPackVisitor"), $ta
 Rel(MakeAction_visitBasic, CVCMIServerPackVisitor_visitForServer, $call("MakeAction"), $tags="$ctag()")
 Rel(MakeAction_visit, MakeAction_visitTyped, $call("ApplyGhNetPackVisitor"), $tags="$ctag()")
 Rel(MakeAction_visitTyped, ApplyGhNetPackVisitor_visitMakeAction, $call("MakeAction"), $tags="$ctag()")
-Rel(ApplyGhNetPackVisitor_visitMakeAction, CGameHandler_makeAction, $call("..."), $tags="$ctag()")
+Rel(ApplyGhNetPackVisitor_visitMakeAction, CGameHandler_makeBattleAction, $call("..."), $tags="$ctag()")
 
 skinparam legend {
   FontColor Black

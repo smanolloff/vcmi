@@ -59,6 +59,19 @@ $ make vcmiclient
 # Launch! (will auto-start server when needed)
 $ bin/vcmiclient
 
+# OR skip some screens:
+$ BUILD_DIR_MULTI_PROCESS/bin/vcmiclient \
+    --disable-video \
+    --uuid 00000000-0000-0000-0000-000000000000 \
+    --lobby \
+    --lobby-uuid 00000000-0000-0000-0000-000000000001 \
+    --lobby-address 127.0.0.1 \
+    --lobby-port 3030 \
+    --lobby-host \
+    --lobby-username simo \
+    --lobby-connections=0 \
+    --lobby-gamemode 1
+
 # OR disable auto-start and launch server separately:
 
 # terminal 1

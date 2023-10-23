@@ -1,0 +1,39 @@
+@startuml "vcmi-1.32-communication-sequence-MakeAction"
+
+title "VCMI-1.3.2 communication sequence for MakeAction"
+
+participant Server as server
+participant Client as client
+actor Player as player
+
+note across
+TODO: battle start
+end note
+
+
+== ==
+
+autoactivate on
+
+server -> client: BattleSetActiveStack
+client -> player: (wait for input)
+player --> client: (clicks on a hex)
+client --> server: MakeAction
+
+autoactivate off
+
+server -> client: StartAction
+server -> client: BattleStackMoved
+server -> client: EndAction
+server -> client: PackageApplied
+
+== ==
+
+note across
+TODO: battle end
+end note
+
+
+
+
+@enduml
