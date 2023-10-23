@@ -1,6 +1,9 @@
-# TODO: re-use client_SRCS and simply remove CMT file, adding mine instead
+if(ENABLE_MYCLIENT_LIB)
+  add_library(myclient SHARED myclient.cpp myclient.h)
+else()
+  add_executable(myclient main.cpp main.h myclient.cpp myclient.h)
+endif()
 
-add_executable(myclient myclient.cpp myclient.h)
 add_dependencies(myclient vcmiclient)
 
 target_link_libraries(myclient PRIVATE vcmiclient)

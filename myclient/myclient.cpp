@@ -42,9 +42,11 @@ void myinit()
   const_cast<CGameInfo*>(CGI)->setFromLib();
 }
 
-int main(int argc, char * argv[])
-{
-  boost::filesystem::current_path(boost::filesystem::system_complete(argv[0]).parent_path());
+
+// build/bin/myclient
+// /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
+int mymain(std::string resourcedir) {
+  boost::filesystem::current_path(boost::filesystem::path(resourcedir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
 

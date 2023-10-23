@@ -65,6 +65,7 @@ else()
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and server as single executable" ${singleProcess})
 	option(ENABLE_MYCLIENT_BUILD "my custom client" OFF)
+	option(ENABLE_MYCLIENT_LIB "my custom client as a lib" OFF)
 	option(ENABLE_DEV_BUILD "set to true in order to run binaries directly from build dir" OFF)
 endif()
 
@@ -208,6 +209,11 @@ endif()
 
 if(ENABLE_SINGLE_APP_BUILD)
 	add_definitions(-DSINGLE_PROCESS_APP=1)
+endif()
+
+if(ENABLE_MYCLIENT_LIB)
+	set(ENABLE_MYCLIENT_BUILD ON) # broken
+	add_definitions(-DMYCLIENT_LIB=1)
 endif()
 
 if(ENABLE_MYCLIENT_BUILD)

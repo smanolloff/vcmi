@@ -1,12 +1,5 @@
-set(myAI_SRCS
-    MyAI.cpp
-)
-
-set(myAI_HEADERS
-    StdInc.h
-
-    MyAI.h
-)
+set(myAI_SRCS MyAI.cpp)
+set(myAI_HEADERS StdInc.h MyAI.h)
 
 if(NOT ENABLE_STATIC_AI_LIBS)
   list(APPEND myAI_SRCS main.cpp StdInc.cpp)

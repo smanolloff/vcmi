@@ -12,6 +12,7 @@ CMyAI::CMyAI()
   wasWaitingForRealize(false),
   wasUnlockingGs(false)
 {
+  print("constructor.");
 }
 
 CMyAI::~CMyAI()
