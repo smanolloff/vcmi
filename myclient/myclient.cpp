@@ -118,7 +118,7 @@ int main(int argc, char * argv[])
 
   // ESelectionScreen sscreen = ESelectionScreen::loadGame;
   ESelectionScreen sscreen = ESelectionScreen::newGame;
-  mmenu->openLobby(sscreen, true, &names, ELoadMode::MULTI);
+  mmenu->openLobby(sscreen, true, &names, ELoadMode::SINGLE);
 
   inGuiThread.reset(new bool(true));
 

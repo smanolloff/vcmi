@@ -362,7 +362,7 @@
 				},
 				"neutralAI" : {
 					"type" : "string",
-					"default" : "StupidAI"
+					"default" : "MyAI"
 				},
 				"enemyAI" : {
 					"type" : "string",

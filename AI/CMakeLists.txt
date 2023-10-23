@@ -47,6 +47,7 @@ endif()
 #        Add subdirectories           #
 #######################################
 
+add_subdirectory(MyAI)
 add_subdirectory(BattleAI)
 add_subdirectory(VCAI)
 add_subdirectory(StupidAI)
