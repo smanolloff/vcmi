@@ -1,9 +1,15 @@
 #include "myclient.h"
-#include <boost/thread.hpp>
-#include <boost/filesystem.hpp>
+#include <cstdio>
+#include <string>
 
 int main(int argc, char * argv[])
 {
-  return mymain(1);
+  std::function<void(int)> callback = nullptr;
+
+  return mymain(
+    std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin"),
+    false,
+    callback
+  );
 }
 

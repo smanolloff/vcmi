@@ -58,10 +58,11 @@ static void mainLoop()
 
 // build/bin/myclient
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
-// int mymain(std::string resourcedir, const std::function<void(int)> &callback) {
-int mymain(int i) {
-  printf("called with I=%d\n", i);
-  std::string resourcedir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
+int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
+  printf("(mymain) called with: headless=%d\n", headless);
+
+  // TODO: actually handle headless (CMT.cpp has logic for this)
+
   boost::filesystem::current_path(boost::filesystem::path(resourcedir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -140,7 +141,9 @@ int mymain(int i) {
 
   inGuiThread.reset(new bool(true));
 
-  boost::thread([]() { mainLoop(); });
+  // mainLoop cant be in another thread -- SDL can render in main thread only
+  // boost::thread([]() { mainLoop(); });
+  mainLoop();
 
   return 0;
 }
