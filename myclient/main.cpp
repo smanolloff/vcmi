@@ -1,9 +1,9 @@
-#include <cstdio>
 #include "myclient.h"
+#include <boost/thread.hpp>
+#include <boost/filesystem.hpp>
 
 int main(int argc, char * argv[])
 {
-  auto respath = boost::filesystem::system_complete(argv[0]).parent_path();
-  return mymain(respath.string());
+  return mymain(1);
 }
 

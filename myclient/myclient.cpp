@@ -43,9 +43,25 @@ void myinit()
 }
 
 
+static void mainLoop()
+{
+  inGuiThread.reset(new bool(true));
+
+  while(1) //main SDL events loop
+  {
+    GH.input().fetchEvents();
+    CSH->applyPacksOnLobbyScreen();
+    GH.renderFrame();
+  }
+}
+
+
 // build/bin/myclient
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
-int mymain(std::string resourcedir) {
+// int mymain(std::string resourcedir, const std::function<void(int)> &callback) {
+int mymain(int i) {
+  printf("called with I=%d\n", i);
+  std::string resourcedir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
   boost::filesystem::current_path(boost::filesystem::path(resourcedir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -124,12 +140,7 @@ int mymain(std::string resourcedir) {
 
   inGuiThread.reset(new bool(true));
 
-  while(1) //main SDL events loop
-  {
-    GH.input().fetchEvents();
-    CSH->applyPacksOnLobbyScreen();
-    GH.renderFrame();
-  }
+  boost::thread([]() { mainLoop(); });
 
   return 0;
 }
