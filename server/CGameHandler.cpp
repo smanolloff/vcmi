@@ -2138,7 +2138,11 @@ void CGameHandler::setupBattle(int3 tile, const CArmedInstance *armies[2], const
 	engageIntoBattle(bs.info->sides[1].color);
 
 	auto lastBattleQuery = std::dynamic_pointer_cast<CBattleQuery>(queries.topQuery(bs.info->sides[0].color));
-	bs.info->replayAllowed = lastBattleQuery == nullptr && !bs.info->sides[1].color.isValidPlayer();
+
+	if (VLC->settings()->getBoolean(EGameSettings::COMBAT_INFINITE_QUICK_COMBAT_REPLAYS))
+		bs.info->replayAllowed = !bs.info->sides[1].color.isValidPlayer();
+	else
+		bs.info->replayAllowed = lastBattleQuery == nullptr && !bs.info->sides[1].color.isValidPlayer();
 
 	sendAndApply(&bs);
 }
@@ -2610,6 +2614,8 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 
 	auto lastBattleQuery = std::dynamic_pointer_cast<CBattleQuery>(queries.topQuery(gs->curB->sides[0].color));
 
+	std::shared_ptr<CBattleQuery> nextBattleQuery;
+
 	//existing battle query for retying auto-combat
 	if(lastBattleQuery)
 	{
@@ -2623,14 +2629,22 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 				sendAndApply(&restoreInitialMana);
 			}
 		}
-		
+
 		lastBattleQuery->bi = gs->curB;
 		lastBattleQuery->result = std::nullopt;
 		lastBattleQuery->belligerents[0] = gs->curB->sides[0].armyObject;
 		lastBattleQuery->belligerents[1] = gs->curB->sides[1].armyObject;
+
+		if (lastBattleQuery->isRecurrent) {
+			nextBattleQuery = lastBattleQuery;
+		} else {
+			nextBattleQuery = std::make_shared<CBattleQuery>(this, gs->curB);
+			nextBattleQuery->isRecurrent = true;
+		}
+	} else {
+		nextBattleQuery = std::make_shared<CBattleQuery>(this, gs->curB);
 	}
 
-	auto nextBattleQuery = std::make_shared<CBattleQuery>(this, gs->curB);
 	for(int i : {0, 1})
 	{
 		if(heroes[i])
@@ -2638,7 +2652,9 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 			nextBattleQuery->initialHeroMana[i] = heroes[i]->mana;
 		}
 	}
-	queries.addQuery(nextBattleQuery);
+
+	if (nextBattleQuery != lastBattleQuery)
+		queries.addQuery(nextBattleQuery);
 
 	this->battleThread = std::make_unique<boost::thread>(boost::thread(&CGameHandler::runBattle, this));
 }

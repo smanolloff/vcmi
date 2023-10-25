@@ -1,0 +1,46 @@
+@startuml "vcmi-1.32-connector-sequence"
+
+title "VCMI-1.3.2 connector sequence"
+
+!function $desc($txt)
+!return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $src($loc, $fun)
+!return "<font color=gray>"+$loc+" "+"<font:monospaced>("+$fun+")</font>"
+!endfunction
+
+!function $thread($name, $loc, $fun)
+!return "<<thread>>\n<font:monospaced>"+$name+"</font>\n"+$src($loc, $fun)
+!endfunction
+
+participant $thread("CVCMIServer::threadHandleClient", "TODO", "TODO")
+participant "handleConnection" as tconn0
+
+CGameHandler::runBattle
+
+
+[-> gym ++ : start
+gym -> tmain ++ : start
+tmain -> tconn0 **
+note over tmain: <color:00f>wait for event</color>
+
+tconn0 <-? ++ : connect
+|||
+tconn0 -> tconn **
+tconn --[#bbb]// tmain : (event)\n<<restart>>
+note over tmain: <<TODO>>\nrestart (start battle)
+deactivate tmain
+
+autoactivate on
+
+tmain --> gym: (VCMI object)
+tconn --[#bbb]// tmain : (shared state)\n<<restart>>
+<-- gym : obs
+
+[-> gym ++ : reset
+gym -> tmain ++ : reset
+tmain -> tconn0
+note over tmain: <<TODO>>\nrestart (start battle)
+
+@enduml

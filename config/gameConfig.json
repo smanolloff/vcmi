@@ -288,7 +288,9 @@
 			// limit of damage reduction that can be achieved by overpowering defense points
 			"defensePointDamageFactorCap": 0.7,
 			// If set to true, double-wide creatures will trigger obstacle effect when moving one tile forward or backwards
-			"oneHexTriggersObstacles": false
+			"oneHexTriggersObstacles": false,
+			// If enabled, quick combats will be infinitely replayable, but never by a human (used for AI training)
+			"infiniteQuickCombatReplays": true
 		},	
 
 		"creatures":

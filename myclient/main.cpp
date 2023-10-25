@@ -4,12 +4,12 @@
 
 int main(int argc, char * argv[])
 {
-  std::function<void(int)> callback = nullptr;
-
-  return mymain(
-    std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin"),
-    false,
-    callback
-  );
+  // std::function<void(int)> callback = nullptr;
+  mymain(3);
+  // return mymain(
+  //   std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin"),
+  //   false,
+  //   callback
+  // );
 }
 

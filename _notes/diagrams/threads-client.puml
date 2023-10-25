@@ -32,8 +32,11 @@ class "CSimpleJoinScreen.connectThread()" {
     $desc("CMainMenu.cpp:551")
 }
 
+"CSimpleJoinScreen.connectThread()" -- "CServerHandler.threadHandleConnection()" : "connected"
+
 class "CServerHandler.threadHandleConnection()" {
     $desc("CServerHandler.cpp:306")
+    $desc("receives CPacks from client")
 }
 
 @enduml

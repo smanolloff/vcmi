@@ -41,6 +41,7 @@ class CQuery
 public:
 	std::vector<PlayerColor> players; //players that are affected (often "blocked") by query
 	QueryID queryID;
+	bool isRecurrent = false;
 
 	CQuery(Queries * Owner);
 

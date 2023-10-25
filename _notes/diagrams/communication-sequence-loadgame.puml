@@ -1,5 +1,5 @@
 
-@startuml "vcmi-1.32-communication-sequence-MakeAction"
+@startuml "vcmi-1.32-communication-sequence-loadgame"
 
 title "VCMI-1.3.2 communication sequence for loading a game"
 

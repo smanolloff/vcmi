@@ -1,0 +1,21 @@
+CREATE #1 HeroMovementQuery
+CREATE #2 ObjectVisitQuery
+CREATE #3 BattleQuery
+<autocombat>
+CREATE #4 BattleDialogQuery
+<click retry>
+DESTROY #4
+CREATE #5 BattleQuery
+CREATE #6 BattleDialogQuery
+<click OK>
+DESTROY #6
+DESTROY #5 - apply battle results
+DESTROY #3 - no-op (nothing to apply)
+...
+
+Entering void Queries::addQuery(PlayerColor, QueryPtr): player='', query='[0x13df531f8] A query of type '18CHeroMovementQuery' and qid = 1 affecting player RED, '.
+Entering void Queries::addQuery(PlayerColor, QueryPtr): player='', query='[0x13df4b238] A query of type '17CObjectVisitQuery' and qid = 2 affecting player RED, '.
+Entering void Queries::addQuery(PlayerColor, QueryPtr): player='', query='[0x13df56d18] A query of type '12CBattleQuery' and qid = 3 affecting player RED, '.
+Entering void Queries::addQuery(PlayerColor, QueryPtr): player='', query='[0x127709f28] A query of type '18CBattleDialogQuery' and qid = 4 affecting player RED, '.
+Entering void Queries::addQuery(PlayerColor, QueryPtr): player='', query='[0x13df70008] A query of type '12CBattleQuery' and qid = 5 affecting player RED, '.
+Entering void Queries::addQuery(PlayerColor, QueryPtr): player='', query='[0x15e315988] A query of type '18CBattleDialogQuery' and qid = 6 affecting player RED, '.

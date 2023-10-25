@@ -58,12 +58,13 @@ static void mainLoop()
 
 // build/bin/myclient
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
-int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
-  printf("(mymain) called with: headless=%d\n", headless);
+// int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
+int mymain(int x) {
+  // printf("(mymain) called with: headless=%d\n", headless);
 
   // TODO: actually handle headless (CMT.cpp has logic for this)
 
-  boost::filesystem::current_path(boost::filesystem::path(resourcedir));
+  boost::filesystem::current_path(boost::filesystem::path(std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin")));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
 
