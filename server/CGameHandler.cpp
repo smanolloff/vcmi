@@ -2635,13 +2635,18 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 		lastBattleQuery->belligerents[0] = gs->curB->sides[0].armyObject;
 		lastBattleQuery->belligerents[1] = gs->curB->sides[1].armyObject;
 
-		if (lastBattleQuery->isRecurrent) {
+		if (lastBattleQuery->isRecurrent)
+		{
 			nextBattleQuery = lastBattleQuery;
-		} else {
+		}
+		else
+		{
 			nextBattleQuery = std::make_shared<CBattleQuery>(this, gs->curB);
 			nextBattleQuery->isRecurrent = true;
 		}
-	} else {
+	}
+	else
+	{
 		nextBattleQuery = std::make_shared<CBattleQuery>(this, gs->curB);
 	}
 
