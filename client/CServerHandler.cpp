@@ -815,10 +815,14 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		setMapInfo(mapInfo);
 		boost::this_thread::sleep(boost::posix_time::milliseconds(50));
 	}
-	// "Click" on color to remove us from it
-	setPlayer(myFirstColor());
-	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-		boost::this_thread::sleep(boost::posix_time::milliseconds(50));
+
+	if(settings["session"]["onlyai"].Bool())
+	{
+		// "Click" on color to remove us from it
+		setPlayer(myFirstColor());
+		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+			boost::this_thread::sleep(boost::posix_time::milliseconds(50));
+	}
 
 	while(true)
 	{

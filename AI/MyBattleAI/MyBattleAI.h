@@ -1,7 +1,7 @@
 #pragma once
 #include "../../lib/AI_Base.h"
 
-class CMyAI : public CBattleGameInterface
+class CMyBattleAI : public CBattleGameInterface
 {
   int side;
   std::shared_ptr<CBattleCallback> cb;
@@ -12,8 +12,8 @@ class CMyAI : public CBattleGameInterface
   bool wasUnlockingGs;
 
 public:
-  CMyAI();
-  ~CMyAI();
+  CMyBattleAI();
+  ~CMyBattleAI();
 
 
   void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;

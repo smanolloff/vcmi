@@ -6,6 +6,16 @@
 
 #include "myclient.h"
 
+
+
+#include "../lib/filesystem/Filesystem.h"
+#include "../lib/CGeneralTextHandler.h"
+#include "../lib/VCMIDirs.h"
+#include "../lib/VCMI_Lib.h"
+#include "../lib/CConfigHandler.h"
+
+#include "../lib/logging/CBasicLogConfigurator.h"
+
 #include "../client/StdInc.h"
 #include "../client/CGameInfo.h"
 #include "../lib/filesystem/Filesystem.h"
@@ -23,6 +33,8 @@
 #include "../client/eventsSDL/InputHandler.h"
 #include "../client/render/Graphics.h"
 #include "../client/render/IScreenHandler.h"
+#include "../client/CPlayerInterface.h"
+#include "../client/gui/WindowHandler.h"
 
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/CGeneralTextHandler.h"
@@ -59,12 +71,12 @@ static void mainLoop()
 // build/bin/myclient
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
 // int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
-int mymain(int x) {
+int mymain(std::string resdir, std::string mapname, bool ai) {
   // printf("(mymain) called with: headless=%d\n", headless);
 
   // TODO: actually handle headless (CMT.cpp has logic for this)
 
-  boost::filesystem::current_path(boost::filesystem::path(std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin")));
+  boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
 
@@ -84,6 +96,11 @@ int mymain(int x) {
   logGlobal->info("The log file will be saved to %s", logPath);
 
   preinitDLL(::console);
+
+  Settings(settings.write({"session", "onlyai"}))->Bool() = true;
+  Settings(settings.write({"server", "playerAI"}))->String() = "MyAdventureAI";
+  Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
+  Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
 
   logConfig->configure();
   logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
@@ -129,17 +146,8 @@ int mymain(int x) {
   CCS->curh = new CursorHandler();
   CMessage::init();
   CCS->curh->show();
-  std::shared_ptr<CMainMenu> mmenu;
-  mmenu = CMainMenu::create();
-  GH.curInt = mmenu.get();
-  CSH->uuid = "00000000-0000-0000-0000-000000000000";
-  std::vector<std::string> names;
-  names.push_back("simobot");
 
-  // ESelectionScreen sscreen = ESelectionScreen::loadGame;
-  ESelectionScreen sscreen = ESelectionScreen::newGame;
-  mmenu->openLobby(sscreen, true, &names, ELoadMode::SINGLE);
-
+  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
 
   // mainLoop cant be in another thread -- SDL can render in main thread only

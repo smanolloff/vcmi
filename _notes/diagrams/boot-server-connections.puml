@@ -1,0 +1,65 @@
+@startuml "vcmi-1.32-boot-connections"
+
+skinparam defaultTextAlignment center
+
+title "VCMI-1.3.2 boot process (connections)"
+
+' use "w"s to stretch image (VS code preview does not show full diagram)
+title "VCMI-1.3.2 boot process wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+
+skinparam DefaultTextAlignment left
+
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+!procedure $node($txt, $fun)
+:$replace($txt, "\n", %newline())
+
+<color:gray>$replace($fun, "\n", "</color>"+%newline()+"<color:gray>")</color>;
+!endprocedure
+
+start
+split
+  $node("normal start", "CSimpleJoinScreen::connectThread")
+split again
+  $node("automated start", "CServerHandler::debugStartTest")
+end split
+
+$node("startLocalServerAndConnect", "asd")
+$node("bind 0.0.0.0:3030", "CVCMIServer (constructor)")
+$node("", "CVCMIServer::run")
+
+fork
+  repeat
+  $node("connections.add(conn)", "CVCMIServer::connectionAccepted\nCVCMIServer::threadHandleClient\n                            ^^^^^^\nprocesses CPacks as a **server**")
+  repeat while()
+  detach
+fork again
+  $node("connect to localhostAddress\n(ie. as host)", "CServerHandler::justConnectToServer\nCServerHandler::threadHandleConnection\n                               ^^^^^\nprocesses CPacks as a **client**")
+fork again
+  repeat
+  if ("i=0; connections > 1") then (no)
+    :sleep(50ms);
+  else (yes)
+    $node("conn = connect to cmdLineOptions('lobby')", "CVCMIServer::establishRemoteConnections\nCVCMIServer::threadHandleClient\n                             ^^^^\nprocesses CPacks as a **server**")
+    :connections.add(conn)\ni++;
+    note: if connecting to localhost\nduplicate connections.add?
+  endif
+  repeat while()
+  detach
+end fork
+:NOTE;
+
+note
+Apparently, lobby is an entire feature which I have 0 knowledge of
+It allows players to create rooms, etc.
+end note
+stop
+@enduml
