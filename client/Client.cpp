@@ -206,7 +206,7 @@ void CClient::loadGame(CGameState * initializedGameState)
 	reinitScripting();
 
 	initPlayerEnvironments();
-	
+
 	// Loading of client state - disabled for now
 	// Since client no longer writes or loads its own state and instead receives it from server
 	// client state serializer will serialize its own copies of all pointers, e.g. heroes/towns/objects
@@ -532,7 +532,7 @@ void CClient::handlePack(CPack * pack)
 		apply->applyOnClBefore(this, pack);
 		logNetwork->trace("\tMade first apply on cl: %s", typeList.getTypeInfo(pack)->name());
 		gs->apply(pack);
-		logNetwork->trace("\tApplied on gs: %s", typeList.getTypeInfo(pack)->name());
+		// logNetwork->trace("\tApplied on gs: %s", typeList.getTypeInfo(pack)->name());
 		apply->applyOnClAfter(this, pack);
 		logNetwork->trace("\tMade second apply on cl: %s", typeList.getTypeInfo(pack)->name());
 	}
@@ -582,19 +582,19 @@ void CClient::battleStarted(const BattleInfo * info)
 		if(vstd::contains(battleints, color))
 			battleints[color]->battleStart(leftSide.armyObject, rightSide.armyObject, info->tile, leftSide.hero, rightSide.hero, side, info->replayAllowed);
 	};
-	
+
 	callBattleStart(leftSide.color, 0);
 	callBattleStart(rightSide.color, 1);
 	callBattleStart(PlayerColor::UNFLAGGABLE, 1);
 	if(settings["session"]["spectate"].Bool() && !settings["session"]["spectate-skip-battle"].Bool())
 		callBattleStart(PlayerColor::SPECTATOR, 1);
-	
+
 	if(vstd::contains(playerint, leftSide.color) && playerint[leftSide.color]->human)
 		att = std::dynamic_pointer_cast<CPlayerInterface>(playerint[leftSide.color]);
 
 	if(vstd::contains(playerint, rightSide.color) && playerint[rightSide.color]->human)
 		def = std::dynamic_pointer_cast<CPlayerInterface>(playerint[rightSide.color]);
-	
+
 	//Remove player interfaces for auto battle (quickCombat option)
 	if(att && att->isAutoFightOn)
 	{

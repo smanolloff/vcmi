@@ -227,7 +227,7 @@ void CBonusTypeHandler::load(const JsonNode & config)
 			CBonusType & bt = bonusTypes[vstd::to_underlying(it->second)];
 
 			loadItem(node.second, bt, node.first);
-			logBonus->trace("Loaded bonus type %s", node.first);
+			// logBonus->trace("Loaded bonus type %s", node.first);
 		}
 	}
 }

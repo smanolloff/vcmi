@@ -695,7 +695,7 @@ CSpell * CSpellHandler::loadFromJson(const std::string & scope, const JsonNode &
 
 	VLC->generaltexth->registerString(scope, spell->getNameTextID(), json["name"].String());
 
-	logMod->trace("%s: loading spell %s", __FUNCTION__, spell->getNameTranslated());
+	// logMod->trace("%s: loading spell %s", __FUNCTION__, spell->getNameTranslated());
 
 	const auto schoolNames = json["school"];
 

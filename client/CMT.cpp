@@ -255,7 +255,7 @@ int main(int argc, char * argv[])
 
 	// Initialize logging based on settings
 	logConfig->configure();
-	logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
+	// logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
 
 	// Some basic data validation to produce better error messages in cases of incorrect install
 	auto testFile = [](std::string filename, std::string message)

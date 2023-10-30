@@ -2847,7 +2847,7 @@ void CGameHandler::heroExchange(ObjectInstanceID hero1, ObjectInstanceID hero2)
 
 void CGameHandler::sendToAllClients(CPackForClient * pack)
 {
-	logNetwork->trace("\tSending to all clients: %s", typeid(*pack).name());
+	// logNetwork->trace("\tSending to all clients: %s", typeid(*pack).name());
 	for (auto c : lobby->connections)
 	{
 		if(!c->isOpen())
@@ -2861,7 +2861,7 @@ void CGameHandler::sendAndApply(CPackForClient * pack)
 {
 	sendToAllClients(pack);
 	gs->apply(pack);
-	logNetwork->trace("\tApplied on gs: %s", typeid(*pack).name());
+	// logNetwork->trace("\tApplied on gs: %s", typeid(*pack).name());
 }
 
 void CGameHandler::applyAndSend(CPackForClient * pack)

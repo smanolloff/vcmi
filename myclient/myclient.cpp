@@ -105,7 +105,7 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
 
   logConfig->configure();
-  logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
+  // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
 
   // Some basic data validation to produce better error messages in cases of incorrect install
   auto testFile = [](std::string filename, std::string message)

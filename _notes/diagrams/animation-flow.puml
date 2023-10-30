@@ -1,0 +1,42 @@
+@startuml "vcmi-1.32-animation"
+
+skinparam defaultTextAlignment center
+
+title "VCMI-1.3.2 animation"
+
+!procedure $node($code, $file, $line, $fun)
+  :""$code""
+
+  <font color="gray">$file:$line ""($fun)""</font>;
+!endprocedure
+
+!function $src($loc, $fun) return "<font color=gray>"+$loc+" "+"<font:monospaced>("+$fun+")</font>"
+!function $ms($txt) return "<font:monospaced>"+$txt+"</font>"
+
+skinparam DefaultTextAlignment left
+
+' BattleStacksController.cpp
+' BattleInterface.cpp
+' BattleInterface::openingEnd
+
+start
+split
+$node("onAnimationsFinished()", "BattleInterface.cpp", 380, "BattleInterface::openingEnd")
+split again
+$node("updateBattleAnimations(msPassed)", "BattleStacksController.cpp", 339, "BattleStacksController::tick")
+note: there are other invocations of tick...\nthis seemed most legit
+$node("updateBattleAnimations(msPassed)", "BattleStacksController.cpp", 339, "BattleStacksController::tick")
+$node("owner.onAnimationsFinished()", "BattleStacksController.cpp", 380, "BattleStacksController::updateBattleAnimations")
+split again
+$node("onAnimationsFinished()", "BattleInterface.cpp", 380, "BattleInterface::~BattleInterface")
+end split
+
+$node("ongoingAnimationsState.setn(false)", "BattleInterface.cpp", 780, "BattleInterface::onAnimationsFinished")
+note left
+this releases the CondSh lock awaited at
+
+$src("BattleStacksController:548", "owner.waitForAnimations()")
+end note
+
+stop
+@enduml

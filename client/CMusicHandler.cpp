@@ -367,7 +367,7 @@ CMusicHandler::CMusicHandler():
 		if(!boost::algorithm::istarts_with(id.getName(), "MUSIC/"))
 			return false;
 
-		logGlobal->trace("Found music file %s", id.getName());
+		// logGlobal->trace("Found music file %s", id.getName());
 		return true;
 	});
 

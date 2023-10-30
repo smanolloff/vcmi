@@ -329,7 +329,7 @@ std::shared_ptr<CIntObject> AdventureMapWidget::buildStatusBar(const JsonNode & 
 
 std::shared_ptr<CIntObject> AdventureMapWidget::buildTexturePlayerColored(const JsonNode & input)
 {
-	logGlobal->debug("Building widget CFilledTexture");
+	// logGlobal->debug("Building widget CFilledTexture");
 	auto image = input["image"].String();
 	Rect area = readTargetArea(input["area"]);
 	return std::make_shared<FilledTexturePlayerColored>(image, area);

@@ -215,7 +215,7 @@ void CIdentifierStorage::registerObject(const std::string & scope, const std::st
 	std::pair<const std::string, ObjectData> mapping = std::make_pair(fullID, data);
 	if(!vstd::containsMapping(registeredObjects, mapping))
 	{
-		logMod->trace("registered %s as %s:%s", fullID, scope, identifier);
+		// logMod->trace("registered %s as %s:%s", fullID, scope, identifier);
 		registeredObjects.insert(mapping);
 	}
 }
@@ -434,7 +434,7 @@ bool ContentTypeHandler::loadMod(const std::string & modName, bool validate)
 
 			if(originalData.size() > index)
 			{
-				logMod->trace("found original data in loadMod(%s) at index %d", name, index);
+				// logMod->trace("found original data in loadMod(%s) at index %d", name, index);
 				JsonUtils::merge(originalData[index], data);
 				std::swap(originalData[index], data);
 				originalData[index].clear(); // do not use same data twice (same ID)
@@ -449,7 +449,7 @@ bool ContentTypeHandler::loadMod(const std::string & modName, bool validate)
 		else
 		{
 			// normal new object
-			logMod->trace("no index in loadMod(%s)", name);
+			// logMod->trace("no index in loadMod(%s)", name);
 			performValidate(data,name);
 			handler->loadObject(modName, name, data);
 		}
