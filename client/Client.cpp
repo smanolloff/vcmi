@@ -407,19 +407,19 @@ void CClient::initPlayerEnvironments()
 	{
 		logNetwork->info("Preparing environment for player %s", color.getStr());
 		playerEnvironments[color] = std::make_shared<CPlayerEnvironment>(color, this, std::make_shared<CCallback>(gs, color, this));
-		
+
 		if(!hasHumanPlayer && gs->players[color].isHuman())
 			hasHumanPlayer = true;
 	}
 
-	if(!hasHumanPlayer)
-	{
-		Settings session = settings.write["session"];
-		session["spectate"].Bool() = true;
-		session["spectate-skip-battle-result"].Bool() = true;
-		session["spectate-ignore-hero"].Bool() = true;
-	}
-	
+	// if(!hasHumanPlayer)
+	// {
+	// 	Settings session = settings.write["session"];
+	// 	session["spectate"].Bool() = true;
+	// 	session["spectate-skip-battle-result"].Bool() = true;
+	// 	session["spectate-ignore-hero"].Bool() = true;
+	// }
+
 	if(settings["session"]["spectate"].Bool())
 	{
 		playerEnvironments[PlayerColor::SPECTATOR] = std::make_shared<CPlayerEnvironment>(PlayerColor::SPECTATOR, this, std::make_shared<CCallback>(gs, std::nullopt, this));

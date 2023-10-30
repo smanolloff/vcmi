@@ -42,6 +42,7 @@ void MyAdventureAI::print(const std::string &text) const
 void MyAdventureAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
   print("*** initGameInterface ***");
   cb = CB;
+  cbc = CB;
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;
 }
@@ -49,8 +50,22 @@ void MyAdventureAI::initGameInterface(std::shared_ptr<Environment> env, std::sha
 void MyAdventureAI::yourTurn() {
   print("*** yourTurn called ***");
 
-  auto h = cb->getHeroWithSubid(0);
-  cb->moveHero(h, int3{2,1,0}, false);
+  std::make_unique<boost::thread>([this]() {
+    boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
+
+    auto heroes = cb->getHeroesInfo();
+    assert(!heroes.empty());
+    auto h = heroes[0];
+
+    print("kur1");
+    cb->moveHero(h, int3{2,1,0}, false);
+    print("kur2");
+  });
+}
+
+void MyAdventureAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) {
+  print("*** battleStart called ***");
+  CAdventureAI::battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 
 void MyAdventureAI::battleEnd(const BattleResult * br, QueryID queryID) {
@@ -59,26 +74,16 @@ void MyAdventureAI::battleEnd(const BattleResult * br, QueryID queryID) {
   bool won = br->winner == cb->battleGetMySide();
   won ? print("battle result: victory") : print("battle result: defeat");
 
-  assert(queryID > 0);
-  boost::thread newThread([&]()
-  {
-    print("answering query with: 1");
-    boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
-    cb->selectionMade(1, queryID);
-  });
-
-  // TODO: this is called on replay by the UI.
-  // Do we really need to reset it though?
+  // NOTE: although VCAI does cb->selectionMade in a new thread, we must not
+  // there seems to be a race cond and our selection randomly
+  // arrives at the server with a queryID=1 unless we do it sequentially
+  cb->selectionMade(1, queryID);
   CAdventureAI::battleEnd(br, queryID);
 }
 
 //
 // Dummy methods
 //
-
-void MyAdventureAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) {
-  print("*** battleStart called ***");
-}
 
 void MyAdventureAI::saveGame(BinarySerializer & h, const int version) {
   print("*** saveGame called ***");
@@ -297,5 +302,5 @@ void MyAdventureAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID
 }
 
 std::string MyAdventureAI::getBattleAIName() const {
-  return "BattleAI";
+  return "StupidAI";
 }

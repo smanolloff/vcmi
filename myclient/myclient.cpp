@@ -102,6 +102,8 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
 
+  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
+
   logConfig->configure();
   logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
 
