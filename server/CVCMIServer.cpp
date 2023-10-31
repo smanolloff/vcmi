@@ -137,7 +137,7 @@ CVCMIServer::CVCMIServer(boost::program_options::variables_map & opts)
 	logNetwork->info("Port %d will be used", port);
 	try
 	{
-		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port));
 	}
 	catch(...)
 	{
