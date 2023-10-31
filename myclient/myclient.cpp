@@ -97,6 +97,7 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
 
   preinitDLL(::console);
 
+  Settings(settings.write({"session", "headless"}))->Bool() = true;
   Settings(settings.write({"session", "onlyai"}))->Bool() = true;
   Settings(settings.write({"server", "playerAI"}))->String() = "MyAdventureAI";
   Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
@@ -152,8 +153,15 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
 
-  // mainLoop cant be in another thread -- SDL can render in main thread only
-  // boost::thread([]() { mainLoop(); });
+  if(settings["session"]["headless"].Bool()) {
+    while(true)
+      boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+  } else {
+    // mainLoop cant be in another thread -- SDL can render in main thread only
+    // boost::thread([]() { mainLoop(); });
+    mainLoop();
+  }
+
   mainLoop();
 
   return 0;

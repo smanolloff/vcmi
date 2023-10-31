@@ -412,13 +412,13 @@ void CClient::initPlayerEnvironments()
 			hasHumanPlayer = true;
 	}
 
-	// if(!hasHumanPlayer)
-	// {
-	// 	Settings session = settings.write["session"];
-	// 	session["spectate"].Bool() = true;
-	// 	session["spectate-skip-battle-result"].Bool() = true;
-	// 	session["spectate-ignore-hero"].Bool() = true;
-	// }
+	if(!hasHumanPlayer && !settings["session"]["headless"].Bool())
+	{
+		Settings session = settings.write["session"];
+		session["spectate"].Bool() = true;
+		session["spectate-skip-battle-result"].Bool() = true;
+		session["spectate-ignore-hero"].Bool() = true;
+	}
 
 	if(settings["session"]["spectate"].Bool())
 	{
