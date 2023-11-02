@@ -13,9 +13,11 @@
 #include "../../lib/mapObjects/MiscObjects.h"
 #include "../../lib/spells/CSpellHandler.h"
 #include "../../lib/CondSh.h"
+#include "callbacks.h"
 
 class DLL_EXPORT MyAdventureAI : public CAdventureAI
 {
+  CBProvider * cbprovider;
 public:
   std::shared_ptr<CCallback> cb;
 public:

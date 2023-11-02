@@ -120,7 +120,9 @@ public:
 
 	std::optional<BattleAction> curbaction;
 
-	CClient();
+	std::any aiBaggage; // arbitary payload for AI constructors
+
+	CClient(std::any aiBaggage = nullptr);
 	~CClient();
 
 	const Services * services() const override;

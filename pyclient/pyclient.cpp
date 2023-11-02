@@ -4,7 +4,7 @@
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
-#include "myclient.h"
+#include "pyclient.h"
 
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/CGeneralTextHandler.h"
@@ -40,35 +40,19 @@
 #include "../lib/VCMI_Lib.h"
 #include "../lib/CConfigHandler.h"
 
+#include <string_view>
+
 namespace bfs = boost::filesystem;
 
 extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
 
-void myinit()
-{
-  loadDLLClasses();
-  const_cast<CGameInfo*>(CGI)->setFromLib();
-}
-
-
-static void mainLoop()
-{
-  inGuiThread.reset(new bool(true));
-
-  while(1) //main SDL events loop
-  {
-    GH.input().fetchEvents();
-    CSH->applyPacksOnLobbyScreen();
-    GH.renderFrame();
-  }
-}
-
-// build/bin/myclient
-// /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
-// int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
-int mymain(std::string resdir, std::string mapname, bool ai) {
+int start_vcmi(
+  std::string resdir,
+  std::string mapname,
+  CBProvider cbprovider,
+) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -95,43 +79,16 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   Settings(settings.write({"server", "playerAI"}))->String() = "MyAdventureAI";
   Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
-
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
 
   logConfig->configure();
-  // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
-
-  // Some basic data validation to produce better error messages in cases of incorrect install
-  auto testFile = [](std::string filename, std::string message)
-  {
-    if (!CResourceHandler::get()->existsResource(ResourceID(filename)))
-      handleFatalError(message, false);
-  };
-
-  testFile("DATA/HELP.TXT", "VCMI requires Heroes III: Shadow of Death or Heroes III: Complete data files to run!");
-  testFile("MODS/VCMI/MOD.JSON", "VCMI installation is corrupted! Built-in mod was not found!");
-  testFile("DATA/PLAYERS.PAL", "Heroes III data files are missing or corruped! Please reinstall them.");
-  testFile("SPRITES/DEFAULT.DEF", "Heroes III data files are missing or corruped! Please reinstall them.");
-  testFile("DATA/TENTCOLR.TXT", "Heroes III: Restoration of Erathia (including HD Edition) data files are not supported!");
 
   srand ( (unsigned int)time(nullptr) );
 
   GH.init();
-
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  CSH = new CServerHandler();
-
-  CSH->uuid = "00000000-0000-0000-0000-000000000000";
-
-  CCS->videoh = new CEmptyVideoPlayer();
-
-  CCS->soundh = new CSoundHandler();
-  CCS->soundh->init();
-  CCS->soundh->setVolume((ui32)settings["general"]["sound"].Float());
-  CCS->musich = new CMusicHandler();
-  CCS->musich->init();
-  CCS->musich->setVolume((ui32)settings["general"]["music"].Float());
+  CSH = new CServerHandler(std::make_any<CBProvider*>(&cbprovider));
 
   boost::thread loading([]() {
     loadDLLClasses();
@@ -144,20 +101,28 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   CMessage::init();
   CCS->curh->show();
 
-  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
-  inGuiThread.reset(new bool(true));
+  // We have the GIL, safe to call pycbsysinit now
+  cbprovider.pycbsysinit([CSH](std::string cmd) {
+    std::string_view svcmd(cmd);
 
-
-  if(settings["session"]["headless"].Bool()) {
-    GH.screenHandler().close();
-    while (true) {
-      boost::this_thread::sleep(boost::posix_time::milliseconds(7000));
+    switch (svcmd) {
+      case "terminate"sv:
+        exit(0);
+      case "reset"sv:
+        CSH->sendRestartGame();
+        break;
+      default:
+        logGlobal->error("Unknown sys command: '%s'", cmd);
+        break;
     }
-  } else {
-    GH.screenHandler().clearScreen();
-    // mainLoop cant be in another thread -- SDL can render in main thread only
-    // boost::thread([]() { mainLoop(); });
-    mainLoop();
+  })
+
+  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false, cbprovider);
+  inGuiThread.reset(new bool(true));
+  GH.screenHandler().close();
+
+  while (true) {
+    boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
   }
 
   return 0;

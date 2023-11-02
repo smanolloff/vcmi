@@ -87,7 +87,7 @@ public:
 		{
 			boost::unique_lock<boost::mutex> stateLock(srv->stateMutex);
 			ApplyOnServerNetPackVisitor applier(*srv);
-			
+
 			ptr->visit(applier);
 
 			return applier.getResult();
@@ -215,13 +215,13 @@ void CVCMIServer::establishRemoteConnections()
 	//wait for host connection
 	while(connections.empty())
 		boost::this_thread::sleep(boost::posix_time::milliseconds(50));
-	
+
 	uuid = cmdLineOptions["lobby-uuid"].as<std::string>();
     int numOfConnections = cmdLineOptions["connections"].as<ui16>();
 	auto address = cmdLineOptions["lobby"].as<std::string>();
 	int port = cmdLineOptions["lobby-port"].as<ui16>();
 	logGlobal->info("Server is connecting to remote at %s:%d with uuid %s %d times", address, port, uuid, numOfConnections);
-	
+
 	for(int i = 0; i < numOfConnections; ++i)
 		connectToRemote(address, port);
 }
@@ -238,7 +238,7 @@ void CVCMIServer::connectToRemote(const std::string & addr, int port)
 	{
 		logNetwork->error("\nCannot establish remote connection!");
 	}
-	
+
 	if(c)
 	{
 		connections.insert(c);
@@ -286,7 +286,7 @@ void CVCMIServer::prepareToRestart()
 		// FIXME: dirry hack to make sure old CGameHandler::run is finished
 		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 	}
-	
+
 	for(auto c : connections)
 	{
 		c->enterLobbyConnectionMode();
@@ -323,7 +323,7 @@ bool CVCMIServer::prepareToStartGame()
 		assert(0);
 		break;
 	}
-	
+
 	state = EServerState::GAMEPLAY_STARTING;
 	return true;
 }
@@ -535,7 +535,7 @@ void CVCMIServer::clientConnected(std::shared_ptr<CConnection> c, std::vector<st
 	}
 
 	logNetwork->info("Connection with client %d established. UUID: %s", c->connectionID, c->uuid);
-	
+
 	if(state == EServerState::LOBBY)
 	{
 		for(auto & name : names)
@@ -570,10 +570,10 @@ void CVCMIServer::clientDisconnected(std::shared_ptr<CConnection> c)
 		state = EServerState::SHUTDOWN;
 		return;
 	}
-	
+
 	PlayerReinitInterface startAiPack;
 	startAiPack.playerConnectionId = PlayerSettings::PLAYER_AI;
-	
+
 	for(auto it = playerNames.begin(); it != playerNames.end();)
 	{
 		if(it->second.connection != c->connectionID)
@@ -591,10 +591,10 @@ void CVCMIServer::clientDisconnected(std::shared_ptr<CConnection> c)
 			++it;
 			continue;
 		}
-		
+
 		it = playerNames.erase(it);
 		setPlayerConnectedId(*playerSettings, PlayerSettings::PLAYER_AI);
-		
+
 		if(gh && si && state == EServerState::GAMEPLAY)
 		{
 			gh->playerMessages->broadcastMessage(playerSettings->color, playerLeftMsgText);
@@ -602,7 +602,7 @@ void CVCMIServer::clientDisconnected(std::shared_ptr<CConnection> c)
 			startAiPack.players.push_back(playerSettings->color);
 		}
 	}
-	
+
 	if(!startAiPack.players.empty())
 		gh->sendAndApply(&startAiPack);
 }
@@ -611,22 +611,22 @@ void CVCMIServer::reconnectPlayer(int connId)
 {
 	PlayerReinitInterface startAiPack;
 	startAiPack.playerConnectionId = connId;
-	
+
 	if(gh && si && state == EServerState::GAMEPLAY)
 	{
 		for(auto it = playerNames.begin(); it != playerNames.end(); ++it)
 		{
 			if(it->second.connection != connId)
 				continue;
-			
+
 			int id = it->first;
 			auto * playerSettings = si->getPlayersSettings(id);
 			if(!playerSettings)
 				continue;
-			
+
 			std::string messageText = boost::str(boost::format("%s (cid %d) is connected") % playerSettings->name % connId);
 			gh->playerMessages->broadcastMessage(playerSettings->color, messageText);
-			
+
 			startAiPack.players.push_back(playerSettings->color);
 		}
 
@@ -1018,7 +1018,7 @@ static void handleCommandOptions(int argc, const char * argv[], boost::program_o
 			std::cerr << "Failure during parsing command-line options:\n" << e.what() << std::endl;
 		}
 	}
-	
+
 #ifdef SINGLE_PROCESS_APP
 	options.emplace("run-by-client", po::variable_value{true, true});
 #endif

@@ -46,6 +46,7 @@ void MyAdventureAI::initGameInterface(std::shared_ptr<Environment> env, std::sha
   print("*** initGameInterface ***");
   cb = CB;
   cbc = CB;
+
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;
 }

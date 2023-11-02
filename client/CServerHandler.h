@@ -81,6 +81,8 @@ class CServerHandler : public IServerAPI, public LobbyInfo
 
 	std::vector<std::string> myNames;
 
+	std::any aiBaggage; // arbitary payload for AI constructors
+
 	void threadHandleConnection();
 	void threadRunServer();
 	void onServerFinished();
@@ -108,8 +110,8 @@ public:
 
 	static const std::string localhostAddress;
 
-	CServerHandler();
-	
+	CServerHandler(std::any aiBaggage = std::any{});
+
 	std::string getHostAddress() const;
 	ui16 getHostPort() const;
 

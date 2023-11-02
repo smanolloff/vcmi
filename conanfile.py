@@ -23,6 +23,7 @@ class VCMI(ConanFile):
     _nullkillerAIRequires = [
         "onetbb/[^2021.3]",
     ]
+
     requires = _libRequires + _clientRequires + _nullkillerAIRequires
 
     options = {
