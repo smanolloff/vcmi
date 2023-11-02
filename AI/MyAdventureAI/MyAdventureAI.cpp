@@ -43,9 +43,22 @@ void MyAdventureAI::print(const std::string &text) const
 }
 
 void MyAdventureAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
+  print("*** initGameInterface -- BUT NO BAGGAGE ***");
+  initGameInterface(env, CB, std::any{});
+}
+
+void MyAdventureAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage) {
   print("*** initGameInterface ***");
   cb = CB;
   cbc = CB;
+
+  assert(baggage.has_value());
+
+  // MyAdventureAI needs to be statically linked to vcmi
+  // (pass -DENABLE_STATIC_AI_LIBS=1 to cmake)
+  // otherwise CBProvider*'s symbol will not be properly recognized
+  assert(baggage.type() == typeid(CBProvider*));
+  cbprovider = std::any_cast<CBProvider*>(baggage);
 
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;

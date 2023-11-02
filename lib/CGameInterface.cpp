@@ -22,6 +22,8 @@
 # include "AI/BattleAI/BattleAI.h"
 # include "AI/StupidAI/StupidAI.h"
 # include "AI/EmptyAI/CEmptyAI.h"
+# include "AI/MyAdventureAI/MyAdventureAI.h"
+# include "AI/MyBattleAI/MyBattleAI.h"
 #else
 # ifdef VCMI_WINDOWS
 #  include <windows.h> //for .dll libs
@@ -33,7 +35,7 @@
 VCMI_LIB_NAMESPACE_BEGIN
 
 template<typename rett>
-std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const std::string & methodName, std::any createAny = nullptr)
+std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const std::string & methodName)
 {
 #ifdef STATIC_AI
 	// android currently doesn't support loading libs dynamically, so the access to the known libraries
@@ -106,6 +108,8 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 {
 	if(libpath.stem() == "libNullkiller") {
 		return std::make_shared<NKAI::AIGateway>();
+	} else if(libpath.stem() == "libMyAdventureAI") {
+		return std::make_shared<MyAdventureAI>();
 	}
 	else{
 		return std::make_shared<VCAI>();
@@ -119,6 +123,8 @@ std::shared_ptr<CBattleGameInterface> createAny(const boost::filesystem::path & 
 		return std::make_shared<CBattleAI>();
 	else if(libpath.stem() == "libStupidAI")
 		return std::make_shared<CStupidAI>();
+	else if(libpath.stem() == "libMyBattleAI")
+		return std::make_shared<CMyBattleAI>();
 	return std::make_shared<CEmptyAI>();
 }
 

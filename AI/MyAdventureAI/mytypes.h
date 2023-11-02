@@ -1,5 +1,9 @@
 #pragma once
 
+// *** THIS FILE LIVES IN:
+// ***
+// *** vcmi/AI/MyAdventureAI/mytypes.h
+
 #include <array>
 
 using ActionF = std::array<float, 3>;
@@ -29,8 +33,8 @@ using PyCB = const std::function<void(const StateF &arr)>;
 // whose purpose is to be seamlessly transportable through VCMI code
 // as a std::any object, then cast back to CBProvider in the AI constructor
 struct CBProvider {
-    CBProvider(const PyCBInit pycbinit_, const PyCB pycb_)
-    : pycbinit(pycbinit_), pycb(pycb_) {}
+    CBProvider(const PyCBSysInit pycbsysinit_, const PyCBInit pycbinit_, const PyCB pycb_)
+    : pycbsysinit(pycbsysinit_), pycbinit(pycbinit_), pycb(pycb_) {}
 
     const PyCBSysInit pycbsysinit;
     const PyCBInit pycbinit;

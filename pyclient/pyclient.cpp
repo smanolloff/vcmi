@@ -48,11 +48,7 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
 
-int start_vcmi(
-  std::string resdir,
-  std::string mapname,
-  CBProvider cbprovider,
-) {
+void preinit_vcmi(std::string resdir) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -72,6 +68,7 @@ int start_vcmi(
   logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
   logGlobal->info("The log file will be saved to %s", logPath);
 
+  logGlobal->error("************ 3");
   preinitDLL(::console);
 
   Settings(settings.write({"session", "headless"}))->Bool() = true;
@@ -85,10 +82,15 @@ int start_vcmi(
 
   srand ( (unsigned int)time(nullptr) );
 
+  // This initializes SDL and requires main thread.
   GH.init();
+}
+
+void start_vcmi(std::string mapname, CBProvider cbprovider) {
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  CSH = new CServerHandler(std::make_any<CBProvider*>(&cbprovider));
+  auto baggage = std::make_any<CBProvider*>(&cbprovider);
+  CSH = new CServerHandler(baggage);
 
   boost::thread loading([]() {
     loadDLLClasses();
@@ -102,28 +104,20 @@ int start_vcmi(
   CCS->curh->show();
 
   // We have the GIL, safe to call pycbsysinit now
-  cbprovider.pycbsysinit([CSH](std::string cmd) {
-    std::string_view svcmd(cmd);
+  cbprovider.pycbsysinit([](std::string cmd) {
+    if (cmd == "terminate")
+      exit(0);
+    else if (cmd == "reset")
+      CSH->sendRestartGame();
+    else
+      logGlobal->error("Unknown sys command: '%s'", cmd);
+  });
 
-    switch (svcmd) {
-      case "terminate"sv:
-        exit(0);
-      case "reset"sv:
-        CSH->sendRestartGame();
-        break;
-      default:
-        logGlobal->error("Unknown sys command: '%s'", cmd);
-        break;
-    }
-  })
-
-  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false, cbprovider);
+  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
   GH.screenHandler().close();
 
   while (true) {
     boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
   }
-
-  return 0;
 }

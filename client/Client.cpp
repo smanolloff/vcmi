@@ -504,10 +504,11 @@ void CClient::installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInte
 	auto cb = std::make_shared<CCallback>(gs, color, this);
 	battleCallbacks[color] = cb;
 
-	if (aiBaggage.has_value())
+	if (aiBaggage.has_value()) {
 		gameInterface->initGameInterface(playerEnvironments.at(color), cb, aiBaggage);
-	else
+	} else {
 		gameInterface->initGameInterface(playerEnvironments.at(color), cb);
+	}
 
 	installNewBattleInterface(gameInterface, color, battlecb);
 }

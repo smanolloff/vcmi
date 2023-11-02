@@ -38,6 +38,8 @@ $ conan install . \
         --profile:build=default \
         --profile:host=default
 
+// note: from here on, better see the notes in connector/README
+
 $ cmake -S . -B BUILD_DIR -Wno-dev -G 'Unix Makefiles' \
     -D CMAKE_BUILD_TYPE=Debug \
     -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \

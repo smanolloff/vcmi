@@ -1,5 +1,5 @@
 set(myAdventureAI_SRCS MyAdventureAI.cpp)
-set(myAdventureAI_HEADERS StdInc.h callbacks.h MyAdventureAI.h)
+set(myAdventureAI_HEADERS StdInc.h mytypes.h MyAdventureAI.h)
 
 if(NOT ENABLE_STATIC_AI_LIBS)
   list(APPEND myAdventureAI_SRCS main.cpp StdInc.cpp)

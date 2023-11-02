@@ -581,6 +581,7 @@ endif()
 
 if(ENABLE_MYCLIENT_BUILD)
 	add_subdirectory(myclient)
+	add_subdirectory(pyclient)
 endif()
 
 add_subdirectory(client)

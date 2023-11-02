@@ -1,0 +1,1 @@
+../AI/MyAdventureAI/mytypes.h
