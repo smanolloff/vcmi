@@ -30,9 +30,19 @@ void CMyBattleAI::print(const std::string &text) const
   logAi->trace("CMyBattleAI  [%p]: %s", this, text);
 }
 
-void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB)
+void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {
+  print("*** initBattleInterface -- BUT NO BAGGAGE ***");
+  myInitBattleInterface(ENV, CB, std::any{});
+}
+
+void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
 {
-  print("init...");
+  print("*** initBattleInterface -- BUT NO BAGGAGE ***");
+  myInitBattleInterface(ENV, CB, std::any{});
+}
+
+void CMyBattleAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) {
+  print("*** myInitBattleInterface ***");
   env = ENV;
   cbc = cb = CB;
 
@@ -40,12 +50,64 @@ void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::sha
   wasUnlockingGs = CB->unlockGsWhenWaiting;
   CB->waitTillRealize = false;
   CB->unlockGsWhenWaiting = false;
+
+  // See note in MyAdventureAI::initGameInterface
+  assert(baggage.has_value());
+  assert(baggage.type() == typeid(CBProvider*));
+  cbprovider = std::any_cast<CBProvider*>(baggage);
+
+  print("*** call cbprovider->pycbinit([this](const ActionF &arr) { cbprovider->cppcb(arr) })");
+  cbprovider->pycbinit([this](const ActionF &arr) { this->cppcb(arr); });
 }
 
-void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
-{
-  initBattleInterface(ENV, CB);
+// Called by GymEnv on every "step()" call
+void CMyBattleAI::cppcb(const ActionF &arr) {
+    print(std::string("called with arr: ") + actionToStr(arr));
+
+    print("Assign action = arr");
+    action = arr;
+
+    // Unblock "activeStack"
+    print("acquire lock");
+    boost::unique_lock<boost::mutex> lock(m);
+    print("cond.notify_one()");
+    cond.notify_one();
+
+    print("return");
 }
+
+void CMyBattleAI::activeStack(const CStack * stack)
+{
+  print("activeStack called for " + stack->nodeName());
+
+  const StateF state_ary = {1, 2, 4};
+
+  print("acquire lock");
+  boost::unique_lock<boost::mutex> lock(m);
+
+  print("call this->pycb(state_ary)");
+  cbprovider->pycb(state_ary);
+
+
+  // We've set some events in motion:
+  //  - in python, "env" now has our cppcb stored (via pycbinit)
+  //  - in python, "env" now has the state stored (via pycb)
+  //  - in python, "env" constructor can now return (pycb also set an event)
+  //  - in python, env.step(action) will be called, which will call cppcb
+  // our cppcb will then call AI->cb->makeAction()
+  // ...we wait until that happens, and FINALLY we can return from yourTurn
+  print("cond.wait()");
+  cond.wait(lock);
+
+  print(std::string("this->action: ") + actionToStr(action));
+
+  // we have the action from GymEnv, now make it
+  print("TODO: call cb->makeAction()");
+
+  print("return");
+  return;
+}
+
 
 void CMyBattleAI::actionFinished(const BattleAction &action)
 {
@@ -60,17 +122,6 @@ void CMyBattleAI::actionStarted(const BattleAction &action)
 void CMyBattleAI::yourTacticPhase(int distance)
 {
   cb->battleMakeTacticAction(BattleAction::makeEndOFTacticPhase(cb->battleGetTacticsSide()));
-}
-
-void CMyBattleAI::activeStack( const CStack * stack )
-{
-  print("activeStack called for " + stack->nodeName());
-
-  // TODO
-
-  // call python fn which should return a BattleAction derivative
-
-  return;
 }
 
 void CMyBattleAI::battleAttack(const BattleAttack *ba)
@@ -117,6 +168,14 @@ void CMyBattleAI::battleStart(const CCreatureSet *army1, const CCreatureSet *arm
 {
   print("battleStart called");
   side = Side;
+}
+
+std::string CMyBattleAI::stateToStr(const StateF &arr) {
+    return std::to_string(arr[0]) + " " + std::to_string(arr[1]) + " " + std::to_string(arr[2]);
+}
+
+std::string CMyBattleAI::actionToStr(const ActionF &arr) {
+    return std::to_string(arr[0]) + " " + std::to_string(arr[1]) + " " + std::to_string(arr[2]);
 }
 
 void CMyBattleAI::battleCatapultAttacked(const CatapultAttack & ca)

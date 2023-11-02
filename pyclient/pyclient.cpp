@@ -68,13 +68,12 @@ void preinit_vcmi(std::string resdir) {
   logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
   logGlobal->info("The log file will be saved to %s", logPath);
 
-  logGlobal->error("************ 3");
   preinitDLL(::console);
 
   Settings(settings.write({"session", "headless"}))->Bool() = true;
   Settings(settings.write({"session", "onlyai"}))->Bool() = true;
   Settings(settings.write({"server", "playerAI"}))->String() = "MyAdventureAI";
-  Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
+  // NOTE: friendlyAI is hard-coded in MyAdventureAI::getBattleAIName()
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
 
@@ -105,6 +104,7 @@ void start_vcmi(std::string mapname, CBProvider cbprovider) {
 
   // We have the GIL, safe to call pycbsysinit now
   cbprovider.pycbsysinit([](std::string cmd) {
+    logGlobal->error("!!!!!!!!!!! SYS !!!!!!!!!! Received command: %s", cmd);
     if (cmd == "terminate")
       exit(0);
     else if (cmd == "reset")

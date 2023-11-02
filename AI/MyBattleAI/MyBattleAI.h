@@ -1,5 +1,6 @@
 #pragma once
 #include "../../lib/AI_Base.h"
+#include "../MyAdventureAI/mytypes.h"
 
 class CMyBattleAI : public CBattleGameInterface
 {
@@ -11,6 +12,16 @@ class CMyBattleAI : public CBattleGameInterface
   bool wasWaitingForRealize;
   bool wasUnlockingGs;
 
+  CBProvider * cbprovider;
+
+  boost::mutex m;
+  boost::condition_variable cond;
+  ActionF action;
+
+  void cppcb(const ActionF &arr);
+  std::string actionToStr(const ActionF &arr);
+  std::string stateToStr(const StateF &arr);
+
 public:
   CMyBattleAI();
   ~CMyBattleAI();
@@ -18,6 +29,7 @@ public:
 
   void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
   void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
+  void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage);
   void activeStack(const CStack * stack) override; //called when it's turn of that stack
   void yourTacticPhase(int distance) override;
 

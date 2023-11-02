@@ -9,6 +9,7 @@
  */
 #include "StdInc.h"
 #include "MyAdventureAI.h"
+#include "../MyBattleAI/MyBattleAI.h"
 
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
@@ -82,7 +83,22 @@ void MyAdventureAI::yourTurn() {
 
 void MyAdventureAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) {
   print("*** battleStart called ***");
-  CAdventureAI::battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
+
+  // just copied code from CAdventureAI::battleStart
+  // only difference is argument to initBattleInterface()
+  assert(!battleAI);
+  assert(cbc);
+  auto aiName = getBattleAIName();
+  battleAI = CDynLibHandler::getNewBattleAI(aiName);
+
+  if (aiName == "MyBattleAI") {
+    auto tmp = std::static_pointer_cast<CMyBattleAI>(battleAI);
+    tmp->myInitBattleInterface(env, cbc, cbprovider);
+  } else {
+    battleAI->initBattleInterface(env, cbc);
+  }
+
+  battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 
 void MyAdventureAI::battleEnd(const BattleResult * br, QueryID queryID) {
@@ -320,5 +336,5 @@ void MyAdventureAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID
 }
 
 std::string MyAdventureAI::getBattleAIName() const {
-  return "StupidAI";
+  return "MyBattleAI";
 }
