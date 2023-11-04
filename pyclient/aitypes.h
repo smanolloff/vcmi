@@ -1,1 +1,1 @@
-../AI/MyAdventureAI/mytypes.h
+../AI/MyBattleAI/mytypes.h

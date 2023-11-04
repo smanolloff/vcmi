@@ -1,5 +1,5 @@
 set(myBattleAI_SRCS MyBattleAI.cpp)
-set(myBattleAI_HEADERS StdInc.h MyBattleAI.h)
+set(myBattleAI_HEADERS StdInc.h mytypes.h MyBattleAI.h)
 
 if(NOT ENABLE_STATIC_AI_LIBS)
   list(APPEND myBattleAI_SRCS main.cpp StdInc.cpp)

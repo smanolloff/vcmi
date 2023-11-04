@@ -1,0 +1,102 @@
+@startuml "vcmi-1.32-gym-observation-space"
+
+title "VCMI-1.3.2 Gym Observation Space diagram"
+left to right direction
+skinparam defaultTextAlignment center
+skinparam ClassFontStyle bold
+skinparam ClassFontName monospaced
+skinparam ClassAttributeFontName monospaced
+skinparam ClassAttributeIconSize 0
+skinparam DefaultTextAlignment left
+hide circle
+set namespaceSeparator none
+
+' space
+!$nbsp = "<U+00A0>"
+
+!function $desc($txt)
+!return "<color:Gray><i>"+$txt+"</i></color>"
+!endfunction
+
+!procedure $branch($name, $id, $parent_id)
+class "$name" as $id {
+  --
+}
+$parent_id -- $id
+!endprocedure
+
+!procedure $leaf($name, $id, $parent_id, $txt)
+class "$name" as $id {
+  $desc($txt)
+  --
+}
+$parent_id -- $id
+!endprocedure
+
+!procedure $leaf($name, $parent_id, $txt)
+$leaf($name, $name, $parent_id, $txt)
+!endprocedure
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+class State {}
+
+$branch($desc('14 x')+"\nStack", stack, State)
+
+together {
+  $leaf(qty, stack, "1..14")
+  $leaf(morale, stack, "-3..3")
+
+  note right of morale
+    -10..10?
+    (eg. "will 'Sorrow' be useful?")
+  end note
+
+  $leaf(luck, stack, "-3..3")
+  $leaf(attack, stack, "0..50")
+  $leaf(defense, stack, "0..50")
+  $leaf(shots, stack, "0..24")
+  $leaf(dmg_min, stack, "0..100")
+  $leaf(dmg_max, stack, "0..100")
+  $leaf(hp, stack, "1..1500")
+  $leaf(hp_left, stack, "1..1500")
+  $leaf(speed, stack, "1..30")
+
+  $leaf("Active Stack", astack, State, "1..14")
+  note right of astack
+  1..7 = friendly
+  8..14 = enemy
+  end note
+
+  package optional {
+    $leaf(range_mod, stack, "1..3")
+
+    note right of range_mod
+      range and obstacle penalty
+    end note
+
+    $leaf(dmg_rcv_min, stack, "1.10000")
+    $leaf(dmg_rcv_max, stack, "1.10000")
+
+    note right of dmg_rcv_max
+      Total damage that would be received if the
+      current stack attacks/shoots this stack
+    end note
+  }
+
+
+    $leaf($desc('165 x')+"\nHex", hex, State, "1..17")
+
+    note right of hex
+      1 = free (reachable)   $desc("// redundant?")
+      2 = free (corpses)     $desc("// redundant?")
+      3 = free (unreachable) $desc("// redundant?")
+      4 = occupied (obstacle)
+      5 = occupied (stack 1)
+      ...
+      18 = occupied (stack 14)
+    end note
+}
+
+@enduml

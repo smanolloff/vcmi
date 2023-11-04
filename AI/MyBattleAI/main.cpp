@@ -20,5 +20,5 @@ extern "C" DLL_EXPORT void GetAiName(char* name)
 
 extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out)
 {
-  out = std::make_shared<CMyBattleAI>();
+  out = std::make_shared<MMAI::CMyBattleAI>();
 }

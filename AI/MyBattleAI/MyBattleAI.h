@@ -1,6 +1,8 @@
 #pragma once
 #include "../../lib/AI_Base.h"
-#include "../MyAdventureAI/mytypes.h"
+#include "mytypes.h"
+
+namespace MMAI {
 
 class CMyBattleAI : public CBattleGameInterface
 {
@@ -56,3 +58,5 @@ public:
 private:
   void print(const std::string &text) const;
 };
+
+} // namespace

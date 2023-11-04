@@ -53,13 +53,13 @@ void MyAdventureAI::initGameInterface(std::shared_ptr<Environment> env, std::sha
   cb = CB;
   cbc = CB;
 
-  assert(baggage.has_value());
+  // assert(baggage.has_value());
 
-  // MyAdventureAI needs to be statically linked to vcmi
-  // (pass -DENABLE_STATIC_AI_LIBS=1 to cmake)
-  // otherwise CBProvider*'s symbol will not be properly recognized
-  assert(baggage.type() == typeid(CBProvider*));
-  cbprovider = std::any_cast<CBProvider*>(baggage);
+  // // MyAdventureAI needs to be statically linked to vcmi
+  // // (pass -DENABLE_STATIC_AI_LIBS=1 to cmake)
+  // // otherwise CBProvider*'s symbol will not be properly recognized
+  // assert(baggage.type() == typeid(CBProvider*));
+  // cbprovider = std::any_cast<CBProvider*>(baggage);
 
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;
@@ -91,12 +91,12 @@ void MyAdventureAI::battleStart(const CCreatureSet * army1, const CCreatureSet *
   auto aiName = getBattleAIName();
   battleAI = CDynLibHandler::getNewBattleAI(aiName);
 
-  if (aiName == "MyBattleAI") {
-    auto tmp = std::static_pointer_cast<CMyBattleAI>(battleAI);
-    tmp->myInitBattleInterface(env, cbc, cbprovider);
-  } else {
+  // if (aiName == "MyBattleAI") {
+  //   auto tmp = std::static_pointer_cast<MMAI::CMyBattleAI>(battleAI);
+  //   tmp->myInitBattleInterface(env, cbc, cbprovider);
+  // } else {
     battleAI->initBattleInterface(env, cbc);
-  }
+  // }
 
   battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
 }

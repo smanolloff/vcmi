@@ -1,0 +1,7 @@
+###############################################
+### IDEA 1: Box(320)
+
+HEX          // 165, 17 states
+ACTIVE_STACK // 1, 7 states
+STACK        // 154 (14 stacks x 11 stats)
+

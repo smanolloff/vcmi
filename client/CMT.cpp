@@ -350,6 +350,8 @@ int main(int argc, char * argv[])
 	session["autoSkip"].Bool()  = vm.count("autoSkip");
 	session["oneGoodAI"].Bool() = vm.count("oneGoodAI");
 	session["aiSolo"].Bool() = false;
+  Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
+
 	std::shared_ptr<CMainMenu> mmenu;
 
 	if(vm.count("testmap"))

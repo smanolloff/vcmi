@@ -124,7 +124,7 @@ std::shared_ptr<CBattleGameInterface> createAny(const boost::filesystem::path & 
 	else if(libpath.stem() == "libStupidAI")
 		return std::make_shared<CStupidAI>();
 	else if(libpath.stem() == "libMyBattleAI")
-		return std::make_shared<CMyBattleAI>();
+		return std::make_shared<MMAI::CMyBattleAI>();
 	return std::make_shared<CEmptyAI>();
 }
 

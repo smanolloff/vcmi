@@ -1,0 +1,88 @@
+###############################################
+### IDEA 2: Discrete(1322)
+
+DEFEND
+WAIT
+MOVE // 165x
+MOVE+TARGET // 1155x (165 hexes * 7 enemy stacks)
+
+Invalidate if:
+== WAIT
+- already WAITed
+
+== MOVE
+- MOVE hex is unreachable/blocked
+
+== MOVE+TARGET
+:: if unit is melee
+- MOVE hex is unreachable/blocked
+- MOVE hex is not adjacent to TARGET stack hex
+- TARGET stack is friendly
+
+:: if unit can shoot
+- MOVE hex is not the current hex
+- TARGET stack is friendly
+
+:: if unit is a friendly spellcaster
+- MOVE hex is not the current hex
+- TARGET stack is enemy
+
+
+###############################################
+######### Abandoned
+###############################################
+### IDEA 1: Discrete(1055)
+### Problem: no usable for ranged attacks
+
+DEFEND
+WAIT
+MOVE        // 165x
+MOVE+ATTACK // 888x (see below)
+========
+GRAND TOTAL: 1055
+
+//
+// MOVE + ATTACK:
+//
+// 10x: corner hexes:
+//
+//    o x   x o
+//   x x     x
+//
+//   x x     x
+//    o x   x o
+//
+// 27x: inner vert. border hexes (9 spots, 3 directions each):
+//
+//     x      x
+//    o x    x o
+//     x      x
+//
+// 45x: outer vert. border hexes (9 spots, 5 directions each)
+//
+//   x x      x x
+//    o x    x o
+//   x x      x x
+//
+// 104x: horiz. border hexes (26 spots, 4 directions each)
+//
+//  x o x
+//   x x
+//
+//   x x
+//  x o x
+//
+// 702x: inner hexes (117 spots, 6 directions each)
+//
+//   x x
+//  x o x
+//   x x
+//
+// ==========
+// TOTAL: 888
+MOVE TO HEX + ATTACK
+
+========
+GRAND TOTAL:
+888+165+2 = 1055 actions
+

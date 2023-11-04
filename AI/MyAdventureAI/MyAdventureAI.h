@@ -13,7 +13,7 @@
 #include "../../lib/mapObjects/MiscObjects.h"
 #include "../../lib/spells/CSpellHandler.h"
 #include "../../lib/CondSh.h"
-#include "mytypes.h"
+#include "../MyBattleAI/mytypes.h"
 
 class DLL_EXPORT MyAdventureAI : public CAdventureAI
 {
