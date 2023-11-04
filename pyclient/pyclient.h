@@ -9,5 +9,5 @@ extern "C" void __attribute__((visibility("default"))) preinit_vcmi(
 
 extern "C" void __attribute__((visibility("default"))) start_vcmi(
   std::string mapname,
-  CBProvider cbprovider
+  MMAI::CBProvider cbprovider
 );

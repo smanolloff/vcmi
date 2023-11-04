@@ -72,8 +72,8 @@ void preinit_vcmi(std::string resdir) {
 
   Settings(settings.write({"session", "headless"}))->Bool() = true;
   Settings(settings.write({"session", "onlyai"}))->Bool() = true;
-  Settings(settings.write({"server", "playerAI"}))->String() = "MyAdventureAI";
-  // NOTE: friendlyAI is hard-coded in MyAdventureAI::getBattleAIName()
+  Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
+  // NOTE: friendlyAI is hard-coded in MyAI's AAI::getBattleAIName()
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
 
@@ -85,10 +85,10 @@ void preinit_vcmi(std::string resdir) {
   GH.init();
 }
 
-void start_vcmi(std::string mapname, CBProvider cbprovider) {
+void start_vcmi(std::string mapname, MMAI::CBProvider cbprovider) {
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  auto baggage = std::make_any<CBProvider*>(&cbprovider);
+  auto baggage = std::make_any<MMAI::CBProvider*>(&cbprovider);
   CSH = new CServerHandler(baggage);
 
   boost::thread loading([]() {

@@ -2,9 +2,11 @@
 
 // *** THIS FILE LIVES IN:
 // ***
-// *** vcmi/AI/MyAdventureAI/mytypes.h
+// *** vcmi/AI/MyAI/mytypes.h
 
 #include <array>
+
+namespace MMAI {
 
 using ActionF = std::array<float, 3>;
 using StateF = std::array<float, 3>;
@@ -32,7 +34,7 @@ using PyCB = const std::function<void(const StateF &arr)>;
 // The PyCB functions above are all bundled into CBProvider struct
 // whose purpose is to be seamlessly transportable through VCMI code
 // as a std::any object, then cast back to CBProvider in the AI constructor
-struct CBProvider {
+extern "C" struct DLL_EXPORT CBProvider {
     CBProvider(const PyCBSysInit pycbsysinit_, const PyCBInit pycbinit_, const PyCB pycb_)
     : pycbsysinit(pycbsysinit_), pycbinit(pycbinit_), pycb(pycb_) {}
 
@@ -40,3 +42,5 @@ struct CBProvider {
     const PyCBInit pycbinit;
     const PyCB pycb;
 };
+
+} // namespace MMAI

@@ -1,10 +1,10 @@
 #pragma once
-#include "../../lib/AI_Base.h"
-#include "mytypes.h"
+#include "../../../lib/AI_Base.h"
+#include "../mytypes.h"
 
 namespace MMAI {
 
-class CMyBattleAI : public CBattleGameInterface
+class BAI : public CBattleGameInterface
 {
   int side;
   std::shared_ptr<CBattleCallback> cb;
@@ -25,8 +25,8 @@ class CMyBattleAI : public CBattleGameInterface
   std::string stateToStr(const StateF &arr);
 
 public:
-  CMyBattleAI();
-  ~CMyBattleAI();
+  BAI();
+  ~BAI();
 
 
   void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;

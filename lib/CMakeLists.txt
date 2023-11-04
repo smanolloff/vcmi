@@ -6,8 +6,7 @@ if(ENABLE_STATIC_AI_LIBS)
 		EmptyAI
 		StupidAI
 		VCAI
-		MyAdventureAI
-		MyBattleAI
+		MyAI
 	)
 	if(ENABLE_NULLKILLER_AI)
 		target_link_libraries(${VCMI_LIB_TARGET} PRIVATE Nullkiller)

@@ -1,28 +1,30 @@
 #pragma once
 
-#include "../../lib/AI_Base.h"
-#include "../../CCallback.h"
+#include "../../../lib/AI_Base.h"
+#include "../../../CCallback.h"
 
-#include "../../lib/CThreadHelper.h"
+#include "../../../lib/CThreadHelper.h"
 
-#include "../../lib/GameConstants.h"
-#include "../../lib/VCMI_Lib.h"
-#include "../../lib/CBuildingHandler.h"
-#include "../../lib/CCreatureHandler.h"
-#include "../../lib/CTownHandler.h"
-#include "../../lib/mapObjects/MiscObjects.h"
-#include "../../lib/spells/CSpellHandler.h"
-#include "../../lib/CondSh.h"
-#include "../MyBattleAI/mytypes.h"
+#include "../../../lib/GameConstants.h"
+#include "../../../lib/VCMI_Lib.h"
+#include "../../../lib/CBuildingHandler.h"
+#include "../../../lib/CCreatureHandler.h"
+#include "../../../lib/CTownHandler.h"
+#include "../../../lib/mapObjects/MiscObjects.h"
+#include "../../../lib/spells/CSpellHandler.h"
+#include "../../../lib/CondSh.h"
+#include "../mytypes.h"
 
-class DLL_EXPORT MyAdventureAI : public CAdventureAI
+namespace MMAI {
+
+class DLL_EXPORT AAI : public CAdventureAI
 {
   CBProvider * cbprovider;
 public:
   std::shared_ptr<CCallback> cb;
 public:
-  MyAdventureAI();
-  virtual ~MyAdventureAI();
+  AAI();
+  virtual ~AAI();
 
   // impl CAdventureAI
   std::string getBattleAIName() const override;
@@ -186,3 +188,6 @@ public:
 private:
   void print(const std::string &text) const;
 };
+
+} // namespace MMAI
+

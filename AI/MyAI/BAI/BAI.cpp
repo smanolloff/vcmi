@@ -1,13 +1,13 @@
 #include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MyBattleAI.h"
-#include "../../lib/CStack.h"
-#include "../../CCallback.h"
-#include "../../lib/CCreatureHandler.h"
+#include "../../../lib/AI_Base.h"
+#include "BAI.h"
+#include "../../../lib/CStack.h"
+#include "../../../CCallback.h"
+#include "../../../lib/CCreatureHandler.h"
 
 namespace MMAI {
 
-CMyBattleAI::CMyBattleAI()
+BAI::BAI()
   : side(-1),
   wasWaitingForRealize(false),
   wasUnlockingGs(false)
@@ -15,7 +15,7 @@ CMyBattleAI::CMyBattleAI()
   print("constructor.");
 }
 
-CMyBattleAI::~CMyBattleAI()
+BAI::~BAI()
 {
   if(cb)
   {
@@ -25,23 +25,23 @@ CMyBattleAI::~CMyBattleAI()
   }
 }
 
-void CMyBattleAI::print(const std::string &text) const
+void BAI::print(const std::string &text) const
 {
-  logAi->trace("CMyBattleAI  [%p]: %s", this, text);
+  logAi->trace("BAI  [%p]: %s", this, text);
 }
 
-void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {
+void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {
   print("*** initBattleInterface -- BUT NO BAGGAGE ***");
   myInitBattleInterface(ENV, CB, std::any{});
 }
 
-void CMyBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
+void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
 {
   print("*** initBattleInterface -- BUT NO BAGGAGE ***");
   myInitBattleInterface(ENV, CB, std::any{});
 }
 
-void CMyBattleAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) {
+void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) {
   print("*** myInitBattleInterface ***");
   env = ENV;
   cb = CB;
@@ -51,17 +51,17 @@ void CMyBattleAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::s
   CB->waitTillRealize = false;
   CB->unlockGsWhenWaiting = false;
 
-  // // See note in MyAdventureAI::initGameInterface
-  // assert(baggage.has_value());
-  // assert(baggage.type() == typeid(CBProvider*));
-  // cbprovider = std::any_cast<CBProvider*>(baggage);
+  // See note in AAI::initGameInterface
+  assert(baggage.has_value());
+  assert(baggage.type() == typeid(CBProvider*));
+  cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  // print("*** call cbprovider->pycbinit([this](const ActionF &arr) { cbprovider->cppcb(arr) })");
-  // cbprovider->pycbinit([this](const ActionF &arr) { this->cppcb(arr); });
+  print("*** call cbprovider->pycbinit([this](const ActionF &arr) { cbprovider->cppcb(arr) })");
+  cbprovider->pycbinit([this](const ActionF &arr) { this->cppcb(arr); });
 }
 
 // Called by GymEnv on every "step()" call
-void CMyBattleAI::cppcb(const ActionF &arr) {
+void BAI::cppcb(const ActionF &arr) {
     print(std::string("called with arr: ") + actionToStr(arr));
 
     print("Assign action = arr");
@@ -76,7 +76,7 @@ void CMyBattleAI::cppcb(const ActionF &arr) {
     print("return");
 }
 
-void CMyBattleAI::activeStack(const CStack * stack)
+void BAI::activeStack(const CStack * stack)
 {
   print("activeStack called for " + stack->nodeName());
 
@@ -114,76 +114,76 @@ void CMyBattleAI::activeStack(const CStack * stack)
 }
 
 
-void CMyBattleAI::actionFinished(const BattleAction &action)
+void BAI::actionFinished(const BattleAction &action)
 {
   print("actionFinished called");
 }
 
-void CMyBattleAI::actionStarted(const BattleAction &action)
+void BAI::actionStarted(const BattleAction &action)
 {
   print("actionStarted called");
 }
 
-void CMyBattleAI::yourTacticPhase(int distance)
+void BAI::yourTacticPhase(int distance)
 {
   cb->battleMakeTacticAction(BattleAction::makeEndOFTacticPhase(cb->battleGetTacticsSide()));
 }
 
-void CMyBattleAI::battleAttack(const BattleAttack *ba)
+void BAI::battleAttack(const BattleAttack *ba)
 {
   print("battleAttack called");
 }
 
-void CMyBattleAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
+void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
 {
   print("battleStacksAttacked called");
 }
 
-void CMyBattleAI::battleEnd(const BattleResult *br, QueryID queryID)
+void BAI::battleEnd(const BattleResult *br, QueryID queryID)
 {
   print("battleEnd called");
 }
 
-void CMyBattleAI::battleNewRoundFirst(int round)
+void BAI::battleNewRoundFirst(int round)
 {
   print("battleNewRoundFirst called");
 }
 
-void CMyBattleAI::battleNewRound(int round)
+void BAI::battleNewRound(int round)
 {
   print("battleNewRound called");
 }
 
-void CMyBattleAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport)
+void BAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport)
 {
   print("battleStackMoved called");
 }
 
-void CMyBattleAI::battleSpellCast(const BattleSpellCast *sc)
+void BAI::battleSpellCast(const BattleSpellCast *sc)
 {
   print("battleSpellCast called");
 }
 
-void CMyBattleAI::battleStacksEffectsSet(const SetStackEffect & sse)
+void BAI::battleStacksEffectsSet(const SetStackEffect & sse)
 {
   print("battleStacksEffectsSet called");
 }
 
-void CMyBattleAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
+void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
 {
   print("battleStart called");
   side = Side;
 }
 
-std::string CMyBattleAI::stateToStr(const StateF &arr) {
+std::string BAI::stateToStr(const StateF &arr) {
     return std::to_string(arr[0]) + " " + std::to_string(arr[1]) + " " + std::to_string(arr[2]);
 }
 
-std::string CMyBattleAI::actionToStr(const ActionF &arr) {
+std::string BAI::actionToStr(const ActionF &arr) {
     return std::to_string(arr[0]) + " " + std::to_string(arr[1]) + " " + std::to_string(arr[2]);
 }
 
-void CMyBattleAI::battleCatapultAttacked(const CatapultAttack & ca)
+void BAI::battleCatapultAttacked(const CatapultAttack & ca)
 {
   print("battleCatapultAttacked called");
 }

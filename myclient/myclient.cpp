@@ -92,7 +92,7 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
 
   Settings(settings.write({"session", "headless"}))->Bool() = true;
   Settings(settings.write({"session", "onlyai"}))->Bool() = true;
-  Settings(settings.write({"server", "playerAI"}))->String() = "MyAdventureAI";
+  Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
   Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
 
