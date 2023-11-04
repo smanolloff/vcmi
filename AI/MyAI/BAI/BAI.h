@@ -18,11 +18,11 @@ class BAI : public CBattleGameInterface
 
   boost::mutex m;
   boost::condition_variable cond;
-  ActionF action;
+  GymAction gymaction;
 
-  void cppcb(const ActionF &arr);
-  std::string actionToStr(const ActionF &arr);
-  std::string stateToStr(const StateF &arr);
+  void cppcb(const GymAction &gymaction);
+  std::string gymaction_str(const GymAction &gymaction);
+  std::string gymstate_str(const GymState &gymstate);
 
 public:
   BAI();

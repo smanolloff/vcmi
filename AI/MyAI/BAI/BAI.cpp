@@ -56,16 +56,16 @@ void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  print("*** call cbprovider->pycbinit([this](const ActionF &arr) { cbprovider->cppcb(arr) })");
-  cbprovider->pycbinit([this](const ActionF &arr) { this->cppcb(arr); });
+  print("*** call cbprovider->pycbinit([this](const GymAction &ga) { cbprovider->cppcb(ga) })");
+  cbprovider->pycbinit([this](const GymAction &ga) { this->cppcb(ga); });
 }
 
 // Called by GymEnv on every "step()" call
-void BAI::cppcb(const ActionF &arr) {
-    print(std::string("called with arr: ") + actionToStr(arr));
+void BAI::cppcb(const GymAction &gymaction) {
+    print(std::string("called with gymaction: ") + gymaction_str(gymaction));
 
-    print("Assign action = arr");
-    action = arr;
+    print("Assign this->gymaction = gymaction");
+    this->gymaction = gymaction;
 
     // Unblock "activeStack"
     print("acquire lock");
@@ -80,13 +80,13 @@ void BAI::activeStack(const CStack * stack)
 {
   print("activeStack called for " + stack->nodeName());
 
-  const StateF state_ary = {1, 2, 4};
+  const GymState gymstate = {1, 2, 4};
 
   print("acquire lock");
   boost::unique_lock<boost::mutex> lock(m);
 
-  print("call this->pycb(state_ary)");
-  cbprovider->pycb(state_ary);
+  print("call this->pycb(gymstate)");
+  cbprovider->pycb(gymstate);
 
 
   // We've set some events in motion:
@@ -99,7 +99,7 @@ void BAI::activeStack(const CStack * stack)
   print("cond.wait()");
   cond.wait(lock);
 
-  print(std::string("this->action: ") + actionToStr(action));
+  print(std::string("this->gymaction: ") + gymaction_str(gymaction));
 
   // auto hexes = cb->battleGetAvailableHexes(stack, true);
   // cb->battleMakeUnitAction(BattleAction::makeMove(stack, BattleHex(15, 1)));
@@ -175,12 +175,15 @@ void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3
   side = Side;
 }
 
-std::string BAI::stateToStr(const StateF &arr) {
-    return std::to_string(arr[0]) + " " + std::to_string(arr[1]) + " " + std::to_string(arr[2]);
+std::string BAI::gymaction_str(const GymAction &ga) {
+  // TODO: redundant?
+  auto tmp = static_cast<uint16_t>(ga);
+  return std::to_string(tmp);
+  // return std::to_string(ga[0]) + " " + std::to_string(ga[1]) + " " + std::to_string(ga[2]);
 }
 
-std::string BAI::actionToStr(const ActionF &arr) {
-    return std::to_string(arr[0]) + " " + std::to_string(arr[1]) + " " + std::to_string(arr[2]);
+std::string BAI::gymstate_str(const GymState &gs) {
+  return std::to_string(gs[0]) + " " + std::to_string(gs[1]) + " " + std::to_string(gs[2]);
 }
 
 void BAI::battleCatapultAttacked(const CatapultAttack & ca)

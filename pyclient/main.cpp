@@ -3,7 +3,7 @@
 
 int main() {
     // Convert WPyCB -> PyCB
-    const MMAI::PyCB pycb = [](const MMAI::StateF &statef) {
+    const MMAI::PyCB pycb = [](const MMAI::GymState &gymstate) {
         LOG("pycb called");
     };
 
