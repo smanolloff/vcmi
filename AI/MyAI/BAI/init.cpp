@@ -1,4 +1,5 @@
 #include "BAI.h"
+#include "battle/BattleHex.h"
 #include "mytypes.h"
 
 // Contains initialization-related code
@@ -108,14 +109,14 @@ const std::array<NValue, static_cast<int>(HexState::count)> BAI::initHexStateNMa
   return res;
 }
 
-std::array<BattleHex, 15*11> BAI::initAllBattleHexes() {
-  std::array<BattleHex, 15*11> res = {};
+std::array<BattleHex, BF_SIZE> BAI::initAllBattleHexes() {
+  std::array<BattleHex, BF_SIZE> res = {};
 
   // 0 and 16 are unreachable "side" hexes => exclude
   int i = 0;
 
-  for(int y=0; y<=10; y++) {
-    for(int x=1; x<=15; x++) {
+  for(int y=0; y < GameConstants::BFIELD_HEIGHT; y++) {
+    for(int x=1; x < GameConstants::BFIELD_WIDTH - 1; x++) {
       res[i++] = BattleHex(x, y);
     }
   }

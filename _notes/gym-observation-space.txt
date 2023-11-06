@@ -24,6 +24,9 @@ STACK        // x14; TODO: what about summonned stacks, ghosts, war machines, tu
   HP left
   Speed
   waited
+  // TODO: more feature extraction?:
+  // - can shoot blocked (instead of shots)
+  // - total dmg receivable by current active stack
 
 ACTIVE_STACK // x1, 14 states (7 stacks)
 

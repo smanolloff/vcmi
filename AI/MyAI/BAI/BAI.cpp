@@ -1,5 +1,8 @@
 #include "StdInc.h"
 #include "BAI.h"
+#include "battle/BattleAction.h"
+#include "battle/BattleHex.h"
+#include <memory>
 
 MMAI_NS_BEGIN
 
@@ -25,7 +28,7 @@ MMAI_NS_BEGIN
 #define MIN_SPEED 0
 #define MAX_SPEED 30
 
-#define ATTRS_PER_STACK 12
+#define TARGET_ERR(err) { print(errbase + ": " + err); return nullptr; }
 
 void BAI::print(const std::string &text) const
 {
@@ -53,33 +56,28 @@ void BAI::activeStack(const CStack * astack)
   print("activeStack called for " + astack->nodeName());
 
   auto gymstate = buildState(astack);
+  std::shared_ptr<BattleAction> cba;
 
-  print("acquire lock");
-  boost::unique_lock<boost::mutex> lock(m);
+  while(!cba) {
+    boost::unique_lock<boost::mutex> lock(m);
+    print("Sending state: " + gymstate_str(gymstate));
+    cbprovider->pycb(gymstate);
 
-  print("call this->pycb(gymstate)");
-  cbprovider->pycb(gymstate);
+    // We've set some events in motion:
+    //  - in python, "env" now has our cppcb stored (via pycbinit)
+    //  - in python, "env" now has the state stored (via pycb)
+    //  - in python, "env" constructor can now return (pycb also set an event)
+    //  - in python, env.step(action) will be called, which will call cppcb
+    // our cppcb will then call AI->cb->makeAction()
+    // ...we wait until that happens, and FINALLY we can return from yourTurn
+    cond.wait(lock);
+    print("Got action: " + gymaction_str(gymaction));
+    cba = buildAction(astack, gymstate, gymaction);
+    print("Action was valid? " + std::to_string(!!cba));
+    boost::this_thread::sleep_for(boost::chrono::seconds(5));
+  }
 
-
-  // We've set some events in motion:
-  //  - in python, "env" now has our cppcb stored (via pycbinit)
-  //  - in python, "env" now has the state stored (via pycb)
-  //  - in python, "env" constructor can now return (pycb also set an event)
-  //  - in python, env.step(action) will be called, which will call cppcb
-  // our cppcb will then call AI->cb->makeAction()
-  // ...we wait until that happens, and FINALLY we can return from yourTurn
-  print("cond.wait()");
-  cond.wait(lock);
-
-  print(std::string("this->gymaction: ") + gymaction_str(gymaction));
-
-  // auto hexes = cb->battleGetAvailableHexes(astack, true);
-  // cb->battleMakeUnitAction(BattleAction::makeMove(astack, BattleHex(15, 1)));
-
-  // if std::binary_search(v.begin(), v.end(), value)
-
-  // // we have the action from GymEnv, now make it
-  // print("TODO: call cb->makeAction()");
+  cb->battleMakeUnitAction(*cba);
 
   print("return");
   return;
@@ -183,6 +181,55 @@ const GymState BAI::buildState(const CStack * astack) {
 
   assert(gi == gymstate.size());
   return gymstate;
+}
+
+const std::shared_ptr<BattleAction> BAI::buildAction(const CStack * astack, GymState gymstate, GymAction gymaction) {
+  if (gymaction == 0)
+    return std::make_shared<BattleAction>(BattleAction::makeDefend(astack));
+  else if (gymaction == 1)
+    return std::make_shared<BattleAction>(BattleAction::makeWait(astack));
+
+  auto subaction = gymaction % 8;
+  auto y = (gymaction / 8) / BF_XMAX;
+  auto x = (gymaction / 8) % BF_XMAX;
+  auto dest = BattleHex(x + 1, y);
+  auto errbase = "*** Invalid action: move to ("+ std::to_string(x) + "," + std::to_string(y) + ")";
+  auto hexstate = gymstate[x*y];
+
+  if (hexstate.orig != static_cast<int>(HexState::FREE_REACHABLE))
+    TARGET_ERR("bad target hex: " + hexstate.name);
+
+  // just move
+  if (subaction == 0)
+    return std::make_shared<BattleAction>(BattleAction::makeMove(astack, dest));
+
+  // move and attack enemy unit 0..6
+  auto slot = subaction - 1;
+  errbase += " and attack enemy stack #" + std::to_string(slot);
+
+  auto targets = cb->battleGetStacksIf([&astack, &slot](const CStack * stack) {
+    return stack->unitSlot() == slot && stack->getOwner() != astack->getOwner();
+  });
+
+  if (targets.empty())
+    TARGET_ERR("no such stack");
+
+  assert(targets.size() <= 1);
+  auto stack = targets[0];
+
+  if (!stack->alive())
+    TARGET_ERR("stack is dead");
+  if (!stack->isValidTarget())
+    TARGET_ERR("stack is not a valid target (turret?)");
+
+  if (cb->battleCanShoot(astack))
+    return std::make_shared<BattleAction>(BattleAction::makeShotAttack(astack, stack));
+
+  if (!astack->isMeleeAttackPossible(astack, stack))
+    TARGET_ERR("melee attack not possible");
+
+  return std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(astack, stack->position, dest));
+
 }
 
 MMAI_NS_END

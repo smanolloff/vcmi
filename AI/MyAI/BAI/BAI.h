@@ -4,11 +4,41 @@
 #include "../../../CCallback.h"
 #include "../mytypes.h"
 #include "battle/BattleHex.h"
+#include <memory>
 
 #define MMAI_NS_BEGIN namespace MMAI {
 #define MMAI_NS_END }
 
 MMAI_NS_BEGIN
+
+// ignore "side" columns
+#define BF_XMAX (GameConstants::BFIELD_WIDTH - 2)
+#define BF_YMAX GameConstants::BFIELD_HEIGHT
+#define BF_SIZE (BF_XMAX * BF_YMAX)
+#define ATTRS_PER_STACK 12
+
+//Accessibility is property of hex in battle. It doesn't depend on stack, side's perspective and so on.
+enum class HexState : int
+{
+    FREE_REACHABLE,     // 0
+    FREE_UNREACHABLE,   // 1
+    OBSTACLE,           // 2
+    FRIENDLY_STACK_1,   // 3
+    FRIENDLY_STACK_2,   // 4
+    FRIENDLY_STACK_3,   // 5
+    FRIENDLY_STACK_4,   // 6
+    FRIENDLY_STACK_5,   // 7
+    FRIENDLY_STACK_6,   // 8
+    FRIENDLY_STACK_7,   // 9
+    ENEMY_STACK_1,      // 10
+    ENEMY_STACK_2,      // 11
+    ENEMY_STACK_3,      // 12
+    ENEMY_STACK_4,      // 13
+    ENEMY_STACK_5,      // 14
+    ENEMY_STACK_6,      // 15
+    ENEMY_STACK_7,      // 16
+    count
+};
 
 class BAI : public CBattleGameInterface
 {
@@ -33,19 +63,23 @@ class BAI : public CBattleGameInterface
   const std::array<NValue, static_cast<int>(HexState::count)> hexStateNMap;
   const std::array<NValue, static_cast<int>(HexState::count)> initHexStateNMap();
 
-  const std::array<BattleHex, 15*11> allBattleHexes;
-  std::array<BattleHex, 15*11> initAllBattleHexes();
+  const std::array<BattleHex, BF_SIZE> allBattleHexes;
+  std::array<BattleHex, BF_SIZE> initAllBattleHexes();
 
   // can't be const -- called during battleStart (unavailable in constructor)
   std::map<const CStack*, NValue> stackHNSMap;
   void initStackHNSMap();
 
+  // can't be const value (received after init)
+  // => use const pointer
   GymAction gymaction;
 
   void cppcb(const GymAction &gymaction);
   std::string gymaction_str(const GymAction &gymaction);
   std::string gymstate_str(const GymState &gymstate);
+
   const GymState buildState(const CStack * stack);
+  const std::shared_ptr<BattleAction> buildAction(const CStack * stack, GymState gymstate, GymAction action);
 
 public:
   BAI();
