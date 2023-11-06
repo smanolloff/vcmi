@@ -1,0 +1,75 @@
+=========== CStack
+s->isTurret()
+
+=========== cb: others
+==== cb: bools
+battleCanAttack(Unit, Unit, Hex)
+  - always true if 1st Unit != aid/catapult and 2nd Unit is alive
+    (Hex is unused)
+
+battleCanShoot(Unit)
+  - true if unit is ranged, not blocked, not forgetfulled, etc.
+
+DamageEstimation battleEstimateDamage(Unit, Unit, Hex, retaliationDmg ?)
+  - includes distance to 2nd unit, etc.
+  - DamageEstimation is a struct with dmg range and kill range
+
+[BattleHex] battleGetAvailableHexes(Unit, obtainMovementRange)
+  - returns hexes reachable by the current unit
+
+[CObstacleInstance] battleGetAllObstaclesOnPos(BattleHex, onlyBlocking)
+  - returns obstacles on pos
+  - optionally returns non-blocking obstacles (mines, firewall, etc.)
+
+==== cb: stacks
+
+battleGetStacksIf
+  - same as battleGetUnitsIf, bit for `CStack`s
+
+battleGetStacks(EStackOwnership whose, bool onlyAlive)
+- does not include turrets
+- optionally includes dead stacks
+- optionally filters enemy or friendly only
+
+battleGetAllStacks(bool includeTurrets)
+- includes dead stacks
+- does not include ghosts
+- optionally does not include turrets
+
+==== cb: units
+
+battleGetUnitsIf(battle::UnitFilter predicate)
+  - returns `Unit`s for which predicate (a std::function<bool(const Unit *))
+    returns true
+
+battleAliveUnits()
+  - == battleGetUnitsIf( unit->isValidTarget(allowDead = false) )
+
+battleAdjacentUnits(const battle::Unit * unit)
+  - returns `Unit`s around the given unit
+
+
+
+IBonusBearer getBonusBearer()
+  - ??? can get ATT/DEF with this?
+
+BattleHex getPosition()
+  - current position. For wide creatures, the "frontal" hex
+
+std::vector<BattleHex> getHexes()
+  - same as getPosition, but returns an array with 1 or 2 hexes (for wide creatures)
+
+
+AccessibilityInfo getAccesibility()
+  - with no arguments, returns accessibility of of all bfield hexes
+  - returned array elements are of type EAccessibility (enum)
+  - there is an overloaded method for specific creature which seems pointless
+    (marks reachable hexes as accessible, but all non-blocked hexes are already marked as such)
+
+getAttackableBattleHexes()
+  - returns non-unit attackables (walls)
+
+
+BattleHex getAvaliableHex(CreatureID, side, pos)
+  - returns closest hex to "pos" for which a creature can fit
+    (eg. for summon elementals)

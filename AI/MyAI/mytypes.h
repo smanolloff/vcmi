@@ -8,8 +8,36 @@
 
 namespace MMAI {
 
+#ifndef DLL_EXPORT
+#define DLL_EXPORT __attribute__((visibility("default")))
+#endif
+
+// Arbitary int value normalized as -1..1 float
+extern "C" struct DLL_EXPORT NValue {
+    int orig;
+    float norm;
+    std::string name;
+
+    NValue() : name(""), orig(0), norm(-1) {};
+    NValue(std::string n, int v, int vmin, int vmax) {
+        assert(vmin < vmax);
+
+        if (v < vmin) {
+            // TODO: log warning
+            v = vmin;
+        } else if (v > vmax) {
+            // TODO: log warning
+            v = vmax;
+        }
+
+        name = n;
+        orig = v;
+        norm = 2.0 * static_cast<float>(v - vmin) / (vmax - vmin) - 1.0;
+    }
+};
+
 using GymAction = uint16_t;
-using GymState = std::array<float, 3>;
+using GymState = std::array<NValue, 334>;
 
 // CppCB is a CPP function given to the GymEnv via PyCBSysInit (see below)
 // GymEnv will invoke it on every "reset()" or "close()" calls
@@ -44,3 +72,26 @@ extern "C" struct DLL_EXPORT CBProvider {
 };
 
 } // namespace MMAI
+
+//Accessibility is property of hex in battle. It doesn't depend on stack, side's perspective and so on.
+enum class HexState : int
+{
+    FREE_REACHABLE,     // 0
+    FREE_UNREACHABLE,   // 1
+    OBSTACLE,           // 2
+    FRIENDLY_STACK_1,   // 3
+    FRIENDLY_STACK_2,   // 4
+    FRIENDLY_STACK_3,   // 5
+    FRIENDLY_STACK_4,   // 6
+    FRIENDLY_STACK_5,   // 7
+    FRIENDLY_STACK_6,   // 8
+    FRIENDLY_STACK_7,   // 9
+    ENEMY_STACK_1,      // 10
+    ENEMY_STACK_2,      // 11
+    ENEMY_STACK_3,      // 12
+    ENEMY_STACK_4,      // 13
+    ENEMY_STACK_5,      // 14
+    ENEMY_STACK_6,      // 15
+    ENEMY_STACK_7,      // 16
+    count
+};

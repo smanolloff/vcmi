@@ -113,7 +113,7 @@ void start_vcmi(std::string mapname, MMAI::CBProvider cbprovider) {
       logGlobal->error("Unknown sys command: '%s'", cmd);
   });
 
-  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
+  auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
   GH.screenHandler().close();
 

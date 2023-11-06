@@ -1,8 +1,14 @@
 #pragma once
+#include "../../../lib/CStack.h"
 #include "../../../lib/AI_Base.h"
+#include "../../../CCallback.h"
 #include "../mytypes.h"
+#include "battle/BattleHex.h"
 
-namespace MMAI {
+#define MMAI_NS_BEGIN namespace MMAI {
+#define MMAI_NS_END }
+
+MMAI_NS_BEGIN
 
 class BAI : public CBattleGameInterface
 {
@@ -18,11 +24,28 @@ class BAI : public CBattleGameInterface
 
   boost::mutex m;
   boost::condition_variable cond;
+
+  const std::map<HexState, std::string> hexStateNames;
+  const std::map<HexState, std::string> initHexStateNames();
+  const std::map<std::string, HexState> hexStateValues;
+  const std::map<std::string, HexState> initHexStateValues();
+
+  const std::array<NValue, static_cast<int>(HexState::count)> hexStateNMap;
+  const std::array<NValue, static_cast<int>(HexState::count)> initHexStateNMap();
+
+  const std::array<BattleHex, 15*11> allBattleHexes;
+  std::array<BattleHex, 15*11> initAllBattleHexes();
+
+  // can't be const -- called during battleStart (unavailable in constructor)
+  std::map<const CStack*, NValue> stackHNSMap;
+  void initStackHNSMap();
+
   GymAction gymaction;
 
   void cppcb(const GymAction &gymaction);
   std::string gymaction_str(const GymAction &gymaction);
   std::string gymstate_str(const GymState &gymstate);
+  const GymState buildState(const CStack * stack);
 
 public:
   BAI();
@@ -59,4 +82,4 @@ private:
   void print(const std::string &text) const;
 };
 
-} // namespace
+MMAI_NS_END

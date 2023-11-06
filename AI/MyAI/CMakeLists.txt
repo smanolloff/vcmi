@@ -8,6 +8,9 @@ set(MyAI_FILES
 
   BAI/BAI.h
   BAI/BAI.cpp
+  BAI/impl.cpp
+  BAI/init.cpp
+  BAI/util.cpp
 )
 
 if(NOT ENABLE_STATIC_AI_LIBS)

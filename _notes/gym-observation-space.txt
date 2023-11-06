@@ -1,7 +1,43 @@
 ###############################################
-### IDEA 1: Box(320)
+### IDEA 1: Box(348), dtype=np.float32
 
-HEX          // 165, 17 states
-ACTIVE_STACK // 1, 7 states
-STACK        // 154 (14 stacks x 11 stats)
+HEX          // x165, 17 states
+  1 = free (reachable)   $desc("// redundant?")
+  2 = free (unreachable) $desc("// redundant?")
+  3 = occupied (obstacle)
+  4 = occupied (stack 1)
+  ...
+  17 = occupied (stack 14)
+  // TODO: what about firewall/quicksand/land mine/moat?
+
+STACK        // x14; TODO: what about summonned stacks, ghosts, war machines, turrets?
+  QTY
+  ATT
+  DEF (melee)
+  DEF (ranged)
+  SHOTS
+  DMG (min, melee)
+  DMG (max, melee)
+  DMG (min, ranged)
+  DMG (min, ranged)
+  HP
+  HP left
+  Speed
+  waited
+
+ACTIVE_STACK // x1, 14 states (7 stacks)
+
+###############################################
+### IDEA 2: Box(165, 13), dtype=np.float32
+### 7x larger (2145 floats), but preserves grid layout
+### maybe for use with CNN? idk
+
+HEX          // 165
+  HEX STATE  // 17 discrete values
+  STACK_QTY  // 0..5000
+  STACK_ATT  // 0..100
+  STACK_DEF  // 0..100
+  ..8 more
+  IS_ACTIVE  // 2 discrete values
+
 

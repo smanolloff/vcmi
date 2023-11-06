@@ -1,7 +1,7 @@
 #include "main.h"
 #include "pyclient.h"
 
-int main() {
+int main(int argc, char * argv[]) {
     // Convert WPyCB -> PyCB
     const MMAI::PyCB pycb = [](const MMAI::GymState &gymstate) {
         LOG("pycb called");
@@ -22,7 +22,11 @@ int main() {
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
-    std::string mapname = "simotest.vmap";
+    // std::string mapname = "simotest.vmap";
+    // std::string mapname = "simotest-enchanters.vmap";
+
+    // NOTE: the .vmap extension may be ommitted
+    std::string mapname(argc > 1 ? argv[1] : "simotest.vmap");
 
     LOG("Start VCMI");
     preinit_vcmi(resdir);

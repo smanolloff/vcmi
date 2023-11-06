@@ -1,63 +1,35 @@
 #include "StdInc.h"
-#include "../../../lib/AI_Base.h"
 #include "BAI.h"
-#include "../../../lib/CStack.h"
-#include "../../../CCallback.h"
-#include "../../../lib/CCreatureHandler.h"
 
-namespace MMAI {
+MMAI_NS_BEGIN
 
-BAI::BAI()
-  : side(-1),
-  wasWaitingForRealize(false),
-  wasUnlockingGs(false)
-{
-  print("constructor.");
-}
+// HNS = short for HexNState
+#define HNS(hs) hexStateNMap.at(static_cast<size_t>(HexState::hs))
 
-BAI::~BAI()
-{
-  if(cb)
-  {
-    //Restore previous state of CB - it may be shared with the main AI (like VCAI)
-    cb->waitTillRealize = wasWaitingForRealize;
-    cb->unlockGsWhenWaiting = wasUnlockingGs;
-  }
-}
+#define MIN_QTY 0
+#define MAX_QTY 5000
+#define MIN_ATT 0
+#define MAX_ATT 100
+#define MIN_DEF 0
+#define MAX_DEF 100
+#define MIN_MORALE -6   // spell max is +3
+#define MAX_MORALE 6    // spell max is -3
+#define MIN_LUCK -6     // spell max is +3
+#define MAX_LUCK 6      // spell max is -3
+#define MIN_SHOTS 0
+#define MAX_SHOTS 24
+#define MIN_DMG 0
+#define MAX_DMG 100     // 80 + bless (+10%) + ?
+#define MIN_HP 0
+#define MAX_HP 1500     // 1000 + vial of lifeblood (+25%) + ?
+#define MIN_SPEED 0
+#define MAX_SPEED 30
+
+#define ATTRS_PER_STACK 12
 
 void BAI::print(const std::string &text) const
 {
   logAi->trace("BAI  [%p]: %s", this, text);
-}
-
-void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {
-  print("*** initBattleInterface -- BUT NO BAGGAGE ***");
-  myInitBattleInterface(ENV, CB, std::any{});
-}
-
-void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
-{
-  print("*** initBattleInterface -- BUT NO BAGGAGE ***");
-  myInitBattleInterface(ENV, CB, std::any{});
-}
-
-void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) {
-  print("*** myInitBattleInterface ***");
-  env = ENV;
-  cb = CB;
-
-  wasWaitingForRealize = CB->waitTillRealize;
-  wasUnlockingGs = CB->unlockGsWhenWaiting;
-  CB->waitTillRealize = false;
-  CB->unlockGsWhenWaiting = false;
-
-  // See note in AAI::initGameInterface
-  assert(baggage.has_value());
-  assert(baggage.type() == typeid(CBProvider*));
-  cbprovider = std::any_cast<CBProvider*>(baggage);
-
-  print("*** call cbprovider->pycbinit([this](const GymAction &ga) { cbprovider->cppcb(ga) })");
-  cbprovider->pycbinit([this](const GymAction &ga) { this->cppcb(ga); });
 }
 
 // Called by GymEnv on every "step()" call
@@ -76,11 +48,11 @@ void BAI::cppcb(const GymAction &gymaction) {
     print("return");
 }
 
-void BAI::activeStack(const CStack * stack)
+void BAI::activeStack(const CStack * astack)
 {
-  print("activeStack called for " + stack->nodeName());
+  print("activeStack called for " + astack->nodeName());
 
-  const GymState gymstate = {1, 2, 4};
+  auto gymstate = buildState(astack);
 
   print("acquire lock");
   boost::unique_lock<boost::mutex> lock(m);
@@ -101,8 +73,8 @@ void BAI::activeStack(const CStack * stack)
 
   print(std::string("this->gymaction: ") + gymaction_str(gymaction));
 
-  // auto hexes = cb->battleGetAvailableHexes(stack, true);
-  // cb->battleMakeUnitAction(BattleAction::makeMove(stack, BattleHex(15, 1)));
+  // auto hexes = cb->battleGetAvailableHexes(astack, true);
+  // cb->battleMakeUnitAction(BattleAction::makeMove(astack, BattleHex(15, 1)));
 
   // if std::binary_search(v.begin(), v.end(), value)
 
@@ -113,81 +85,104 @@ void BAI::activeStack(const CStack * stack)
   return;
 }
 
+const GymState BAI::buildState(const CStack * astack) {
+  GymState gymstate = {};
 
-void BAI::actionFinished(const BattleAction &action)
-{
-  print("actionFinished called");
+  auto accessibility = cb->getAccesibility();
+  auto rinfo = cb->getReachability(astack);
+  auto speed = astack->speed();
+
+  // TODO: remove (one-time sanity check)
+  assert(allBattleHexes.size() == 165);
+
+  // "global" i-counter for gymstate
+  int gi = 0;
+
+  for (const BattleHex& hex : allBattleHexes) {
+    switch(accessibility[hex.hex]) {
+    case LIB_CLIENT::EAccessibility::ACCESSIBLE:
+      gymstate[gi++] = (rinfo.distances[hex] <= speed)
+        ? HNS(FREE_REACHABLE)
+        : HNS(FREE_UNREACHABLE);
+
+      break;
+    case LIB_CLIENT::EAccessibility::OBSTACLE:
+      gymstate[gi++] = HNS(OBSTACLE);
+      break;
+    case LIB_CLIENT::EAccessibility::ALIVE_STACK:
+      // simply map astack to HexNormalizedState[STACK_X]
+      // NOTE: switch gives errors if declaring variable here
+      // auto state = cb->battleGetStackByPos(hex, true);
+      gymstate[gi++] = stackHNSMap.at(cb->battleGetStackByPos(hex, true));
+      break;
+
+    // XXX: unhandled hex states
+    // case LIB_CLIENT::EAccessibility::DESTRUCTIBLE_WALL:
+    // case LIB_CLIENT::EAccessibility::GATE:
+    // case LIB_CLIENT::EAccessibility::UNAVAILABLE:
+    // case LIB_CLIENT::EAccessibility::SIDE_COLUMN:
+    default:
+      throw std::runtime_error(
+        "Unexpected hex accessibility for hex "+ std::to_string(hex.hex) + ": "
+          + std::to_string(static_cast<int>(accessibility[hex.hex]))
+      );
+
+    }
+  }
+
+  auto allstacks = cb->battleGetStacks();
+  assert(allstacks.size() <= 14);
+
+  for (auto &stack : allstacks) {
+    int slot = stack->unitSlot();
+    assert(slot >= 0 && slot < 7); // same as assert(slot.validSlot())
+
+    // 0th slot is gi+0..gi+10
+    int i = gi + slot*ATTRS_PER_STACK;
+
+    std::string prefix = "";
+
+    if (stack->unitSide() == astack->unitSide()) {
+      prefix = "F" + std::to_string(slot+1) + " ";
+    } else {
+      // enemy units in gymstate are in "slots" 8..14
+      prefix = "E" + std::to_string(slot+1) + " ";
+      i += (7 * ATTRS_PER_STACK);
+    }
+
+    int i0 = i; // for sanity check later
+
+    // it seems ranged and melee defense is always the same (even with air shield)
+    // TODO: check if same same for ranged dmg? (with precision)
+
+    // NOTE:
+    // dmg(min, melee), dmg(max, melee), dmg(min, ranged), dmg(max, ranged)
+    // could be replaced by
+    // dmg(avg, melee), dmg(avg, ranged), dmg(deviation_factor)
+    // (saves a total of 14 values)
+
+    gymstate[i++] = NValue(prefix + "qty", stack->getCount(), MIN_QTY, MAX_QTY);
+    gymstate[i++] = NValue(prefix + "att", stack->getAttack(false), MIN_ATT, MAX_ATT);
+    gymstate[i++] = NValue(prefix + "def", stack->getDefense(false), MIN_DEF, MAX_DEF);
+    gymstate[i++] = NValue(prefix + "shots", stack->shots.available(), MIN_SHOTS, MAX_SHOTS);
+    gymstate[i++] = NValue(prefix + "dmg (min, melee)", stack->getMinDamage(false), MIN_DMG, MAX_DMG);
+    gymstate[i++] = NValue(prefix + "dmg (max, melee)", stack->getMaxDamage(false), MIN_DMG, MAX_DMG);
+    gymstate[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMinDamage(true), MIN_DMG, MAX_DMG);
+    gymstate[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMaxDamage(true), MIN_DMG, MAX_DMG);
+    gymstate[i++] = NValue(prefix + "HP", stack->getMaxHealth(), MIN_HP, MAX_HP);
+    gymstate[i++] = NValue(prefix + "HP left", stack->getFirstHPleft(), MIN_HP, MAX_HP);
+    gymstate[i++] = NValue(prefix + "speed", stack->speed(), MIN_SPEED, MAX_SPEED);
+    gymstate[i++] = NValue(prefix + "waited", stack->waitedThisTurn, 0, 1);
+
+    assert(i == i0 + ATTRS_PER_STACK);
+  }
+
+  gi += (14 * ATTRS_PER_STACK);
+
+  gymstate[gi++] = NValue("active stack", astack->unitSlot(), 0, 7);
+
+  assert(gi == gymstate.size());
+  return gymstate;
 }
 
-void BAI::actionStarted(const BattleAction &action)
-{
-  print("actionStarted called");
-}
-
-void BAI::yourTacticPhase(int distance)
-{
-  cb->battleMakeTacticAction(BattleAction::makeEndOFTacticPhase(cb->battleGetTacticsSide()));
-}
-
-void BAI::battleAttack(const BattleAttack *ba)
-{
-  print("battleAttack called");
-}
-
-void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
-{
-  print("battleStacksAttacked called");
-}
-
-void BAI::battleEnd(const BattleResult *br, QueryID queryID)
-{
-  print("battleEnd called");
-}
-
-void BAI::battleNewRoundFirst(int round)
-{
-  print("battleNewRoundFirst called");
-}
-
-void BAI::battleNewRound(int round)
-{
-  print("battleNewRound called");
-}
-
-void BAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport)
-{
-  print("battleStackMoved called");
-}
-
-void BAI::battleSpellCast(const BattleSpellCast *sc)
-{
-  print("battleSpellCast called");
-}
-
-void BAI::battleStacksEffectsSet(const SetStackEffect & sse)
-{
-  print("battleStacksEffectsSet called");
-}
-
-void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
-{
-  print("battleStart called");
-  side = Side;
-}
-
-std::string BAI::gymaction_str(const GymAction &ga) {
-  // TODO: redundant?
-  auto tmp = static_cast<uint16_t>(ga);
-  return std::to_string(tmp);
-  // return std::to_string(ga[0]) + " " + std::to_string(ga[1]) + " " + std::to_string(ga[2]);
-}
-
-std::string BAI::gymstate_str(const GymState &gs) {
-  return std::to_string(gs[0]) + " " + std::to_string(gs[1]) + " " + std::to_string(gs[2]);
-}
-
-void BAI::battleCatapultAttacked(const CatapultAttack & ca)
-{
-  print("battleCatapultAttacked called");
-}
-}
+MMAI_NS_END
