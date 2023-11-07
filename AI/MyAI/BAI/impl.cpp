@@ -6,12 +6,12 @@ MMAI_NS_BEGIN
 
 void BAI::actionFinished(const BattleAction &action)
 {
-  print("actionFinished called");
+  debug("*** actionFinished ***");
 }
 
 void BAI::actionStarted(const BattleAction &action)
 {
-  print("actionStarted called");
+  debug("*** actionStarted ***");
 }
 
 void BAI::yourTacticPhase(int distance)
@@ -21,44 +21,37 @@ void BAI::yourTacticPhase(int distance)
 
 void BAI::battleAttack(const BattleAttack *ba)
 {
-  print("battleAttack called");
+  debug("*** battleAttack ***");
 }
 
 void BAI::battleNewRoundFirst(int round)
 {
-  print("battleNewRoundFirst called");
+  debug("*** battleNewRoundFirst ***");
 }
 
 void BAI::battleNewRound(int round)
 {
-  print("battleNewRound called");
+  debug("*** battleNewRound ***");
 }
 
 void BAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport)
 {
-  print("battleStackMoved called");
+  debug("*** battleStackMoved ***");
 }
 
 void BAI::battleSpellCast(const BattleSpellCast *sc)
 {
-  print("battleSpellCast called");
+  debug("*** battleSpellCast ***");
 }
 
 void BAI::battleStacksEffectsSet(const SetStackEffect & sse)
 {
-  print("battleStacksEffectsSet called");
-}
-
-void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
-{
-  print("battleStart called");
-  side = Side;
-  initStackHNSMap();
+  debug("*** battleStacksEffectsSet ***");
 }
 
 void BAI::battleCatapultAttacked(const CatapultAttack & ca)
 {
-  print("battleCatapultAttacked called");
+  debug("*** battleCatapultAttacked ***");
 }
 
 MMAI_NS_END

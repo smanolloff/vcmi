@@ -123,6 +123,7 @@ public:
 
 private:
   void print(const std::string &text) const;
+  void debug(const std::string &text) const;
 };
 
 MMAI_NS_END

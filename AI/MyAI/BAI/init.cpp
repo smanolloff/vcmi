@@ -15,11 +15,12 @@ BAI::BAI()
   hexStateNMap(initHexStateNMap()),
   allBattleHexes(initAllBattleHexes())
 {
-  print("constructor.");
+  print("+++ constructor +++");
 }
 
 BAI::~BAI()
 {
+  print("--- destructor ---");
   if(cb)
   {
     //Restore previous state of CB - it may be shared with the main AI (like VCAI)
@@ -54,7 +55,7 @@ void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  print("*** call cbprovider->pycbinit([this](const GymAction &ga) { cbprovider->cppcb(ga) })");
+  debug("*** call cbprovider->pycbinit([this](const GymAction &ga) { cbprovider->cppcb(ga) })");
   cbprovider->pycbinit([this](const GymAction &ga) { this->cppcb(ga); });
 }
 

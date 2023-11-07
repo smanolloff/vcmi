@@ -19,6 +19,7 @@ std::string BAI::gymresult_str(const GymResult &gr) {
   std::stringstream ss;
 
   auto stacknum = 1;
+  std::array<bool, 14> alivestacks{0};
 
   for (int i=0; i < gs.size(); i++) {
     auto nv = gs[i];
@@ -46,6 +47,7 @@ std::string BAI::gymresult_str(const GymResult &gr) {
       case 1: ss << "\033[90m◌\033[0m"; break; // FREE_UNREACHABLE
       case 2: ss << "\033[90m▦\033[0m"; break; // OBSTACLE
       default:
+        alivestacks[nv.orig - 3] = true;
         if (nv.orig <= 9)
           ss << "\033[32m" << (nv.orig - 2); // green
         else
@@ -60,16 +62,23 @@ std::string BAI::gymresult_str(const GymResult &gr) {
       }
 
       if ((i-BF_SIZE) % ATTRS_PER_STACK == 0) {
-        if (stacknum > 7)
-          ss << "\n[E stack #" << (stacknum - 7) << "]";
-        else
-          ss << "\n[F stack #" << (stacknum) << "]";
+        if (stacknum > 7) {
+          if (alivestacks[stacknum-1])
+            ss << "\n\033[31m[E stack #" << (stacknum - 7) << "]";
+          else
+            ss << "\n\033[0m[E stack #" << (stacknum - 7) << "]";
+        } else {
+          if (alivestacks[stacknum-1])
+            ss << "\n\033[32m[F stack #" << (stacknum) << "]";
+          else
+            ss << "\n\033[0m[F stack #" << (stacknum) << "]";
+        }
 
         stacknum += 1;
       }
       ss << padString(std::to_string(nv.orig), 5, ' ') << ",";
     } else {
-      ss << "\n[waited] " << nv.orig;
+      ss << "\033[0m\n[waited] " << nv.orig;
     }
   }
 

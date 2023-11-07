@@ -22,6 +22,7 @@
 
 #include "mainmenu/CMainMenu.h"
 #include "mainmenu/CPrologEpilogVideo.h"
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
 
 #ifdef VCMI_ANDROID
 #include "../lib/CAndroidVMHelper.h"
@@ -292,8 +293,8 @@ void CServerHandler::	justConnectToServer(const std::string & addr, const ui16 p
 		}
 		catch(...)
 		{
-			logNetwork->error("\nCannot establish connection! Retrying within 1 second");
-			boost::this_thread::sleep(boost::posix_time::seconds(1));
+			logNetwork->error("\nCannot establish connection! Retrying within 0.1 second");
+			boost::this_thread::sleep(boost::posix_time::milliseconds(100));
 		}
 	}
 

@@ -45,25 +45,31 @@ void BAI::print(const std::string &text) const
   logAi->error("BAI  [%p]: %s", this, text);
 }
 
+void BAI::debug(const std::string &text) const
+{
+  logAi->warn("BAI  [%p]: %s", this, text);
+}
+
 // Called by GymEnv on every "step()" call
 void BAI::cppcb(const GymAction &gymaction) {
     print(std::string("called with gymaction: ") + gymaction_str(gymaction));
 
-    print("Assign this->gymaction = gymaction");
+    debug("Assign this->gymaction = gymaction");
     this->gymaction = gymaction;
 
     // Unblock "activeStack"
-    print("acquire lock");
+    debug("acquire lock");
     boost::unique_lock<boost::mutex> lock(m);
-    print("cond.notify_one()");
+    debug("cond.notify_one()");
     cond.notify_one();
 
-    print("return");
+    debug("return");
 }
 
 void BAI::activeStack(const CStack * astack)
 {
-  print("activeStack called for " + astack->nodeName());
+  print("*** activeStack ***");
+  // print("activeStack called for " + astack->nodeName());
 
   gymresult.state = buildState(astack);
   std::shared_ptr<BattleAction> ba;
@@ -84,14 +90,14 @@ void BAI::activeStack(const CStack * astack)
     cond.wait(lock);
     awaitingAction = false;
 
-    print("Got action: " + gymaction_str(gymaction));
+    debug("Got action: " + gymaction_str(gymaction));
     auto pair = buildAction(astack, gymresult.state, gymaction);
     auto errors = pair.second;
     ba = pair.first;
 
     if (ba) {
       assert(errors.empty());
-      print("Action was VALID");
+      debug("Action was VALID");
       gymresult = {};
     } else {
       assert(!errors.empty());
@@ -105,7 +111,7 @@ void BAI::activeStack(const CStack * astack)
 
   cb->battleMakeUnitAction(*ba);
 
-  print("return");
+  debug("return");
   return;
 }
 
@@ -295,7 +301,7 @@ ActionResult BAI::buildAction(const CStack * astack, GymState gymstate, GymActio
 
 void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
 {
-  print("battleStacksAttacked called");
+  print("*** battleStacksAttacked ***");
 
   for(auto & elem : bsa) {
     auto * defender = cb->battleGetStackByID(elem.stackAttacked, false);
@@ -311,7 +317,7 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
 
 void BAI::battleEnd(const BattleResult *br, QueryID queryID)
 {
-  print("battleEnd called with QUID: " + std::to_string(queryID));
+  print("*** battleEnd (QID: " + std::to_string(queryID) + ") ***");
 
   gymresult = {};
   gymresult.ended = true;
@@ -321,6 +327,13 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
 
   cbprovider->pycb(gymresult);
 
+}
+
+void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
+{
+  debug("*** battleStart ***");
+  side = Side;
+  initStackHNSMap();
 }
 
 

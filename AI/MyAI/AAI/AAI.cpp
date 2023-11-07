@@ -1,35 +1,13 @@
-/*
- * VCAI.cpp, part of VCMI engine
- *
- * Authors: listed in file AUTHORS in main folder
- *
- * License: GNU General Public License v2.0 or later
- * Full text of license available in license.txt file, in main folder
- *
- */
+#include "NetPacks.h"
 #include "StdInc.h"
 #include "AAI.h"
+#include "gameState/CGameState.h"
 
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 
 // TODO: refine includes
-#include "../../../lib/UnlockGuard.h"
-#include "../../../lib/mapObjects/MapObjects.h"
-#include "../../../lib/mapObjects/ObjectTemplate.h"
-#include "../../../lib/CConfigHandler.h"
-#include "../../../lib/CHeroHandler.h"
-#include "../../../lib/GameSettings.h"
-#include "../../../lib/gameState/CGameState.h"
-#include "../../../lib/NetPacksBase.h"
-#include "../../../lib/NetPacks.h"
-#include "../../../lib/bonuses/CBonusSystemNode.h"
-#include "../../../lib/bonuses/Limiters.h"
-#include "../../../lib/bonuses/Updaters.h"
-#include "../../../lib/bonuses/Propagators.h"
-#include "../../../lib/serializer/CTypeList.h"
-#include "../../../lib/serializer/BinarySerializer.h"
-#include "../../../lib/serializer/BinaryDeserializer.h"
+
 
 namespace MMAI {
 
@@ -84,12 +62,12 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  print("*** call cbprovider->pycbresetinit([this]() { cbprovider->cppresetcb() })");
+  // print("*** call cbprovider->pycbresetinit([this]() { cbprovider->cppresetcb() })");
   cbprovider->pycbresetinit([this]() { this->cppresetcb(); });
 }
 
 void AAI::yourTurn() {
-  print("*** yourTurn called ***");
+  print("*** yourTurn ***");
 
   std::make_unique<boost::thread>([this]() {
     boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
@@ -103,7 +81,7 @@ void AAI::yourTurn() {
 }
 
 void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) {
-  print("*** battleStart called ***");
+  print("*** battleStart ***");
 
   // just copied code from CAdventureAI::battleStart
   // only difference is argument to initBattleInterface()
@@ -122,7 +100,7 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
 }
 
 void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
-  print("*** battleEnd called ***");
+  print("*** battleEnd ***");
 
   bool won = br->winner == cb->battleGetMySide();
   won ? print("battle result: victory") : print("battle result: defeat");
@@ -152,219 +130,219 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
 //
 
 void AAI::saveGame(BinarySerializer & h, const int version) {
-  print("*** saveGame called ***");
+  // print("*** saveGame ***");
 }
 
 void AAI::loadGame(BinaryDeserializer & h, const int version) {
-  print("*** loadGame called ***");
+  // print("*** loadGame ***");
 }
 
 void AAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QueryID queryID) {
-  print("*** commanderGotLevel called ***");
+  // print("*** commanderGotLevel ***");
 }
 
 void AAI::finish() {
-  print("*** finish called ***");
+  // print("*** finish ***");
 }
 
 void AAI::heroGotLevel(const CGHeroInstance * hero, PrimarySkill::PrimarySkill pskill, std::vector<SecondarySkill> & skills, QueryID queryID) {
-  print("*** heroGotLevel called ***");
+  // print("*** heroGotLevel ***");
 }
 
 void AAI::showBlockingDialog(const std::string & text, const std::vector<Component> & components, QueryID askID, const int soundID, bool selection, bool cancel) {
-  print("*** showBlockingDialog called ***");
+  // print("*** showBlockingDialog ***");
 }
 
 void AAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID) {
-  print("*** showGarrisonDialog called ***");
+  // print("*** showGarrisonDialog ***");
 }
 
 void AAI::showMapObjectSelectDialog(QueryID askID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects) {
-  print("*** showMapObjectSelectDialog called ***");
+  // print("*** showMapObjectSelectDialog ***");
 }
 
 void AAI::showTeleportDialog(TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) {
-  print("*** showTeleportDialog called ***");
+  // print("*** showTeleportDialog ***");
 }
 
 void AAI::showWorldViewEx(const std::vector<ObjectPosInfo> & objectPositions, bool showTerrain) {
-  print("*** showWorldViewEx called ***");
+  // print("*** showWorldViewEx ***");
 }
 
 void AAI::advmapSpellCast(const CGHeroInstance * caster, int spellID) {
-  print("*** advmapSpellCast called ***");
+  // print("*** advmapSpellCast ***");
 }
 
 void AAI::artifactAssembled(const ArtifactLocation & al) {
-  print("*** artifactAssembled called ***");
+  // print("*** artifactAssembled ***");
 }
 
 void AAI::artifactDisassembled(const ArtifactLocation & al) {
-  print("*** artifactDisassembled called ***");
+  // print("*** artifactDisassembled ***");
 }
 
 void AAI::artifactMoved(const ArtifactLocation & src, const ArtifactLocation & dst) {
-  print("*** artifactMoved called ***");
+  // print("*** artifactMoved ***");
 }
 
 void AAI::artifactPut(const ArtifactLocation & al) {
-  print("*** artifactPut called ***");
+  // print("*** artifactPut ***");
 }
 
 void AAI::artifactRemoved(const ArtifactLocation & al) {
-  print("*** artifactRemoved called ***");
+  // print("*** artifactRemoved ***");
 }
 
 void AAI::availableArtifactsChanged(const CGBlackMarket * bm) {
-  print("*** availableArtifactsChanged called ***");
+  // print("*** availableArtifactsChanged ***");
 }
 
 void AAI::availableCreaturesChanged(const CGDwelling * town) {
-  print("*** availableCreaturesChanged called ***");
+  // print("*** availableCreaturesChanged ***");
 }
 
 void AAI::battleResultsApplied() {
-  print("*** battleResultsApplied called ***");
+  // print("*** battleResultsApplied ***");
 }
 
 void AAI::beforeObjectPropertyChanged(const SetObjectProperty * sop) {
-  print("*** beforeObjectPropertyChanged called ***");
+  // print("*** beforeObjectPropertyChanged ***");
 }
 
 void AAI::buildChanged(const CGTownInstance * town, BuildingID buildingID, int what) {
-  print("*** buildChanged called ***");
+  // print("*** buildChanged ***");
 }
 
 void AAI::centerView(int3 pos, int focusTime) {
-  print("*** centerView called ***");
+  // print("*** centerView ***");
 }
 
 void AAI::gameOver(PlayerColor player, const EVictoryLossCheckResult & victoryLossCheckResult) {
-  print("*** gameOver called ***");
+  // print("*** gameOver ***");
 }
 
 void AAI::garrisonsChanged(ObjectInstanceID id1, ObjectInstanceID id2) {
-  print("*** garrisonsChanged called ***");
+  // print("*** garrisonsChanged ***");
 }
 
 void AAI::heroBonusChanged(const CGHeroInstance * hero, const Bonus & bonus, bool gain) {
-  print("*** heroBonusChanged called ***");
+  // print("*** heroBonusChanged ***");
 }
 
 void AAI::heroCreated(const CGHeroInstance *) {
-  print("*** heroCreated called ***");
+  // print("*** heroCreated ***");
 }
 
 void AAI::heroInGarrisonChange(const CGTownInstance * town) {
-  print("*** heroInGarrisonChange called ***");
+  // print("*** heroInGarrisonChange ***");
 }
 
 void AAI::heroManaPointsChanged(const CGHeroInstance * hero) {
-  print("*** heroManaPointsChanged called ***");
+  // print("*** heroManaPointsChanged ***");
 }
 
 void AAI::heroMovePointsChanged(const CGHeroInstance * hero) {
-  print("*** heroMovePointsChanged called ***");
+  // print("*** heroMovePointsChanged ***");
 }
 
 void AAI::heroMoved(const TryMoveHero & details, bool verbose) {
-  print("*** heroMoved called ***");
+  // print("*** heroMoved ***");
 }
 
 void AAI::heroPrimarySkillChanged(const CGHeroInstance * hero, int which, si64 val) {
-  print("*** heroPrimarySkillChanged called ***");
+  // print("*** heroPrimarySkillChanged ***");
 }
 
 void AAI::heroSecondarySkillChanged(const CGHeroInstance * hero, int which, int val) {
-  print("*** heroSecondarySkillChanged called ***");
+  // print("*** heroSecondarySkillChanged ***");
 }
 
 void AAI::heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start) {
-  print("*** heroVisit called ***");
+  // print("*** heroVisit ***");
 }
 
 void AAI::heroVisitsTown(const CGHeroInstance * hero, const CGTownInstance * town) {
-  print("*** heroVisitsTown called ***");
+  // print("*** heroVisitsTown ***");
 }
 
 void AAI::newObject(const CGObjectInstance * obj) {
-  print("*** newObject called ***");
+  // print("*** newObject ***");
 }
 
 void AAI::objectPropertyChanged(const SetObjectProperty * sop) {
-  print("*** objectPropertyChanged called ***");
+  // print("*** objectPropertyChanged ***");
 }
 
 void AAI::objectRemoved(const CGObjectInstance * obj) {
-  print("*** objectRemoved called ***");
+  // print("*** objectRemoved ***");
 }
 
 void AAI::playerBlocked(int reason, bool start) {
-  print("*** playerBlocked called ***");
+  // print("*** playerBlocked ***");
 }
 
 void AAI::playerBonusChanged(const Bonus & bonus, bool gain) {
-  print("*** playerBonusChanged called ***");
+  // print("*** playerBonusChanged ***");
 }
 
 void AAI::receivedResource() {
-  print("*** receivedResource called ***");
+  // print("*** receivedResource ***");
 }
 
 void AAI::requestRealized(PackageApplied * pa) {
-  print("*** requestRealized called ***");
+  // print("*** requestRealized ***");
 }
 
 void AAI::requestSent(const CPackForServer * pack, int requestID) {
-  print("*** requestSent called ***");
+  // print("*** requestSent ***");
 }
 
 void AAI::showHillFortWindow(const CGObjectInstance * object, const CGHeroInstance * visitor) {
-  print("*** showHillFortWindow called ***");
+  // print("*** showHillFortWindow ***");
 }
 
 void AAI::showInfoDialog(EInfoWindowMode type, const std::string & text, const std::vector<Component> & components, int soundID) {
-  print("*** showInfoDialog called ***");
+  // print("*** showInfoDialog ***");
 }
 
 void AAI::showMarketWindow(const IMarket * market, const CGHeroInstance * visitor) {
-  print("*** showMarketWindow called ***");
+  // print("*** showMarketWindow ***");
 }
 
 void AAI::showPuzzleMap() {
-  print("*** showPuzzleMap called ***");
+  // print("*** showPuzzleMap ***");
 }
 
 void AAI::showRecruitmentDialog(const CGDwelling * dwelling, const CArmedInstance * dst, int level) {
-  print("*** showRecruitmentDialog called ***");
+  // print("*** showRecruitmentDialog ***");
 }
 
 void AAI::showShipyardDialog(const IShipyard * obj) {
-  print("*** showShipyardDialog called ***");
+  // print("*** showShipyardDialog ***");
 }
 
 void AAI::showTavernWindow(const CGObjectInstance * townOrTavern) {
-  print("*** showTavernWindow called ***");
+  // print("*** showTavernWindow ***");
 }
 
 void AAI::showThievesGuildWindow(const CGObjectInstance * obj) {
-  print("*** showThievesGuildWindow called ***");
+  // print("*** showThievesGuildWindow ***");
 }
 
 void AAI::showUniversityWindow(const IMarket * market, const CGHeroInstance * visitor) {
-  print("*** showUniversityWindow called ***");
+  // print("*** showUniversityWindow ***");
 }
 
 void AAI::tileHidden(const std::unordered_set<int3> & pos) {
-  print("*** tileHidden called ***");
+  // print("*** tileHidden ***");
 }
 
 void AAI::tileRevealed(const std::unordered_set<int3> & pos) {
-  print("*** tileRevealed called ***");
+  // print("*** tileRevealed ***");
 }
 
 void AAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID query) {
-  print("*** heroExchangeStarted called ***");
+  // print("*** heroExchangeStarted ***");
 }
 
 std::string AAI::getBattleAIName() const {
