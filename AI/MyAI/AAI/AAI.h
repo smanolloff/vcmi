@@ -14,14 +14,25 @@
 #include "../../../lib/spells/CSpellHandler.h"
 #include "../../../lib/CondSh.h"
 #include "../mytypes.h"
+#include "BAI/BAI.h"
 
 namespace MMAI {
 
 class DLL_EXPORT AAI : public CAdventureAI
 {
   CBProvider * cbprovider;
+  boost::mutex m;
+  boost::condition_variable cond;
+  // boost::mutex mreset;
+  // boost::mutex mretreat;
+  // boost::condition_variable condreset;
+  // boost::condition_variable condretreat;
+  bool awaitingReset = false;
+
+  std::shared_ptr<BAI> bai;
 public:
   std::shared_ptr<CCallback> cb;
+  void cppresetcb();
 public:
   AAI();
   virtual ~AAI();

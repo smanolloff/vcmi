@@ -1,7 +1,7 @@
 #pragma once
-#include "../../../lib/CStack.h"
-#include "../../../lib/AI_Base.h"
-#include "../../../CCallback.h"
+#include "lib/CStack.h"
+#include "lib/AI_Base.h"
+#include "CCallback.h"
 #include "../mytypes.h"
 #include "battle/BattleHex.h"
 #include <memory>
@@ -40,8 +40,15 @@ enum class HexState : int
     count
 };
 
+using ActionResult = std::pair<
+  const std::shared_ptr<BattleAction>,
+  std::vector<std::string>
+>;
+
 class BAI : public CBattleGameInterface
 {
+  friend class AAI;
+
   int side;
   std::shared_ptr<CBattleCallback> cb;
   std::shared_ptr<Environment> env;
@@ -54,6 +61,7 @@ class BAI : public CBattleGameInterface
 
   boost::mutex m;
   boost::condition_variable cond;
+  bool awaitingAction = false;
 
   const std::map<HexState, std::string> hexStateNames;
   const std::map<HexState, std::string> initHexStateNames();
@@ -73,13 +81,14 @@ class BAI : public CBattleGameInterface
   // can't be const value (received after init)
   // => use const pointer
   GymAction gymaction;
+  GymResult gymresult;
 
   void cppcb(const GymAction &gymaction);
   std::string gymaction_str(const GymAction &gymaction);
-  std::string gymstate_str(const GymState &gymstate);
+  std::string gymresult_str(const GymResult &gymresult);
 
   const GymState buildState(const CStack * stack);
-  const std::shared_ptr<BattleAction> buildAction(const CStack * stack, GymState gymstate, GymAction action);
+  ActionResult buildAction(const CStack * stack, GymState gymstate, GymAction action);
 
 public:
   BAI();

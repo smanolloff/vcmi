@@ -4,6 +4,7 @@
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
+#include "logging/CLogger.h"
 #include "pyclient.h"
 
 #include "../lib/filesystem/Filesystem.h"
@@ -39,6 +40,7 @@
 #include "../lib/VCMIDirs.h"
 #include "../lib/VCMI_Lib.h"
 #include "../lib/CConfigHandler.h"
+#include "vstd/CLoggerBase.h"
 
 #include <string_view>
 
@@ -75,7 +77,7 @@ void preinit_vcmi(std::string resdir) {
   Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
   // NOTE: friendlyAI is hard-coded in MyAI's AAI::getBattleAIName()
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
-  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
+  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
 
   logConfig->configure();
 

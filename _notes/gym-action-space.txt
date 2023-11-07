@@ -1,10 +1,13 @@
 ###############################################
-### IDEA 2: Discrete(1322)
+### IDEA 2: Discrete(1323)
 
+// 3 generic
+RETREAT
 DEFEND
 WAIT
-MOVE // 165x
-MOVE+TARGET // 1155x (165 hexes * 7 enemy stacks)
+
+// 1320 = 165 hexes * 8 actions each:
+MOVE_ONLY / MOVE_TARGET_1 / ... MOVE_TARGET_7
 
 Invalidate if:
 == WAIT

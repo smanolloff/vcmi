@@ -24,16 +24,6 @@ void BAI::battleAttack(const BattleAttack *ba)
   print("battleAttack called");
 }
 
-void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
-{
-  print("battleStacksAttacked called");
-}
-
-void BAI::battleEnd(const BattleResult *br, QueryID queryID)
-{
-  print("battleEnd called");
-}
-
 void BAI::battleNewRoundFirst(int round)
 {
   print("battleNewRoundFirst called");

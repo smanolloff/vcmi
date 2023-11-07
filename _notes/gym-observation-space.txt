@@ -13,8 +13,7 @@ HEX          // x165, 17 states
 STACK        // x14; TODO: what about summonned stacks, ghosts, war machines, turrets?
   QTY
   ATT
-  DEF (melee)
-  DEF (ranged)
+  DEF
   SHOTS
   DMG (min, melee)
   DMG (max, melee)

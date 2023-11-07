@@ -2,6 +2,12 @@
 s->isTurret()
 
 =========== cb: others
+
+cb->makeSurrenderRetreatDecision(bs);
+  - invoked from battle AI, this "asks" the adventure AI if retreat is OK
+  - a sync cb call, actually returns a value
+  - typically after it returns, we call cb->makeBattleAction(BattleAction::makeRetreat(...))
+
 ==== cb: bools
 battleCanAttack(Unit, Unit, Hex)
   - always true if 1st Unit != aid/catapult and 2nd Unit is alive
