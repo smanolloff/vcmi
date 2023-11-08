@@ -130,20 +130,39 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
   // 3   0   0   0   0   0   0   0   0   0   0   0   0
   //
 
-  int nstack = 0;
-  std::string nocolor = "\033[0m";
+  // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
+  assert(BF_SIZE + 14*ATTRS_PER_STACK == gs.size() - 1);
 
-  auto row = std::stringstream();
-  row << "  QTY ATT DEF SHT MD0 MD1 RD0 RD1  HP HPL SPD WAI";
+  const auto nrows = 14+1;
+  const auto ncols = ATTRS_PER_STACK+1;
 
-  for (int i=BF_SIZE; i < gs.size()-1; i++) {
-    auto nv = gs[i];
+  auto table = std::array<std::array<std::pair<std::string, std::string>, ncols>, nrows>{};
+  table[0] = {
+    std::pair{"STACK", nocol},
+    std::pair{"QTY", nocol},
+    std::pair{"ATT", nocol},
+    std::pair{"DEF", nocol},
+    std::pair{"SHT", nocol},
+    std::pair{"MD0", nocol},
+    std::pair{"MD1", nocol},
+    std::pair{"RD0", nocol},
+    std::pair{"RD1", nocol},
+    std::pair{"HP", nocol},
+    std::pair{"HPL", nocol},
+    std::pair{"SPD", nocol},
+    std::pair{"WAI", nocol}
+  };
 
-    if ((i-BF_SIZE) % ATTRS_PER_STACK == 0) {
-      rows.push_back(std::move(row));
-      row = std::stringstream();
-      auto color = nocolor;
-      auto nstackvis = (nstack < 7) ? nstack + 1 : nstack - 6;
+  int i = 0;
+  for (int r=1; r<nrows; r++) {
+    auto nstack = r-1;  // stack number 0..13
+    auto stackdisplay = std::to_string(nstack % 7 + 1); // stack 1..7
+
+    table[r][0] = {stackdisplay, "X"};  // "X" changed later
+
+    for (int c=1; c<ncols; c++) {
+      auto nv = gs[i+BF_SIZE];
+      auto color = nocol;
 
       if (alivestacks[nstack]) {
         if (nstack > 6)
@@ -152,27 +171,35 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
           color = (astack && astack->unitSlot() == nstack) ? activecol : allycol;
       }
 
-      row << color << nstackvis;
-      nstack++;
+      table[r][0].second = color;  // change header color
+      table[r][c] = {std::to_string(nv.orig), color};
+      i++;
     }
-
-    row << padLeft(std::to_string(nv.orig), 4, ' ');
   }
 
-  row << nocolor;
-  rows.push_back(std::move(row));
+  for (int r=0; r<nrows; r++) {
+    auto row = std::stringstream();
+    for (int c=0; c<ncols; c++) {
+      auto cell = table[r][c];
+      row << cell.second << padLeft(cell.first, 5, ' ') << nocol;
+    }
+    rows.push_back(std::move(row));
+  }
 
-  //
-  // 4. Add waited
-  //
-  // [waited]        0
-  //
+  // row << nocolor;
+  // rows.push_back(std::move(row));
 
-  rows.emplace_back() << "[waited]        " << std::to_string(gs[gs.size()-1].orig);
+  // //
+  // // 4. Add waited
+  // //
+  // // [waited]        0
+  // //
 
-  //
-  // 5. Convert to a single string
-  //
+  // rows.emplace_back() << "[waited]        " << std::to_string(gs[gs.size()-1].orig);
+
+  // //
+  // // 5. Convert to a single string
+  // //
 
   std::string res = rows[0].str();
 
