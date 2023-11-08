@@ -136,21 +136,32 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
   const auto nrows = 14+1;
   const auto ncols = ATTRS_PER_STACK+1;
 
-  auto table = std::array<std::array<std::pair<std::string, std::string>, ncols>, nrows>{};
+  // Table with nrows and ncells, each cell a 3-element tuple
+  auto table = std::array<
+    std::array<  // row
+      std::tuple<std::string, int, std::string>, // cell: color, width, txt
+      ncols
+    >,
+    nrows
+  >{};
+
+  auto colwidth = 3;
+  auto headercolwidth = 16;
+
   table[0] = {
-    std::pair{"STACK", nocol},
-    std::pair{"QTY", nocol},
-    std::pair{"ATT", nocol},
-    std::pair{"DEF", nocol},
-    std::pair{"SHT", nocol},
-    std::pair{"MD0", nocol},
-    std::pair{"MD1", nocol},
-    std::pair{"RD0", nocol},
-    std::pair{"RD1", nocol},
-    std::pair{"HP", nocol},
-    std::pair{"HPL", nocol},
-    std::pair{"SPD", nocol},
-    std::pair{"WAI", nocol}
+    std::tuple{nocol, headercolwidth, "Stack #"},
+    std::tuple{nocol, headercolwidth, "Qty"},
+    std::tuple{nocol, headercolwidth, "Attack"},
+    std::tuple{nocol, headercolwidth, "Defense"},
+    std::tuple{nocol, headercolwidth, "Shots"},
+    std::tuple{nocol, headercolwidth, "Dmg min (melee)"},
+    std::tuple{nocol, headercolwidth, "Dmg max (melee)"},
+    std::tuple{nocol, headercolwidth, "Dmg min (ranged)"},
+    std::tuple{nocol, headercolwidth, "Dmg max (ranged)"},
+    std::tuple{nocol, headercolwidth, "HP"},
+    std::tuple{nocol, headercolwidth, "HP left"},
+    std::tuple{nocol, headercolwidth, "Speed"},
+    std::tuple{nocol, headercolwidth, "Waited"}
   };
 
   int i = 0;
@@ -158,7 +169,7 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
     auto nstack = r-1;  // stack number 0..13
     auto stackdisplay = std::to_string(nstack % 7 + 1); // stack 1..7
 
-    table[r][0] = {stackdisplay, "X"};  // "X" changed later
+    table[r][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
 
     for (int c=1; c<ncols; c++) {
       auto nv = gs[i+BF_SIZE];
@@ -171,19 +182,34 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
           color = (astack && astack->unitSlot() == nstack) ? activecol : allycol;
       }
 
-      table[r][0].second = color;  // change header color
-      table[r][c] = {std::to_string(nv.orig), color};
+      std::get<0>(table[r][0]) = color;  // change header color
+      table[r][c] = std::tuple{color, colwidth, std::to_string(nv.orig)};
       i++;
     }
   }
 
-  for (int r=0; r<nrows; r++) {
+  // XXX: table is rotated here
+  for (int r=0; r<ncols; r++) {
     auto row = std::stringstream();
-    for (int c=0; c<ncols; c++) {
-      auto cell = table[r][c];
-      row << cell.second << padLeft(cell.first, 5, ' ') << nocol;
+    for (int c=0; c<nrows; c++) {
+      auto [color, width, txt] = table[c][r];
+      row << color << padLeft(txt, width, ' ') << nocol;
+
+      // divider
+      if (c == 0)
+        row << " |";
     }
+
     rows.push_back(std::move(row));
+
+    // divider
+    if (r == 0) {
+      auto divrow = std::stringstream();
+      divrow << padLeft("", headercolwidth, '-');
+      divrow << "-+";
+      divrow << padLeft("", (nrows-1)*colwidth, '-');
+      rows.push_back(std::move(divrow));
+    }
   }
 
   // row << nocolor;
