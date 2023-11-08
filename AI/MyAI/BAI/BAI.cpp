@@ -309,12 +309,28 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
   for(auto & elem : bsa) {
     auto * defender = cb->battleGetStackByID(elem.stackAttacked, false);
 
+    auto dmg = elem.damageAmount;
+    auto units = elem.killedAmount;
+
+    // TODO: AIValue is unclear how it's calculated (maybe builtin the game?)
+    //       Maybe use a generic calc, eg:
+    //       BaseHP + AvgDmg + att + def + speed*2 + bonuses (eg. archer/marskman)
+    //       ... but that sounds too complicated
+    //
+    auto value = elem.killedAmount * defender->creatureId().toCreature()->getAIValue();
+
     // attacker dealing dmg might be our friendly fire
     // => use defender
-    if (defender->getOwner() == cb->getPlayerID())
-      gymresult.dmgReceived += elem.damageAmount;
-    else
-      gymresult.dmgDealt += elem.damageAmount;
+    if (defender->getOwner() == cb->getPlayerID()) {
+      // note: in VCMI there is no excess dmg if stack is killed
+      gymresult.dmgReceived += dmg;
+      gymresult.unitsLost += units;
+      gymresult.valueLost += value;
+    } else {
+      gymresult.dmgDealt += dmg;
+      gymresult.unitsKilled += units;
+      gymresult.valueKilled += value;
+    }
   }
 }
 
@@ -322,15 +338,13 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
 {
   print("*** battleEnd (QID: " + std::to_string(queryID) + ") ***");
 
-  gymresult = {};
-  auto aunit = cb->battleActiveUnit();
-  auto astack = cb->battleGetStackByID(aunit->unitId());
-
-  gymresult.state = buildState(astack);
-  gymresult.ended = true;
   gymresult.victory = br->winner == cb->battleGetMySide();
+  gymresult.ended = true;
+  gymresult.nostate = true;
+  gymresult.state = GymState{};
+  gymresult.n_errors = 0;
 
-  print("Sending result:\n" + buildReport(gymresult, gymaction, astack));
+  print("Sending result:\n" + buildReport(gymresult, gymaction, nullptr));
 
   cbprovider->pycb(gymresult);
 

@@ -111,7 +111,6 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
   // NOTE: although VCAI does cb->selectionMade in a new thread, we must not
   // there seems to be a race cond and our selection randomly
   // arrives at the server with a queryID=1 unless we do it sequentially
-  boost::this_thread::sleep_for(boost::chrono::seconds(5));
   cb->selectionMade(1, queryID);
 
   // this will call battle AI's battleEnd, which will inform

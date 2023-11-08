@@ -76,8 +76,8 @@ class BAI : public CBattleGameInterface
   const std::array<BattleHex, BF_SIZE> allBattleHexes;
   const std::array<BattleHex, BF_SIZE> initAllBattleHexes();
 
-  const std::array<std::string, actionMax> allGymActionNames;
-  const std::array<std::string, actionMax> initAllGymActionNames();
+  const std::array<std::string, N_ACTIONS> allGymActionNames;
+  const std::array<std::string, N_ACTIONS> initAllGymActionNames();
 
 
   // can't be const -- called during battleStart (unavailable in constructor)
@@ -86,7 +86,7 @@ class BAI : public CBattleGameInterface
 
   // can't be const value (received after init)
   // => use const pointer
-  GymAction gymaction = -1;
+  GymAction gymaction = ACTION_UNKNOWN;
   GymResult gymresult;
 
   void cppcb(const GymAction &gymaction);

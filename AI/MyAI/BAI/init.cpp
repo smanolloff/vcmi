@@ -147,8 +147,8 @@ void BAI::initStackHNSMap() {
   }
 }
 
-const std::array<std::string, actionMax> BAI::initAllGymActionNames() {
-  std::array<std::string, actionMax> res = {"???"};
+const std::array<std::string, N_ACTIONS> BAI::initAllGymActionNames() {
+  std::array<std::string, N_ACTIONS> res = {"???"};
   res[0] = "Retreat";
   res[1] = "Defend";
   res[2] = "Wait";
@@ -159,17 +159,17 @@ const std::array<std::string, actionMax> BAI::initAllGymActionNames() {
     for (int x=0; x<BF_XMAX; x++) {
       auto base = "Move to (" + std::to_string(x) + ", " + std::to_string(y) + ")";
       res[i++] = base;
-      res[i++] = base + " and attack Estack #1";
-      res[i++] = base + " and attack Estack #2";
-      res[i++] = base + " and attack Estack #3";
-      res[i++] = base + " and attack Estack #4";
-      res[i++] = base + " and attack Estack #5";
-      res[i++] = base + " and attack Estack #6";
-      res[i++] = base + " and attack Estack #7";
+      res[i++] = base + " + attack \033[31m#1\033[0m";
+      res[i++] = base + " + attack \033[31m#2\033[0m";
+      res[i++] = base + " + attack \033[31m#3\033[0m";
+      res[i++] = base + " + attack \033[31m#4\033[0m";
+      res[i++] = base + " + attack \033[31m#5\033[0m";
+      res[i++] = base + " + attack \033[31m#6\033[0m";
+      res[i++] = base + " + attack \033[31m#7\033[0m";
     }
   }
 
-  assert(i == actionMax);
+  assert(i == N_ACTIONS);
 
   return res;
 }

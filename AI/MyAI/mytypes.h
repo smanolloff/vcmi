@@ -17,11 +17,12 @@ namespace MMAI {
 // Actions:
 // 0, 1, 2 - retreat, defend, wait
 // 3..1322 - 165 hexes * 8 actions each
-static const int actionMax = 1323; // 0..1322
+static const int N_ACTIONS = 1323; // 0..1322
+static const int ACTION_UNKNOWN = 65535; // eg. when unset
 
 // State:
 // 165 hex + (14 stack * 12 attrs) + current_stack
-static const int stateSize = 334;
+static const int STATE_SIZE = 334;
 
 // Arbitary int value normalized as -1..1 float
 extern "C" struct DLL_EXPORT NValue {
@@ -48,18 +49,24 @@ extern "C" struct DLL_EXPORT NValue {
 };
 
 // SYNC WITH VcmiEnv.observation_space
-using GymState = std::array<NValue, stateSize>;
+using GymState = std::array<NValue, STATE_SIZE>;
 struct GymResult {
     GymState state = {};
     int n_errors = 0;
     int dmgDealt = 0;
     int dmgReceived = 0;
+    int unitsLost = 0;
+    int unitsKilled = 0;
+    int valueLost = 0;
+    int valueKilled = 0;
     bool ended = false;
     bool victory = false;
+
+    // set to true only for last observation (at battle end)
+    bool nostate = false;
 };
 
 using GymAction = uint16_t;
-
 
 // CppResetCB is a CPP function given to the GymEnv via PyCBResetInit (see below)
 // GymEnv will invoke it on every "reset()" call

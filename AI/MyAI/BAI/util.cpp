@@ -26,7 +26,6 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
   std::string nocol = "\033[0m";
   std::string enemycol = "\033[31m"; // red
   std::string allycol = "\033[32m"; // green
-  // std::string activecol = "\033[33m\033[44m"; // yellow on blue background
   std::string activecol = "\033[32m\033[1m"; // green bold
 
 
@@ -108,21 +107,26 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
     std::string value;
 
     switch(i) {
-    case 1: name = "Action"; value = allGymActionNames[gymaction];; break;
-    case 2: name = "n_errors"; value = std::to_string(gr.n_errors); break;
-    case 3: name = "dmgDealt"; value = std::to_string(gr.dmgDealt); break;
-    case 4: name = "dmgReceived"; value = std::to_string(gr.dmgReceived); break;
-    case 5: name = "ended"; value = std::to_string(gr.ended); break;
-    case 6: name = "victory"; value = std::to_string(gr.victory); break;
+    case 1: name = "Last action"; value = (gymaction == ACTION_UNKNOWN) ? "" : allGymActionNames[gymaction]; break;
+    case 2: name = "Errors"; value = std::to_string(gr.n_errors); break;
+    case 3: name = "DMG dealt"; value = std::to_string(gr.dmgDealt); break;
+    case 4: name = "Units killed"; value = std::to_string(gr.unitsKilled); break;
+    case 5: name = "Value killed"; value = std::to_string(gr.valueKilled); break;
+    case 6: name = "DMG received"; value = std::to_string(gr.dmgReceived); break;
+    case 7: name = "Units lost"; value = std::to_string(gr.unitsLost); break;
+    case 8: name = "Value lost"; value = std::to_string(gr.valueLost); break;
+    case 9: name = "Battle ended"; value = gr.ended ? "yes" : "no"; break;
+    case 10: name = "Victory"; value = gr.ended ? (gr.victory ? "yes" : "no") : ""; break;
     default:
       continue;
     }
 
-    rows[i] << "  " << padLeft(name, 13, ' ') << ": " << value;
+    rows[i] << padLeft(name, 15, ' ') << ": " << value;
   }
 
   //
   // 3. Add stats table
+  //    NOTE: below example is incorrect, table is now rotated
   //
   //   QTY ATT DEF SHT MD0 MD1 RD0 RD1  HP HPL SPD WAI
   // 1   1  18  19  24  14  14  14  14  30  30   9   0
@@ -212,26 +216,13 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
     }
   }
 
-  // row << nocolor;
-  // rows.push_back(std::move(row));
-
-  // //
-  // // 4. Add waited
-  // //
-  // // [waited]        0
-  // //
-
-  // rows.emplace_back() << "[waited]        " << std::to_string(gs[gs.size()-1].orig);
-
-  // //
-  // // 5. Convert to a single string
-  // //
+  //
+  // 5. Convert to a single string
+  //
 
   std::string res = rows[0].str();
-
-  for (int i=1; i<rows.size(); i++) {
+  for (int i=1; i<rows.size(); i++)
     res += "\n" + rows[i].str();
-  }
 
   return res;
 }
