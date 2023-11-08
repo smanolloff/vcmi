@@ -11,10 +11,9 @@
 
 MMAI_NS_BEGIN
 
-// ignore "side" columns
-#define BF_XMAX (GameConstants::BFIELD_WIDTH - 2)
-#define BF_YMAX GameConstants::BFIELD_HEIGHT
-#define BF_SIZE (BF_XMAX * BF_YMAX)
+#define BF_XMAX 15    // GameConstants::BFIELD_WIDTH - 2 (ignore "side" cols)
+#define BF_YMAX 11    // GameConstants::BFIELD_HEIGHT
+#define BF_SIZE 165   // BF_XMAX * BF_YMAX
 #define ATTRS_PER_STACK 12
 
 //Accessibility is property of hex in battle. It doesn't depend on stack, side's perspective and so on.
@@ -63,8 +62,11 @@ class BAI : public CBattleGameInterface
   boost::condition_variable cond;
   bool awaitingAction = false;
 
+  // NOTE: those could be made static, no need to init at every battle
+
   const std::map<HexState, std::string> hexStateNames;
   const std::map<HexState, std::string> initHexStateNames();
+
   const std::map<std::string, HexState> hexStateValues;
   const std::map<std::string, HexState> initHexStateValues();
 
@@ -72,7 +74,11 @@ class BAI : public CBattleGameInterface
   const std::array<NValue, static_cast<int>(HexState::count)> initHexStateNMap();
 
   const std::array<BattleHex, BF_SIZE> allBattleHexes;
-  std::array<BattleHex, BF_SIZE> initAllBattleHexes();
+  const std::array<BattleHex, BF_SIZE> initAllBattleHexes();
+
+  const std::array<std::string, actionMax> allGymActionNames;
+  const std::array<std::string, actionMax> initAllGymActionNames();
+
 
   // can't be const -- called during battleStart (unavailable in constructor)
   std::map<const CStack*, NValue> stackHNSMap;
@@ -80,12 +86,13 @@ class BAI : public CBattleGameInterface
 
   // can't be const value (received after init)
   // => use const pointer
-  GymAction gymaction;
+  GymAction gymaction = -1;
   GymResult gymresult;
 
   void cppcb(const GymAction &gymaction);
   std::string gymaction_str(const GymAction &gymaction);
   std::string gymresult_str(const GymResult &gymresult);
+  const std::string buildReport(const GymResult &gr, const GymAction &ga, const CStack* astack);
 
   const GymState buildState(const CStack * stack);
   ActionResult buildAction(const CStack * stack, GymState gymstate, GymAction action);

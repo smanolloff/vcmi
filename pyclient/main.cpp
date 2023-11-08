@@ -8,10 +8,15 @@ int main(int argc, char * argv[]) {
     std::string mapname(argc > 1 ? argv[1] : "simotest.vmap");
     int act(argc > 2 ? std::stoi(std::string(argv[2])) : 150);
 
+    int i = 0;
+
     // Convert WPyCB -> PyCB
-    const MMAI::PyCB pycb = [&wcppcb, &act](const MMAI::GymResult &gymresult) {
+    const MMAI::PyCB pycb = [&i, &wcppcb, &act](const MMAI::GymResult &gymresult) {
         LOG("pycb called");
-        boost::thread([wcppcb, &act]() { wcppcb(act); });
+        // if (i < 5)
+        boost::thread([&i, wcppcb, &act]() { wcppcb(act+i); });
+
+        i += 1;
     };
 
     // Convert WPyCBInit -> PyCBInit

@@ -79,6 +79,23 @@ void preinit_vcmi(std::string resdir) {
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
 
+  //
+  // Configure logging
+  //
+  Settings loggers = settings.write["logging"]["loggers"];
+  loggers->Vector().clear();
+
+  auto conflog = [&loggers](std::string domain, std::string lvl) {
+    JsonNode jlog, jlvl, jdomain;
+    jdomain.String() = domain;
+    jlvl.String() = lvl;
+    jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
+    loggers->Vector().push_back(jlog);
+  };
+
+  conflog("global", "error");
+  conflog("ai", "debug");
+
   logConfig->configure();
 
   srand ( (unsigned int)time(nullptr) );

@@ -2,6 +2,12 @@
 s->isTurret()
 
 =========== cb: others
+cb->battleGetTurnOrder(std::vector<battle::Units>,
+                       int maxUnits, // 0 means inf
+                       int maxTurns, // 0 means inf (cannot both be 0)
+                       int turn,     // default 0
+                       int sideThatLastMoved)
+
 
 cb->makeSurrenderRetreatDecision(bs);
   - invoked from battle AI, this "asks" the adventure AI if retreat is OK

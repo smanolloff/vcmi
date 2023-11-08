@@ -13,7 +13,8 @@ BAI::BAI()
   hexStateNames(initHexStateNames()),
   hexStateValues(initHexStateValues()),
   hexStateNMap(initHexStateNMap()),
-  allBattleHexes(initAllBattleHexes())
+  allBattleHexes(initAllBattleHexes()),
+  allGymActionNames(initAllGymActionNames())
 {
   print("+++ constructor +++");
 }
@@ -110,7 +111,7 @@ const std::array<NValue, static_cast<int>(HexState::count)> BAI::initHexStateNMa
   return res;
 }
 
-std::array<BattleHex, BF_SIZE> BAI::initAllBattleHexes() {
+const std::array<BattleHex, BF_SIZE> BAI::initAllBattleHexes() {
   std::array<BattleHex, BF_SIZE> res = {};
 
   // 0 and 16 are unreachable "side" hexes => exclude
@@ -144,6 +145,33 @@ void BAI::initStackHNSMap() {
 
     stackHNSMap[stack] = hexStateNMap.at(static_cast<size_t>(hs));
   }
+}
+
+const std::array<std::string, actionMax> BAI::initAllGymActionNames() {
+  std::array<std::string, actionMax> res = {"???"};
+  res[0] = "Retreat";
+  res[1] = "Defend";
+  res[2] = "Wait";
+
+  int i = 3;
+
+  for (int y=0; y<BF_YMAX; y++) {
+    for (int x=0; x<BF_XMAX; x++) {
+      auto base = "Move to (" + std::to_string(x) + ", " + std::to_string(y) + ")";
+      res[i++] = base;
+      res[i++] = base + " and attack Estack #1";
+      res[i++] = base + " and attack Estack #2";
+      res[i++] = base + " and attack Estack #3";
+      res[i++] = base + " and attack Estack #4";
+      res[i++] = base + " and attack Estack #5";
+      res[i++] = base + " and attack Estack #6";
+      res[i++] = base + " and attack Estack #7";
+    }
+  }
+
+  assert(i == actionMax);
+
+  return res;
 }
 
 MMAI_NS_END

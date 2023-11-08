@@ -42,12 +42,12 @@ MMAI_NS_BEGIN
 
 void BAI::print(const std::string &text) const
 {
-  logAi->error("BAI  [%p]: %s", this, text);
+  logAi->info("BAI  [%p]: %s", this, text);
 }
 
 void BAI::debug(const std::string &text) const
 {
-  logAi->warn("BAI  [%p]: %s", this, text);
+  logAi->debug("BAI  [%p]: %s", this, text);
 }
 
 // Called by GymEnv on every "step()" call
@@ -77,7 +77,7 @@ void BAI::activeStack(const CStack * astack)
   while(!ba) {
     boost::unique_lock<boost::mutex> lock(m);
     awaitingAction = true;
-    print("Sending result: " + gymresult_str(gymresult));
+    print("Sending result:\n" + buildReport(gymresult, gymaction, astack));
     cbprovider->pycb(gymresult);
 
     // We've set some events in motion:
@@ -167,7 +167,7 @@ const GymState BAI::buildState(const CStack * astack) {
     int slot = stack->unitSlot();
     assert(slot >= 0 && slot < 7); // same as assert(slot.validSlot())
 
-    // 0th slot is gi+0..gi+10
+    // 0th slot is gi+0..gi+ATTRS_PER_STACK
     int i = gi + slot*ATTRS_PER_STACK;
 
     std::string prefix = "";
@@ -204,6 +204,16 @@ const GymState BAI::buildState(const CStack * astack) {
     gymstate[i++] = NValue(prefix + "speed", stack->speed(), MIN_SPEED, MAX_SPEED);
     gymstate[i++] = NValue(prefix + "waited", stack->waitedThisTurn, 0, 1);
 
+    // TODO:
+    // More feature extraction to consider:
+    //
+    //     cb->battleGetTurnOrder();
+    //     astack->canMove()
+    //     astack->canShoot()
+    //     astack->willMove()
+    //     astack->ableToRetaliate()
+    //     astack->movedThisRound
+
     assert(i == i0 + ATTRS_PER_STACK);
   }
 
@@ -218,20 +228,17 @@ const GymState BAI::buildState(const CStack * astack) {
 
 ActionResult BAI::buildAction(const CStack * astack, GymState gymstate, GymAction gymaction) {
   std::vector<std::string> errors {};
-  std::string info;
+  const auto info = allGymActionNames[gymaction];
 
   if (gymaction == 0) {
-    info = "Retreat";
     // TODO: handle if retreat is impossible (can't know in advance)
     //       Will it be a query dialog?
     RETURN_ACT_OR_ERR(BattleAction::makeRetreat(cb->battleGetMySide()))
   }
   if (gymaction == 1) {
-    info = "Defend";
     RETURN_ACT_OR_ERR(BattleAction::makeDefend(astack))
   }
   if (gymaction == 2) {
-    info = "Wait";
     if (astack->waitedThisTurn) {
       // TODO: assert gymstate actually reported that the stack has waited
       ADD_ERR("already waited this turn");
@@ -246,8 +253,6 @@ ActionResult BAI::buildAction(const CStack * astack, GymState gymstate, GymActio
   auto x = ((gymaction-3) / 8) % BF_XMAX;
   auto dest = BattleHex(x + 1, y); // "real" hex is offset by 1 (left side col)
   auto hexstate = gymstate[x + y*BF_XMAX];
-
-  info = "Move to ("+ std::to_string(x) + "," + std::to_string(y) + ")";
 
   // self-destination is OK if shooting, or if attacking a neighbour
   auto ownhexes = astack->getHexes();
@@ -267,8 +272,6 @@ ActionResult BAI::buildAction(const CStack * astack, GymState gymstate, GymActio
 
   // move and attack enemy unit 0..6
   auto slot = subaction - 1;
-  info += " and attack enemy stack #" + std::to_string(slot);
-
   auto targets = cb->battleGetStacksIf([&astack, &slot](const CStack * stack) {
     return stack->unitSlot() == slot && stack->getOwner() != astack->getOwner();
   });
@@ -323,7 +326,7 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
   gymresult.ended = true;
   gymresult.victory = br->winner == cb->battleGetMySide();
 
-  print("Sending result: " + gymresult_str(gymresult));
+  print("Sending result:\n" + buildReport(gymresult, -1, nullptr));
 
   cbprovider->pycb(gymresult);
 
