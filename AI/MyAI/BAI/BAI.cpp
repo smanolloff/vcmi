@@ -323,10 +323,14 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
   print("*** battleEnd (QID: " + std::to_string(queryID) + ") ***");
 
   gymresult = {};
+  auto aunit = cb->battleActiveUnit();
+  auto astack = cb->battleGetStackByID(aunit->unitId());
+
+  gymresult.state = buildState(astack);
   gymresult.ended = true;
   gymresult.victory = br->winner == cb->battleGetMySide();
 
-  print("Sending result:\n" + buildReport(gymresult, -1, nullptr));
+  print("Sending result:\n" + buildReport(gymresult, gymaction, astack));
 
   cbprovider->pycb(gymresult);
 
