@@ -4,8 +4,8 @@
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
-#include "logging/CLogger.h"
 #include "pyclient.h"
+#include "logging/CLogger.h"
 
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/CGeneralTextHandler.h"
@@ -44,13 +44,11 @@
 
 #include <string_view>
 
-namespace bfs = boost::filesystem;
-
 extern boost::thread_specific_ptr<bool> inGuiThread;
 
-static CBasicLogConfigurator *logConfig;
+// static CBasicLogConfigurator *logConfig;
 
-void preinit_vcmi(std::string resdir) {
+void preinit_vcmi(std::string resdir, std::string loglevel) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -63,12 +61,6 @@ void preinit_vcmi(std::string resdir) {
 
   *console->cb = callbackFunction;
   console->start();
-
-  const bfs::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
-  logConfig = new CBasicLogConfigurator(logPath, console);
-  logConfig->configureDefault();
-  logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
-  logGlobal->info("The log file will be saved to %s", logPath);
 
   preinitDLL(::console);
 
@@ -94,9 +86,7 @@ void preinit_vcmi(std::string resdir) {
   };
 
   conflog("global", "error");
-  conflog("ai", "debug");
-
-  logConfig->configure();
+  conflog("ai", loglevel);
 
   srand ( (unsigned int)time(nullptr) );
 
@@ -104,7 +94,7 @@ void preinit_vcmi(std::string resdir) {
   GH.init();
 }
 
-void start_vcmi(std::string mapname, MMAI::CBProvider cbprovider) {
+void start_vcmi(MMAI::CBProvider cbprovider, std::string mapname) {
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
   auto baggage = std::make_any<MMAI::CBProvider*>(&cbprovider);

@@ -36,7 +36,12 @@ int main(int argc, char * argv[]) {
         LOG("resetcbcb called");
     };
 
-    auto cbprovider = MMAI::CBProvider{resetcbcb, syscbcb, actioncbcb, resultcb};
+    // Convert WPyCBInit -> PyCBInit
+    const MMAI::RenderAnsiCBCB renderansicbcb = [](MMAI::RenderAnsiCB &renderansicb) {
+        LOG("renderansicbcb called");
+    };
+
+    auto cbprovider = MMAI::CBProvider{renderansicbcb, resetcbcb, syscbcb, actioncbcb, resultcb};
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
@@ -44,10 +49,11 @@ int main(int argc, char * argv[]) {
     // std::string mapname = "simotest-enchanters.vmap";
 
     LOG("Start VCMI");
-    preinit_vcmi(resdir);
+    preinit_vcmi(resdir, "debug");
 
     // WTF for some reason linker says this is undefined symbol WTF
-    start_vcmi(mapname, cbprovider);
+    // fix: check pyclient.cpp start_vcmi arguments!
+    start_vcmi(cbprovider, mapname);
 
     return 0;
 }

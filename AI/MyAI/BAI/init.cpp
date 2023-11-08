@@ -10,6 +10,7 @@ BAI::BAI()
   : side(-1),
   wasWaitingForRealize(false),
   wasUnlockingGs(false),
+  stack(nullptr),
   hexStateNames(initHexStateNames()),
   hexStateValues(initHexStateValues()),
   hexStateNMap(initHexStateNMap()),
@@ -56,8 +57,11 @@ void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  debug("*** call cbprovider->actioncbcb([this](const Action &a) { cbprovider->actioncb(a) })");
+  debug("*** call cbprovider->actioncbcb([this](const Action &a) { this->actioncb(a) })");
   cbprovider->actioncbcb([this](const Action &a) { this->actioncb(a); });
+
+  debug("*** call cbprovider->renderansicbcb([this]() { return this->renderansicb(a) })");
+  cbprovider->renderansicbcb([this]() { return this->renderansicb(); });
 }
 
 const std::map<HexState, std::string> BAI::initHexStateNames() {

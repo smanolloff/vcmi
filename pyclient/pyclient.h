@@ -4,10 +4,11 @@
 #include "aitypes.h"
 
 extern "C" void __attribute__((visibility("default"))) preinit_vcmi(
-  std::string resdir
+  std::string resdir,
+  std::string loglevel
 );
 
 extern "C" void __attribute__((visibility("default"))) start_vcmi(
-  std::string mapname,
-  MMAI::CBProvider cbprovider
+  MMAI::CBProvider cbprovider,
+  std::string mapname
 );

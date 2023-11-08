@@ -68,6 +68,14 @@ struct Result {
 
 using Action = uint16_t;
 
+// RenderAnsiCB is a CPP function given to the GymEnv via ResetCBCB (see below)
+// GymEnv will invoke it on every "render()" call
+using RenderAnsiCB = const std::function<std::string()>;
+
+// RenderAnsiCBCB is a Python function passed to VCMI entrypoint.
+// VCMI will invoke it once, with 1 argument: a RenderAnsiCB (see above)
+using RenderAnsiCBCB = const std::function<void(RenderAnsiCB)>;
+
 // ResetCB is a CPP function given to the GymEnv via ResetCBCB (see below)
 // GymEnv will invoke it on every "reset()" call
 using ResetCB = const std::function<void()>;
@@ -101,15 +109,18 @@ using ResultCB = const std::function<void(const Result &result)>;
 // as a std::any object, then cast back to CBProvider in the AI constructor
 extern "C" struct DLL_EXPORT CBProvider {
     CBProvider(
+        const RenderAnsiCBCB renderansicbcb_,
         const ResetCBCB resetcbcb_,
         const SysCBCB syscbcb_,
         const ActionCBCB actioncbcb_,
         const ResultCB resultcb_
-    ) : resetcbcb(resetcbcb_),
+    ) : renderansicbcb(renderansicbcb_),
+        resetcbcb(resetcbcb_),
         syscbcb(syscbcb_),
         actioncbcb(actioncbcb_),
         resultcb(resultcb_) {}
 
+    const RenderAnsiCBCB renderansicbcb;
     const ResetCBCB resetcbcb;
     const SysCBCB syscbcb;
     const ActionCBCB actioncbcb;

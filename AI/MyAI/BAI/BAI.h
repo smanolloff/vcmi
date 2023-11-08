@@ -63,6 +63,8 @@ class BAI : public CBattleGameInterface
   bool awaitingAction = false;
 
   void actioncb(const Action &action);
+  std::string renderansicb();
+  const CStack * stack;
   // NOTE: those could be made static, no need to init at every battle
 
   const std::map<HexState, std::string> hexStateNames;
@@ -93,7 +95,7 @@ class BAI : public CBattleGameInterface
   void cppcb(const Action &action);
   std::string action_str(const Action &action);
   std::string result_str(const Result &result);
-  const std::string buildReport(const Result &r, const Action &a, const CStack* astack);
+  std::string renderANSI(const Result &r, const Action &a, const CStack* astack);
 
   const State buildState(const CStack * stack);
   ActionResult buildAction(const CStack * stack, State state, Action action);

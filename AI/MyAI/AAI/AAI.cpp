@@ -19,7 +19,7 @@ AAI::~AAI() {}
 
 void AAI::print(const std::string &text) const
 {
-  logAi->error("AAI  [%p]: %s", this, text);
+  logAi->info("AAI  [%p]: %s", this, text);
 }
 
 // Called by GymEnv on every "reset()" call

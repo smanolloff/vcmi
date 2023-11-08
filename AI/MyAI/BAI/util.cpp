@@ -20,7 +20,7 @@ std::string BAI::action_str(const Action &a) {
   return std::to_string(a);
 }
 
-const std::string BAI::buildReport(const Result &r, const Action &a, const CStack* astack) {
+std::string BAI::renderANSI(const Result &r, const Action &a, const CStack* astack) {
   auto state = r.state;
 
   std::string nocol = "\033[0m";
@@ -149,7 +149,7 @@ const std::string BAI::buildReport(const Result &r, const Action &a, const CStac
     nrows
   >{};
 
-  auto colwidth = 3;
+  auto colwidth = 4;
   auto headercolwidth = 16;
 
   table[0] = {

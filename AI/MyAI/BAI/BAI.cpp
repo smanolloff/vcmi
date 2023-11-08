@@ -50,20 +50,26 @@ void BAI::debug(const std::string &text) const
   logAi->debug("BAI  [%p]: %s", this, text);
 }
 
+// Called by GymEnv on every "render()" call
+std::string BAI::renderansicb() {
+  print("called");
+  return renderANSI(result, action, stack);
+}
+
 // Called by GymEnv on every "step()" call
 void BAI::actioncb(const Action &action) {
-    print(std::string("called with action: ") + action_str(action));
+  print("called with action: " + action_str(action));
 
-    debug("Assign this->action = action");
-    this->action = action;
+  debug("Assign this->action = action");
+  this->action = action;
 
-    // Unblock "activeStack"
-    debug("acquire lock");
-    boost::unique_lock<boost::mutex> lock(m);
-    debug("cond.notify_one()");
-    cond.notify_one();
+  // Unblock "activeStack"
+  debug("acquire lock");
+  boost::unique_lock<boost::mutex> lock(m);
+  debug("cond.notify_one()");
+  cond.notify_one();
 
-    debug("return");
+  debug("return");
 }
 
 void BAI::activeStack(const CStack * astack)
@@ -72,12 +78,13 @@ void BAI::activeStack(const CStack * astack)
   // print("activeStack called for " + astack->nodeName());
 
   result.state = buildState(astack);
+  this->stack = astack;
   std::shared_ptr<BattleAction> ba;
 
   while(!ba) {
     boost::unique_lock<boost::mutex> lock(m);
     awaitingAction = true;
-    print("Sending result:\n" + buildReport(result, action, astack));
+    // print("Sending result:\n" + buildReport(result, action, astack));
     cbprovider->resultcb(result);
 
     // We've set some events in motion:
@@ -344,7 +351,7 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
   result.state = State{};
   result.n_errors = 0;
 
-  print("Sending result:\n" + buildReport(result, action, nullptr));
+  // print("Sending result:\n" + buildReport(result, action, nullptr));
 
   cbprovider->resultcb(result);
 
