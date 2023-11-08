@@ -49,9 +49,9 @@ extern "C" struct DLL_EXPORT NValue {
 };
 
 // SYNC WITH VcmiEnv.observation_space
-using GymState = std::array<NValue, STATE_SIZE>;
-struct GymResult {
-    GymState state = {};
+using State = std::array<NValue, STATE_SIZE>;
+struct Result {
+    State state = {};
     int n_errors = 0;
     int dmgDealt = 0;
     int dmgReceived = 0;
@@ -66,54 +66,54 @@ struct GymResult {
     bool nostate = false;
 };
 
-using GymAction = uint16_t;
+using Action = uint16_t;
 
-// CppResetCB is a CPP function given to the GymEnv via PyCBResetInit (see below)
+// ResetCB is a CPP function given to the GymEnv via ResetCBCB (see below)
 // GymEnv will invoke it on every "reset()" call
-using CppResetCB = const std::function<void()>;
+using ResetCB = const std::function<void()>;
 
-// PyCBResetInit is a Python function passed to VCMI entrypoint.
-// VCMI will invoke it once, with 1 argument: a CppResetCB (see above)
-using PyCBResetInit = const std::function<void(CppResetCB)>;
+// ResetCBCB is a Python function passed to VCMI entrypoint.
+// VCMI will invoke it once, with 1 argument: a ResetCB (see above)
+using ResetCBCB = const std::function<void(ResetCB)>;
 
-// CppCB is a CPP function given to the GymEnv via PyCBSysInit (see below)
+// SysCB is a CPP function given to the GymEnv via SysCBCB (see below)
 // GymEnv will invoke it on "close()" calls (or "reset(hard=True)" ?)
-using CppSysCB = const std::function<void(std::string cmd)>;
+using SysCB = const std::function<void(std::string cmd)>;
 
-// PyCBSysInit is a Python function passed to VCMI entrypoint.
-// VCMI will invoke it once, with 1 argument: a CppSysCB (see above)
-using PyCBSysInit = const std::function<void(CppSysCB)>;
+// SysCBCB is a Python function passed to VCMI entrypoint.
+// VCMI will invoke it once, with 1 argument: a SysCB (see above)
+using SysCBCB = const std::function<void(SysCB)>;
 
-// CppCB is a CPP function given to the GymEnv via PyCBInit (see below)
-// GymEnv will invoke it on every "step()" call, with 1 argument: an GymAction
-using CppCB = const std::function<void(const GymAction &action)>;
+// ActionCB is a CPP function given to the GymEnv via ActionCBCB (see below)
+// GymEnv will invoke it on every "step()" call, with 1 argument: an Action
+using ActionCB = const std::function<void(const Action &action)>;
 
-// PyCBInit is a Python function passed to the AI constructor.
-// AI constructor will invoke it once, with 1 argument: a CppCB (see above)
-using PyCBInit = const std::function<void(CppCB)>;
+// ActionCBCB is a Python function passed to the AI constructor.
+// AI constructor will invoke it once, with 1 argument: a ActionCB (see above)
+using ActionCBCB = const std::function<void(ActionCB)>;
 
-// PyCB is a Python function passed to the AI constructor.
-// AI will invoke it on every "yourTurn()" call, with 1 argument: a GymState
-using PyCB = const std::function<void(const GymResult &result)>;
+// ResultCB is a Python function passed to the AI constructor.
+// AI will invoke it on every "yourTurn()" call, with 1 argument: a Result
+using ResultCB = const std::function<void(const Result &result)>;
 
-// The PyCB functions above are all bundled into CBProvider struct
+// The CB functions above are all bundled into CBProvider struct
 // whose purpose is to be seamlessly transportable through VCMI code
 // as a std::any object, then cast back to CBProvider in the AI constructor
 extern "C" struct DLL_EXPORT CBProvider {
     CBProvider(
-        const PyCBResetInit pycbresetinit_,
-        const PyCBSysInit pycbsysinit_,
-        const PyCBInit pycbinit_,
-        const PyCB pycb_
-    ) : pycbresetinit(pycbresetinit_),
-        pycbsysinit(pycbsysinit_),
-        pycbinit(pycbinit_),
-        pycb(pycb_) {}
+        const ResetCBCB resetcbcb_,
+        const SysCBCB syscbcb_,
+        const ActionCBCB actioncbcb_,
+        const ResultCB resultcb_
+    ) : resetcbcb(resetcbcb_),
+        syscbcb(syscbcb_),
+        actioncbcb(actioncbcb_),
+        resultcb(resultcb_) {}
 
-    const PyCBResetInit pycbresetinit;
-    const PyCBSysInit pycbsysinit;
-    const PyCBInit pycbinit;
-    const PyCB pycb;
+    const ResetCBCB resetcbcb;
+    const SysCBCB syscbcb;
+    const ActionCBCB actioncbcb;
+    const ResultCB resultcb;
 };
 
 } // namespace MMAI

@@ -121,8 +121,8 @@ void start_vcmi(std::string mapname, MMAI::CBProvider cbprovider) {
   CMessage::init();
   CCS->curh->show();
 
-  // We have the GIL, safe to call pycbsysinit now
-  cbprovider.pycbsysinit([](std::string cmd) {
+  // We have the GIL, safe to call syscbcb now
+  cbprovider.syscbcb([](std::string cmd) {
     logGlobal->error("!!!!!!!!!!! SYS !!!!!!!!!! Received command: %s", cmd);
     if (cmd == "terminate")
       exit(0);

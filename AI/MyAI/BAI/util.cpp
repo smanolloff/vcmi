@@ -16,12 +16,12 @@ std::string padRight(const std::string& input, size_t desiredLength, char paddin
 }
 
 
-std::string BAI::gymaction_str(const GymAction &ga) {
-  return std::to_string(ga);
+std::string BAI::action_str(const Action &a) {
+  return std::to_string(a);
 }
 
-const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, const CStack* astack) {
-  auto gs = gr.state;
+const std::string BAI::buildReport(const Result &r, const Action &a, const CStack* astack) {
+  auto state = r.state;
 
   std::string nocol = "\033[0m";
   std::string enemycol = "\033[31m"; // red
@@ -56,7 +56,7 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
   rows.emplace_back() << padLeft("", 34, '-');
 
   for (int i=0; i < BF_SIZE; i++) {
-    auto &nv = gs[i];
+    auto &nv = state[i];
     auto &row = (i % BF_XMAX == 0)
       ? (rows.emplace_back() << (i % 2 == 0 ? "| " : "|"))
       : rows.back();
@@ -107,16 +107,16 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
     std::string value;
 
     switch(i) {
-    case 1: name = "Last action"; value = (gymaction == ACTION_UNKNOWN) ? "" : allGymActionNames[gymaction]; break;
-    case 2: name = "Errors"; value = std::to_string(gr.n_errors); break;
-    case 3: name = "DMG dealt"; value = std::to_string(gr.dmgDealt); break;
-    case 4: name = "Units killed"; value = std::to_string(gr.unitsKilled); break;
-    case 5: name = "Value killed"; value = std::to_string(gr.valueKilled); break;
-    case 6: name = "DMG received"; value = std::to_string(gr.dmgReceived); break;
-    case 7: name = "Units lost"; value = std::to_string(gr.unitsLost); break;
-    case 8: name = "Value lost"; value = std::to_string(gr.valueLost); break;
-    case 9: name = "Battle ended"; value = gr.ended ? "yes" : "no"; break;
-    case 10: name = "Victory"; value = gr.ended ? (gr.victory ? "yes" : "no") : ""; break;
+    case 1: name = "Last action"; value = (action == ACTION_UNKNOWN) ? "" : allActionNames[action]; break;
+    case 2: name = "Errors"; value = std::to_string(r.n_errors); break;
+    case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
+    case 4: name = "Units killed"; value = std::to_string(r.unitsKilled); break;
+    case 5: name = "Value killed"; value = std::to_string(r.valueKilled); break;
+    case 6: name = "DMG received"; value = std::to_string(r.dmgReceived); break;
+    case 7: name = "Units lost"; value = std::to_string(r.unitsLost); break;
+    case 8: name = "Value lost"; value = std::to_string(r.valueLost); break;
+    case 9: name = "Battle ended"; value = r.ended ? "yes" : "no"; break;
+    case 10: name = "Victory"; value = r.ended ? (r.victory ? "yes" : "no") : ""; break;
     default:
       continue;
     }
@@ -135,7 +135,7 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
   //
 
   // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
-  assert(BF_SIZE + 14*ATTRS_PER_STACK == gs.size() - 1);
+  assert(BF_SIZE + 14*ATTRS_PER_STACK == state.size() - 1);
 
   const auto nrows = 14+1;
   const auto ncols = ATTRS_PER_STACK+1;
@@ -176,7 +176,7 @@ const std::string BAI::buildReport(const GymResult &gr, const GymAction &ga, con
     table[r][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
 
     for (int c=1; c<ncols; c++) {
-      auto nv = gs[i+BF_SIZE];
+      auto nv = state[i+BF_SIZE];
       auto color = nocol;
 
       if (alivestacks[nstack]) {

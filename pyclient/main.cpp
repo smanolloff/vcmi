@@ -2,7 +2,7 @@
 #include "pyclient.h"
 
 int main(int argc, char * argv[]) {
-    std::function<void(int)> wcppcb;
+    std::function<void(int)> wactioncb;
 
     // NOTE: the .vmap extension may be ommitted
     std::string mapname(argc > 1 ? argv[1] : "simotest.vmap");
@@ -11,32 +11,32 @@ int main(int argc, char * argv[]) {
     int i = 0;
 
     // Convert WPyCB -> PyCB
-    const MMAI::PyCB pycb = [&i, &wcppcb, &act](const MMAI::GymResult &gymresult) {
-        LOG("pycb called");
+    const MMAI::ResultCB resultcb = [&i, &wactioncb, &act](const MMAI::Result &result) {
+        LOG("resultcb called");
         // if (i < 5)
-        boost::thread([&i, wcppcb, &act]() { wcppcb(act+i); });
+        boost::thread t([&i, wactioncb, &act]() { wactioncb(act+i); });
 
         i += 1;
     };
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::PyCBInit pycbinit = [&wcppcb](MMAI::CppCB cppcb) {
-        wcppcb = [cppcb](int act){ cppcb(act); };
-        LOG("pycbinit called");
+    const MMAI::ActionCBCB actioncbcb = [&wactioncb](MMAI::ActionCB actioncb) {
+        wactioncb = [actioncb](int act){ actioncb(act); };
+        LOG("actioncbcb called");
     };
 
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::PyCBSysInit pycbsysinit = [](MMAI::CppSysCB &cppsyscb) {
-        LOG("pycbsysinit called");
+    const MMAI::SysCBCB syscbcb = [](MMAI::SysCB &syscb) {
+        LOG("syscbcb called");
     };
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::PyCBResetInit pycbresetinit = [](MMAI::CppResetCB &cppresetcb) {
-        LOG("pycbresetinit called");
+    const MMAI::ResetCBCB resetcbcb = [](MMAI::ResetCB &resetcb) {
+        LOG("resetcbcb called");
     };
 
-    auto cbprovider = MMAI::CBProvider{pycbresetinit, pycbsysinit, pycbinit, pycb};
+    auto cbprovider = MMAI::CBProvider{resetcbcb, syscbcb, actioncbcb, resultcb};
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";

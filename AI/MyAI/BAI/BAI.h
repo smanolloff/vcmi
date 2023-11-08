@@ -62,6 +62,7 @@ class BAI : public CBattleGameInterface
   boost::condition_variable cond;
   bool awaitingAction = false;
 
+  void actioncb(const Action &action);
   // NOTE: those could be made static, no need to init at every battle
 
   const std::map<HexState, std::string> hexStateNames;
@@ -76,8 +77,8 @@ class BAI : public CBattleGameInterface
   const std::array<BattleHex, BF_SIZE> allBattleHexes;
   const std::array<BattleHex, BF_SIZE> initAllBattleHexes();
 
-  const std::array<std::string, N_ACTIONS> allGymActionNames;
-  const std::array<std::string, N_ACTIONS> initAllGymActionNames();
+  const std::array<std::string, N_ACTIONS> allActionNames;
+  const std::array<std::string, N_ACTIONS> initAllActionNames();
 
 
   // can't be const -- called during battleStart (unavailable in constructor)
@@ -86,16 +87,16 @@ class BAI : public CBattleGameInterface
 
   // can't be const value (received after init)
   // => use const pointer
-  GymAction gymaction = ACTION_UNKNOWN;
-  GymResult gymresult;
+  Action action = ACTION_UNKNOWN;
+  Result result;
 
-  void cppcb(const GymAction &gymaction);
-  std::string gymaction_str(const GymAction &gymaction);
-  std::string gymresult_str(const GymResult &gymresult);
-  const std::string buildReport(const GymResult &gr, const GymAction &ga, const CStack* astack);
+  void cppcb(const Action &action);
+  std::string action_str(const Action &action);
+  std::string result_str(const Result &result);
+  const std::string buildReport(const Result &r, const Action &a, const CStack* astack);
 
-  const GymState buildState(const CStack * stack);
-  ActionResult buildAction(const CStack * stack, GymState gymstate, GymAction action);
+  const State buildState(const CStack * stack);
+  ActionResult buildAction(const CStack * stack, State state, Action action);
 
 public:
   BAI();

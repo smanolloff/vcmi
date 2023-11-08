@@ -51,11 +51,11 @@ void BAI::debug(const std::string &text) const
 }
 
 // Called by GymEnv on every "step()" call
-void BAI::cppcb(const GymAction &gymaction) {
-    print(std::string("called with gymaction: ") + gymaction_str(gymaction));
+void BAI::actioncb(const Action &action) {
+    print(std::string("called with action: ") + action_str(action));
 
-    debug("Assign this->gymaction = gymaction");
-    this->gymaction = gymaction;
+    debug("Assign this->action = action");
+    this->action = action;
 
     // Unblock "activeStack"
     debug("acquire lock");
@@ -71,41 +71,41 @@ void BAI::activeStack(const CStack * astack)
   print("*** activeStack ***");
   // print("activeStack called for " + astack->nodeName());
 
-  gymresult.state = buildState(astack);
+  result.state = buildState(astack);
   std::shared_ptr<BattleAction> ba;
 
   while(!ba) {
     boost::unique_lock<boost::mutex> lock(m);
     awaitingAction = true;
-    print("Sending result:\n" + buildReport(gymresult, gymaction, astack));
-    cbprovider->pycb(gymresult);
+    print("Sending result:\n" + buildReport(result, action, astack));
+    cbprovider->resultcb(result);
 
     // We've set some events in motion:
-    //  - in python, "env" now has our cppcb stored (via pycbinit)
-    //  - in python, "env" now has the state stored (via pycb)
-    //  - in python, "env" constructor can now return (pycb also set an event)
-    //  - in python, env.step(action) will be called, which will call cppcb
-    // our cppcb will then call AI->cb->makeAction()
+    //  - in python, "env" now has our actioncb stored (via actioncbcb)
+    //  - in python, "env" now has the state stored (via resultcb)
+    //  - in python, "env" constructor can now return (resultcb also set an event)
+    //  - in python, env.step(action) will be called, which will call actioncb
+    // our actioncb will then call AI->cb->makeAction()
     // ...we wait until that happens, and FINALLY we can return from yourTurn
     cond.wait(lock);
     awaitingAction = false;
 
-    debug("Got action: " + gymaction_str(gymaction));
-    auto pair = buildAction(astack, gymresult.state, gymaction);
+    debug("Got action: " + action_str(action));
+    auto pair = buildAction(astack, result.state, action);
     auto errors = pair.second;
     ba = pair.first;
 
     if (ba) {
       assert(errors.empty());
       debug("Action was VALID");
-      gymresult = {};
+      result = {};
     } else {
       assert(!errors.empty());
       auto errstring = std::accumulate(errors.begin(), errors.end(), std::string(),
           [](auto &a, auto &b) { return a + "\n" + b; });
 
       print("Action was INVALID:" + errstring);
-      gymresult.n_errors = errors.size();
+      result.n_errors = errors.size();
     }
   }
 
@@ -115,8 +115,8 @@ void BAI::activeStack(const CStack * astack)
   return;
 }
 
-const GymState BAI::buildState(const CStack * astack) {
-  GymState gymstate = {};
+const State BAI::buildState(const CStack * astack) {
+  State state = {};
 
   auto accessibility = cb->getAccesibility();
   auto rinfo = cb->getReachability(astack);
@@ -125,25 +125,25 @@ const GymState BAI::buildState(const CStack * astack) {
   // TODO: remove (one-time sanity check)
   assert(allBattleHexes.size() == 165);
 
-  // "global" i-counter for gymstate
+  // "global" i-counter for state
   int gi = 0;
 
   for (const BattleHex& hex : allBattleHexes) {
     switch(accessibility[hex.hex]) {
     case LIB_CLIENT::EAccessibility::ACCESSIBLE:
-      gymstate[gi++] = (rinfo.distances[hex] <= speed)
+      state[gi++] = (rinfo.distances[hex] <= speed)
         ? HNS(FREE_REACHABLE)
         : HNS(FREE_UNREACHABLE);
 
       break;
     case LIB_CLIENT::EAccessibility::OBSTACLE:
-      gymstate[gi++] = HNS(OBSTACLE);
+      state[gi++] = HNS(OBSTACLE);
       break;
     case LIB_CLIENT::EAccessibility::ALIVE_STACK:
       // simply map astack to HexNormalizedState[STACK_X]
       // NOTE: switch gives errors if declaring variable here
       // auto state = cb->battleGetStackByPos(hex, true);
-      gymstate[gi++] = stackHNSMap.at(cb->battleGetStackByPos(hex, true));
+      state[gi++] = stackHNSMap.at(cb->battleGetStackByPos(hex, true));
       break;
 
     // XXX: unhandled hex states
@@ -175,7 +175,7 @@ const GymState BAI::buildState(const CStack * astack) {
     if (stack->unitSide() == astack->unitSide()) {
       prefix = "F" + std::to_string(slot+1) + " ";
     } else {
-      // enemy units in gymstate are in "slots" 8..14
+      // enemy units in state are in "slots" 8..14
       prefix = "E" + std::to_string(slot+1) + " ";
       i += (7 * ATTRS_PER_STACK);
     }
@@ -191,18 +191,18 @@ const GymState BAI::buildState(const CStack * astack) {
     // dmg(avg, melee), dmg(avg, ranged), dmg(deviation_factor)
     // (saves a total of 14 values)
 
-    gymstate[i++] = NValue(prefix + "qty", stack->getCount(), MIN_QTY, MAX_QTY);
-    gymstate[i++] = NValue(prefix + "att", stack->getAttack(false), MIN_ATT, MAX_ATT);
-    gymstate[i++] = NValue(prefix + "def", stack->getDefense(false), MIN_DEF, MAX_DEF);
-    gymstate[i++] = NValue(prefix + "shots", stack->shots.available(), MIN_SHOTS, MAX_SHOTS);
-    gymstate[i++] = NValue(prefix + "dmg (min, melee)", stack->getMinDamage(false), MIN_DMG, MAX_DMG);
-    gymstate[i++] = NValue(prefix + "dmg (max, melee)", stack->getMaxDamage(false), MIN_DMG, MAX_DMG);
-    gymstate[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMinDamage(true), MIN_DMG, MAX_DMG);
-    gymstate[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMaxDamage(true), MIN_DMG, MAX_DMG);
-    gymstate[i++] = NValue(prefix + "HP", stack->getMaxHealth(), MIN_HP, MAX_HP);
-    gymstate[i++] = NValue(prefix + "HP left", stack->getFirstHPleft(), MIN_HP, MAX_HP);
-    gymstate[i++] = NValue(prefix + "speed", stack->speed(), MIN_SPEED, MAX_SPEED);
-    gymstate[i++] = NValue(prefix + "waited", stack->waitedThisTurn, 0, 1);
+    state[i++] = NValue(prefix + "qty", stack->getCount(), MIN_QTY, MAX_QTY);
+    state[i++] = NValue(prefix + "att", stack->getAttack(false), MIN_ATT, MAX_ATT);
+    state[i++] = NValue(prefix + "def", stack->getDefense(false), MIN_DEF, MAX_DEF);
+    state[i++] = NValue(prefix + "shots", stack->shots.available(), MIN_SHOTS, MAX_SHOTS);
+    state[i++] = NValue(prefix + "dmg (min, melee)", stack->getMinDamage(false), MIN_DMG, MAX_DMG);
+    state[i++] = NValue(prefix + "dmg (max, melee)", stack->getMaxDamage(false), MIN_DMG, MAX_DMG);
+    state[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMinDamage(true), MIN_DMG, MAX_DMG);
+    state[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMaxDamage(true), MIN_DMG, MAX_DMG);
+    state[i++] = NValue(prefix + "HP", stack->getMaxHealth(), MIN_HP, MAX_HP);
+    state[i++] = NValue(prefix + "HP left", stack->getFirstHPleft(), MIN_HP, MAX_HP);
+    state[i++] = NValue(prefix + "speed", stack->speed(), MIN_SPEED, MAX_SPEED);
+    state[i++] = NValue(prefix + "waited", stack->waitedThisTurn, 0, 1);
 
     // TODO:
     // More feature extraction to consider:
@@ -219,28 +219,28 @@ const GymState BAI::buildState(const CStack * astack) {
 
   gi += (14 * ATTRS_PER_STACK);
 
-  gymstate[gi++] = NValue("active stack", astack->unitSlot(), 0, 7);
+  state[gi++] = NValue("active stack", astack->unitSlot(), 0, 7);
 
-  assert(gi == gymstate.size());
-  return gymstate;
+  assert(gi == state.size());
+  return state;
 }
 
 
-ActionResult BAI::buildAction(const CStack * astack, GymState gymstate, GymAction gymaction) {
+ActionResult BAI::buildAction(const CStack * astack, State state, Action action) {
   std::vector<std::string> errors {};
-  const auto info = allGymActionNames[gymaction];
+  const auto info = allActionNames[action];
 
-  if (gymaction == 0) {
+  if (action == 0) {
     // TODO: handle if retreat is impossible (can't know in advance)
     //       Will it be a query dialog?
     RETURN_ACT_OR_ERR(BattleAction::makeRetreat(cb->battleGetMySide()))
   }
-  if (gymaction == 1) {
+  if (action == 1) {
     RETURN_ACT_OR_ERR(BattleAction::makeDefend(astack))
   }
-  if (gymaction == 2) {
+  if (action == 2) {
     if (astack->waitedThisTurn) {
-      // TODO: assert gymstate actually reported that the stack has waited
+      // TODO: assert state actually reported that the stack has waited
       ADD_ERR("already waited this turn");
     }
 
@@ -248,11 +248,11 @@ ActionResult BAI::buildAction(const CStack * astack, GymState gymstate, GymActio
     return {std::make_shared<BattleAction>(BattleAction::makeWait(astack)), {}};
   }
 
-  auto subaction = (gymaction-3) % 8;
-  auto y = ((gymaction-3) / 8) / BF_XMAX;
-  auto x = ((gymaction-3) / 8) % BF_XMAX;
+  auto subaction = (action-3) % 8;
+  auto y = ((action-3) / 8) / BF_XMAX;
+  auto x = ((action-3) / 8) % BF_XMAX;
   auto dest = BattleHex(x + 1, y); // "real" hex is offset by 1 (left side col)
-  auto hexstate = gymstate[x + y*BF_XMAX];
+  auto hexstate = state[x + y*BF_XMAX];
 
   // self-destination is OK if shooting, or if attacking a neighbour
   auto ownhexes = astack->getHexes();
@@ -323,13 +323,13 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
     // => use defender
     if (defender->getOwner() == cb->getPlayerID()) {
       // note: in VCMI there is no excess dmg if stack is killed
-      gymresult.dmgReceived += dmg;
-      gymresult.unitsLost += units;
-      gymresult.valueLost += value;
+      result.dmgReceived += dmg;
+      result.unitsLost += units;
+      result.valueLost += value;
     } else {
-      gymresult.dmgDealt += dmg;
-      gymresult.unitsKilled += units;
-      gymresult.valueKilled += value;
+      result.dmgDealt += dmg;
+      result.unitsKilled += units;
+      result.valueKilled += value;
     }
   }
 }
@@ -338,15 +338,15 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
 {
   print("*** battleEnd (QID: " + std::to_string(queryID) + ") ***");
 
-  gymresult.victory = br->winner == cb->battleGetMySide();
-  gymresult.ended = true;
-  gymresult.nostate = true;
-  gymresult.state = GymState{};
-  gymresult.n_errors = 0;
+  result.victory = br->winner == cb->battleGetMySide();
+  result.ended = true;
+  result.nostate = true;
+  result.state = State{};
+  result.n_errors = 0;
 
-  print("Sending result:\n" + buildReport(gymresult, gymaction, nullptr));
+  print("Sending result:\n" + buildReport(result, action, nullptr));
 
-  cbprovider->pycb(gymresult);
+  cbprovider->resultcb(result);
 
 }
 

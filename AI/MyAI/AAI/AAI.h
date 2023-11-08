@@ -19,7 +19,7 @@ class DLL_EXPORT AAI : public CAdventureAI
   std::shared_ptr<BAI> bai;
 public:
   std::shared_ptr<CCallback> cb;
-  void cppresetcb();
+  void resetcb();
 public:
   AAI();
   virtual ~AAI();

@@ -23,7 +23,7 @@ void AAI::print(const std::string &text) const
 }
 
 // Called by GymEnv on every "reset()" call
-void AAI::cppresetcb() {
+void AAI::resetcb() {
     print("called");
 
     // Unblock "battleEnd"
@@ -40,7 +40,7 @@ void AAI::cppresetcb() {
       // => just call cppcb with a "Retreat" action to unblock it
       // (then a battleEnd will be called as usual)
       assert(bai->awaitingAction);
-      bai->cppcb(0);
+      bai->actioncb(0);
     }
 
     print("return");
@@ -62,8 +62,8 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  // print("*** call cbprovider->pycbresetinit([this]() { cbprovider->cppresetcb() })");
-  cbprovider->pycbresetinit([this]() { this->cppresetcb(); });
+  // print("*** call cbprovider->resetcbcb([this]() { cbprovider->resetcb() })");
+  cbprovider->resetcbcb([this]() { this->resetcb(); });
 }
 
 void AAI::yourTurn() {
@@ -118,7 +118,7 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
   CAdventureAI::battleEnd(br, queryID);
 
   // We're waiting for a call to GYM's reset which
-  // should invoke our cppresetcb
+  // should invoke our resetcb
   cond.wait(lock);
 
   awaitingReset = false;

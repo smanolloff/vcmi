@@ -14,7 +14,7 @@ BAI::BAI()
   hexStateValues(initHexStateValues()),
   hexStateNMap(initHexStateNMap()),
   allBattleHexes(initAllBattleHexes()),
-  allGymActionNames(initAllGymActionNames())
+  allActionNames(initAllActionNames())
 {
   print("+++ constructor +++");
 }
@@ -56,8 +56,8 @@ void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
 
-  debug("*** call cbprovider->pycbinit([this](const GymAction &ga) { cbprovider->cppcb(ga) })");
-  cbprovider->pycbinit([this](const GymAction &ga) { this->cppcb(ga); });
+  debug("*** call cbprovider->actioncbcb([this](const Action &a) { cbprovider->actioncb(a) })");
+  cbprovider->actioncbcb([this](const Action &a) { this->actioncb(a); });
 }
 
 const std::map<HexState, std::string> BAI::initHexStateNames() {
@@ -147,7 +147,7 @@ void BAI::initStackHNSMap() {
   }
 }
 
-const std::array<std::string, N_ACTIONS> BAI::initAllGymActionNames() {
+const std::array<std::string, N_ACTIONS> BAI::initAllActionNames() {
   std::array<std::string, N_ACTIONS> res = {"???"};
   res[0] = "Retreat";
   res[1] = "Defend";
