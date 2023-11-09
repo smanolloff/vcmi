@@ -69,7 +69,7 @@ void preinit_vcmi(std::string resdir, std::string loglevel) {
   Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
   // NOTE: friendlyAI is hard-coded in MyAI's AAI::getBattleAIName()
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
-  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
+  Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
 
   //
   // Configure logging
@@ -85,7 +85,7 @@ void preinit_vcmi(std::string resdir, std::string loglevel) {
     loggers->Vector().push_back(jlog);
   };
 
-  conflog("global", "error");
+  conflog("global", loglevel);
   conflog("ai", loglevel);
 
   srand ( (unsigned int)time(nullptr) );

@@ -39,8 +39,9 @@ enum class HexState : int
     count
 };
 
-using ActionResult = std::pair<
+using ActionResult = std::tuple<
   const std::shared_ptr<BattleAction>,
+  ErrMask,
   std::vector<std::string>
 >;
 

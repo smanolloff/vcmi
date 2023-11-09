@@ -31,14 +31,11 @@ MMAI_NS_BEGIN
 #define MIN_SPEED 0
 #define MAX_SPEED 30
 
-#define ADD_ERR(err) errors.emplace_back("*** Invalid action: " + info + ": " + err)
 
-#define RETURN_ACT_OR_ERR(act) if (errors.empty()) { \
-    print("Action: " + info); \
-    return {std::make_shared<BattleAction>(act), {}}; \
-  } else { \
-    return {nullptr, errors}; \
-  }
+#define RETURN_ACT_OR_ERR(act) return {\
+  (errmask == 0) ? std::make_shared<BattleAction>(act) : nullptr, \
+  errmask, \
+  errmsgs};
 
 void BAI::print(const std::string &text) const
 {
@@ -97,22 +94,24 @@ void BAI::activeStack(const CStack * astack)
     cond.wait(lock);
     awaitingAction = false;
 
-    debug("Got action: " + action_str(action));
-    auto pair = buildAction(astack, result.state, action);
-    auto errors = pair.second;
-    ba = pair.first;
+    const auto actname = allActionNames[action];
+    debug("Got action: " + action_str(action) + "(" + actname + ")");
+    auto tuple = buildAction(astack, result.state, action);
+    ba = std::get<0>(tuple);
+    auto errmask = std::get<1>(tuple);
+    auto errmsgs = std::get<2>(tuple);
 
     if (ba) {
-      assert(errors.empty());
-      debug("Action was VALID");
+      assert(errmask == 0);
+      debug("Action is VALID: " + actname);
       result = {};
     } else {
-      assert(!errors.empty());
-      auto errstring = std::accumulate(errors.begin(), errors.end(), std::string(),
+      assert(errmask > 0);
+      auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
           [](auto &a, auto &b) { return a + "\n" + b; });
 
-      print("Action was INVALID:" + errstring);
-      result.n_errors = errors.size();
+      print("Action is INVALID: " + actname + ":\n" + errstring);
+      result.errmask = errmask;
     }
   }
 
@@ -233,9 +232,15 @@ const State BAI::buildState(const CStack * astack) {
 }
 
 
+void addError(ErrType type, ErrMask &errmask, std::vector<std::string> &errmsgs) {
+  auto& [flag, name, msg] = ERRORS.at(type);
+  errmask |= flag;
+  errmsgs.emplace_back("(" + name + ") " + msg);
+}
+
 ActionResult BAI::buildAction(const CStack * astack, State state, Action action) {
-  std::vector<std::string> errors {};
-  const auto info = allActionNames[action];
+  ErrMask errmask = 0;
+  std::vector<std::string> errmsgs {};
 
   if (action == 0) {
     // TODO: handle if retreat is impossible (can't know in advance)
@@ -248,11 +253,10 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
   if (action == 2) {
     if (astack->waitedThisTurn) {
       // TODO: assert state actually reported that the stack has waited
-      ADD_ERR("already waited this turn");
+      addError(ERR_ALREADY_WAITED, errmask, errmsgs);
     }
 
     RETURN_ACT_OR_ERR(BattleAction::makeWait(astack))
-    return {std::make_shared<BattleAction>(BattleAction::makeWait(astack)), {}};
   }
 
   auto subaction = (action-3) % 8;
@@ -267,9 +271,12 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
 
   if (destself && subaction == 0) {
     // move-only does not allow "moving" to self
-    ADD_ERR("bad target hex (self):" + hexstate.name);
-  } else if (!destself && hexstate.orig != static_cast<int>(HexState::FREE_REACHABLE)) {
-    ADD_ERR("bad target hex (blocked or unreachable): " + hexstate.name);
+    addError(ERR_MOVE_SELF, errmask, errmsgs);
+  } else if (!destself) {
+    if (hexstate.orig == static_cast<int>(HexState::FREE_UNREACHABLE))
+      addError(ERR_HEX_UNREACHABLE, errmask, errmsgs);
+    else if (hexstate.orig != static_cast<int>(HexState::FREE_REACHABLE))
+      addError(ERR_HEX_BLOCKED, errmask, errmsgs);
   }
 
   // just move
@@ -284,27 +291,27 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
   });
 
   if (targets.empty()) {
-    ADD_ERR("no such stack");
-    return {nullptr, errors};
+    addError(ERR_STACK_NA, errmask, errmsgs);
+    return {nullptr, errmask, errmsgs};
   }
 
   assert(targets.size() <= 1);
   auto stack = targets[0];
 
   if (!stack->alive())
-    ADD_ERR("stack is dead");
+    addError(ERR_STACK_DEAD, errmask, errmsgs);
   else if (!stack->isValidTarget())
-    ADD_ERR("stack is not a valid target (turret?)");
+    addError(ERR_STACK_INVALID, errmask, errmsgs);
 
   if (cb->battleCanShoot(astack)) {
     if (!destself)
-      ADD_ERR("trying to both move and shoot");
+      addError(ERR_MOVE_SHOOT, errmask, errmsgs);
 
     RETURN_ACT_OR_ERR(BattleAction::makeShotAttack(astack, stack));
   }
 
   if (!astack->isMeleeAttackPossible(astack, stack))
-    ADD_ERR("melee attack not possible");
+    addError(ERR_ATTACK_IMPOSSIBLE, errmask, errmsgs);
 
   RETURN_ACT_OR_ERR(BattleAction::makeMeleeAttack(astack, stack->position, dest));
 }
@@ -349,7 +356,7 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
   result.ended = true;
   result.nostate = true;
   result.state = State{};
-  result.n_errors = 0;
+  result.errmask = 0;
 
   // print("Sending result:\n" + buildReport(result, action, nullptr));
 

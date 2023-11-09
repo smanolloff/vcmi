@@ -102,13 +102,21 @@ std::string BAI::renderANSI(const Result &r, const Action &a, const CStack* asta
   // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
   // ...
 
+  auto n_errors = 0;
+  auto errmask = r.errmask;
+  while (errmask) {
+      n_errors += errmask & 1;
+      errmask >>= 1;
+  }
+
+
   for (int i=0; i<=rows.size(); i++) {
     std::string name;
     std::string value;
 
     switch(i) {
     case 1: name = "Last action"; value = (action == ACTION_UNKNOWN) ? "" : allActionNames[action]; break;
-    case 2: name = "Errors"; value = std::to_string(r.n_errors); break;
+    case 2: name = "Errors"; value = std::to_string(n_errors); break;
     case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
     case 4: name = "Units killed"; value = std::to_string(r.unitsKilled); break;
     case 5: name = "Value killed"; value = std::to_string(r.valueKilled); break;
