@@ -39,12 +39,14 @@ MMAI_NS_BEGIN
 
 void BAI::print(const std::string &text) const
 {
-  logAi->info("BAI  [%p]: %s", this, text);
+  logAi->error("BAI  [%p]: %s", this, text);
+  // printf("[BAI]: %s\n", text.c_str());
 }
 
 void BAI::debug(const std::string &text) const
 {
-  logAi->debug("BAI  [%p]: %s", this, text);
+  logAi->error("BAI  [%p]: %s", this, text);
+  // printf("[BAI]: %s\n", text.c_str());
 }
 
 // Called by GymEnv on every "render()" call
@@ -361,6 +363,7 @@ void BAI::battleEnd(const BattleResult *br, QueryID queryID)
   // print("Sending result:\n" + buildReport(result, action, nullptr));
 
   cbprovider->resultcb(result);
+  print("*** battleEnd RETURN ***");
 
 }
 

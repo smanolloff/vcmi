@@ -20,6 +20,7 @@ AAI::~AAI() {}
 void AAI::print(const std::string &text) const
 {
   logAi->info("AAI  [%p]: %s", this, text);
+  // printf("[AAI]: %s\n", text.c_str());
 }
 
 // Called by GymEnv on every "reset()" call
@@ -116,6 +117,25 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
   // this will call battle AI's battleEnd, which will inform
   // gym of the results and be destroyed afterwards
   CAdventureAI::battleEnd(br, queryID);
+
+  // let the battle AI be destroyed, a new one will be made
+  // for the new battle
+  bai = nullptr;
+
+  // so there's a PROBLEM with the resets:
+  // PY calls reset()
+  // -> AAI.resetcb() // awaitingReset=false
+  // -> AAI->bai.actioncb(0) (retreat)
+  // => AAI->battleEnd (here)
+  // -> AAI->cb->selectionMade
+  // -> BAI->battleEnd
+  // -> AAI BLOCKS on cond.wait() -- waiting for what?!
+  // -> BAI calls ResultCB()
+  // -> PY gets result and unblocks reset()
+  // -> PY calls BAI.actioncb() (the BAI for the OLD battle)
+  // -> old BAI is destroyed during actioncb() => segfault
+
+
 
   // We're waiting for a call to GYM's reset which
   // should invoke our resetcb

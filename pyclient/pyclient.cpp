@@ -46,7 +46,7 @@
 
 extern boost::thread_specific_ptr<bool> inGuiThread;
 
-// static CBasicLogConfigurator *logConfig;
+static CBasicLogConfigurator *logConfig;
 
 void preinit_vcmi(std::string resdir, std::string loglevel) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
@@ -62,6 +62,12 @@ void preinit_vcmi(std::string resdir, std::string loglevel) {
   *console->cb = callbackFunction;
   console->start();
 
+  const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
+  logConfig = new CBasicLogConfigurator(logPath, console);
+  logConfig->configureDefault();
+  logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
+  logGlobal->info("The log file will be saved to %s", logPath);
+
   preinitDLL(::console);
 
   Settings(settings.write({"session", "headless"}))->Bool() = true;
@@ -69,24 +75,29 @@ void preinit_vcmi(std::string resdir, std::string loglevel) {
   Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
   // NOTE: friendlyAI is hard-coded in MyAI's AAI::getBattleAIName()
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
-  Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
+  // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
+  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
+
+  logConfig->configure();
 
   //
   // Configure logging
   //
-  Settings loggers = settings.write["logging"]["loggers"];
-  loggers->Vector().clear();
+  // Settings loggers = settings.write["logging"]["loggers"];
+  // loggers->Vector().clear();
 
-  auto conflog = [&loggers](std::string domain, std::string lvl) {
-    JsonNode jlog, jlvl, jdomain;
-    jdomain.String() = domain;
-    jlvl.String() = lvl;
-    jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
-    loggers->Vector().push_back(jlog);
-  };
+  // auto conflog = [&loggers](std::string domain, std::string lvl) {
+  //   JsonNode jlog, jlvl, jdomain;
+  //   jdomain.String() = domain;
+  //   jlvl.String() = lvl;
+  //   jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
+  //   loggers->Vector().push_back(jlog);
+  // };
 
-  conflog("global", loglevel);
-  conflog("ai", loglevel);
+
+  // // NOTE: this is not right, ai logs are still missing :/
+  // conflog("global", loglevel);
+  // conflog("ai", loglevel);
 
   srand ( (unsigned int)time(nullptr) );
 

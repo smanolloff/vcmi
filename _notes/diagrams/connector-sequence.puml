@@ -1,6 +1,9 @@
 @startuml "vcmi-1.32-connector-sequence"
 
-title "VCMI-1.3.2 thread & GIL sequence"
+' there are more callbacks and many functions are renamed now,
+' aothough the core of the process remains the same
+
+title "VCMI-1.3.2 thread & GIL sequence [OUTDATED]"
 
 !pragma teoz true
 
