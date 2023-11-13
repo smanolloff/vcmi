@@ -1,7 +1,6 @@
-@startuml "vcmi-1.32-reset-endbattle"
+@startuml "vcmi-1.32-connector-v2-step"
 
-title "VCMI-1.3.2 connector reset (end-of-battle)"
-title "VCMI-1.3.2 connector reset (end-of-battle) WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+title "VCMI-1.3.2 connector-v2 step"
 
 skinparam sequenceBoxBorderColor #FFF
 
@@ -53,7 +52,7 @@ skinparam sequenceBoxBorderColor #FFF
 !endfunction
 
 !function $sharevar($name)
-  !return "<color:gray>transform &</color>\n<color:gray>store "+$name+"</color>"
+  !return "<color:gray>"+$name+"</color>"
 !endfunction
 
 box T1
@@ -64,20 +63,41 @@ end box
 
 box T2
 participant "//cppconnector//\n$desc(T2)" as cpp2
-participant "//VCMI//\n$desc('AAI, BAI, etc')" as vcmi
+participant "//AAI//" as aai
+participant "//BAI//" as bai
+participant "//VCMI Client//" as vcmiclient
 end box
 
--> env ++ : <<new>>
-env -> py ++ : start
-py -> cpp1 ++ : start
+activate cpp1
+activate py
+activate env
+
+vcmiclient o-> bai ++ : activeStack
+bai -> aai ++ : getAction(Result)
+aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+cpp2 <--> cpp1 :
+cpp1 --> py -- : <<P_result>>
+py --> env -- : <<obs>>
+[<-- env -- : obs
+cpp2 -> cpp2 : $wait(0)
+
+== step start ==
+
+[-> env ++ : step
+env -> py ++ : step
+py -> cpp1 ++ : act(P_Action)
 cpp1 -> cpp1 : $lock(1,1)
-cpp1 --> vcmi ++ : start_vcmi(cbprovider)
-' cpp1 -> cpp1 : $notify()\n$desc(noop)
+cpp1 <--> cpp2 : $sharevar(Action)
+cpp1 -> cpp1 : $notify()
 cpp1 -> cpp1 : $wait(0)
-vcmi -> cpp2 ++ : *CBCB(*CB)
-cpp2 <-[#gray]> cpp1 : $sharevar("*CB")
-cpp2 --> vcmi -- :
-vcmi -> cpp2 ++ : ResultCB(Result)
+cpp2 -> cpp2 : $wait(1)
+cpp2 --> aai -- : $lock(0)\n<<Action>>
+aai --> bai -- : <<Action>>
+bai --> vcmiclient -- : makeAction(...)
+
+vcmiclient o-> bai ++ : activeStack
+bai -> aai ++ : getAction(Result)
+aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
 cpp2 -> cpp2 : $lock(1,1)
 cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
 cpp2 -> cpp2 : $notify()
@@ -90,14 +110,6 @@ cpp2 -> cpp2 : $wait(0)
 py --> env -- : <<obs>>
 [<-- env -- : obs
 
-[-> env ++ : step
-env -> py ++ : step
-py -> cpp1 ++ : act(P_Action)
-cpp1 -> cpp1 : $lock(1,1)
-cpp1 <--> cpp2 : $sharevar(Action)
-cpp1 -> cpp1 : $wait(0)
-cpp2 -> cpp2 : $wait(1)
-cpp2 --> vcmi -- : $lock(0)\n<<Action>>
-vcmi -> cpp2 ++ : ResultCB(Result)
-== etc ==
+== step end ==
+
 @enduml

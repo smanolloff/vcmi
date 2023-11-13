@@ -1,0 +1,172 @@
+@startuml "vcmi-1.32-connector-v2-reset-endbattle"
+
+title "VCMI-1.3.2 connector-v2 reset (endbattle)"
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $wait($set)
+  !if ($set == 0)
+    !return "<back:red>cond.wait</back>\n"+$lock(0)
+  !endif
+
+  !return "<color:yellow><back:blue>cond.wait</back></color>\n"+$lock(1,1)
+!endfunction
+
+!function $notify()
+  !return "<color:blue>cond.notify</color>"
+!endfunction
+
+!function $lock($obtain)
+  !if ($obtain == 1)
+    !return "<back:yellow>obtain lock</back>"
+  !else
+    !return "<color:yellow><back:black>release lock</back></color>"
+  !endif
+!endfunction
+
+!function $lock($obtain, $success)
+  !if ($obtain == 0 || $success == 1)
+    !return $lock($obtain)
+  !endif
+  ' failed to obtain
+  !return "<back:yellow><color:red>obtain lock</color></back>"
+!endfunction
+
+!function $sharevar($name)
+  !return "<color:gray>"+$name+"</color>"
+!endfunction
+
+box T1
+participant "//Env//" as env
+participant "//pyconnector//" as py
+participant "//cppconnector//\n$desc(T1)" as cpp1
+end box
+
+box T2
+participant "//cppconnector//\n$desc(T2)" as cpp2
+participant "//AAI//" as aai
+participant "//BAI//" as bai
+participant "//BAI 2//" as bai2
+participant "//VCMI Client//" as vcmiclient
+end box
+
+
+activate cpp1
+activate py
+activate env
+
+vcmiclient o-> bai ++ : activeStack
+bai -> aai ++ : getAction(Result)
+aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+cpp2 <--> cpp1 :
+cpp1 --> py -- : <<P_result>>
+py --> env -- : <<obs>>
+[<-- env -- : obs
+cpp2 -> cpp2 : $wait(0)
+
+== final step start ==
+
+[-> env ++ : step
+env -> py ++ : step
+py -> cpp1 ++ : act(P_Action)
+cpp1 -> cpp1 : $lock(1,1)
+cpp1 <--> cpp2 : $sharevar(Action)
+cpp1 -> cpp1 : $notify()
+cpp1 -> cpp1 : $wait(0)
+cpp2 -> cpp2 : $wait(1)
+cpp2 --> aai -- : $lock(0)\n<<Action>>
+aai --> bai -- : <<Action>>
+bai --> vcmiclient -- : makeAction(...)
+
+
+vcmiclient o-> aai ++ : battleEnd(queryID)
+aai -> aai : <color:gray>store</color>\n<color:gray>QID=queryID</color>
+
+aai --> aai : read bai.action\n$desc("<<move>>")
+note over aai
+battleEnd __after move__
+ => call GetAction()
+(expecting RESET)
+end note
+
+aai --> aai : read bai.result\n$desc("<<Result>>")
+
+aai -> cpp2 ++ : F_GetAction(Result~*)\n$desc("~*with battle_end=true")
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
+cpp2 -> cpp2 : $notify()
+cpp2 -> cpp2 : $lock(0)
+cpp1 -> cpp1 : $wait(1)
+cpp2 -> cpp2 : $lock(1,0)
+cpp1 --> py -- : $lock(0)\n<<P_result>>
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 -> cpp2 : $wait(0)
+py --> env -- : <<obs>>
+[<-- env -- : obs\n$desc("terminated")
+
+== final step end ==
+== reset start ==
+
+[-> env ++ : reset
+env -> py ++ : reset
+py -> cpp1 ++ : reset()
+cpp1 -> cpp1 : $lock(1,1)
+cpp1 <--> cpp2 : $sharevar(Action)\n$desc("**reset**")
+cpp1 -> cpp1 : $notify()
+cpp1 -> cpp1 : $wait(0)
+cpp2 -> cpp2 : $wait(1)
+cpp2 --> aai -- : $lock(0)\n<<Action>>\n$desc(reset)
+' aai --> aai : <color:gray>set</color>\n<color:gray>retreating=true</color>
+
+note over aai : assert(action == reset)
+aai -> bai : bai.reset()\nbattleAI.reset()
+note right #orange: TODO: confirm\ndestructor is called\n(dangling refs?)
+destroy bai
+
+aai --> vcmiclient -- : selectionMade\n$desc(replay)
+|||
+vcmiclient -> aai ++ : battleStart
+|||
+aai -> bai2 ** : <<new>>
+aai -> bai2 ++ : battleStart
+bai2 --> aai -- :
+|||
+aai --> vcmiclient -- :
+
+vcmiclient o-> bai2 ++ : activeStack
+bai2 -> aai ++ : getAction(Result)
+aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
+cpp2 -> cpp2 : $notify()
+cpp2 -> cpp2 : $lock(0)
+cpp1 -> cpp1 : $wait(1)
+cpp2 -> cpp2 : $lock(1,0)
+cpp1 --> py -- : $lock(0)\n<<P_result>>
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 -> cpp2 : $wait(0)
+py --> env -- : <<obs>>
+[<-- env -- : obs
+
+== reset end ==
+
+@enduml
