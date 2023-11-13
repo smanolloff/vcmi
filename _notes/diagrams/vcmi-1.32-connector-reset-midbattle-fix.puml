@@ -57,6 +57,7 @@ activate BAI
 BAI -> BAI : $lock()
 BAI -> AAI : resultcb()
 activate AAI
+note left #yellow: resultcb() is now\nproxied through AAI
 AAI -> AAI : <back:yellow>retreating?</back>\n$desc("=> false")
 note over AAI: not retreating\n => will proxy
 AAI -> env : resultcb()

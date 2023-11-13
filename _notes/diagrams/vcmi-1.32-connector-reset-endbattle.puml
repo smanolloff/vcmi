@@ -117,12 +117,11 @@ AAI --> vcmi :
 deactivate AAI
 
 
-
-
 vcmi -> BAI2 : activeStack
 activate BAI2
 BAI2 -> AAI : resultcb()
 activate AAI
+note left #yellow: resultcb() is now\nproxied through AAI
 AAI -> AAI : <back:yellow>retreating?</back>\n$desc("=> false")
 note over AAI: not retreating\n => will proxy
 AAI -> env : resultcb()
