@@ -5,9 +5,8 @@
 #include "aitypes.h"
 
 const MMAI::F_Sys __attribute__((visibility("default"))) init_vcmi(
-  // std::string resdir,
+  std::string resdir,
   std::string loglevel,
-  // MMAI::CBProvider cbprovider = MMAI::CBProvider(nullptr, "from CppConnector (DEFAULT)");
   MMAI::CBProvider * cbprovider
 );
 

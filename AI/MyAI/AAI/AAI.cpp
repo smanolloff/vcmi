@@ -49,34 +49,13 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
 }
 
 Action AAI::getAction(Result result) {
-  print("44444444444");
-  if (cbprovider->f_getAction) {
-    print("NONNULL");
-  } else {
-    print("NUUUUUUUUU:LLLLLL");
-  }
-
-  print("acquire Python GIL");
-  pybind11::gil_scoped_acquire acquire;
-
-  print("cbprovider.debugstr:" +  cbprovider->debugstr);
   auto action = cbprovider->f_getAction(result);
-  print("55555555555");
 
   while (action == ACTION_RENDER_ANSI) {
-    print("6969696969696");
     result = Result{};
-    print("aaaaaaaaaaa");
     result.type = ResultType::ANSI_RENDER;
     result.ansiRender = bai->renderANSI();
-    print("bbbbbbbbbb");
-  if (cbprovider->f_getAction) {
-    print("NONNULL");
-  } else {
-    print("NUUUUUUUUU:LLLLLL");
-  }
     action = cbprovider->f_getAction(result);
-    print("cccccccccccc");
   }
 
   if (action == ACTION_RESET) {

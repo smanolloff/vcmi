@@ -121,7 +121,6 @@ public:
 
 	std::optional<BattleAction> curbaction;
 
-	// MMAI::CBProvider aiBaggage = MMAI::CBProvider(nullptr, "from CClient (DEFAULT)"); // arbitary payload for AI constructors
 	std::any aiBaggage;
 
 	CClient(std::any aiBaggage);

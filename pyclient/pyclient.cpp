@@ -49,11 +49,10 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 static CBasicLogConfigurator *logConfig;
 
 const MMAI::F_Sys init_vcmi(
-  // std::string resdir,
+  std::string resdir,
   std::string loglevel,
   MMAI::CBProvider * cbprovider
 ) {
-  std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -117,7 +116,6 @@ const MMAI::F_Sys init_vcmi(
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
   logGlobal->error("cbprovider.debugstr: %s",  cbprovider->debugstr);
   auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
-  // auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
   CSH = new CServerHandler(baggage);
 
   boost::thread loading([]() {

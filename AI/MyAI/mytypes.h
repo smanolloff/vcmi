@@ -137,24 +137,8 @@ struct DLL_EXPORT CBProvider {
     std::string debugstr = "unset";
 
     CBProvider(F_GetAction f, std::string str) {
-        printf("+++++++++CONSTRUCTOR: %s|%s\n", std::to_string(!!f).c_str(), str.c_str());
         this->f_getAction = f;
         this->debugstr = str;
-    }
-
-    CBProvider() {
-        printf("+++++++++CONSTRUCTOR (noargs)\n");
-    }
-
-    CBProvider(const CBProvider& other) {
-        // Perform copy initialization here
-        printf("+++++++++COPY CONSTR: %s|%s\n", std::to_string(!!other.f_getAction).c_str(), other.debugstr.c_str());
-        this->f_getAction = other.f_getAction;
-        this->debugstr = other.debugstr;
-    }
-
-    ~CBProvider() {
-        printf("------------------DESTRUCTORRRRRRR (%s)-----------\n", debugstr.c_str());
     }
 };
 

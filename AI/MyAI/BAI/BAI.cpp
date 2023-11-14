@@ -61,9 +61,7 @@ void BAI::activeStack(const CStack * astack)
   std::shared_ptr<BattleAction> ba;
 
   while(!ba) {
-    print("11111111111");
     auto action = getAction(result);
-    print("22222222222");
 
     const auto actname = allActionNames[action];
     debug("Got action: " + action_str(action) + "(" + actname + ")");
@@ -85,8 +83,6 @@ void BAI::activeStack(const CStack * astack)
       print("Action is INVALID: " + actname + ":\n" + errstring);
       result.errmask = errmask;
     }
-
-    print("3333333333333");
   }
 
   debug("cb->battleMakeUnitAction(*ba)");
