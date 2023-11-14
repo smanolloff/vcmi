@@ -134,7 +134,7 @@ const CPlayerEnvironment::GameCb * CPlayerEnvironment::game() const
 }
 
 
-CClient::CClient(MMAI::CBProvider * aiBaggage_) : aiBaggage(aiBaggage_)
+CClient::CClient(std::any aiBaggage_) : aiBaggage(aiBaggage_)
 {
 	waitingRequest.clear();
 	applier = std::make_shared<CApplier<CBaseForCLApply>>();
@@ -505,11 +505,11 @@ void CClient::installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInte
 	auto cb = std::make_shared<CCallback>(gs, color, this);
 	battleCallbacks[color] = cb;
 
-	// if (aiBaggage.has_value()) {
+	if (aiBaggage.has_value()) {
 		gameInterface->initGameInterface(playerEnvironments.at(color), cb, aiBaggage);
-	// } else {
-	// 	gameInterface->initGameInterface(playerEnvironments.at(color), cb);
-	// }
+	} else {
+		gameInterface->initGameInterface(playerEnvironments.at(color), cb);
+	}
 
 	installNewBattleInterface(gameInterface, color, battlecb);
 }

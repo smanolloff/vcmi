@@ -116,8 +116,9 @@ const MMAI::F_Sys init_vcmi(
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
   logGlobal->error("cbprovider.debugstr: %s",  cbprovider->debugstr);
+  auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
   // auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
-  CSH = new CServerHandler(cbprovider);
+  CSH = new CServerHandler(baggage);
 
   boost::thread loading([]() {
     loadDLLClasses();

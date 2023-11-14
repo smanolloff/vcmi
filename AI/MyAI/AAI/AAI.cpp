@@ -31,20 +31,19 @@ void AAI::print(const std::string &text) const
 
 void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
   print("*** initGameInterface -- BUT NO BAGGAGE ***");
-  initGameInterface(env, CB, nullptr);
+  initGameInterface(env, CB, std::any{});
 }
 
-void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, CBProvider * baggage) {
+void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage) {
   print("*** initGameInterface ***");
   cb = CB;
   cbc = CB;
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;
 
-  // assert(baggage.has_value());
-  // assert(baggage.type() == typeid(CBProvider*));
-  // cbprovider = std::any_cast<CBProvider*>(baggage);
-  cbprovider = baggage;
+  assert(baggage.has_value());
+  assert(baggage.type() == typeid(CBProvider*));
+  cbprovider = std::any_cast<CBProvider*>(baggage);
   print("cbprovider.debugstr:" +  cbprovider->debugstr);
 
 }

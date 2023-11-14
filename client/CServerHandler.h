@@ -82,8 +82,7 @@ class CServerHandler : public IServerAPI, public LobbyInfo
 
 	std::vector<std::string> myNames;
 
-	// MMAI::CBProvider aiBaggage = MMAI::CBProvider(nullptr, "from CServerHandler (DEFAULT)"); // arbitary payload for AI constructors
-	MMAI::CBProvider * aiBaggage; // arbitary payload for AI constructors
+	std::any aiBaggage; // arbitary payload for AI constructors
 
 	void threadHandleConnection();
 	void threadRunServer();
@@ -112,8 +111,7 @@ public:
 
 	static const std::string localhostAddress;
 
-	// CServerHandler(MMAI::CBProvider aiBaggage = MMAI::CBProvider(nullptr, "from CServerHandler default"));
-	CServerHandler(MMAI::CBProvider * aiBaggage = nullptr);
+	CServerHandler(std::any aiBaggage = std::any{});
 
 	std::string getHostAddress() const;
 	ui16 getHostPort() const;
