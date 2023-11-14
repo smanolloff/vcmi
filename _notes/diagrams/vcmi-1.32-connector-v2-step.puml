@@ -23,32 +23,28 @@ skinparam sequenceBoxBorderColor #FFF
   !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
 !endfunction
 
-!function $wait($set)
-  !if ($set == 0)
-    !return "<back:red>cond.wait</back>\n"+$lock(0)
-  !endif
-
-  !return "<color:yellow><back:blue>cond.wait</back></color>\n"+$lock(1,1)
-!endfunction
-
 !function $notify()
   !return "<color:blue>cond.notify</color>"
 !endfunction
 
-!function $lock($obtain)
-  !if ($obtain == 1)
-    !return "<back:yellow>obtain lock</back>"
-  !else
-    !return "<color:yellow><back:black>release lock</back></color>"
+!function $wait($lock_id, $set)
+  !if ($set == 0)
+    !return "<back:red>cond.wait</back>\n"+$lock_rel($lock_id)
   !endif
+
+  !return "<color:yellow><back:blue>cond.wait</back></color>\n"+$lock_acq($lock_id,1)
 !endfunction
 
-!function $lock($obtain, $success)
-  !if ($obtain == 0 || $success == 1)
-    !return $lock($obtain)
+!function $lock_rel($id)
+  !return "<color:yellow><back:black>release lock #"+$id+"</back></color>"
+!endfunction
+
+!function $lock_acq($id, $success)
+  !if ($success == 1)
+    !return "<back:yellow>acquire lock #"+$id+"</back>"
+  !else
+    !return "<back:yellow><color:red>acquire lock #"+$id+"</color></back>"
   !endif
-  ' failed to obtain
-  !return "<back:yellow><color:red>obtain lock</color></back>"
 !endfunction
 
 !function $sharevar($name)
@@ -76,37 +72,42 @@ vcmiclient o-> bai ++ : activeStack
 bai -> aai ++ : getAction(Result)
 aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
 cpp2 <--> cpp1 :
-cpp1 --> py -- : <<P_result>>
+cpp1 -> cpp1 : $lock_acq(2,0)
+cpp2 -> cpp2 : $wait(2,0)
+cpp1 -> cpp1 : $lock_acq(2,1)
+cpp1 --> py -- : $lock_rel(2)\n<<P_InitResult>>
 py --> env -- : <<obs>>
 [<-- env -- : obs
-cpp2 -> cpp2 : $wait(0)
 
 == step start ==
 
 [-> env ++ : step
 env -> py ++ : step
 py -> cpp1 ++ : act(P_Action)
-cpp1 -> cpp1 : $lock(1,1)
+cpp1 -> cpp1 : $lock_acq(1,1)
 cpp1 <--> cpp2 : $sharevar(Action)
 cpp1 -> cpp1 : $notify()
-cpp1 -> cpp1 : $wait(0)
-cpp2 -> cpp2 : $wait(1)
-cpp2 --> aai -- : $lock(0)\n<<Action>>
+cpp2 -> cpp2 : $wait(2,1)
+' cpp1 -> cpp1 : $lock_acq(2,0)
+cpp2 --> aai -- : $lock_rel(2)\n<<Action>>
+' cpp1 -> cpp1 : $lock_acq(2,1)
+cpp1 -> cpp1 : $wait(1,0)
 aai --> bai -- : <<Action>>
 bai --> vcmiclient -- : makeAction(...)
 
 vcmiclient o-> bai ++ : activeStack
 bai -> aai ++ : getAction(Result)
 aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
-cpp2 -> cpp2 : $lock(1,1)
+cpp2 -> cpp2 : $lock_acq(1,1)
 cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
 cpp2 -> cpp2 : $notify()
-cpp2 -> cpp2 : $lock(0)
-cpp1 -> cpp1 : $wait(1)
-cpp2 -> cpp2 : $lock(1,0)
-cpp1 --> py -- : $lock(0)\n<<P_result>>
-cpp2 -> cpp2 : $lock(1,1)
-cpp2 -> cpp2 : $wait(0)
+cpp2 -> cpp2 : $lock_acq(2,1)
+cpp2 -> cpp2 : $lock_rel(1)
+cpp1 -> cpp1 : $wait(1,1)
+cpp1 -> cpp1 : $lock_acq(2,0)
+cpp2 -> cpp2 : $wait(2,0)
+cpp1 -> cpp1 : $lock_acq(2,1)
+cpp1 --> py -- : $lock_rel(1)\n$lock_rel(2)\n<<P_result>>
 py --> env -- : <<obs>>
 [<-- env -- : obs
 

@@ -25,7 +25,7 @@ else()
   install(TARGETS MyAI RUNTIME DESTINATION ${AI_LIB_DIR} LIBRARY DESTINATION ${AI_LIB_DIR})
 endif()
 
-target_link_libraries(MyAI PRIVATE ${VCMI_LIB_TARGET})
+target_link_libraries(MyAI PRIVATE ${VCMI_LIB_TARGET} pybind11::headers pybind11::pybind11 pybind11::module pybind11::lto)
 target_include_directories(MyAI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 vcmi_set_output_dir(MyAI "AI")

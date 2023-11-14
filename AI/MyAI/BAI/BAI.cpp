@@ -49,52 +49,21 @@ void BAI::debug(const std::string &text) const
   // printf("[BAI]: %s\n", text.c_str());
 }
 
-// Called by GymEnv on every "render()" call
-std::string BAI::renderansicb() {
-  print("called");
-  return renderANSI(result, action, stack);
-}
-
-// Called by GymEnv on every "step()" call
-void BAI::actioncb(const Action &action) {
-  print("called with action: " + action_str(action));
-
-  debug("Assign this->action = action");
-  this->action = action;
-
-  // Unblock "activeStack"
-  debug("acquire lock");
-  boost::unique_lock<boost::mutex> lock(m);
-  debug("cond.notify_one()");
-  cond.notify_one();
-
-  debug("return");
-}
-
 void BAI::activeStack(const CStack * astack)
 {
   print("*** activeStack ***");
   // print("activeStack called for " + astack->nodeName());
 
   result.state = buildState(astack);
+  result.type = ResultType::REGULAR;
+
   this->stack = astack;
   std::shared_ptr<BattleAction> ba;
 
   while(!ba) {
-    boost::unique_lock<boost::mutex> lock(m);
-    awaitingAction = true;
-    // print("Sending result:\n" + buildReport(result, action, astack));
-    cbprovider->resultcb(result);
-
-    // We've set some events in motion:
-    //  - in python, "env" now has our actioncb stored (via actioncbcb)
-    //  - in python, "env" now has the state stored (via resultcb)
-    //  - in python, "env" constructor can now return (resultcb also set an event)
-    //  - in python, env.step(action) will be called, which will call actioncb
-    // our actioncb will then call AI->cb->makeAction()
-    // ...we wait until that happens, and FINALLY we can return from yourTurn
-    cond.wait(lock);
-    awaitingAction = false;
+    print("11111111111");
+    auto action = getAction(result);
+    print("22222222222");
 
     const auto actname = allActionNames[action];
     debug("Got action: " + action_str(action) + "(" + actname + ")");
@@ -107,6 +76,7 @@ void BAI::activeStack(const CStack * astack)
       assert(errmask == 0);
       debug("Action is VALID: " + actname);
       result = {};
+      result.type = ResultType::UNSET;
     } else {
       assert(errmask > 0);
       auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
@@ -115,8 +85,11 @@ void BAI::activeStack(const CStack * astack)
       print("Action is INVALID: " + actname + ":\n" + errstring);
       result.errmask = errmask;
     }
+
+    print("3333333333333");
   }
 
+  debug("cb->battleMakeUnitAction(*ba)");
   cb->battleMakeUnitAction(*ba);
 
   debug("return");
@@ -348,23 +321,6 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
       result.valueKilled += value;
     }
   }
-}
-
-void BAI::battleEnd(const BattleResult *br, QueryID queryID)
-{
-  print("*** battleEnd (QID: " + std::to_string(queryID) + ") ***");
-
-  result.victory = br->winner == cb->battleGetMySide();
-  result.ended = true;
-  result.nostate = true;
-  result.state = State{};
-  result.errmask = 0;
-
-  // print("Sending result:\n" + buildReport(result, action, nullptr));
-
-  cbprovider->resultcb(result);
-  print("*** battleEnd RETURN ***");
-
 }
 
 void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)

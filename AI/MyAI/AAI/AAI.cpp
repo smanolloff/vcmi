@@ -2,6 +2,12 @@
 #include "StdInc.h"
 #include "AAI.h"
 #include "gameState/CGameState.h"
+#include "mytypes.h"
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+#include <pybind11/functional.h>
+#include <pybind11/pybind11.h>
 
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
@@ -23,48 +29,65 @@ void AAI::print(const std::string &text) const
   // printf("[AAI]: %s\n", text.c_str());
 }
 
-// Called by GymEnv on every "reset()" call
-void AAI::resetcb() {
-    print("called");
-
-    // Unblock "battleEnd"
-    print("acquire lock");
-    boost::unique_lock<boost::mutex> lock(m);
-
-    if (awaitingReset) {
-      // AAI::battleEnd is blocked -- unblock it
-      // (so it can answer the waiting query with "replay battle")
-      print("cond.notify_one()");
-      cond.notify_one();
-    } else {
-      // means BAI::activeStack is blocked
-      // => just call cppcb with a "Retreat" action to unblock it
-      // (then a battleEnd will be called as usual)
-      assert(bai->awaitingAction);
-      bai->actioncb(0);
-    }
-
-    print("return");
-}
-
 void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
   print("*** initGameInterface -- BUT NO BAGGAGE ***");
-  initGameInterface(env, CB, std::any{});
+  initGameInterface(env, CB, nullptr);
 }
 
-void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage) {
+void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, CBProvider * baggage) {
   print("*** initGameInterface ***");
   cb = CB;
   cbc = CB;
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;
 
-  assert(baggage.has_value());
-  assert(baggage.type() == typeid(CBProvider*));
-  cbprovider = std::any_cast<CBProvider*>(baggage);
+  // assert(baggage.has_value());
+  // assert(baggage.type() == typeid(CBProvider*));
+  // cbprovider = std::any_cast<CBProvider*>(baggage);
+  cbprovider = baggage;
+  print("cbprovider.debugstr:" +  cbprovider->debugstr);
 
-  // print("*** call cbprovider->resetcbcb([this]() { cbprovider->resetcb() })");
-  cbprovider->resetcbcb([this]() { this->resetcb(); });
+}
+
+Action AAI::getAction(Result result) {
+  print("44444444444");
+  if (cbprovider->f_getAction) {
+    print("NONNULL");
+  } else {
+    print("NUUUUUUUUU:LLLLLL");
+  }
+
+  print("acquire Python GIL");
+  pybind11::gil_scoped_acquire acquire;
+
+  print("cbprovider.debugstr:" +  cbprovider->debugstr);
+  auto action = cbprovider->f_getAction(result);
+  print("55555555555");
+
+  while (action == ACTION_RENDER_ANSI) {
+    print("6969696969696");
+    result = Result{};
+    print("aaaaaaaaaaa");
+    result.type = ResultType::ANSI_RENDER;
+    result.ansiRender = bai->renderANSI();
+    print("bbbbbbbbbb");
+  if (cbprovider->f_getAction) {
+    print("NONNULL");
+  } else {
+    print("NUUUUUUUUU:LLLLLL");
+  }
+    action = cbprovider->f_getAction(result);
+    print("cccccccccccc");
+  }
+
+  if (action == ACTION_RESET) {
+    // we are called only by BAI, only during battle
+    // FIXME: retreat may be impossible, a _real_ reset should be implemented
+    assert(!bai->result.ended);
+    action = ACTION_RETREAT;
+  }
+
+  return action;
 }
 
 void AAI::yourTurn() {
@@ -95,7 +118,9 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
   battleAI = CDynLibHandler::getNewBattleAI(aiName);
 
   bai = std::static_pointer_cast<BAI>(battleAI);
-  bai->myInitBattleInterface(env, cbc, cbprovider);
+
+  F_GetAction fga = [this](Result r) { return this->getAction(r); };
+  bai->myInitBattleInterface(env, cbc, fga);
 
   battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
@@ -103,45 +128,20 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
 void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
   print("*** battleEnd ***");
 
-  bool won = br->winner == cb->battleGetMySide();
-  won ? print("battle result: victory") : print("battle result: defeat");
+  if (bai->action != ACTION_RETREAT) {
+    // battleEnd after MOVE
+    // => call f_getAction (expecting RESET)
+    auto result = bai->result;
+    result.ended = true;
+    result.victory = br->winner == cb->battleGetMySide();
 
-  boost::unique_lock<boost::mutex> lock(m);
-  awaitingReset = true;
+    auto action = cbprovider->f_getAction(result);
+    assert(action == ACTION_RESET);
+  }
 
-  // NOTE: although VCAI does cb->selectionMade in a new thread, we must not
-  // there seems to be a race cond and our selection randomly
-  // arrives at the server with a queryID=1 unless we do it sequentially
+  bai.reset();
+  battleAI.reset();
   cb->selectionMade(1, queryID);
-
-  // this will call battle AI's battleEnd, which will inform
-  // gym of the results and be destroyed afterwards
-  CAdventureAI::battleEnd(br, queryID);
-
-  // let the battle AI be destroyed, a new one will be made
-  // for the new battle
-  bai = nullptr;
-
-  // so there's a PROBLEM with the resets:
-  // PY calls reset()
-  // -> AAI.resetcb() // awaitingReset=false
-  // -> AAI->bai.actioncb(0) (retreat)
-  // => AAI->battleEnd (here)
-  // -> AAI->cb->selectionMade
-  // -> BAI->battleEnd
-  // -> AAI BLOCKS on cond.wait() -- waiting for what?!
-  // -> BAI calls ResultCB()
-  // -> PY gets result and unblocks reset()
-  // -> PY calls BAI.actioncb() (the BAI for the OLD battle)
-  // -> old BAI is destroyed during actioncb() => segfault
-
-
-
-  // We're waiting for a call to GYM's reset which
-  // should invoke our resetcb
-  cond.wait(lock);
-
-  awaitingReset = false;
 }
 
 //

@@ -19,6 +19,7 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
+        "pybind11/[~2.7.1]",
     ]
     _nullkillerAIRequires = [
         "onetbb/[^2021.3]",

@@ -13,6 +13,7 @@
 
 #include "../lib/StartInfo.h"
 #include "../lib/CondSh.h"
+#include "AI/MyAI/mytypes.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -81,7 +82,8 @@ class CServerHandler : public IServerAPI, public LobbyInfo
 
 	std::vector<std::string> myNames;
 
-	std::any aiBaggage; // arbitary payload for AI constructors
+	// MMAI::CBProvider aiBaggage = MMAI::CBProvider(nullptr, "from CServerHandler (DEFAULT)"); // arbitary payload for AI constructors
+	MMAI::CBProvider * aiBaggage; // arbitary payload for AI constructors
 
 	void threadHandleConnection();
 	void threadRunServer();
@@ -110,7 +112,8 @@ public:
 
 	static const std::string localhostAddress;
 
-	CServerHandler(std::any aiBaggage = std::any{});
+	// CServerHandler(MMAI::CBProvider aiBaggage = MMAI::CBProvider(nullptr, "from CServerHandler default"));
+	CServerHandler(MMAI::CBProvider * aiBaggage = nullptr);
 
 	std::string getHostAddress() const;
 	ui16 getHostPort() const;

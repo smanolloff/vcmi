@@ -1,14 +1,14 @@
 #pragma once
+#include <memory>
 #include <string>
 #include <functional>
 #include "aitypes.h"
 
-extern "C" void __attribute__((visibility("default"))) preinit_vcmi(
-  std::string resdir,
-  std::string loglevel
+const MMAI::F_Sys __attribute__((visibility("default"))) init_vcmi(
+  // std::string resdir,
+  std::string loglevel,
+  // MMAI::CBProvider cbprovider = MMAI::CBProvider(nullptr, "from CppConnector (DEFAULT)");
+  MMAI::CBProvider * cbprovider
 );
 
-extern "C" void __attribute__((visibility("default"))) start_vcmi(
-  MMAI::CBProvider cbprovider,
-  std::string mapname
-);
+void __attribute__((visibility("default"))) start_vcmi(std::string mapname);

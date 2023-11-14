@@ -20,7 +20,11 @@ std::string BAI::action_str(const Action &a) {
   return std::to_string(a);
 }
 
-std::string BAI::renderANSI(const Result &r, const Action &a, const CStack* astack) {
+std::string BAI::renderANSI() {
+  const Result &r = result;
+  const Action &a = action;
+  const CStack* &astack = stack;
+
   auto state = r.state;
 
   std::string nocol = "\033[0m";
@@ -115,7 +119,7 @@ std::string BAI::renderANSI(const Result &r, const Action &a, const CStack* asta
     std::string value;
 
     switch(i) {
-    case 1: name = "Last action"; value = (action == ACTION_UNKNOWN) ? "" : allActionNames[action]; break;
+    case 1: name = "Last action"; value = (a == ACTION_UNSET) ? "" : allActionNames[action]; break;
     case 2: name = "Errors"; value = std::to_string(n_errors); break;
     case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
     case 4: name = "Units killed"; value = std::to_string(r.unitsKilled); break;

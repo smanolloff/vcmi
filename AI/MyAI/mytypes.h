@@ -7,6 +7,8 @@
 #include <cassert>
 #include <array>
 #include <string>
+#include <map>
+#include <cstdint>
 
 namespace MMAI {
 
@@ -14,11 +16,20 @@ namespace MMAI {
 #define DLL_EXPORT __attribute__((visibility("default")))
 #endif
 
-// Actions:
-// 0, 1, 2 - retreat, defend, wait
-// 3..1322 - 165 hexes * 8 actions each
-static const int N_ACTIONS = 1323; // 0..1322
-static const int ACTION_UNKNOWN = 65535; // eg. when unset
+// Regular actions to be passed by GymEnv:
+static const int ACTION_RETREAT = 0;
+static const int ACTION_DEFEND = 1;
+static const int ACTION_WAIT = 2;
+// + 1320 more move[+attack] actions (165 hexes * 8 actions each)
+static const int N_MOVE_ACTIONS = 1320;
+static const int N_ACTIONS = ACTION_RETREAT + ACTION_DEFEND + ACTION_WAIT + N_MOVE_ACTIONS;
+
+
+// Control actions
+static const int ACTION_UNSET = INT16_MIN;
+static const int ACTION_RESET = -1;
+static const int ACTION_RENDER_ANSI = -2;
+
 
 // State:
 // 165 hex + (14 stack * 12 attrs) + current_stack
@@ -85,9 +96,16 @@ extern "C" struct DLL_EXPORT NValue {
     }
 };
 
+enum ResultType {
+    REGULAR,
+    ANSI_RENDER,
+    UNSET
+};
+
 // SYNC WITH VcmiEnv.observation_space
 using State = std::array<NValue, STATE_SIZE>;
 struct Result {
+    ResultType type = ResultType::UNSET;
     State state = {};
     uint8_t errmask = 0;
     int dmgDealt = 0;
@@ -98,70 +116,46 @@ struct Result {
     int valueKilled = 0;
     bool ended = false;
     bool victory = false;
-
-    // set to true only for last observation (at battle end)
-    bool nostate = false;
+    std::string ansiRender = "";
 };
 
-using Action = uint16_t;
+using Action = int16_t;
 
-// RenderAnsiCB is a CPP function given to the GymEnv via ResetCBCB (see below)
-// GymEnv will invoke it on every "render()" call
-using RenderAnsiCB = const std::function<std::string()>;
-
-// RenderAnsiCBCB is a Python function passed to VCMI entrypoint.
-// VCMI will invoke it once, with 1 argument: a RenderAnsiCB (see above)
-using RenderAnsiCBCB = const std::function<void(RenderAnsiCB)>;
-
-// ResetCB is a CPP function given to the GymEnv via ResetCBCB (see below)
-// GymEnv will invoke it on every "reset()" call
-using ResetCB = const std::function<void()>;
-
-// ResetCBCB is a Python function passed to VCMI entrypoint.
-// VCMI will invoke it once, with 1 argument: a ResetCB (see above)
-using ResetCBCB = const std::function<void(ResetCB)>;
-
-// SysCB is a CPP function given to the GymEnv via SysCBCB (see below)
+// F_Sys is a CPP function returned by pyclient's `init`
 // GymEnv will invoke it on "close()" calls (or "reset(hard=True)" ?)
-using SysCB = const std::function<void(std::string cmd)>;
+using F_Sys = std::function<void(std::string cmd)>;
 
-// SysCBCB is a Python function passed to VCMI entrypoint.
-// VCMI will invoke it once, with 1 argument: a SysCB (see above)
-using SysCBCB = const std::function<void(SysCB)>;
-
-// ActionCB is a CPP function given to the GymEnv via ActionCBCB (see below)
-// GymEnv will invoke it on every "step()" call, with 1 argument: an Action
-using ActionCB = const std::function<void(const Action &action)>;
-
-// ActionCBCB is a Python function passed to the AI constructor.
-// AI constructor will invoke it once, with 1 argument: a ActionCB (see above)
-using ActionCBCB = const std::function<void(ActionCB)>;
-
-// ResultCB is a Python function passed to the AI constructor.
+// F_GetAction is a Python function passed to the AI constructor.
 // AI will invoke it on every "yourTurn()" call, with 1 argument: a Result
-using ResultCB = const std::function<void(const Result &result)>;
+using F_GetAction = std::function<Action(const Result &result)>;
 
 // The CB functions above are all bundled into CBProvider struct
 // whose purpose is to be seamlessly transportable through VCMI code
 // as a std::any object, then cast back to CBProvider in the AI constructor
-extern "C" struct DLL_EXPORT CBProvider {
-    CBProvider(
-        const RenderAnsiCBCB renderansicbcb_,
-        const ResetCBCB resetcbcb_,
-        const SysCBCB syscbcb_,
-        const ActionCBCB actioncbcb_,
-        const ResultCB resultcb_
-    ) : renderansicbcb(renderansicbcb_),
-        resetcbcb(resetcbcb_),
-        syscbcb(syscbcb_),
-        actioncbcb(actioncbcb_),
-        resultcb(resultcb_) {}
+struct DLL_EXPORT CBProvider {
+    F_GetAction f_getAction = nullptr;
+    std::string debugstr = "unset";
 
-    const RenderAnsiCBCB renderansicbcb;
-    const ResetCBCB resetcbcb;
-    const SysCBCB syscbcb;
-    const ActionCBCB actioncbcb;
-    const ResultCB resultcb;
+    CBProvider(F_GetAction f, std::string str) {
+        printf("+++++++++CONSTRUCTOR: %s|%s\n", std::to_string(!!f).c_str(), str.c_str());
+        this->f_getAction = f;
+        this->debugstr = str;
+    }
+
+    CBProvider() {
+        printf("+++++++++CONSTRUCTOR (noargs)\n");
+    }
+
+    CBProvider(const CBProvider& other) {
+        // Perform copy initialization here
+        printf("+++++++++COPY CONSTR: %s|%s\n", std::to_string(!!other.f_getAction).c_str(), other.debugstr.c_str());
+        this->f_getAction = other.f_getAction;
+        this->debugstr = other.debugstr;
+    }
+
+    ~CBProvider() {
+        printf("------------------DESTRUCTORRRRRRR (%s)-----------\n", debugstr.c_str());
+    }
 };
 
 } // namespace MMAI

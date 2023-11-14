@@ -394,7 +394,7 @@ endif()
 ############################################
 #        Finding packages                  #
 ############################################
-
+find_package(pybind11 REQUIRED)
 find_package(Boost 1.48.0 REQUIRED COMPONENTS date_time filesystem locale program_options system thread)
 
 find_package(ZLIB REQUIRED)

@@ -11,7 +11,7 @@ int main(int argc, char * argv[]) {
     int i = 0;
 
     // Convert WPyCB -> PyCB
-    const MMAI::ResultCB resultcb = [&i, &wactioncb, &act](const MMAI::Result &result) {
+    const MMAI::F_GetAction resultcb = [&i, &wactioncb, &act](const MMAI::Result &result) {
         LOG("resultcb called");
         // if (i < 5)
         boost::thread t([&i, wactioncb, &act]() { wactioncb(act+i); });
@@ -20,24 +20,24 @@ int main(int argc, char * argv[]) {
     };
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::ActionCBCB actioncbcb = [&wactioncb](MMAI::ActionCB actioncb) {
+    const MMAI::ActionCBCB actioncbcb = [&wactioncb](MMAI::F_Action actioncb) {
         wactioncb = [actioncb](int act){ actioncb(act); };
         LOG("actioncbcb called");
     };
 
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::SysCBCB syscbcb = [](MMAI::SysCB &syscb) {
+    const MMAI::SysCBCB syscbcb = [](MMAI::F_Sys &syscb) {
         LOG("syscbcb called");
     };
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::ResetCBCB resetcbcb = [](MMAI::ResetCB &resetcb) {
+    const MMAI::F_InitReset resetcbcb = [](MMAI::F_Reset &resetcb) {
         LOG("resetcbcb called");
     };
 
     // Convert WPyCBInit -> PyCBInit
-    const MMAI::RenderAnsiCBCB renderansicbcb = [](MMAI::RenderAnsiCB &renderansicb) {
+    const MMAI::F_InitRenderAnsi renderansicbcb = [](MMAI::F_RenderAnsi &renderansicb) {
         LOG("renderansicbcb called");
     };
 

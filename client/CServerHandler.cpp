@@ -7,6 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "AI/MyAI/mytypes.h"
 #include "StdInc.h"
 
 #include "CServerHandler.h"
@@ -131,7 +132,7 @@ public:
 static const std::string NAME_AFFIX = "client";
 static const std::string NAME = GameConstants::VCMI_VERSION + std::string(" (") + NAME_AFFIX + ')'; //application name
 
-CServerHandler::CServerHandler(std::any aiBaggage_)
+CServerHandler::CServerHandler(MMAI::CBProvider * aiBaggage_)
 	: state(EClientState::NONE), mx(std::make_shared<boost::recursive_mutex>()), client(nullptr), loadMode(0), campaignStateToSend(nullptr), campaignServerRestartLock(false), aiBaggage(aiBaggage_)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());

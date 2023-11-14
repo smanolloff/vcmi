@@ -4,54 +4,48 @@
 
 MMAI_NS_BEGIN
 
-void BAI::actionFinished(const BattleAction &action)
-{
+void BAI::actionFinished(const BattleAction &action) {
   debug("*** actionFinished ***");
 }
 
-void BAI::actionStarted(const BattleAction &action)
-{
+void BAI::actionStarted(const BattleAction &action) {
   debug("*** actionStarted ***");
 }
 
-void BAI::yourTacticPhase(int distance)
-{
+void BAI::yourTacticPhase(int distance) {
   cb->battleMakeTacticAction(BattleAction::makeEndOFTacticPhase(cb->battleGetTacticsSide()));
 }
 
-void BAI::battleAttack(const BattleAttack *ba)
-{
+void BAI::battleAttack(const BattleAttack *ba) {
   debug("*** battleAttack ***");
 }
 
-void BAI::battleNewRoundFirst(int round)
-{
+void BAI::battleNewRoundFirst(int round) {
   debug("*** battleNewRoundFirst ***");
 }
 
-void BAI::battleNewRound(int round)
-{
+void BAI::battleNewRound(int round) {
   debug("*** battleNewRound ***");
 }
 
-void BAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport)
-{
+void BAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) {
   debug("*** battleStackMoved ***");
 }
 
-void BAI::battleSpellCast(const BattleSpellCast *sc)
-{
+void BAI::battleSpellCast(const BattleSpellCast *sc) {
   debug("*** battleSpellCast ***");
 }
 
-void BAI::battleStacksEffectsSet(const SetStackEffect & sse)
-{
+void BAI::battleStacksEffectsSet(const SetStackEffect & sse) {
   debug("*** battleStacksEffectsSet ***");
 }
 
-void BAI::battleCatapultAttacked(const CatapultAttack & ca)
-{
+void BAI::battleCatapultAttacked(const CatapultAttack & ca) {
   debug("*** battleCatapultAttacked ***");
+}
+
+void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
+  print("*** battleEnd ***");
 }
 
 MMAI_NS_END

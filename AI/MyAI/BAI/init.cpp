@@ -32,36 +32,29 @@ BAI::~BAI()
 }
 
 void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {
-  print("*** initBattleInterface -- BUT NO BAGGAGE ***");
-  myInitBattleInterface(ENV, CB, std::any{});
+  print("*** initBattleInterface -- BUT NO F_GetAction ***");
+  myInitBattleInterface(ENV, CB, nullptr);
 }
 
 void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
 {
-  print("*** initBattleInterface -- BUT NO BAGGAGE ***");
-  myInitBattleInterface(ENV, CB, std::any{});
+  print("*** initBattleInterface -- BUT NO F_GetAction ***");
+  myInitBattleInterface(ENV, CB, nullptr);
 }
 
-void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) {
+void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, F_GetAction f_getAction) {
   print("*** myInitBattleInterface ***");
+
+  assert(f_getAction);
+
   env = ENV;
   cb = CB;
+  getAction = f_getAction;
 
   wasWaitingForRealize = CB->waitTillRealize;
   wasUnlockingGs = CB->unlockGsWhenWaiting;
   CB->waitTillRealize = false;
   CB->unlockGsWhenWaiting = false;
-
-  // See note in AAI::initGameInterface
-  assert(baggage.has_value());
-  assert(baggage.type() == typeid(CBProvider*));
-  cbprovider = std::any_cast<CBProvider*>(baggage);
-
-  debug("*** call cbprovider->actioncbcb([this](const Action &a) { this->actioncb(a) })");
-  cbprovider->actioncbcb([this](const Action &a) { this->actioncb(a); });
-
-  debug("*** call cbprovider->renderansicbcb([this]() { return this->renderansicb(a) })");
-  cbprovider->renderansicbcb([this]() { return this->renderansicb(); });
 }
 
 const std::map<HexState, std::string> BAI::initHexStateNames() {
@@ -153,9 +146,9 @@ void BAI::initStackHNSMap() {
 
 const std::array<std::string, N_ACTIONS> BAI::initAllActionNames() {
   std::array<std::string, N_ACTIONS> res = {"???"};
-  res[0] = "Retreat";
-  res[1] = "Defend";
-  res[2] = "Wait";
+  res[ACTION_RETREAT] = "Retreat";
+  res[ACTION_DEFEND] = "Defend";
+  res[ACTION_WAIT] = "Wait";
 
   int i = 3;
 

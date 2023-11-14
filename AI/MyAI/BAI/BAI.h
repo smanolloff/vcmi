@@ -57,14 +57,8 @@ class BAI : public CBattleGameInterface
   bool wasWaitingForRealize;
   bool wasUnlockingGs;
 
-  CBProvider * cbprovider;
-
-  boost::mutex m;
-  boost::condition_variable cond;
-  bool awaitingAction = false;
-
   void actioncb(const Action &action);
-  std::string renderansicb();
+
   const CStack * stack;
   // NOTE: those could be made static, no need to init at every battle
 
@@ -83,20 +77,20 @@ class BAI : public CBattleGameInterface
   const std::array<std::string, N_ACTIONS> allActionNames;
   const std::array<std::string, N_ACTIONS> initAllActionNames();
 
-
   // can't be const -- called during battleStart (unavailable in constructor)
   std::map<const CStack*, NValue> stackHNSMap;
   void initStackHNSMap();
 
   // can't be const value (received after init)
   // => use const pointer
-  Action action = ACTION_UNKNOWN;
+  Action action = ACTION_UNSET;
   Result result;
+  F_GetAction getAction;
 
   void cppcb(const Action &action);
   std::string action_str(const Action &action);
   std::string result_str(const Result &result);
-  std::string renderANSI(const Result &r, const Action &a, const CStack* astack);
+  std::string renderANSI();
 
   const State buildState(const CStack * stack);
   ActionResult buildAction(const CStack * stack, State state, Action action);
@@ -108,7 +102,7 @@ public:
 
   void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
   void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
-  void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage);
+  void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, F_GetAction f_getAction);
   void activeStack(const CStack * stack) override; //called when it's turn of that stack
   void yourTacticPhase(int distance) override;
 

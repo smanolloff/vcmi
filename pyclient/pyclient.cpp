@@ -48,7 +48,12 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
 
-void preinit_vcmi(std::string resdir, std::string loglevel) {
+const MMAI::F_Sys init_vcmi(
+  // std::string resdir,
+  std::string loglevel,
+  MMAI::CBProvider * cbprovider
+) {
+  std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -103,13 +108,16 @@ void preinit_vcmi(std::string resdir, std::string loglevel) {
 
   // This initializes SDL and requires main thread.
   GH.init();
-}
 
-void start_vcmi(MMAI::CBProvider cbprovider, std::string mapname) {
+  //
+  // moved from start()
+  //
+
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  auto baggage = std::make_any<MMAI::CBProvider*>(&cbprovider);
-  CSH = new CServerHandler(baggage);
+  logGlobal->error("cbprovider.debugstr: %s",  cbprovider->debugstr);
+  // auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
+  CSH = new CServerHandler(cbprovider);
 
   boost::thread loading([]() {
     loadDLLClasses();
@@ -123,7 +131,7 @@ void start_vcmi(MMAI::CBProvider cbprovider, std::string mapname) {
   CCS->curh->show();
 
   // We have the GIL, safe to call syscbcb now
-  cbprovider.syscbcb([](std::string cmd) {
+  return [](std::string cmd) {
     logGlobal->error("!!!!!!!!!!! SYS !!!!!!!!!! Received command: %s", cmd);
     if (cmd == "terminate")
       exit(0);
@@ -131,8 +139,10 @@ void start_vcmi(MMAI::CBProvider cbprovider, std::string mapname) {
       CSH->sendRestartGame();
     else
       logGlobal->error("Unknown sys command: '%s'", cmd);
-  });
+  };
+}
 
+void start_vcmi(std::string mapname) {
   auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
   GH.screenHandler().close();

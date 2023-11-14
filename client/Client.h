@@ -15,6 +15,7 @@
 #include "../lib/IGameCallback.h"
 #include "../lib/battle/BattleAction.h"
 #include "../lib/battle/CBattleInfoCallback.h"
+#include "AI/MyAI/mytypes.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -120,9 +121,10 @@ public:
 
 	std::optional<BattleAction> curbaction;
 
-	std::any aiBaggage; // arbitary payload for AI constructors
+	// MMAI::CBProvider aiBaggage = MMAI::CBProvider(nullptr, "from CClient (DEFAULT)"); // arbitary payload for AI constructors
+	MMAI::CBProvider * aiBaggage;
 
-	CClient(std::any aiBaggage = nullptr);
+	CClient(MMAI::CBProvider * aiBaggage);
 	~CClient();
 
 	const Services * services() const override;
