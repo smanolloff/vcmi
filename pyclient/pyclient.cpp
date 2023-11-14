@@ -82,26 +82,25 @@ const MMAI::F_Sys init_vcmi(
   // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
 
-  logConfig->configure();
-
   //
   // Configure logging
   //
-  // Settings loggers = settings.write["logging"]["loggers"];
-  // loggers->Vector().clear();
+  Settings loggers = settings.write["logging"]["loggers"];
+  loggers->Vector().clear();
 
-  // auto conflog = [&loggers](std::string domain, std::string lvl) {
-  //   JsonNode jlog, jlvl, jdomain;
-  //   jdomain.String() = domain;
-  //   jlvl.String() = lvl;
-  //   jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
-  //   loggers->Vector().push_back(jlog);
-  // };
+  auto conflog = [&loggers](std::string domain, std::string lvl) {
+    JsonNode jlog, jlvl, jdomain;
+    jdomain.String() = domain;
+    jlvl.String() = lvl;
+    jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
+    loggers->Vector().push_back(jlog);
+  };
 
+  conflog("global", loglevel);
+  conflog("ai", loglevel);
 
-  // // NOTE: this is not right, ai logs are still missing :/
-  // conflog("global", loglevel);
-  // conflog("ai", loglevel);
+  // this line must come after "conflog" stuff
+  logConfig->configure();
 
   srand ( (unsigned int)time(nullptr) );
 

@@ -1,5 +1,6 @@
 #include "BAI.h"
 #include <sstream>
+#include <cstdio>
 
 MMAI_NS_BEGIN
 
@@ -112,7 +113,6 @@ std::string BAI::renderANSI() {
       n_errors += errmask & 1;
       errmask >>= 1;
   }
-
 
   for (int i=0; i<=rows.size(); i++) {
     std::string name;

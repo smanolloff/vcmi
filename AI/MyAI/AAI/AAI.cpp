@@ -48,7 +48,7 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
 
 }
 
-Action AAI::getAction(Result result) {
+Action AAI::getNonRenderAction(Result result) {
   auto action = cbprovider->f_getAction(result);
 
   while (action == ACTION_RENDER_ANSI) {
@@ -58,9 +58,16 @@ Action AAI::getAction(Result result) {
     action = cbprovider->f_getAction(result);
   }
 
+  return action;
+}
+
+Action AAI::getAction(Result result) {
+  auto action = getNonRenderAction(result);
+
   if (action == ACTION_RESET) {
-    // we are called only by BAI, only during battle
+    // AAI::getAction is called only by BAI, only during battle
     // FIXME: retreat may be impossible, a _real_ reset should be implemented
+    print("Will retreat in order to reset battle");
     assert(!bai->result.ended);
     action = ACTION_RETREAT;
   }
@@ -109,15 +116,18 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
   if (bai->action != ACTION_RETREAT) {
     // battleEnd after MOVE
     // => call f_getAction (expecting RESET)
-    auto result = bai->result;
-    result.ended = true;
-    result.victory = br->winner == cb->battleGetMySide();
 
-    auto action = cbprovider->f_getAction(result);
+    // first call bai->battleEnd to update result
+    // (in case there are render actions)
+    bai->battleEnd(br, queryID);
+
+    auto action = getNonRenderAction(bai->result);
+
+    print("Reset battle");
+    // Any non-render action *must* be a reset (battle has ended)
     assert(action == ACTION_RESET);
   }
 
-  bai.reset();
   battleAI.reset();
   cb->selectionMade(1, queryID);
 }

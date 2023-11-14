@@ -44,8 +44,4 @@ void BAI::battleCatapultAttacked(const CatapultAttack & ca) {
   debug("*** battleCatapultAttacked ***");
 }
 
-void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
-  print("*** battleEnd ***");
-}
-
 MMAI_NS_END
