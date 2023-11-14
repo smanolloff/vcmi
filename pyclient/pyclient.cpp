@@ -50,7 +50,8 @@ static CBasicLogConfigurator *logConfig;
 
 const MMAI::F_Sys init_vcmi(
   std::string resdir,
-  std::string loglevel,
+  std::string loglevelGlobal,
+  std::string loglevelAI,
   MMAI::CBProvider * cbprovider
 ) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
@@ -96,8 +97,8 @@ const MMAI::F_Sys init_vcmi(
     loggers->Vector().push_back(jlog);
   };
 
-  conflog("global", loglevel);
-  conflog("ai", loglevel);
+  conflog("global", loglevelGlobal);
+  conflog("ai", loglevelAI);
 
   // this line must come after "conflog" stuff
   logConfig->configure();
@@ -107,13 +108,8 @@ const MMAI::F_Sys init_vcmi(
   // This initializes SDL and requires main thread.
   GH.init();
 
-  //
-  // moved from start()
-  //
-
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  logGlobal->error("cbprovider.debugstr: %s",  cbprovider->debugstr);
   auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
   CSH = new CServerHandler(baggage);
 

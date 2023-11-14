@@ -44,8 +44,6 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
   assert(baggage.has_value());
   assert(baggage.type() == typeid(CBProvider*));
   cbprovider = std::any_cast<CBProvider*>(baggage);
-  print("cbprovider.debugstr:" +  cbprovider->debugstr);
-
 }
 
 Action AAI::getNonRenderAction(Result result) {

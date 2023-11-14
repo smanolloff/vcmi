@@ -6,7 +6,8 @@
 
 const MMAI::F_Sys __attribute__((visibility("default"))) init_vcmi(
   std::string resdir,
-  std::string loglevel,
+  std::string loglevelGlobal,
+  std::string loglevelAI,
   MMAI::CBProvider * cbprovider
 );
 
