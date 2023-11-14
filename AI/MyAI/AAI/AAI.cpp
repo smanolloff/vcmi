@@ -18,24 +18,23 @@
 namespace MMAI {
 
 AAI::AAI() {
-  print("*** (constructor) ***");
+  info("*** (constructor) ***");
 }
 
 AAI::~AAI() {}
 
-void AAI::print(const std::string &text) const
-{
-  logAi->info("AAI  [%p]: %s", this, text);
-  // printf("[AAI]: %s\n", text.c_str());
-}
+void AAI::error(const std::string &text) const { logAi->error("AAI %s", text); }
+void AAI::warn(const std::string &text) const { logAi->warn("AAI %s", text); }
+void AAI::info(const std::string &text) const { logAi->info("AAI %s", text); }
+void AAI::debug(const std::string &text) const { logAi->debug("AAI %s", text); }
 
 void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
-  print("*** initGameInterface -- BUT NO BAGGAGE ***");
+  error("*** initGameInterface -- BUT NO BAGGAGE ***");
   initGameInterface(env, CB, std::any{});
 }
 
 void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage) {
-  print("*** initGameInterface ***");
+  info("*** initGameInterface ***");
   cb = CB;
   cbc = CB;
   cb->waitTillRealize = true;
@@ -65,7 +64,7 @@ Action AAI::getAction(Result result) {
   if (action == ACTION_RESET) {
     // AAI::getAction is called only by BAI, only during battle
     // FIXME: retreat may be impossible, a _real_ reset should be implemented
-    print("Will retreat in order to reset battle");
+    info("Will retreat in order to reset battle");
     assert(!bai->result.ended);
     action = ACTION_RETREAT;
   }
@@ -74,7 +73,7 @@ Action AAI::getAction(Result result) {
 }
 
 void AAI::yourTurn() {
-  print("*** yourTurn ***");
+  info("*** yourTurn ***");
 
   std::make_unique<boost::thread>([this]() {
     boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
@@ -88,7 +87,7 @@ void AAI::yourTurn() {
 }
 
 void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) {
-  print("*** battleStart ***");
+  info("*** battleStart ***");
 
   // just copied code from CAdventureAI::battleStart
   // only difference is argument to initBattleInterface()
@@ -109,7 +108,7 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
 }
 
 void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
-  print("*** battleEnd ***");
+  info("*** battleEnd ***");
 
   if (bai->action != ACTION_RETREAT) {
     // battleEnd after MOVE
@@ -121,7 +120,7 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
 
     auto action = getNonRenderAction(bai->result);
 
-    print("Reset battle");
+    info("Reset battle");
     // Any non-render action *must* be a reset (battle has ended)
     assert(action == ACTION_RESET);
   }
@@ -135,219 +134,219 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
 //
 
 void AAI::saveGame(BinarySerializer & h, const int version) {
-  // print("*** saveGame ***");
+  debug("*** saveGame ***");
 }
 
 void AAI::loadGame(BinaryDeserializer & h, const int version) {
-  // print("*** loadGame ***");
+  debug("*** loadGame ***");
 }
 
 void AAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QueryID queryID) {
-  // print("*** commanderGotLevel ***");
+  debug("*** commanderGotLevel ***");
 }
 
 void AAI::finish() {
-  // print("*** finish ***");
+  debug("*** finish ***");
 }
 
 void AAI::heroGotLevel(const CGHeroInstance * hero, PrimarySkill::PrimarySkill pskill, std::vector<SecondarySkill> & skills, QueryID queryID) {
-  // print("*** heroGotLevel ***");
+  debug("*** heroGotLevel ***");
 }
 
 void AAI::showBlockingDialog(const std::string & text, const std::vector<Component> & components, QueryID askID, const int soundID, bool selection, bool cancel) {
-  // print("*** showBlockingDialog ***");
+  debug("*** showBlockingDialog ***");
 }
 
 void AAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID) {
-  // print("*** showGarrisonDialog ***");
+  debug("*** showGarrisonDialog ***");
 }
 
 void AAI::showMapObjectSelectDialog(QueryID askID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects) {
-  // print("*** showMapObjectSelectDialog ***");
+  debug("*** showMapObjectSelectDialog ***");
 }
 
 void AAI::showTeleportDialog(TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) {
-  // print("*** showTeleportDialog ***");
+  debug("*** showTeleportDialog ***");
 }
 
 void AAI::showWorldViewEx(const std::vector<ObjectPosInfo> & objectPositions, bool showTerrain) {
-  // print("*** showWorldViewEx ***");
+  debug("*** showWorldViewEx ***");
 }
 
 void AAI::advmapSpellCast(const CGHeroInstance * caster, int spellID) {
-  // print("*** advmapSpellCast ***");
+  debug("*** advmapSpellCast ***");
 }
 
 void AAI::artifactAssembled(const ArtifactLocation & al) {
-  // print("*** artifactAssembled ***");
+  debug("*** artifactAssembled ***");
 }
 
 void AAI::artifactDisassembled(const ArtifactLocation & al) {
-  // print("*** artifactDisassembled ***");
+  debug("*** artifactDisassembled ***");
 }
 
 void AAI::artifactMoved(const ArtifactLocation & src, const ArtifactLocation & dst) {
-  // print("*** artifactMoved ***");
+  debug("*** artifactMoved ***");
 }
 
 void AAI::artifactPut(const ArtifactLocation & al) {
-  // print("*** artifactPut ***");
+  debug("*** artifactPut ***");
 }
 
 void AAI::artifactRemoved(const ArtifactLocation & al) {
-  // print("*** artifactRemoved ***");
+  debug("*** artifactRemoved ***");
 }
 
 void AAI::availableArtifactsChanged(const CGBlackMarket * bm) {
-  // print("*** availableArtifactsChanged ***");
+  debug("*** availableArtifactsChanged ***");
 }
 
 void AAI::availableCreaturesChanged(const CGDwelling * town) {
-  // print("*** availableCreaturesChanged ***");
+  debug("*** availableCreaturesChanged ***");
 }
 
 void AAI::battleResultsApplied() {
-  // print("*** battleResultsApplied ***");
+  debug("*** battleResultsApplied ***");
 }
 
 void AAI::beforeObjectPropertyChanged(const SetObjectProperty * sop) {
-  // print("*** beforeObjectPropertyChanged ***");
+  debug("*** beforeObjectPropertyChanged ***");
 }
 
 void AAI::buildChanged(const CGTownInstance * town, BuildingID buildingID, int what) {
-  // print("*** buildChanged ***");
+  debug("*** buildChanged ***");
 }
 
 void AAI::centerView(int3 pos, int focusTime) {
-  // print("*** centerView ***");
+  debug("*** centerView ***");
 }
 
 void AAI::gameOver(PlayerColor player, const EVictoryLossCheckResult & victoryLossCheckResult) {
-  // print("*** gameOver ***");
+  debug("*** gameOver ***");
 }
 
 void AAI::garrisonsChanged(ObjectInstanceID id1, ObjectInstanceID id2) {
-  // print("*** garrisonsChanged ***");
+  debug("*** garrisonsChanged ***");
 }
 
 void AAI::heroBonusChanged(const CGHeroInstance * hero, const Bonus & bonus, bool gain) {
-  // print("*** heroBonusChanged ***");
+  debug("*** heroBonusChanged ***");
 }
 
 void AAI::heroCreated(const CGHeroInstance *) {
-  // print("*** heroCreated ***");
+  debug("*** heroCreated ***");
 }
 
 void AAI::heroInGarrisonChange(const CGTownInstance * town) {
-  // print("*** heroInGarrisonChange ***");
+  debug("*** heroInGarrisonChange ***");
 }
 
 void AAI::heroManaPointsChanged(const CGHeroInstance * hero) {
-  // print("*** heroManaPointsChanged ***");
+  debug("*** heroManaPointsChanged ***");
 }
 
 void AAI::heroMovePointsChanged(const CGHeroInstance * hero) {
-  // print("*** heroMovePointsChanged ***");
+  debug("*** heroMovePointsChanged ***");
 }
 
 void AAI::heroMoved(const TryMoveHero & details, bool verbose) {
-  // print("*** heroMoved ***");
+  debug("*** heroMoved ***");
 }
 
 void AAI::heroPrimarySkillChanged(const CGHeroInstance * hero, int which, si64 val) {
-  // print("*** heroPrimarySkillChanged ***");
+  debug("*** heroPrimarySkillChanged ***");
 }
 
 void AAI::heroSecondarySkillChanged(const CGHeroInstance * hero, int which, int val) {
-  // print("*** heroSecondarySkillChanged ***");
+  debug("*** heroSecondarySkillChanged ***");
 }
 
 void AAI::heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start) {
-  // print("*** heroVisit ***");
+  debug("*** heroVisit ***");
 }
 
 void AAI::heroVisitsTown(const CGHeroInstance * hero, const CGTownInstance * town) {
-  // print("*** heroVisitsTown ***");
+  debug("*** heroVisitsTown ***");
 }
 
 void AAI::newObject(const CGObjectInstance * obj) {
-  // print("*** newObject ***");
+  debug("*** newObject ***");
 }
 
 void AAI::objectPropertyChanged(const SetObjectProperty * sop) {
-  // print("*** objectPropertyChanged ***");
+  debug("*** objectPropertyChanged ***");
 }
 
 void AAI::objectRemoved(const CGObjectInstance * obj) {
-  // print("*** objectRemoved ***");
+  debug("*** objectRemoved ***");
 }
 
 void AAI::playerBlocked(int reason, bool start) {
-  // print("*** playerBlocked ***");
+  debug("*** playerBlocked ***");
 }
 
 void AAI::playerBonusChanged(const Bonus & bonus, bool gain) {
-  // print("*** playerBonusChanged ***");
+  debug("*** playerBonusChanged ***");
 }
 
 void AAI::receivedResource() {
-  // print("*** receivedResource ***");
+  debug("*** receivedResource ***");
 }
 
 void AAI::requestRealized(PackageApplied * pa) {
-  // print("*** requestRealized ***");
+  debug("*** requestRealized ***");
 }
 
 void AAI::requestSent(const CPackForServer * pack, int requestID) {
-  // print("*** requestSent ***");
+  debug("*** requestSent ***");
 }
 
 void AAI::showHillFortWindow(const CGObjectInstance * object, const CGHeroInstance * visitor) {
-  // print("*** showHillFortWindow ***");
+  debug("*** showHillFortWindow ***");
 }
 
 void AAI::showInfoDialog(EInfoWindowMode type, const std::string & text, const std::vector<Component> & components, int soundID) {
-  // print("*** showInfoDialog ***");
+  debug("*** showInfoDialog ***");
 }
 
 void AAI::showMarketWindow(const IMarket * market, const CGHeroInstance * visitor) {
-  // print("*** showMarketWindow ***");
+  debug("*** showMarketWindow ***");
 }
 
 void AAI::showPuzzleMap() {
-  // print("*** showPuzzleMap ***");
+  debug("*** showPuzzleMap ***");
 }
 
 void AAI::showRecruitmentDialog(const CGDwelling * dwelling, const CArmedInstance * dst, int level) {
-  // print("*** showRecruitmentDialog ***");
+  debug("*** showRecruitmentDialog ***");
 }
 
 void AAI::showShipyardDialog(const IShipyard * obj) {
-  // print("*** showShipyardDialog ***");
+  debug("*** showShipyardDialog ***");
 }
 
 void AAI::showTavernWindow(const CGObjectInstance * townOrTavern) {
-  // print("*** showTavernWindow ***");
+  debug("*** showTavernWindow ***");
 }
 
 void AAI::showThievesGuildWindow(const CGObjectInstance * obj) {
-  // print("*** showThievesGuildWindow ***");
+  debug("*** showThievesGuildWindow ***");
 }
 
 void AAI::showUniversityWindow(const IMarket * market, const CGHeroInstance * visitor) {
-  // print("*** showUniversityWindow ***");
+  debug("*** showUniversityWindow ***");
 }
 
 void AAI::tileHidden(const std::unordered_set<int3> & pos) {
-  // print("*** tileHidden ***");
+  debug("*** tileHidden ***");
 }
 
 void AAI::tileRevealed(const std::unordered_set<int3> & pos) {
-  // print("*** tileRevealed ***");
+  debug("*** tileRevealed ***");
 }
 
 void AAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID query) {
-  // print("*** heroExchangeStarted ***");
+  debug("*** heroExchangeStarted ***");
 }
 
 std::string AAI::getBattleAIName() const {

@@ -82,6 +82,30 @@ const MMAI::F_Sys init_vcmi(
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
   // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
+  Settings(settings.write({"logging", "console", "coloredOutputEnabled"}))->Bool() = true;
+
+  Settings colors = settings.write["logging"]["console"]["colorMapping"];
+  colors->Vector().clear();
+
+  auto confcolor = [&colors](std::string domain, std::string lvl, std::string color) {
+    JsonNode jentry, jlvl, jdomain, jcolor;
+    jdomain.String() = domain;
+    jlvl.String() = lvl;
+    jcolor.String() = color;
+    jentry.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}, {"color", jcolor}};
+    colors->Vector().push_back(jentry);
+  };
+
+  confcolor("global", "trace", "gray");
+  confcolor("ai",     "trace", "gray");
+  confcolor("global", "debug", "gray");
+  confcolor("ai",     "debug", "gray");
+  confcolor("global", "info", "white");
+  confcolor("ai",     "info", "white");
+  confcolor("global", "warn", "yellow");
+  confcolor("ai",     "warn", "yellow");
+  confcolor("global", "error", "red");
+  confcolor("ai",     "error", "red");
 
   //
   // Configure logging

@@ -95,6 +95,10 @@ class BAI : public CBattleGameInterface
   const State buildState(const CStack * stack);
   ActionResult buildAction(const CStack * stack, State state, Action action);
 
+  void error(const std::string &text) const;
+  void warn(const std::string &text) const;
+  void info(const std::string &text) const;
+  void debug(const std::string &text) const;
 public:
   BAI();
   ~BAI();
@@ -125,10 +129,6 @@ public:
   //void battleObstaclesChanged(const std::vector<ObstacleChanges> & obstacles) override;
   void battleCatapultAttacked(const CatapultAttack & ca) override; //called when catapult makes an attack
   //void battleGateStateChanged(const EGateState state) override;
-
-private:
-  void print(const std::string &text) const;
-  void debug(const std::string &text) const;
 };
 
 MMAI_NS_END

@@ -17,12 +17,12 @@ BAI::BAI()
   allBattleHexes(initAllBattleHexes()),
   allActionNames(initAllActionNames())
 {
-  print("+++ constructor +++");
+  info("+++ constructor +++");
 }
 
 BAI::~BAI()
 {
-  print("--- destructor ---");
+  info("--- destructor ---");
   if(cb)
   {
     //Restore previous state of CB - it may be shared with the main AI (like VCAI)
@@ -32,18 +32,18 @@ BAI::~BAI()
 }
 
 void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {
-  print("*** initBattleInterface -- BUT NO F_GetAction ***");
+  error("*** initBattleInterface -- BUT NO F_GetAction ***");
   myInitBattleInterface(ENV, CB, nullptr);
 }
 
 void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
 {
-  print("*** initBattleInterface -- BUT NO F_GetAction ***");
+  error("*** initBattleInterface -- BUT NO F_GetAction ***");
   myInitBattleInterface(ENV, CB, nullptr);
 }
 
 void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, F_GetAction f_getAction) {
-  print("*** myInitBattleInterface ***");
+  info("*** myInitBattleInterface ***");
 
   assert(f_getAction);
 

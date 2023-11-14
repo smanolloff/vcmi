@@ -23,13 +23,13 @@ VCMI_LIB_NAMESPACE_END
 
 #ifndef VCMI_WINDOWS
 	using TColor = std::string;
-	#define CONSOLE_GREEN "\x1b[1;32m"
-	#define CONSOLE_RED "\x1b[1;31m"
-	#define CONSOLE_MAGENTA "\x1b[1;35m"
-	#define CONSOLE_YELLOW "\x1b[1;33m"
-	#define CONSOLE_WHITE "\x1b[1;37m"
+	#define CONSOLE_GREEN "\x1b[32m"
+	#define CONSOLE_RED "\x1b[31m"
+	#define CONSOLE_MAGENTA "\x1b[35m"
+	#define CONSOLE_YELLOW "\x1b[33m"
+	#define CONSOLE_WHITE "\x1b[37m"
 	#define CONSOLE_GRAY "\x1b[1;30m"
-	#define CONSOLE_TEAL "\x1b[1;36m"
+	#define CONSOLE_TEAL "\x1b[36m"
 #else
 	#include <windows.h>
 	#include <dbghelp.h>

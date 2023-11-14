@@ -11,6 +11,11 @@ class DLL_EXPORT AAI : public CAdventureAI
   std::shared_ptr<BAI> bai;
   Action getAction(Result);
   Action getNonRenderAction(Result);
+
+  void error(const std::string &text) const;
+  void warn(const std::string &text) const;
+  void info(const std::string &text) const;
+  void debug(const std::string &text) const;
 public:
   AAI();
   virtual ~AAI();
@@ -175,9 +180,6 @@ public:
   virtual void objectRemovedAfter(){}; //eg. collected resource, picked artifact, beaten hero
   virtual void playerStartsTurn(PlayerColor player){};
   */
-
-private:
-  void print(const std::string &text) const;
 };
 
 } // namespace MMAI

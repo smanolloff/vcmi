@@ -37,21 +37,14 @@ MMAI_NS_BEGIN
   errmask, \
   errmsgs};
 
-void BAI::print(const std::string &text) const
-{
-  logAi->error("BAI  [%p]: %s", this, text);
-  // printf("[BAI]: %s\n", text.c_str());
-}
-
-void BAI::debug(const std::string &text) const
-{
-  logAi->info("BAI  [%p]: %s", this, text);
-  // printf("[BAI]: %s\n", text.c_str());
-}
+void BAI::error(const std::string &text) const { logAi->error("BAI %s", text); }
+void BAI::warn(const std::string &text) const { logAi->warn("BAI %s", text); }
+void BAI::info(const std::string &text) const { logAi->info("BAI %s", text); }
+void BAI::debug(const std::string &text) const { logAi->debug("BAI %s", text); }
 
 void BAI::activeStack(const CStack * astack)
 {
-  print("*** activeStack ***");
+  info("*** activeStack ***");
   // print("activeStack called for " + astack->nodeName());
 
   result.state = buildState(astack);
@@ -72,14 +65,14 @@ void BAI::activeStack(const CStack * astack)
 
     if (ba) {
       assert(errmask == 0);
-      debug("Action is VALID: " + actname);
+      info("Action is VALID: " + actname);
       break;
     } else {
       assert(errmask > 0);
       auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
           [](auto &a, auto &b) { return a + "\n" + b; });
 
-      print("Action is INVALID: " + actname + ":\n" + errstring);
+      warn("Action is INVALID: " + actname + ":\n" + errstring);
       result.errmask = errmask;
     }
   }
@@ -89,7 +82,6 @@ void BAI::activeStack(const CStack * astack)
   debug("cb->battleMakeUnitAction(*ba)");
   cb->battleMakeUnitAction(*ba);
 
-  debug("return");
   return;
 }
 
@@ -290,7 +282,7 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
 
 void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
 {
-  print("*** battleStacksAttacked ***");
+  info("*** battleStacksAttacked ***");
 
   for(auto & elem : bsa) {
     auto * defender = cb->battleGetStackByID(elem.stackAttacked, false);
@@ -322,13 +314,13 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
 
 void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
 {
-  print("*** battleStart ***");
+  info("*** battleStart ***");
   side = Side;
   initStackHNSMap();
 }
 
 void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
-  print("*** battleEnd ***");
+  info("*** battleEnd ***");
 
   result.ended = true;
   result.victory = br->winner == cb->battleGetMySide();
