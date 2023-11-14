@@ -6,6 +6,7 @@
 #include "mytypes.h"
 #include <memory>
 #include <string>
+#include <cstdio>
 
 MMAI_NS_BEGIN
 
@@ -54,7 +55,7 @@ void BAI::activeStack(const CStack * astack)
   std::shared_ptr<BattleAction> ba;
 
   while(true) {
-    auto action = getAction(result);
+    action = getAction(result);
 
     const auto actname = allActionNames[action];
     debug("Got action: " + action_str(action) + " (" + actname + ")");

@@ -107,7 +107,7 @@ using State = std::array<NValue, STATE_SIZE>;
 struct Result {
     ResultType type = ResultType::UNSET;
     State state = {};
-    uint8_t errmask = 0;
+    ErrMask errmask = 0;
     int dmgDealt = 0;
     int dmgReceived = 0;
     int unitsLost = 0;
