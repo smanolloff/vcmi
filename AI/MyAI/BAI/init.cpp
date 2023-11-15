@@ -1,6 +1,7 @@
 #include "BAI.h"
 #include "battle/BattleHex.h"
 #include "mytypes.h"
+#include "vstd/CLoggerBase.h"
 
 // Contains initialization-related code
 
@@ -45,7 +46,7 @@ void BAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<
 void BAI::myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, F_GetAction f_getAction) {
   info("*** myInitBattleInterface ***");
 
-  assert(f_getAction);
+  ASSERT(f_getAction, "f_getAction is null");
 
   env = ENV;
   cb = CB;

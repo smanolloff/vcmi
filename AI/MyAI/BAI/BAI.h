@@ -15,6 +15,7 @@ MMAI_NS_BEGIN
 #define BF_YMAX 11    // GameConstants::BFIELD_HEIGHT
 #define BF_SIZE 165   // BF_XMAX * BF_YMAX
 #define ATTRS_PER_STACK 12
+#define ASSERT(cond, msg) if(!(cond)) logAi->error("AAI Assertion failed in %s: %s", std::filesystem::path(__FILE__).filename().string(), msg)
 
 //Accessibility is property of hex in battle. It doesn't depend on stack, side's perspective and so on.
 enum class HexState : int

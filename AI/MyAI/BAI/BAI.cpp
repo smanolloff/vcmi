@@ -65,11 +65,11 @@ void BAI::activeStack(const CStack * astack)
     auto errmsgs = std::get<2>(tuple);
 
     if (ba) {
-      assert(errmask == 0);
+      ASSERT(errmask == 0, "unexpected errmask: " + std::to_string(errmask));
       info("Action is VALID: " + actname);
       break;
     } else {
-      assert(errmask > 0);
+      ASSERT(errmask > 0, "unexpected errmask: " + std::to_string(errmask));
       auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
           [](auto &a, auto &b) { return a + "\n" + b; });
 
@@ -132,11 +132,11 @@ const State BAI::buildState(const CStack * astack) {
   }
 
   auto allstacks = cb->battleGetStacks();
-  assert(allstacks.size() <= 14);
+  ASSERT(allstacks.size() <= 14, "unexpected allstacks size: " + std::to_string(allstacks.size()));
 
   for (auto &stack : allstacks) {
     int slot = stack->unitSlot();
-    assert(slot >= 0 && slot < 7); // same as assert(slot.validSlot())
+    ASSERT(slot >= 0 && slot < 7, "unexpected slot: " + std::to_string(slot));
 
     // 0th slot is gi+0..gi+ATTRS_PER_STACK
     int i = gi + slot*ATTRS_PER_STACK;
@@ -192,7 +192,7 @@ const State BAI::buildState(const CStack * astack) {
 
   state[gi++] = NValue("active stack", astack->unitSlot(), 0, 7);
 
-  assert(gi == state.size());
+  ASSERT(gi == state.size(), "unexpected gi: " + std::to_string(gi));
   return state;
 }
 
@@ -260,7 +260,7 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
     return {nullptr, errmask, errmsgs};
   }
 
-  assert(targets.size() <= 1);
+  ASSERT(targets.size() <= 1, "unexpected targets.size(): " + std::to_string(targets.size()));
   auto stack = targets[0];
 
   if (!stack->alive())

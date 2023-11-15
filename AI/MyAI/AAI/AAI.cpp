@@ -10,10 +10,6 @@
 #include <pybind11/pybind11.h>
 
 #include <boost/thread.hpp>
-#include <boost/chrono.hpp>
-
-// TODO: refine includes
-
 
 namespace MMAI {
 
@@ -21,7 +17,9 @@ AAI::AAI() {
   info("*** (constructor) ***");
 }
 
-AAI::~AAI() {}
+AAI::~AAI() {
+  info("--- (destructor) ---");
+}
 
 void AAI::error(const std::string &text) const { logAi->error("AAI %s", text); }
 void AAI::warn(const std::string &text) const { logAi->warn("AAI %s", text); }
@@ -40,8 +38,8 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
   cb->waitTillRealize = true;
   cb->unlockGsWhenWaiting = true;
 
-  assert(baggage.has_value());
-  assert(baggage.type() == typeid(CBProvider*));
+  ASSERT(baggage.has_value(), "baggage has no value");
+  ASSERT(baggage.type() == typeid(CBProvider*), "baggage of unexpected type");
   cbprovider = std::any_cast<CBProvider*>(baggage);
 }
 
@@ -65,7 +63,7 @@ Action AAI::getAction(Result result) {
     // AAI::getAction is called only by BAI, only during battle
     // FIXME: retreat may be impossible, a _real_ reset should be implemented
     info("Will retreat in order to reset battle");
-    assert(!bai->result.ended);
+    ASSERT(!bai->result.ended, "expected battle ended");
     action = ACTION_RETREAT;
   }
 
@@ -95,7 +93,7 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
   assert(cbc);
 
   auto aiName = getBattleAIName();
-  assert(aiName == "MyAI");
+  ASSERT(aiName == "MyAI", "wrong battle AI: " + aiName);
 
   battleAI = CDynLibHandler::getNewBattleAI(aiName);
 
@@ -122,7 +120,7 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
 
     info("Reset battle");
     // Any non-render action *must* be a reset (battle has ended)
-    assert(action == ACTION_RESET);
+    ASSERT(action == ACTION_RESET, "unexpected action: " + std::to_string(action));
   }
 
   battleAI.reset();

@@ -137,19 +137,22 @@ CVCMIServer::CVCMIServer(boost::program_options::variables_map & opts)
 	logNetwork->info("Port %d will be used", port);
 	try
 	{
+#ifdef SINGLE_PROCESS_APP
 		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port));
+#else
+		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 0));
+#endif
 	}
 	catch(...)
 	{
 		logNetwork->info("Port %d is busy, trying to use random port instead", port);
 
-#ifndef SINGLE_PROCESS_APP
 		if(cmdLineOptions.count("run-by-client") && !cmdLineOptions.count("enable-shm"))
 		{
 			logNetwork->error("Cant pass port number to client without shared memory!", port);
 			exit(0);
 		}
-#endif
+
 		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 0));
 		port = acceptor->local_endpoint().port();
 	}

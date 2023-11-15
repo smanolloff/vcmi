@@ -144,7 +144,7 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   CMessage::init();
   CCS->curh->show();
 
-  boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
+  boost::thread t(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
 
 

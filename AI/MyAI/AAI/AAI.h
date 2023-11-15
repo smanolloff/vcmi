@@ -3,6 +3,8 @@
 #include "../mytypes.h"
 #include "BAI/BAI.h"
 
+#define ASSERT(cond, msg) if(!(cond)) logAi->error("AAI Assertion failed in %s: %s", std::filesystem::path(__FILE__).filename().string(), msg)
+
 namespace MMAI {
 
 class DLL_EXPORT AAI : public CAdventureAI
