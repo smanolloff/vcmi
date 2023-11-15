@@ -515,14 +515,14 @@ std::vector<bfs::path> VCMIDirsOSX::dataPaths() const
 {
 	std::vector<bfs::path> ret;
 	//FIXME: need some proper codepath for detecting running from build output directory
-	if(developmentMode())
-	{
+	// if(developmentMode())
+	// {
 		ret.push_back(".");
-	}
-	else
-	{
-		ret.push_back("../Resources/Data");
-	}
+	// }
+	// else
+	// {
+	// 	ret.push_back("../Resources/Data");
+	// }
 	return ret;
 }
 
