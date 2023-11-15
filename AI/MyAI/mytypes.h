@@ -17,15 +17,17 @@ namespace MMAI {
 #endif
 
 // Regular actions to be passed by GymEnv:
+// 3 non-move actions
+// 1320 move[+attack] actions (165 hexes * 8 actions each)
+static const int N_ACTIONS = 3 + 1320;
+
+// Non-move actions:
 static const int ACTION_RETREAT = 0;
 static const int ACTION_DEFEND = 1;
 static const int ACTION_WAIT = 2;
-// + 1320 more move[+attack] actions (165 hexes * 8 actions each)
-static const int N_MOVE_ACTIONS = 1320;
-static const int N_ACTIONS = ACTION_RETREAT + ACTION_DEFEND + ACTION_WAIT + N_MOVE_ACTIONS;
-
 
 // Control actions
+// (not part of the regular action space)
 static const int ACTION_UNSET = INT16_MIN;
 static const int ACTION_RESET = -1;
 static const int ACTION_RENDER_ANSI = -2;

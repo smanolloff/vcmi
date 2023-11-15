@@ -15,7 +15,7 @@ int main(int argc, char * argv[]) {
         return MMAI::Action(i++);
     };
 
-    auto cbprovider = MMAI::CBProvider(getaction, "");
+    auto cbprovider = MMAI::CBProvider(getaction);
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
