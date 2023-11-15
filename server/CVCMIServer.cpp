@@ -138,9 +138,10 @@ CVCMIServer::CVCMIServer(boost::program_options::variables_map & opts)
 	try
 	{
 #ifdef SINGLE_PROCESS_APP
-		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port));
-#else
 		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 0));
+		port = acceptor->local_endpoint().port();
+#else
+		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port));
 #endif
 	}
 	catch(...)
