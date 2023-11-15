@@ -17,9 +17,9 @@ namespace MMAI {
 #endif
 
 // Regular actions to be passed by GymEnv:
-// 3 non-move actions
 // 1320 move[+attack] actions (165 hexes * 8 actions each)
-static const int N_ACTIONS = 3 + 1320;
+// 3 non-move actions
+static const int N_ACTIONS = 1320 + 3;
 
 // Non-move actions:
 static const int ACTION_RETREAT = 0;
