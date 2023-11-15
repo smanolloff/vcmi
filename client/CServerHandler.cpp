@@ -191,6 +191,7 @@ void CServerHandler::startLocalServerAndConnect()
 
 	th->update();
 
+#ifndef SINGLE_PROCESS_APP
 	auto errorMsg = CGI->generaltexth->translate("vcmi.server.errors.existingProcess");
 	try
 	{
@@ -203,6 +204,7 @@ void CServerHandler::startLocalServerAndConnect()
 	{
 		//no connection means that port is not busy and we can start local server
 	}
+#endif
 
 #if defined(SINGLE_PROCESS_APP)
 	boost::condition_variable cond;
@@ -214,9 +216,11 @@ void CServerHandler::startLocalServerAndConnect()
 		args.push_back("--lobby-port=" + std::to_string(settings["session"]["port"].Integer()));
 		args.push_back("--lobby-uuid=" + settings["session"]["hostUuid"].String());
 	}
-	threadRunLocalServer = std::make_shared<boost::thread>([&cond, args, this] {
+	ui16 srvport = 0;
+
+	threadRunLocalServer = std::make_shared<boost::thread>([&cond, &srvport, args, this] {
 		setThreadName("CVCMIServer");
-		CVCMIServer::create(&cond, args);
+		CVCMIServer::create(&cond, &srvport, args);
 		onServerFinished();
 	});
 	threadRunLocalServer->detach();
@@ -244,7 +248,7 @@ void CServerHandler::startLocalServerAndConnect()
 		boost::unique_lock<boost::mutex> lock{m};
 		logNetwork->info("waiting for server");
 		cond.wait(lock);
-		logNetwork->info("server is ready");
+		logNetwork->info("server is ready ON PORT %d", srvport);
 
 #ifdef VCMI_IOS
 		dispatch_sync(dispatch_get_main_queue(), ^{
@@ -270,7 +274,11 @@ void CServerHandler::startLocalServerAndConnect()
 	th->update(); //put breakpoint here to attach to server before it does something stupid
 
 #if !defined(VCMI_MOBILE)
+#ifdef SINGLE_PROCESS_APP
+	const ui16 port = srvport;
+#else
 	const ui16 port = shm ? shm->sr->port : 0;
+#endif
 #else
 	const ui16 port = 0;
 #endif

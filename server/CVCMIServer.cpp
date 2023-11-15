@@ -142,15 +142,18 @@ CVCMIServer::CVCMIServer(boost::program_options::variables_map & opts)
 	catch(...)
 	{
 		logNetwork->info("Port %d is busy, trying to use random port instead", port);
+
+#ifndef SINGLE_PROCESS_APP
 		if(cmdLineOptions.count("run-by-client") && !cmdLineOptions.count("enable-shm"))
 		{
 			logNetwork->error("Cant pass port number to client without shared memory!", port);
 			exit(0);
 		}
-		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 0));
+#endif
+		acceptor = std::make_shared<TAcceptor>(*io, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 0));
 		port = acceptor->local_endpoint().port();
 	}
-	logNetwork->info("Listening for connections at port %d", port);
+	logNetwork->warn("Listening for connections at port %d", port);
 }
 
 CVCMIServer::~CVCMIServer()
@@ -1081,15 +1084,17 @@ int main(int argc, const char * argv[])
 	loadDLLClasses();
 	srand((ui32)time(nullptr));
 
-#ifdef SINGLE_PROCESS_APP
-	boost::condition_variable * cond = reinterpret_cast<boost::condition_variable *>(const_cast<char *>(argv[0]));
-	cond->notify_one();
-#endif
-
 	try
 	{
 		boost::asio::io_service io_service;
 		CVCMIServer server(opts);
+
+#ifdef SINGLE_PROCESS_APP
+		boost::condition_variable * cond = reinterpret_cast<boost::condition_variable *>(const_cast<char *>(argv[0]));
+		ui16 * srvport = reinterpret_cast<ui16 *>(const_cast<char *>(argv[1]));
+		*srvport = server.port;
+		cond->notify_one();
+#endif
 
 		try
 		{
@@ -1138,9 +1143,9 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_initClassloade
 	CAndroidVMHelper::initClassloader(baseEnv);
 }
 #elif defined(SINGLE_PROCESS_APP)
-void CVCMIServer::create(boost::condition_variable * cond, const std::vector<std::string> & args)
+void CVCMIServer::create(boost::condition_variable * cond, ui16 * cport, const std::vector<std::string> & args)
 {
-	std::vector<const void *> argv = {cond};
+	std::vector<const void *> argv = {cond, cport};
 	for(auto & a : args)
 		argv.push_back(a.c_str());
 	main(argv.size(), reinterpret_cast<const char **>(&*argv.begin()));
