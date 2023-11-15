@@ -134,12 +134,7 @@ using F_GetAction = std::function<Action(const Result &result)>;
 // as a std::any object, then cast back to CBProvider in the AI constructor
 struct DLL_EXPORT CBProvider {
     F_GetAction f_getAction = nullptr;
-    std::string debugstr = "unset";
-
-    CBProvider(F_GetAction f, std::string str) {
-        this->f_getAction = f;
-        this->debugstr = str;
-    }
+    CBProvider(F_GetAction f) : f_getAction(f) {}
 };
 
 } // namespace MMAI

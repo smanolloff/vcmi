@@ -7,7 +7,7 @@ namespace MMAI {
 
 class DLL_EXPORT AAI : public CAdventureAI
 {
-  CBProvider * cbprovider = new MMAI::CBProvider(nullptr, "from CppConnector (DEFAULT)");
+  CBProvider * cbprovider = new MMAI::CBProvider(nullptr);
   std::shared_ptr<BAI> bai;
   Action getAction(Result);
   Action getNonRenderAction(Result);

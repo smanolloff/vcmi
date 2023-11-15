@@ -275,7 +275,7 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
     RETURN_ACT_OR_ERR(BattleAction::makeShotAttack(astack, stack));
   }
 
-  if (!astack->isMeleeAttackPossible(astack, stack))
+  if (!astack->isMeleeAttackPossible(astack, stack, dest))
     addError(ERR_ATTACK_IMPOSSIBLE, errmask, errmsgs);
 
   RETURN_ACT_OR_ERR(BattleAction::makeMeleeAttack(astack, stack->position, dest));
