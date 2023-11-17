@@ -54,7 +54,7 @@ const MMAI::F_Sys init_vcmi(
   std::string loglevelAI,
   MMAI::CBProvider * cbprovider
 ) {
-  boost::filesystem::current_path(boost::filesystem::path(resdir));
+  // boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
 
@@ -130,7 +130,7 @@ const MMAI::F_Sys init_vcmi(
   srand ( (unsigned int)time(nullptr) );
 
   // This initializes SDL and requires main thread.
-  GH.init();
+  // GH.init();
 
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
@@ -143,10 +143,10 @@ const MMAI::F_Sys init_vcmi(
   });
   loading.join();
 
-  graphics = new Graphics(); // should be before curh
-  CCS->curh = new CursorHandler();
-  CMessage::init();
-  CCS->curh->show();
+  // graphics = new Graphics(); // should be before curh
+  // CCS->curh = new CursorHandler();
+  // CMessage::init();
+  // CCS->curh->show();
 
   // We have the GIL, safe to call syscbcb now
   return [](std::string cmd) {
@@ -163,7 +163,7 @@ const MMAI::F_Sys init_vcmi(
 void start_vcmi(std::string mapname) {
   auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
-  GH.screenHandler().close();
+  // GH.screenHandler().close();
 
   while (true) {
     boost::this_thread::sleep(boost::posix_time::milliseconds(1000));

@@ -64,6 +64,8 @@ void BAI::activeStack(const CStack * astack)
     auto errmask = std::get<1>(tuple);
     auto errmsgs = std::get<2>(tuple);
 
+    result.errmask = errmask;
+
     if (ba) {
       ASSERT(errmask == 0, "unexpected errmask: " + std::to_string(errmask));
       info("Action is VALID: " + actname);
@@ -74,7 +76,6 @@ void BAI::activeStack(const CStack * astack)
           [](auto &a, auto &b) { return a + "\n" + b; });
 
       warn("Action is INVALID: " + actname + ":\n" + errstring);
-      result.errmask = errmask;
     }
   }
 
