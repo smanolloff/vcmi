@@ -54,7 +54,7 @@ const MMAI::F_Sys init_vcmi(
   std::string loglevelAI,
   MMAI::CBProvider * cbprovider
 ) {
-  // boost::filesystem::current_path(boost::filesystem::path(resdir));
+  boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
 

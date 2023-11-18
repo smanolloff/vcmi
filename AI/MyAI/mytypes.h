@@ -1,8 +1,11 @@
 #pragma once
 
-// *** THIS FILE LIVES IN:
-// ***
-// *** vcmi/AI/MyAI/mytypes.h
+/*****
+****** THIS FILE LIVES IN:
+******
+****** vcmi/AI/MyAI/mytypes.h
+******
+*****/
 
 #include <cassert>
 #include <array>
@@ -19,7 +22,7 @@ namespace MMAI {
 // Regular actions to be passed by GymEnv:
 // 1320 move[+attack] actions (165 hexes * 8 actions each)
 // 3 non-move actions
-static const int N_ACTIONS = 1320 + 3;
+static const int N_ACTIONS = 1323; // !!! SYNC with pyconnector.py !!!
 
 // Non-move actions:
 static const int ACTION_RETREAT = 0;
@@ -35,10 +38,12 @@ static const int ACTION_RENDER_ANSI = -2;
 
 // State:
 // 165 hex + (14 stack * 12 attrs) + current_stack
-static const int STATE_SIZE = 334;
+static const int STATE_SIZE = 334; // !!! SYNC with pyconnector.py !!!
+
 
 using ErrMask = uint16_t;
 enum ErrType {
+    // !!! SYNC with pyconnector.py !!!
     ERR_ALREADY_WAITED,
     ERR_MOVE_SELF,
     ERR_HEX_UNREACHABLE,
@@ -62,17 +67,6 @@ static const std::map<const ErrType, std::tuple<const ErrMask, const std::string
     {ERR_MOVE_SHOOT,        {ErrMask(1 << 7), "ERR_MOVE_SHOOT", "cannot move and shoot"}},
     {ERR_ATTACK_IMPOSSIBLE, {ErrMask(1 << 8), "ERR_ATTACK_IMPOSSIBLE", "melee attack not possible"}},
 };
-
-// static const std::string ERR1_DESC = "asd";
-// static const uint8_t ERR2 = 0b00000010;
-// static const uint8_t ERR3 = 0b00000100;
-// static const uint8_t ERR4 = 0b00001000;
-// static const uint8_t ERR5 = 0b00010000;
-// static const uint8_t ERR6 = 0b00100000;
-// static const uint8_t ERR7 = 0b01000000;
-// static const uint8_t ERR8 = 0b10000000;
-
-// static const uint8_t ACTION_ERROR_0 = 0b0;
 
 // Arbitary int value normalized as -1..1 float
 extern "C" struct DLL_EXPORT NValue {
