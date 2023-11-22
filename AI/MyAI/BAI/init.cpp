@@ -11,7 +11,6 @@ BAI::BAI()
   : side(-1),
   wasWaitingForRealize(false),
   wasUnlockingGs(false),
-  stack(nullptr),
   hexStateNames(initHexStateNames()),
   hexStateValues(initHexStateValues()),
   hexStateNMap(initHexStateNMap()),

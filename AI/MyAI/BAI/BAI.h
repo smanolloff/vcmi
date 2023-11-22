@@ -60,7 +60,6 @@ class BAI : public CBattleGameInterface
 
   void actioncb(const Action &action);
 
-  const CStack * stack;
   // NOTE: those could be made static, no need to init at every battle
 
   const std::map<HexState, std::string> hexStateNames;

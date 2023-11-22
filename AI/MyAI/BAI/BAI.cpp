@@ -51,7 +51,6 @@ void BAI::activeStack(const CStack * astack)
   result.state = buildState(astack);
   result.type = ResultType::REGULAR;
 
-  this->stack = astack;
   std::shared_ptr<BattleAction> ba;
 
   while(true) {

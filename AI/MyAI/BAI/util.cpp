@@ -24,7 +24,7 @@ std::string BAI::action_str(const Action &a) {
 std::string BAI::renderANSI() {
   const Result &r = result;
   const Action &a = action;
-  const CStack* &astack = stack;
+  const auto &aslot = r.state[r.state.size() - 1].orig;
 
   auto state = r.state;
 
@@ -36,7 +36,7 @@ std::string BAI::renderANSI() {
 
   //
   // 1. Build ASCII table
-  //    (+populate aliveStacks)
+  //    (+populate aliveStacks var)
   //
   // ----------------------------------
   // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
@@ -82,7 +82,7 @@ std::string BAI::renderANSI() {
         nstackvis -= 7;
         color = enemycol;
       } else {
-        color = (astack && astack->unitSlot() == nstack)
+        color = (aslot == nstack)
           ? activecol : allycol;
       }
 
@@ -195,7 +195,7 @@ std::string BAI::renderANSI() {
         if (nstack > 6)
           color = enemycol;
         else
-          color = (astack && astack->unitSlot() == nstack) ? activecol : allycol;
+          color = (aslot == nstack) ? activecol : allycol;
       }
 
       std::get<0>(table[r][0]) = color;  // change header color
