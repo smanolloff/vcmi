@@ -154,7 +154,7 @@ const std::array<std::string, N_ACTIONS> BAI::initAllActionNames() {
 
   for (int y=0; y<BF_YMAX; y++) {
     for (int x=0; x<BF_XMAX; x++) {
-      auto base = "Move to (" + std::to_string(x) + ", " + std::to_string(y) + ")";
+      auto base = "Move to (" + std::to_string(x+1) + ", " + std::to_string(y+1) + ")";
       res[i++] = base;
       res[i++] = base + " + attack \033[31m#1\033[0m";
       res[i++] = base + " + attack \033[31m#2\033[0m";

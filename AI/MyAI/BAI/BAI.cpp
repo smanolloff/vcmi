@@ -4,9 +4,11 @@
 #include "battle/BattleAction.h"
 #include "battle/BattleHex.h"
 #include "mytypes.h"
+#include <boost/chrono/duration.hpp>
 #include <memory>
 #include <string>
 #include <cstdio>
+#include <thread>
 
 MMAI_NS_BEGIN
 
