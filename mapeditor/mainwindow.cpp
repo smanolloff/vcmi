@@ -368,7 +368,7 @@ void MainWindow::on_actionOpen_triggered()
 		return;
 	
 	auto filenameSelect = QFileDialog::getOpenFileName(this, tr("Open map"),
-		QString::fromStdString(VCMIDirs::get().userCachePath().make_preferred().string()),
+		QString::fromStdString((VCMIDirs::get().userCachePath() / "Maps" / "ai").make_preferred().string()),
 		tr("All supported maps (*.vmap *.h3m);;VCMI maps(*.vmap);;HoMM3 maps(*.h3m)"));
 	if(filenameSelect.isEmpty())
 		return;

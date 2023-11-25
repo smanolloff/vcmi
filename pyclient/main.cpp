@@ -1,6 +1,7 @@
 #include "main.h"
 #include "pyclient.h"
 #include "pyclient/aitypes.h"
+#include <cstdio>
 
 int main(int argc, char * argv[]) {
     std::function<void(int)> wactioncb;
@@ -12,7 +13,13 @@ int main(int argc, char * argv[]) {
     int i = act;
 
     MMAI::F_GetAction getaction = [&i](MMAI::Result r){
-        return MMAI::Action(i++);
+        if (r.type == MMAI::ResultType::ANSI_RENDER) {
+            std::cout << r.ansiRender << "\n";
+        }
+
+        return (i % 2 == 0)
+            ? MMAI::ACTION_RENDER_ANSI
+            : MMAI::Action(i++);
     };
 
     auto cbprovider = MMAI::CBProvider(getaction);

@@ -66,6 +66,7 @@ void BAI::activeStack(const CStack * astack)
     auto errmsgs = std::get<2>(tuple);
 
     result.errmask = errmask;
+    attackLogs.clear();
 
     if (ba) {
       ASSERT(errmask == 0, "unexpected errmask: " + std::to_string(errmask));
@@ -73,10 +74,12 @@ void BAI::activeStack(const CStack * astack)
       break;
     } else {
       ASSERT(errmask > 0, "unexpected errmask: " + std::to_string(errmask));
-      auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
-          [](auto &a, auto &b) { return a + "\n" + b; });
 
-      warn("Action is INVALID: " + actname + ":\n" + errstring);
+      // DEBUG ONLY (uncomment if needed):
+      // auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
+      //     [](auto &a, auto &b) { return a + "\n" + b; });
+      //
+      // warn("Action is INVALID: " + actname + ":\n" + errstring);
     }
   }
 
@@ -170,8 +173,8 @@ const State BAI::buildState(const CStack * astack) {
     state[i++] = NValue(prefix + "shots", stack->shots.available(), MIN_SHOTS, MAX_SHOTS);
     state[i++] = NValue(prefix + "dmg (min, melee)", stack->getMinDamage(false), MIN_DMG, MAX_DMG);
     state[i++] = NValue(prefix + "dmg (max, melee)", stack->getMaxDamage(false), MIN_DMG, MAX_DMG);
-    state[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMinDamage(true), MIN_DMG, MAX_DMG);
-    state[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMaxDamage(true), MIN_DMG, MAX_DMG);
+    // state[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMinDamage(true), MIN_DMG, MAX_DMG);
+    // state[i++] = NValue(prefix + "dmg (min, ranged)", stack->getMaxDamage(true), MIN_DMG, MAX_DMG);
     state[i++] = NValue(prefix + "HP", stack->getMaxHealth(), MIN_HP, MAX_HP);
     state[i++] = NValue(prefix + "HP left", stack->getFirstHPleft(), MIN_HP, MAX_HP);
     state[i++] = NValue(prefix + "speed", stack->speed(), MIN_SPEED, MAX_SPEED);
@@ -289,29 +292,30 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
 
   for(auto & elem : bsa) {
     auto * defender = cb->battleGetStackByID(elem.stackAttacked, false);
+    auto * attacker = cb->battleGetStackByID(elem.attackerID, false);
 
-    auto dmg = elem.damageAmount;
-    auto units = elem.killedAmount;
+    auto al = AttackLog(
+      attacker->unitSlot(),
+      defender->unitSlot(),
+      defender->getOwner() == cb->getPlayerID(),
+      elem.damageAmount,
+      elem.killedAmount,
+      elem.killedAmount * defender->creatureId().toCreature()->getAIValue()
+    );
 
-    // TODO: AIValue is unclear how it's calculated (maybe builtin the game?)
-    //       Maybe use a generic calc, eg:
-    //       BaseHP + AvgDmg + att + def + speed*2 + bonuses (eg. archer/marskman)
-    //       ... but that sounds too complicated
-    //
-    auto value = elem.killedAmount * defender->creatureId().toCreature()->getAIValue();
-
-    // attacker dealing dmg might be our friendly fire
-    // => use defender
-    if (defender->getOwner() == cb->getPlayerID()) {
+    if (al.isOurStackAttacked) {
       // note: in VCMI there is no excess dmg if stack is killed
-      result.dmgReceived += dmg;
-      result.unitsLost += units;
-      result.valueLost += value;
+      result.dmgReceived += al.dmg;
+      result.unitsLost += al.units;
+      result.valueLost += al.value;
+
     } else {
-      result.dmgDealt += dmg;
-      result.unitsKilled += units;
-      result.valueKilled += value;
+      result.dmgDealt += al.dmg;
+      result.unitsKilled += al.units;
+      result.valueKilled += al.value;
     }
+
+    attackLogs.push_back(std::move(al));
   }
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "GameConstants.h"
 #include "lib/CStack.h"
 #include "lib/AI_Base.h"
 #include "CCallback.h"
@@ -14,7 +15,7 @@ MMAI_NS_BEGIN
 #define BF_XMAX 15    // GameConstants::BFIELD_WIDTH - 2 (ignore "side" cols)
 #define BF_YMAX 11    // GameConstants::BFIELD_HEIGHT
 #define BF_SIZE 165   // BF_XMAX * BF_YMAX
-#define ATTRS_PER_STACK 12
+#define ATTRS_PER_STACK 10
 #define ASSERT(cond, msg) if(!(cond)) logAi->error("AAI Assertion failed in %s: %s", std::filesystem::path(__FILE__).filename().string(), msg)
 
 //Accessibility is property of hex in battle. It doesn't depend on stack, side's perspective and so on.
@@ -38,6 +39,30 @@ enum class HexState : int
     ENEMY_STACK_6,      // 15
     ENEMY_STACK_7,      // 16
     count
+};
+
+struct AttackLog {
+  AttackLog(
+    SlotID attslot_, SlotID defslot_, bool isOurStackAttacked_,
+    int dmg_, int units_, int value_
+  ) : attslot(attslot_), defslot(defslot_), isOurStackAttacked(isOurStackAttacked_),
+      dmg(dmg_), units(units_), value(value_) {}
+
+  // attacker dealing dmg might be our friendly fire
+  // If we look at Attacker POV, we would count our friendly fire as "dmg dealt"
+  // So we look at Defender POV, so our friendly fire is counted as "dmg received"
+  // This means that if the enemy does friendly fire dmg,
+  //  we would count it as our dmg dealt - that is OK (we have "tricked" the enemy!)
+  const bool isOurStackAttacked;
+
+  const SlotID attslot;
+  const SlotID defslot;
+  const int dmg;
+  const int units;
+
+  // NOTE: "value" is hard-coded in original H3 and can be found online:
+  // https://heroes.thelazy.net/index.php/List_of_creatures
+  const int value;
 };
 
 using ActionResult = std::tuple<
@@ -76,6 +101,8 @@ class BAI : public CBattleGameInterface
 
   const std::array<std::string, N_ACTIONS> allActionNames;
   const std::array<std::string, N_ACTIONS> initAllActionNames();
+
+  std::vector<AttackLog> attackLogs;
 
   // can't be const -- called during battleStart (unavailable in constructor)
   std::map<const CStack*, NValue> stackHNSMap;

@@ -37,8 +37,8 @@ static const int ACTION_RENDER_ANSI = -2;
 
 
 // State:
-// 165 hex + (14 stack * 12 attrs) + current_stack
-static const int STATE_SIZE = 334; // !!! SYNC with pyconnector.py !!!
+// 165 hex + (14 stack * 10 attrs) + current_stack
+static const int STATE_SIZE = 306; // !!! SYNC with pyconnector.py !!!
 
 
 using ErrMask = uint16_t;

@@ -137,13 +137,14 @@ std::string BAI::renderANSI() {
   }
 
   //
-  // 3. Add stats table
-  //    NOTE: below example is incorrect, table is now rotated
+  // 3. Add stats table:
   //
-  //   QTY ATT DEF SHT MD0 MD1 RD0 RD1  HP HPL SPD WAI
-  // 1   1  18  19  24  14  14  14  14  30  30   9   0
-  // 2   0   0   0   0   0   0   0   0   0   0   0   0
-  // 3   0   0   0   0   0   0   0   0   0   0   0   0
+  //          Stack # |   1   2   3   4   5   6   7   1   2   3   4   5   6   7
+  // -----------------+--------------------------------------------------------
+  //              Qty |   0  34   0   0   0   0   0   0  17   0   0   0   0   0
+  //           Attack |   0   8   0   0   0   0   0   0   6   0   0   0   0   0
+  //    ...10 more... | ...
+  // -----------------+--------------------------------------------------------
   //
 
   // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
@@ -172,8 +173,8 @@ std::string BAI::renderANSI() {
     std::tuple{nocol, headercolwidth, "Shots"},
     std::tuple{nocol, headercolwidth, "Dmg min (melee)"},
     std::tuple{nocol, headercolwidth, "Dmg max (melee)"},
-    std::tuple{nocol, headercolwidth, "Dmg min (ranged)"},
-    std::tuple{nocol, headercolwidth, "Dmg max (ranged)"},
+    // std::tuple{nocol, headercolwidth, "Dmg min (ranged)"},
+    // std::tuple{nocol, headercolwidth, "Dmg max (ranged)"},
     std::tuple{nocol, headercolwidth, "HP"},
     std::tuple{nocol, headercolwidth, "HP left"},
     std::tuple{nocol, headercolwidth, "Speed"},
@@ -204,6 +205,12 @@ std::string BAI::renderANSI() {
     }
   }
 
+  auto divrow = std::stringstream();
+  divrow << padLeft("", headercolwidth, '-');
+  divrow << "-+";
+  divrow << padLeft("", (nrows-1)*colwidth, '-');
+  auto divrowstr = divrow.str();
+
   // XXX: table is rotated here
   for (int r=0; r<ncols; r++) {
     auto row = std::stringstream();
@@ -218,20 +225,56 @@ std::string BAI::renderANSI() {
 
     rows.push_back(std::move(row));
 
-    // divider
-    if (r == 0) {
-      auto divrow = std::stringstream();
-      divrow << padLeft("", headercolwidth, '-');
-      divrow << "-+";
-      divrow << padLeft("", (nrows-1)*colwidth, '-');
-      rows.push_back(std::move(divrow));
+    // divider (after header row)
+    if (r == 0)
+      rows.emplace_back(divrowstr);
+  }
+
+  // divider (after last row)
+  rows.emplace_back(divrowstr);
+
+  //
+  // 4. Add logs below table:
+  //
+  // #1 attacks #5 for 16 dmg (1 killed)
+  // #5 attacks #1 for 4 dmg (0 killed)
+  // ...
+  //
+  for (auto &alog : attackLogs) {
+    auto row = std::stringstream();
+    auto col1 = allycol;
+    auto col2 = enemycol;
+
+    if (alog.isOurStackAttacked) {
+      col1 = enemycol;
+      col2 = allycol;
     }
+
+    row << col1 << "#" << alog.attslot + 1 << nocol;
+    row << " attacks ";
+    row << col2 << "#" << alog.defslot + 1 << nocol;
+    row << " for " << alog.dmg << " dmg";
+    row << " (kills: " << alog.units << ", value: " << alog.value << ")";
+    rows.push_back(std::move(row));
   }
 
   //
-  // 5. Convert to a single string
+  // 5. Add errors below table:
   //
+  // Error: target hex is unreachable
+  // ...
 
+  for (const auto& pair : ERRORS) {
+    auto errtuple = pair.second;
+    auto errflag = std::get<0>(errtuple);
+    auto errmsg = std::get<2>(errtuple);
+    if (r.errmask & errflag)
+      rows.emplace_back("Error: " + errmsg);
+  }
+
+  //
+  // 6. Join rows into a single string
+  //
   std::string res = rows[0].str();
   for (int i=1; i<rows.size(); i++)
     res += "\n" + rows[i].str();
