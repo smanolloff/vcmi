@@ -1200,8 +1200,8 @@ void CModHandler::afterLoad(bool onlyEssential)
 
 	if(!onlyEssential)
 	{
-		FileStream file(*CResourceHandler::get()->getResourceName(ResourceID("config/modSettings.json")), std::ofstream::out | std::ofstream::trunc);
-		file << modSettings.toJson();
+		// FileStream file(*CResourceHandler::get()->getResourceName(ResourceID("config/modSettings.json")), std::ofstream::out | std::ofstream::trunc);
+		// file << modSettings.toJson();
 	}
 
 }
