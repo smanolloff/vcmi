@@ -90,9 +90,9 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
 
   preinitDLL(::console);
 
-  Settings(settings.write({"session", "headless"}))->Bool() = true;
-  Settings(settings.write({"session", "onlyai"}))->Bool() = true;
-  Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
+  Settings(settings.write({"session", "headless"}))->Bool() = false;
+  Settings(settings.write({"session", "onlyai"}))->Bool() = false;
+  Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
   Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
 

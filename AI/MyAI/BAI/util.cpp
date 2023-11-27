@@ -119,7 +119,7 @@ std::string BAI::renderANSI() {
     std::string value;
 
     switch(i) {
-    case 1: name = "Last action"; value = (a == ACTION_UNSET) ? "" : allActionNames[action]; break;
+    case 1: name = "Last action"; value = (a == ACTION_UNSET) ? "" : allActionNames[action] + " (" + std::to_string(action) + ")"; break;
     case 2: name = "Errors"; value = std::to_string(n_errors); break;
     case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
     case 4: name = "Units killed"; value = std::to_string(r.unitsKilled); break;
@@ -171,8 +171,10 @@ std::string BAI::renderANSI() {
     std::tuple{nocol, headercolwidth, "Attack"},
     std::tuple{nocol, headercolwidth, "Defense"},
     std::tuple{nocol, headercolwidth, "Shots"},
-    std::tuple{nocol, headercolwidth, "Dmg min (melee)"},
-    std::tuple{nocol, headercolwidth, "Dmg max (melee)"},
+    std::tuple{nocol, headercolwidth, "Dmg (min)"},
+    std::tuple{nocol, headercolwidth, "Dmg (max)"},
+    // std::tuple{nocol, headercolwidth, "Dmg min (melee)"},
+    // std::tuple{nocol, headercolwidth, "Dmg max (melee)"},
     // std::tuple{nocol, headercolwidth, "Dmg min (ranged)"},
     // std::tuple{nocol, headercolwidth, "Dmg max (ranged)"},
     std::tuple{nocol, headercolwidth, "HP"},
