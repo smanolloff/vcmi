@@ -1314,7 +1314,7 @@ int CGameHandler::moveStack(int stack, BattleHex dest)
 
 	if((stackAtEnd && stackAtEnd!=curStack && stackAtEnd->alive()) || !accessibility.accessible(dest, curStack))
 	{
-		complain("Given destination is not accessible!");
+		complain("Given destination is not accessible! Stack: " + std::to_string(curStack->unitSlot()) + ", Owner: " + std::to_string(curStack->getOwner()) + ", Dest hex: " + std::to_string(dest.getX()) + "," + std::to_string(dest.getY()));
 		return 0;
 	}
 
@@ -4634,7 +4634,7 @@ bool CGameHandler::makeBattleAction(BattleAction &ba)
 
 			if(!CStack::isMeleeAttackPossible(stack, destinationStack))
 			{
-				complain("Attack cannot be performed!");
+				complain("Attack cannot be performed! Stack: " + std::to_string(stack->unitSlot()) + ", Target stack: " + std::to_string(destinationStack->unitSlot()) + ", startingPos: " + std::to_string(stack->getPosition()) + ", destinationTile: " + std::to_string(destinationTile) + ", attackPos: " + std::to_string(attackPos));
 				ok = false;
 				break;
 			}

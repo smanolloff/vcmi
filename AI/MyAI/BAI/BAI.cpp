@@ -239,10 +239,32 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
   auto ownhexes = astack->getHexes();
   auto destself = (std::find(ownhexes.begin(), ownhexes.end(), dest) != ownhexes.end());
 
-  if (destself && subaction == 0) {
-    // move-only does not allow "moving" to self
-    addError(ERR_MOVE_SELF, errmask, errmsgs);
-  } else if (!destself) {
+  if (destself) {
+    if (dest == astack->occupiedHex()) {
+      // means we are moving to the 1st hex of our 2-hex creature (see occupiedHex())
+      // ie. xxoox => xooxx
+      // But we need to check if the hex left-to-dest (first "x") is free
+      if (x < 1)
+        addError(ERR_HEX_BLOCKED, errmask, errmsgs);
+
+
+      // A "FREE_UNREACHABLE" is also ok for prevhexstate:
+      // | ◌ ○ ○
+      // |  ◌ 6 6
+      //    ^
+      auto prevhexstate = state[x - 1 + y*BF_XMAX];
+      if (
+        prevhexstate.orig != static_cast<int>(HexState::FREE_REACHABLE) &&
+        prevhexstate.orig != static_cast<int>(HexState::FREE_UNREACHABLE)
+      ) {
+        addError(ERR_HEX_BLOCKED, errmask, errmsgs);
+      }
+    } else if (subaction == 0) {
+      // means we are *not* moving, but a move sub-action (0) was given
+      addError(ERR_MOVE_SELF, errmask, errmsgs);
+    }
+  } else {
+    // means we are moving to another hex (+potentially attacking)
     if (hexstate.orig == static_cast<int>(HexState::FREE_UNREACHABLE))
       addError(ERR_HEX_UNREACHABLE, errmask, errmsgs);
     else if (hexstate.orig != static_cast<int>(HexState::FREE_REACHABLE))
