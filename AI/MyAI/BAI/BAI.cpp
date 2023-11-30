@@ -233,7 +233,9 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
   auto y = ((action-3) / 8) / BF_XMAX;
   auto x = ((action-3) / 8) % BF_XMAX;
   auto dest = BattleHex(x + 1, y); // "real" hex is offset by 1 (left side col)
-  auto hexstate = state[x + y*BF_XMAX];
+  auto hexstateind = x + y*BF_XMAX;
+  ASSERT(hexstateind < state.size(), "hexstateind: " + std::to_string(hexstateind));
+  auto hexstate = state[hexstateind];
 
   // self-destination is OK if shooting, or if attacking a neighbour
   auto ownhexes = astack->getHexes();
@@ -244,20 +246,20 @@ ActionResult BAI::buildAction(const CStack * astack, State state, Action action)
       // means we are moving to the 1st hex of our 2-hex creature (see occupiedHex())
       // ie. xxoox => xooxx
       // But we need to check if the hex left-to-dest (first "x") is free
-      if (x < 1)
+      if (x < 1) {
         addError(ERR_HEX_BLOCKED, errmask, errmsgs);
-
-
-      // A "FREE_UNREACHABLE" is also ok for prevhexstate:
-      // | ◌ ○ ○
-      // |  ◌ 6 6
-      //    ^
-      auto prevhexstate = state[x - 1 + y*BF_XMAX];
-      if (
-        prevhexstate.orig != static_cast<int>(HexState::FREE_REACHABLE) &&
-        prevhexstate.orig != static_cast<int>(HexState::FREE_UNREACHABLE)
-      ) {
-        addError(ERR_HEX_BLOCKED, errmask, errmsgs);
+      } else {
+        // A "FREE_UNREACHABLE" is also ok for prevhexstate:
+        // | ◌ ○ ○
+        // |  ◌ 6 6
+        //    ^
+        auto prevhexstate = state[x - 1 + y*BF_XMAX];
+        if (
+          prevhexstate.orig != static_cast<int>(HexState::FREE_REACHABLE) &&
+          prevhexstate.orig != static_cast<int>(HexState::FREE_UNREACHABLE)
+        ) {
+          addError(ERR_HEX_BLOCKED, errmask, errmsgs);
+        }
       }
     } else if (subaction == 0) {
       // means we are *not* moving, but a move sub-action (0) was given
