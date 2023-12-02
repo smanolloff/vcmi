@@ -1,12 +1,9 @@
 #include "BAI.h"
+#include "MetaString.h"
 
 // Contains boilerplate related implementations of virtual methods
 
 MMAI_NS_BEGIN
-
-void BAI::actionFinished(const BattleAction &action) {
-  debug("*** actionFinished ***");
-}
 
 void BAI::actionStarted(const BattleAction &action) {
   debug("*** actionStarted ***");
@@ -42,6 +39,20 @@ void BAI::battleStacksEffectsSet(const SetStackEffect & sse) {
 
 void BAI::battleCatapultAttacked(const CatapultAttack & ca) {
   debug("*** battleCatapultAttacked ***");
+}
+
+void BAI::battleLogMessage(const std::vector<MetaString> &lines) {
+  debug("*** battleLogMessage ***");
+
+  for(const auto & line : lines) {
+    std::string formatted = line.toString();
+    boost::algorithm::trim(formatted);
+    debug(formatted);
+  }
+}
+
+void BAI::battleUnitsChanged(const std::vector<UnitChanges> &units) {
+  debug("*** battleUnitsChanged ***");
 }
 
 MMAI_NS_END

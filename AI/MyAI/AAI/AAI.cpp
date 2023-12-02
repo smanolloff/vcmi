@@ -3,6 +3,7 @@
 #include "AAI.h"
 #include "gameState/CGameState.h"
 #include "mytypes.h"
+#include <memory>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -39,32 +40,30 @@ void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CC
   cb->unlockGsWhenWaiting = true;
 
   ASSERT(baggage.has_value(), "baggage has no value");
-  ASSERT(baggage.type() == typeid(CBProvider*), "baggage of unexpected type");
-  cbprovider = std::any_cast<CBProvider*>(baggage);
+  ASSERT(baggage.type() == typeid(MMAIExport::CBProvider*), "baggage of unexpected type");
+  cbprovider = std::any_cast<MMAIExport::CBProvider*>(baggage);
 }
 
-Action AAI::getNonRenderAction(Result result) {
+MMAIExport::Action AAI::getNonRenderAction(const MMAIExport::Result * result) {
   auto action = cbprovider->f_getAction(result);
 
-  while (action == ACTION_RENDER_ANSI) {
-    result = Result{};
-    result.type = ResultType::ANSI_RENDER;
-    result.ansiRender = bai->renderANSI();
-    action = cbprovider->f_getAction(result);
+  while (action == MMAIExport::ACTION_RENDER_ANSI) {
+    auto res = MMAIExport::Result(bai->renderANSI());
+    action = cbprovider->f_getAction(&res);
   }
 
   return action;
 }
 
-Action AAI::getAction(Result result) {
+MMAIExport::Action AAI::getAction(const MMAIExport::Result * result) {
   auto action = getNonRenderAction(result);
 
-  if (action == ACTION_RESET) {
+  if (action == MMAIExport::ACTION_RESET) {
     // AAI::getAction is called only by BAI, only during battle
     // FIXME: retreat may be impossible, a _real_ reset should be implemented
     info("Will retreat in order to reset battle");
-    ASSERT(!bai->result.ended, "expected battle ended");
-    action = ACTION_RETREAT;
+    ASSERT(!bai->result->ended, "expected active battle");
+    action = MMAIExport::ACTION_RETREAT;
   }
 
   return action;
@@ -99,7 +98,7 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
 
   bai = std::static_pointer_cast<BAI>(battleAI);
 
-  F_GetAction fga = [this](Result r) { return this->getAction(r); };
+  MMAIExport::F_GetAction fga = [this](const MMAIExport::Result * r) { return this->getAction(r); };
   bai->myInitBattleInterface(env, cbc, fga);
 
   battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
@@ -108,7 +107,8 @@ void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, in
 void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
   info("*** battleEnd ***");
 
-  if (bai->action != ACTION_RETREAT) {
+  // TODO: must add check that *we* have retreated and not the enemy
+  if (bai->action->action != MMAIExport::ACTION_RETREAT) {
     // battleEnd after MOVE
     // => call f_getAction (expecting RESET)
 
@@ -116,11 +116,11 @@ void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
     // (in case there are render actions)
     bai->battleEnd(br, queryID);
 
-    auto action = getNonRenderAction(bai->result);
+    auto action = getNonRenderAction(bai->result.get());
 
     info("Reset battle");
     // Any non-render action *must* be a reset (battle has ended)
-    ASSERT(action == ACTION_RESET, "unexpected action: " + std::to_string(action));
+    ASSERT(action == MMAIExport::ACTION_RESET, "unexpected action: " + std::to_string(action));
   }
 
   battleAI.reset();

@@ -1,18 +1,17 @@
 #pragma once
 
 #include "../mytypes.h"
+#include "../common.h"
 #include "BAI/BAI.h"
-
-#define ASSERT(cond, msg) if(!(cond)) logAi->error("AAI Assertion failed in %s: %s", std::filesystem::path(__FILE__).filename().string(), msg)
 
 namespace MMAI {
 
 class DLL_EXPORT AAI : public CAdventureAI
 {
-  CBProvider * cbprovider = new MMAI::CBProvider(nullptr);
+  MMAIExport::CBProvider * cbprovider = new MMAIExport::CBProvider(nullptr);
   std::shared_ptr<BAI> bai;
-  Action getAction(Result);
-  Action getNonRenderAction(Result);
+  MMAIExport::Action getAction(const MMAIExport::Result * result);
+  MMAIExport::Action getNonRenderAction(const MMAIExport::Result * result);
 
   void error(const std::string &text) const;
   void warn(const std::string &text) const;
