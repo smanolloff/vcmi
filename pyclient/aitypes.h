@@ -1,1 +1,0 @@
-../AI/MyAI/mytypes.h

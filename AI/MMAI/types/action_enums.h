@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.h"
 
 // There is a cyclic dependency if those are placed in action.h:

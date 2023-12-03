@@ -48,11 +48,11 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
 
-const MMAIExport::F_Sys init_vcmi(
+const MMAI::Export::F_Sys init_vcmi(
   std::string resdir,
   std::string loglevelGlobal,
   std::string loglevelAI,
-  MMAIExport::CBProvider * cbprovider
+  MMAI::Export::CBProvider * cbprovider
 ) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
@@ -77,8 +77,8 @@ const MMAIExport::F_Sys init_vcmi(
 
   Settings(settings.write({"session", "headless"}))->Bool() = true;
   Settings(settings.write({"session", "onlyai"}))->Bool() = true;
-  Settings(settings.write({"server", "playerAI"}))->String() = "MyAI";
-  // NOTE: friendlyAI is hard-coded in MyAI's AAI::getBattleAIName()
+  Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+  // NOTE: friendlyAI is hard-coded in MMAI's AAI::getBattleAIName()
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
   // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
   Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
@@ -134,7 +134,7 @@ const MMAIExport::F_Sys init_vcmi(
 
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  auto baggage = std::make_any<MMAIExport::CBProvider*>(cbprovider);
+  auto baggage = std::make_any<MMAI::Export::CBProvider*>(cbprovider);
   CSH = new CServerHandler(baggage);
 
   boost::thread loading([]() {

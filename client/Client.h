@@ -15,7 +15,6 @@
 #include "../lib/IGameCallback.h"
 #include "../lib/battle/BattleAction.h"
 #include "../lib/battle/CBattleInfoCallback.h"
-#include "AI/MyAI/mytypes.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 

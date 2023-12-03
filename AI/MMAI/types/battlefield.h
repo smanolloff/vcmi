@@ -1,7 +1,8 @@
 #pragma once
+
 #include "CCallback.h"
 #include "common.h"
-#include "mytypes.h"
+#include "export.h"
 #include "types/hex.h"
 
 namespace MMAI {
@@ -71,19 +72,19 @@ namespace MMAI {
         const CStack* const astack;
         const Hexes hexes;
         const Stacks stacks;
-        const MMAIExport::State exportState();
-        const MMAIExport::ActMask exportActMask();
+        const Export::State exportState();
+        const Export::ActMask exportActMask();
         const CStack * getEnemyStackBySlot(int slot);
     };
 
     // Sync check hard-coded values in Export
-    static_assert(std::tuple_size<MMAIExport::State>::value ==
+    static_assert(std::tuple_size<Export::State>::value ==
         std::tuple_size<Hexes>::value
         + std::tuple_size<Stacks>::value * std::tuple_size<StackAttrs>::value
         + 1 // cur stack
     );
 
-    static_assert(std::tuple_size<MMAIExport::ActMask>::value == N_ACTIONS);
+    static_assert(std::tuple_size<Export::ActMask>::value == N_ACTIONS);
 
     // static std::string hexStateName(HexState hs) {
     //     switch(hs) {

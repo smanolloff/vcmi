@@ -2,7 +2,7 @@
 #include "types/battlefield.h"
 
 namespace MMAI {
-    using NValue = MMAIExport::NValue;
+    using NValue = Export::NValue;
 
     // static
     void Battlefield::initHex(
@@ -17,7 +17,7 @@ namespace MMAI {
         hex.id = Hex::calcId(bh);
 
         switch(ainfo[bh.hex]) {
-        case LIB_CLIENT::EAccessibility::ACCESSIBLE:
+        case EAccessibility::ACCESSIBLE:
             if (rinfo.distances[bh] <= astack->speed()) {
                 hex.state = HexState::FREE_REACHABLE;
                 hex.hexactmask[EI(HexAction::MOVE)] = true;
@@ -26,10 +26,10 @@ namespace MMAI {
             }
 
             break;
-        case LIB_CLIENT::EAccessibility::OBSTACLE:
+        case EAccessibility::OBSTACLE:
             hex.state = HexState::OBSTACLE;
             break;
-        case LIB_CLIENT::EAccessibility::ALIVE_STACK:
+        case EAccessibility::ALIVE_STACK:
             hex.stack = cb->battleGetStackByPos(bh, true);
             hex.state = (hex.stack->unitSide() == cb->battleGetMySide())
                 ? HexState(EI(HexState::FRIENDLY_STACK_0) + hex.stack->unitSlot())
@@ -51,10 +51,10 @@ namespace MMAI {
             }
             break;
         // XXX: unhandled hex states
-        // case LIB_CLIENT::EAccessibility::DESTRUCTIBLE_WALL:
-        // case LIB_CLIENT::EAccessibility::GATE:
-        // case LIB_CLIENT::EAccessibility::UNAVAILABLE:
-        // case LIB_CLIENT::EAccessibility::SIDE_COLUMN:
+        // case EAccessibility::DESTRUCTIBLE_WALL:
+        // case EAccessibility::GATE:
+        // case EAccessibility::UNAVAILABLE:
+        // case EAccessibility::SIDE_COLUMN:
         default:
           throw std::runtime_error(
             "Unexpected hex accessibility for hex "+ std::to_string(bh.hex) + ": "
@@ -201,8 +201,8 @@ namespace MMAI {
         return res ? res->stack : nullptr;
     };
 
-    const MMAIExport::State Battlefield::exportState() {
-        auto res = MMAIExport::State{};
+    const Export::State Battlefield::exportState() {
+        auto res = Export::State{};
         int i = 0;
 
         for (auto &hex : hexes) {
@@ -239,13 +239,13 @@ namespace MMAI {
         res[i++] = NValue(astack->unitSlot(), 0, 6);
 
         // static_assert in battlefield.h makes this redundant?
-        ASSERT(i == MMAIExport::STATE_SIZE, "unexpected i: " + std::to_string(i));
+        ASSERT(i == Export::STATE_SIZE, "unexpected i: " + std::to_string(i));
 
         return res;
     }
 
-    const MMAIExport::ActMask Battlefield::exportActMask() {
-        auto res = MMAIExport::ActMask{};
+    const Export::ActMask Battlefield::exportActMask() {
+        auto res = Export::ActMask{};
         int i = 0;
 
         for (int j=0; j<EI(NonHexAction::count); j++) {
@@ -265,7 +265,7 @@ namespace MMAI {
         }
 
         // static_assert in action_enums.h makes this redundant?
-        ASSERT(i == MMAIExport::N_ACTIONS, "unexpected i: " + std::to_string(i));
+        ASSERT(i == Export::N_ACTIONS, "unexpected i: " + std::to_string(i));
 
         return res;
     }

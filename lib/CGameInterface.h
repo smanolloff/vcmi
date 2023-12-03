@@ -9,7 +9,6 @@
  */
 #pragma once
 
-#include "AI/MyAI/mytypes.h"
 #include "battle/AutocombatPreferences.h"
 #include "battle/BattleAction.h"
 #include "IGameEventsReceiver.h"

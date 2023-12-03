@@ -1,4 +1,5 @@
 #pragma once
+
 #include "CStack.h"
 #include "battle/BattleHex.h"
 #include "hexactmask.h"

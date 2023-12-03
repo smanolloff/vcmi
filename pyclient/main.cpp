@@ -1,6 +1,5 @@
 #include "main.h"
 #include "pyclient.h"
-#include "pyclient/aitypes.h"
 #include <cstdio>
 
 int main(int argc, char * argv[]) {
@@ -12,17 +11,18 @@ int main(int argc, char * argv[]) {
 
     int i = act;
 
-    MMAIExport::F_GetAction getaction = [&i](const MMAIExport::Result * r){
-        if (r->type == MMAIExport::ResultType::ANSI_RENDER) {
+    MMAI::
+    Export::F_GetAction getaction = [&i](const MMAI::Export::Result * r){
+        if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
             std::cout << r->ansiRender << "\n";
         }
 
         return (i % 2 == 0)
-            ? MMAIExport::ACTION_RENDER_ANSI
-            : MMAIExport::Action(i++);
+            ? MMAI::Export::ACTION_RENDER_ANSI
+            : MMAI::Export::Action(i++);
     };
 
-    auto cbprovider = MMAIExport::CBProvider(getaction);
+    auto cbprovider = MMAI::Export::CBProvider(getaction);
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";

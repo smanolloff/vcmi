@@ -21,11 +21,11 @@ namespace MMAI {
     std::string Action::name() const {
         static_assert(EI(NonHexAction::count) == 3, "3 non-hex actions are assumed");
 
-        if (action == MMAIExport::ACTION_RETREAT)
+        if (action == Export::ACTION_RETREAT)
             return "Retreat";
-        else if (action == MMAIExport::ACTION_DEFEND)
+        else if (action == Export::ACTION_DEFEND)
             return "Defend";
-        else if (action == MMAIExport::ACTION_WAIT)
+        else if (action == Export::ACTION_WAIT)
             return "Wait";
 
         ASSERT(hex, "hex is null");

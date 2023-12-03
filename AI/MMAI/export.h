@@ -3,17 +3,11 @@
 /*****
 ****** THIS FILE LIVES IN:
 ******
-****** vcmi/AI/MyAI/mytypes.h
+****** vcmi/AI/MMAI/export.h
 ******
 *****/
 
-#include <cassert>
-#include <array>
-#include <string>
-#include <map>
-#include <cstdint>
-
-namespace MMAIExport {
+namespace MMAI::Export {
     #ifndef DLL_EXPORT
     #define DLL_EXPORT __attribute__((visibility("default")))
     #endif

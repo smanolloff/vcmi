@@ -13,7 +13,6 @@
 
 #include "../lib/StartInfo.h"
 #include "../lib/CondSh.h"
-#include "AI/MyAI/mytypes.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 

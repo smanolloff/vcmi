@@ -1,4 +1,5 @@
 #pragma once
+
 #include "action_enums.h"
 
 namespace MMAI {

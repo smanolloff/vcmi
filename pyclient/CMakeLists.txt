@@ -1,5 +1,5 @@
 add_library(pyclient SHARED pyclient.cpp pyclient.h)
-add_executable(pytest main.cpp aitypes.h main.h pyclient.cpp pyclient.h)
+add_executable(pytest main.cpp mmai_export.h main.h pyclient.cpp pyclient.h)
 
 add_dependencies(pyclient vcmiclient)
 add_dependencies(pytest vcmiclient)
