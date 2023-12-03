@@ -1,13 +1,8 @@
 #pragma once
-#include "../common.h"
-#include "../mytypes.h"
-#include "GameConstants.h"
-#include "hex.h"
 #include "CCallback.h"
-#include "CStack.h"
-#include "battle/AccessibilityInfo.h"
-#include "battle/BattleHex.h"
-#include "battle/ReachabilityInfo.h"
+#include "common.h"
+#include "mytypes.h"
+#include "types/hex.h"
 
 namespace MMAI {
     using Hexes = std::array<Hex, BF_SIZE>;
@@ -55,26 +50,29 @@ namespace MMAI {
      * A container for all 165 Hex tiles.
      */
     struct Battlefield {
-        Battlefield(const CBattleCallback * cb, const CStack * astack) :
-            astack(astack),
-            ainfo(cb->getAccesibility()),
-            rinfo(cb->getReachability(astack)),
-            hexes(initHexes(cb)),
+        static void initHex(
+            Hex &hex,
+            BattleHex bh,
+            CBattleCallback* cb,
+            const CStack* astack,
+            const AccessibilityInfo &ainfo,
+            const ReachabilityInfo &rinfo
+        );
+
+        static Hexes initHexes(CBattleCallback* cb, const CStack* astack);
+        static Stacks initStacks(const CBattleCallback * cb);
+
+        Battlefield(CBattleCallback* cb, const CStack* astack_) :
+            astack(astack_),
+            hexes(initHexes(cb, astack_)),
             stacks(initStacks(cb))
             {};
 
-        const CStack * astack;
-        const AccessibilityInfo ainfo;
-        const ReachabilityInfo rinfo;
+        const CStack* const astack;
         const Hexes hexes;
         const Stacks stacks;
         const MMAIExport::State exportState();
         const MMAIExport::ActMask exportActMask();
-
-        const Hexes initHexes(const CBattleCallback * cb);
-        const Stacks initStacks(const CBattleCallback * cb);
-        void updateActionMasks(const CBattleCallback * cb, const CStack * stack);
-
         const CStack * getEnemyStackBySlot(int slot);
     };
 

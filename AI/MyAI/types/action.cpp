@@ -1,10 +1,5 @@
-#pragma once
-#include "action.h"
-#include "battlefield.h"
-#include "actmask.h"
-#include "../common.h"
-#include "mytypes.h"
-#include "types/action_enums.h"
+#include "types/hex.h"
+#include "types/action.h"
 
 namespace MMAI {
     const Hex * Action::initHex(const Battlefield * bf) {

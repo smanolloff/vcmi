@@ -6,7 +6,7 @@
 #include "../mytypes.h"
 #include "../types/battlefield.h"
 #include "../types/action.h"
-#include "action_result.h"
+#include "build_action_result.h"
 #include "battle/BattleHex.h"
 #include <memory>
 
@@ -52,8 +52,7 @@ namespace MMAI {
     bool wasWaitingForRealize;
     bool wasUnlockingGs;
 
-    // Battlefield battlefield;
-
+    std::unique_ptr<Battlefield> battlefield;
     std::vector<AttackLog> attackLogs;
 
     std::unique_ptr<Action> action;
@@ -88,7 +87,7 @@ namespace MMAI {
     void battleEnd(const BattleResult *br, QueryID queryID) override;
     void battleNewRoundFirst(int round) override; //called at the beginning of each turn before changes are applied;
     void battleNewRound(int round) override; //called at the beginning of each turn, round=-1 is the tactic phase, round=0 is the first "normal" turn
-    void battleLogMessage(const std::vector<MetaString> & lines) override;
+    // void battleLogMessage(const std::vector<MetaString> & lines) override;
     void battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) override;
     void battleSpellCast(const BattleSpellCast *sc) override;
     void battleStacksEffectsSet(const SetStackEffect & sse) override;//called when a specific effect is set to stacks

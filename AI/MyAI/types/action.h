@@ -1,10 +1,7 @@
 #pragma once
-#include "../common.h"
-#include "../mytypes.h"
-#include "action_enums.h"
-#include "battlefield.h"
-#include "hex.h"
-#include "battle/BattleHex.h"
+#include "mytypes.h"
+#include "types/action_enums.h"
+#include "types/battlefield.h"
 
 namespace MMAI {
     static_assert(EI(HexAction::MOVE_AND_ATTACK_0) == 0, "code assumes corresponding stack slot");

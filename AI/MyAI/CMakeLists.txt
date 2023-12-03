@@ -1,16 +1,29 @@
 set(MyAI_FILES
-  MyAI.h
-  mytypes.h
-  StdInc.h
-
   AAI/AAI.h
   AAI/AAI.cpp
 
-  BAI/BAI.h
+  BAI/build_action_result.cpp
+  BAI/build_action_result.h
   BAI/BAI.cpp
+  BAI/BAI.h
   BAI/impl.cpp
   BAI/init.cpp
   BAI/util.cpp
+
+  types/action.cpp
+  types/action.h
+  types/action_enums.h
+  types/battlefield.cpp
+  types/battlefield.h
+  types/hex.cpp
+  types/hex.h
+  types/hexactmask.h
+  types/hexstate.h
+
+  common.h
+  MyAI.h
+  mytypes.h
+  StdInc.h
 )
 
 if(NOT ENABLE_STATIC_AI_LIBS)

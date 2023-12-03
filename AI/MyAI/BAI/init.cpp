@@ -10,10 +10,6 @@ MMAI_NS_BEGIN
 
 BAI::BAI() : side(-1), wasWaitingForRealize(false), wasUnlockingGs(false) {
     info("+++ constructor +++");
-
-    // Prevent null pointer dereferencing
-    action = std::make_unique<Action>(Action{ACTION_UNSET, nullptr});
-    result = std::make_unique<MMAIExport::Result>();
 }
 
 BAI::~BAI() {

@@ -1,6 +1,5 @@
 #include "BAI.h"
-#include <sstream>
-#include <cstdio>
+#include <stdexcept>
 
 MMAI_NS_BEGIN
 
@@ -22,7 +21,6 @@ std::string padRight(const std::string& input, size_t desiredLength, char paddin
 // it validates that the result is correct
 std::string BAI::renderANSI() {
     const auto &r = *result;
-    const auto &a = *action;
     const auto &aslot = r.state[r.state.size() - 1].orig;
 
     auto state = r.state;
@@ -36,63 +34,105 @@ std::string BAI::renderANSI() {
     //
     // 1. Build ASCII table
     //    (+populate aliveStacks var)
+    //    NOTE: the contents below look mis-aligned in some editors.
+    //          In (my) terminal, it all looks correct though.
     //
-    // ----------------------------------
-    // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
-    // | ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  |
-    // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
-    // | ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  |
-    // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
-    // | ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  |
-    // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
-    // | ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  |
-    // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
-    // | ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  |
-    // |  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ |
-    // ----------------------------------
+    //   ▕₁▕₂▕₃▕₄▕₅▕₆▕₇▕₈▕₉▕₀▕₁▕₂▕₃▕₄▕₅▕
+    //  ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃
+    // ¹┨  1 ◌ ○ ○ ○ ○ ◌ ◌ ◌ ◌ ◌ ◌ ◌ ◌ 1 ┠¹
+    // ²┨ ◌ ○ ○ ○ ○ ○ ○ ◌ ◌ ◌ ◌ ◌ ◌ ◌ ◌  ┠²
+    // ³┨  ◌ ○ ○ ○ ○ ○ ○ ◌ ▦ ▦ ◌ ◌ ◌ ◌ ◌ ┠³
+    // ⁴┨ ◌ ○ ○ ○ ○ ○ ○ ○ ▦ ▦ ▦ ◌ ◌ ◌ ◌  ┠⁴
+    // ⁵┨  2 ◌ ○ ○ ▦ ▦ ◌ ○ ◌ ◌ ◌ ◌ ◌ ◌ 2 ┠⁵
+    // ⁶┨ ◌ ○ ○ ○ ▦ ▦ ◌ ○ ○ ◌ ◌ ◌ ◌ ◌ ◌  ┠⁶
+    // ⁷┨  3 3 ○ ○ ○ ▦ ◌ ○ ○ ◌ ◌ ▦ ◌ ◌ 3 ┠⁷
+    // ⁸┨ ◌ ○ ○ ○ ○ ○ ○ ○ ○ ◌ ◌ ▦ ▦ ◌ ◌  ┠⁸
+    // ⁹┨  ◌ ○ ○ ○ ○ ○ ○ ○ ◌ ◌ ◌ ◌ ◌ ◌ ◌ ┠⁹
+    // ⁰┨ ◌ ○ ○ ○ ○ ○ ○ ○ ◌ ◌ ◌ ◌ ◌ ◌ ◌  ┠⁰
+    // ¹┨  4 ◌ ○ ○ ○ ○ ○ ◌ ◌ ◌ ◌ ◌ ◌ ◌ 4 ┠¹
+    //  ┃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┃
+    //   ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕
     //
 
     std::vector<std::stringstream> rows;
     std::array<bool, 14> alivestacks{0};
 
-    rows.emplace_back() << padLeft("", 34, '-');
+    rows.emplace_back() << "  ▕₁▕₂▕₃▕₄▕₅▕₆▕₇▕₈▕₉▕₀▕₁▕₂▕₃▕₄▕₅▕";
+    rows.emplace_back() << " ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃";
+
+    std::array<const char*, 10> nummap{"₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀"};
 
     for (int i=0; i < BF_SIZE; i++) {
+        auto sym = std::string("?");
+        auto &ham = battlefield->hexes[i].hexactmask;
+        auto anyham = std::any_of(std::begin(ham), std::end(ham), [](bool val) { return val; });
+
         auto &nv = state[i];
         auto &row = (i % BF_XMAX == 0)
-            ? (rows.emplace_back() << (i % 2 == 0 ? "| " : "|"))
+            ? (rows.emplace_back() << nummap[(i/BF_XMAX)%10] << "┨" << (i % 2 == 0 ? " " : ""))
             : rows.back();
 
         row << " ";
-        switch(nv.orig) {
-        case EI(HexState::FREE_REACHABLE):    row << "○"; break;
-        case EI(HexState::FREE_UNREACHABLE):  row << "\033[90m◌\033[0m"; break;
-        case EI(HexState::OBSTACLE):          row << "\033[90m▦\033[0m"; break;
-        case EI(HexState::FRIENDLY_STACK_0):
-        default:
-            auto nstack = nv.orig - 3;
-            auto nstackvis = nstack + 1;
-            auto color = nocol;
+        switch(HexState(nv.orig)) {
+        case HexState::FREE_REACHABLE:
+            ASSERT(ham[EI(HexAction::MOVE)], "FREE_REACHABLE but mask[MOVE] is false");
+            sym = "○";
 
-            alivestacks[nstack] = true;
-
-            if (nstack > 6) {
-                nstackvis -= 7;
-                color = enemycol;
-            } else {
-                color = (aslot == nstack)
-                    ? activecol : allycol;
+            // check if hex also allows attack
+            for (int j=0; j<=EI(HexAction::MOVE_AND_ATTACK_6); j++) {
+                if(ham[j]) {
+                    // sym = "▽";
+                    sym = "◎";
+                    break;
+                }
             }
 
-            row << color << nstackvis << nocol;
+            break;
+        case HexState::FREE_UNREACHABLE:
+            ASSERT(!anyham, "FREE_UNREACHABLE but anyham is true");
+            sym = "\033[90m◌\033[0m";
+            break;
+        case HexState::OBSTACLE:
+            ASSERT(!anyham, "OBSTACLE but anyham is true");
+            sym = "\033[90m▦\033[0m";
+            break;
+        case HexState::FRIENDLY_STACK_0:
+        case HexState::FRIENDLY_STACK_1:
+        case HexState::FRIENDLY_STACK_2:
+        case HexState::FRIENDLY_STACK_3:
+        case HexState::FRIENDLY_STACK_4:
+        case HexState::FRIENDLY_STACK_5:
+        case HexState::FRIENDLY_STACK_6:
+            static_assert(EI(HexState::FRIENDLY_STACK_0) == 3);
+            alivestacks[nv.orig - 3] = true;
+            sym = (aslot == nv.orig - 3)
+                ? activecol + std::to_string(nv.orig - 3+1) + nocol
+                : allycol + std::to_string(nv.orig - 3+1) + nocol;
+            break;
+        case HexState::ENEMY_STACK_0:
+        case HexState::ENEMY_STACK_1:
+        case HexState::ENEMY_STACK_2:
+        case HexState::ENEMY_STACK_3:
+        case HexState::ENEMY_STACK_4:
+        case HexState::ENEMY_STACK_5:
+        case HexState::ENEMY_STACK_6:
+            static_assert(EI(HexState::ENEMY_STACK_0) == 10);
+            alivestacks[nv.orig - 10] = true;
+            sym = enemycol + std::to_string(nv.orig - 10+1) + nocol;
+            break;
+        default:
+            throw std::runtime_error("unexpected nv.orig: " + std::to_string(nv.orig));
         }
 
+        row << sym;
+
         if (i % BF_XMAX == BF_XMAX-1) {
-            row << (i % 2 == 0 ? " |" : "  |");
+            row << (i % 2 == 0 ? " " : "  ") << "┠" << nummap[(i/BF_XMAX)%10];
         }
     }
 
-    rows.emplace_back() << padLeft("", 34, '-');
+    rows.emplace_back() << " ┃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┃";
+    rows.emplace_back() << "  ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕";
 
     //
     // 2. Add side table stuff
@@ -117,7 +157,10 @@ std::string BAI::renderANSI() {
         std::string value;
 
         switch(i) {
-        case 1: name = "Last action"; value = (a.action == ACTION_UNSET) ? "" : a.name() + " (" + std::to_string(a.action) + ")"; break;
+        case 1:
+            name = "Last action";
+            value = action ? action->name() + " (" + std::to_string(action->action) + ")" : "";
+            break;
         case 2: name = "Errors"; value = std::to_string(n_errors); break;
         case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
         case 4: name = "Units killed"; value = std::to_string(r.unitsKilled); break;
@@ -146,7 +189,7 @@ std::string BAI::renderANSI() {
     //
 
     // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
-    assert(BF_SIZE + 14*EI(StackAttr::count) == state.size() - 1);
+    static_assert(BF_SIZE + 14*EI(StackAttr::count) == std::tuple_size<MMAIExport::State>::value - 1);
 
     const auto nrows = 14+1;
     const auto ncols = EI(StackAttr::count) + 1;
@@ -171,10 +214,6 @@ std::string BAI::renderANSI() {
         std::tuple{nocol, headercolwidth, "Shots"},
         std::tuple{nocol, headercolwidth, "Dmg (min)"},
         std::tuple{nocol, headercolwidth, "Dmg (max)"},
-        // std::tuple{nocol, headercolwidth, "Dmg min (melee)"},
-        // std::tuple{nocol, headercolwidth, "Dmg max (melee)"},
-        // std::tuple{nocol, headercolwidth, "Dmg min (ranged)"},
-        // std::tuple{nocol, headercolwidth, "Dmg max (ranged)"},
         std::tuple{nocol, headercolwidth, "HP"},
         std::tuple{nocol, headercolwidth, "HP left"},
         std::tuple{nocol, headercolwidth, "Speed"},

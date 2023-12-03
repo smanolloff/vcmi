@@ -111,21 +111,20 @@ namespace MMAIExport {
             valueLost(valueLost_),
             valueKilled(valueKilled_) {};
 
-        // Constructor 2: regular result (battle ended)
-        Result(State state_, ActMask actmask_, int dmgDealt_, int dmgReceived_,
-            int unitsLost_, int unitsKilled_, int valueLost_, int valueKilled_,
-            bool victory_
-        ) : type(ResultType::REGULAR),
-            state(state_),
-            actmask(actmask_),
-            dmgDealt(dmgDealt_),
-            dmgReceived(dmgReceived_),
-            unitsLost(unitsLost_),
-            unitsKilled(unitsKilled_),
-            valueLost(valueLost_),
-            valueKilled(valueKilled_),
-            ended(true),
-            victory(victory_) {};
+        // Constructor 2 (move constructor): regular result (battle ended)
+        Result(Result &&other, bool victory_)
+        : type(ResultType::REGULAR),
+          state(other.state),
+          actmask(other.actmask),
+          dmgDealt(other.dmgDealt),
+          dmgReceived(other.dmgReceived),
+          unitsLost(other.unitsLost),
+          unitsKilled(other.unitsKilled),
+          valueLost(other.valueLost),
+          valueKilled(other.valueKilled),
+          ended(true),
+          victory(victory_) {};
+
 
         const ResultType type = ResultType::UNSET;
         const State state = {};

@@ -1,7 +1,7 @@
 #pragma once
-#include "CCallback.h"
+#include "CStack.h"
 #include "battle/BattleHex.h"
-#include "actmask.h"
+#include "hexactmask.h"
 #include "hexstate.h"
 
 namespace MMAI {
@@ -12,24 +12,14 @@ namespace MMAI {
      * id is 0..164  (instead of 0..177)
      */
     struct Hex {
-        static int calcId(const BattleHex &bh) {
-            ASSERT(bh.isAvailable(), "Hex unavailable: " + std::to_string(bh.hex));
-            return bh.getX()-1 + bh.getY()*BF_XMAX;
-        }
+        static int calcId(const BattleHex &bh);
 
-        Hex();
-        Hex(
-            const CBattleCallback * cb,
-            const CStack * astack,
-            const AccessibilityInfo &ainfo,
-            const ReachabilityInfo &rinfo,
-            const BattleHex bh
-        );
+        Hex() {};
 
-        // VCMI battle hex
         BattleHex bhex;
-
         int id;
+        const CStack* stack = nullptr; // stack occupying this hex
+
         HexState state;
         HexActMask hexactmask;
 

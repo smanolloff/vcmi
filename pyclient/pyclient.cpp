@@ -48,11 +48,11 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
 
-const MMAI::F_Sys init_vcmi(
+const MMAIExport::F_Sys init_vcmi(
   std::string resdir,
   std::string loglevelGlobal,
   std::string loglevelAI,
-  MMAI::CBProvider * cbprovider
+  MMAIExport::CBProvider * cbprovider
 ) {
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
@@ -134,7 +134,7 @@ const MMAI::F_Sys init_vcmi(
 
   CCS = new CClientState();
   CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  auto baggage = std::make_any<MMAI::CBProvider*>(cbprovider);
+  auto baggage = std::make_any<MMAIExport::CBProvider*>(cbprovider);
   CSH = new CServerHandler(baggage);
 
   boost::thread loading([]() {

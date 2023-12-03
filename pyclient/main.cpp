@@ -8,21 +8,21 @@ int main(int argc, char * argv[]) {
 
     // NOTE: the .vmap extension may be ommitted
     std::string mapname(argc > 1 ? argv[1] : "simotest.vmap");
-    int act(argc > 2 ? std::stoi(std::string(argv[2])) : 150);
+    int act(argc > 2 ? std::stoi(std::string(argv[2])) : 35);
 
     int i = act;
 
-    MMAI::F_GetAction getaction = [&i](MMAI::Result r){
-        if (r.type == MMAI::ResultType::ANSI_RENDER) {
-            std::cout << r.ansiRender << "\n";
+    MMAIExport::F_GetAction getaction = [&i](const MMAIExport::Result * r){
+        if (r->type == MMAIExport::ResultType::ANSI_RENDER) {
+            std::cout << r->ansiRender << "\n";
         }
 
         return (i % 2 == 0)
-            ? MMAI::ACTION_RENDER_ANSI
-            : MMAI::Action(i++);
+            ? MMAIExport::ACTION_RENDER_ANSI
+            : MMAIExport::Action(i++);
     };
 
-    auto cbprovider = MMAI::CBProvider(getaction);
+    auto cbprovider = MMAIExport::CBProvider(getaction);
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";

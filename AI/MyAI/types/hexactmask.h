@@ -1,18 +1,19 @@
 #pragma once
-#include "../common.h"
-#include "../mytypes.h"
 #include "action_enums.h"
 
 namespace MMAI {
     /**
      * A list of booleans for a single hex:
      *
-     * [0] can move to Hex.
-     * [1] can move to Hex + attack stack 1.
+     * [0] can move to Hex + attack enemy stack 0.
      * ...
-     * [7] can move to Hex + attack stack 7.
+     * [6] can move to Hex + attack enemy stack 6.
+     * [7] can move to Hex.
+     *
      */
     using HexActMask = std::array<bool, EI(HexAction::count)>;
+
+    static_assert(EI(HexAction::MOVE) == 7, "doc assumes move-only is at index 7");
     static_assert(EI(HexAction::count) == 8, "doc assumes 8 hex actions");
 
     struct ActMask {

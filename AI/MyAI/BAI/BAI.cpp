@@ -1,18 +1,5 @@
-#include "GameConstants.h"
 #include "NetPacks.h"
-#include "StdInc.h"
 #include "BAI.h"
-#include "battle/BattleAction.h"
-#include "battle/BattleHex.h"
-#include "mytypes.h"
-#include "../types/battlefield.h"
-#include "types/action_enums.h"
-#include <boost/chrono/duration.hpp>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <cstdio>
-#include <thread>
 
 MMAI_NS_BEGIN
 
@@ -31,15 +18,15 @@ void BAI::activeStack(const CStack * astack)
     info("*** activeStack ***");
     // print("activeStack called for " + astack->nodeName());
 
-    auto bf = Battlefield(cb.get(), astack);
-    result = std::make_unique<MMAIExport::Result>(buildResult(bf));
+    battlefield = std::make_unique<Battlefield>(cb.get(), astack);
+    result = std::make_unique<MMAIExport::Result>(buildResult(*battlefield));
 
     std::shared_ptr<BattleAction> ba;
 
     while(true) {
-        action = std::make_unique<Action>(getAction(result.get()), &bf);
+        action = std::make_unique<Action>(getAction(result.get()), battlefield.get());
         debug("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
-        auto actres = buildAction(bf, *action);
+        auto actres = buildAction(*battlefield, *action);
 
         ba = actres.battleAction;
         result->errmask = actres.errmask;
@@ -124,6 +111,7 @@ BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
 
     auto &bhex = action.hex->bhex;
     auto destself = (bhex.hex == bf.astack->getPosition().hex);
+    auto canShoot = cb->battleCanShoot(bf.astack);
 
     // switch does not allow initializing vars
     const CStack * estack;
@@ -142,9 +130,15 @@ BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
         case HexAction::MOVE_AND_ATTACK_5:
         case HexAction::MOVE_AND_ATTACK_6:
             estack = bf.getEnemyStackBySlot(EI(action.hexaction));
-            destself
-            ? res.setAction(BattleAction::makeShotAttack(bf.astack, estack))
-            : res.setAction(BattleAction::makeMeleeAttack(bf.astack, estack->position, bhex));
+            ASSERT(estack, "no stack at slot " + std::to_string(EI(action.hexaction)));
+
+            if (destself && canShoot) {
+                res.setAction(BattleAction::makeShotAttack(bf.astack, estack));
+            } else {
+                ASSERT(bf.astack->isMeleeAttackPossible(bf.astack, estack, bhex), "expected to be able to melee");
+                res.setAction(BattleAction::makeMeleeAttack(bf.astack, estack->position, bhex));
+            }
+
             break;
         default:
             throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(action.hexaction)));
@@ -157,7 +151,6 @@ BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
 
     // switch does not allow initializing vars
     bool canGoThere;
-    bool canShoot;
     bool canMelee;
 
     switch(action.hexaction) {
@@ -183,7 +176,6 @@ BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
             }
 
             canGoThere = action.hex->hexactmask[EI(HexAction::MOVE)];
-            canShoot = (bf.astack->canShoot() && !cb->battleIsUnitBlocked(bf.astack));
             canMelee = bf.astack->isMeleeAttackPossible(bf.astack, estack, bhex);
 
             if (destself) {
@@ -192,6 +184,7 @@ BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
                 res.addError(ErrType::ATTACK_IMPOSSIBLE);
             } else if (canGoThere) {
                 if (canShoot) res.addError(ErrType::MOVE_SHOOT);
+                if (!canMelee) res.addError(ErrType::ATTACK_IMPOSSIBLE);
             } else {
                 (action.hex->state == HexState::FREE_UNREACHABLE)
                     ? res.addError(ErrType::HEX_UNREACHABLE)
@@ -206,13 +199,12 @@ BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
     }
 
     if (!res.errmask)
-        throw std::runtime_error("Failed to identify the action errors");
+        throw std::runtime_error("Failed to identify the errors for action: " + std::to_string(action.action));
 
     return res;
 }
 
-void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged)
-{
+void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, bool ranged) {
     info("*** battleStacksAttacked ***");
 
     for(auto & elem : bsa) {
@@ -232,22 +224,15 @@ void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> & bsa, boo
     }
 }
 
-void BAI::actionFinished(const BattleAction &action) {
-  debug("*** actionFinished ***");
-  // TODO: update bf state
-}
-
-void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed)
-{
+void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed) {
     info("*** battleStart ***");
     side = Side;
 }
 
 void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
     info("*** battleEnd ***");
-
-    // means our battleMayEnd detection was faulty
-    // <OR> enemy has retreated/surrendered (should never happen)
+    // MMAIExport::Result res(std::move(*result), true);
+    result = std::make_unique<MMAIExport::Result>(std::move(*result), true);
     ASSERT(result->ended, "expected result->ended to be true");
 }
 
