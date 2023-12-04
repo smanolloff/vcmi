@@ -1,5 +1,9 @@
 #pragma once
 
+#include <map>
+#include <string>
+#include <cassert>
+
 /*****
 ****** THIS FILE LIVES IN:
 ******
@@ -14,7 +18,6 @@ namespace MMAI::Export {
 
     using ErrMask = uint16_t;
     enum class ErrType : int {
-        // !!! SYNC with pyconnector.py !!!
         ALREADY_WAITED,
         MOVE_SELF,
         HEX_UNREACHABLE,
@@ -59,29 +62,28 @@ namespace MMAI::Export {
      * State:
      * 165 hex + (14 stack * 10 attrs) + current_stack
      *
-     * !!! SYNC with pyconnector.py !!!
      */
     constexpr int STATE_SIZE = 306;
     using State = std::array<NValue, STATE_SIZE>;
+    using Action = int16_t;
 
     /**
      * Regular actions to be passed by GymEnv:
      * 3 non-move actions (retreat, defend, wait)
      * 1320 move[+attack] actions (165 hexes * 8 actions each)
      *
-     * !!! SYNC with pyconnector.py !!!
      */
     constexpr int N_ACTIONS = 1323;
     using ActMask = std::array<bool, N_ACTIONS>;
 
-    constexpr int ACTION_RETREAT = 0;
-    constexpr int ACTION_DEFEND = 1;
-    constexpr int ACTION_WAIT = 2;
+    constexpr Action ACTION_RETREAT = 0;
+    constexpr Action ACTION_DEFEND = 1;
+    constexpr Action ACTION_WAIT = 2;
 
     // Control actions(not part of the regular action space)
-    constexpr int ACTION_UNSET = INT16_MIN;
-    constexpr int ACTION_RESET = -1;
-    constexpr int ACTION_RENDER_ANSI = -2;
+    constexpr Action ACTION_UNSET = INT16_MIN;
+    constexpr Action ACTION_RESET = -1;
+    constexpr Action ACTION_RENDER_ANSI = -2;
 
     enum ResultType {REGULAR, ANSI_RENDER, UNSET};
 
@@ -139,8 +141,6 @@ namespace MMAI::Export {
         ErrMask errmask = 0;
 
     };
-
-    using Action = int16_t;
 
     // F_Sys is a CPP function returned by pyclient's `init`
     // GymEnv will invoke it on "close()" calls (or "reset(hard=True)" ?)

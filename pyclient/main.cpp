@@ -6,20 +6,28 @@ int main(int argc, char * argv[]) {
     std::function<void(int)> wactioncb;
 
     // NOTE: the .vmap extension may be ommitted
-    std::string mapname(argc > 1 ? argv[1] : "simotest.vmap");
-    int act(argc > 2 ? std::stoi(std::string(argv[2])) : 35);
+    std::string mapname(argc > 1 ? argv[1] : "ai/M6.vmap");
+    // int act(argc > 2 ? std::stoi(std::string(argv[2])) : 35);
 
-    int i = act;
+    auto actions = std::array {2, 2, 964, 1156, 1156, 964, 1156, 2, 963, 1035, 963, 1035, 963};
+    int i = 0;
+    bool rendered = false;
 
-    MMAI::
-    Export::F_GetAction getaction = [&i](const MMAI::Export::Result * r){
+    MMAI::Export::F_GetAction getaction = [&i, &actions, &rendered](const MMAI::Export::Result * r){
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
             std::cout << r->ansiRender << "\n";
         }
 
-        return (i % 2 == 0)
-            ? MMAI::Export::ACTION_RENDER_ANSI
-            : MMAI::Export::Action(i++);
+        if (i == actions.size())
+            throw std::runtime_error("No more actions");
+
+        if (i % 2 == 0 && !rendered) {
+            rendered = true;
+            return MMAI::Export::ACTION_RENDER_ANSI;
+        }
+
+        rendered = false;
+        return MMAI::Export::Action(actions[i++]);
     };
 
     auto cbprovider = MMAI::Export::CBProvider(getaction);

@@ -42,7 +42,7 @@ namespace MMAI {
 
     /**
      * List of stacks by slot:
-     *  [0..7] friendly stacks,
+     *  [0..6] friendly stacks,
      *  [8..13] enemy stacks
      */
     using Stacks = std::array<std::unique_ptr<Stack>, 14>;
