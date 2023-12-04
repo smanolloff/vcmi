@@ -31,9 +31,49 @@ namespace MMAI {
         std::string allycol = "\033[32m"; // green
         std::string activecol = "\033[32m\033[1m"; // green bold
 
+        std::vector<std::stringstream> rows;
 
         //
-        // 1. Build ASCII table
+        // 1. Add logs table:
+        //
+        // #1 attacks #5 for 16 dmg (1 killed)
+        // #5 attacks #1 for 4 dmg (0 killed)
+        // ...
+        //
+        for (auto &alog : attackLogs) {
+            auto row = std::stringstream();
+            auto col1 = allycol;
+            auto col2 = enemycol;
+
+            if (alog.isOurStackAttacked) {
+                col1 = enemycol;
+                col2 = allycol;
+            }
+
+            row << col1 << "#" << alog.attslot + 1 << nocol;
+            row << " attacks ";
+            row << col2 << "#" << alog.defslot + 1 << nocol;
+            row << " for " << alog.dmg << " dmg";
+            row << " (kills: " << alog.units << ", value: " << alog.value << ")";
+            rows.push_back(std::move(row));
+        }
+
+        //
+        // 2. Add errors
+        //
+        // Error: target hex is unreachable
+        // ...
+
+        for (const auto& pair : Export::ERRORS) {
+            auto errtuple = pair.second;
+            auto errflag = std::get<0>(errtuple);
+            auto errmsg = std::get<2>(errtuple);
+            if (r.errmask & errflag)
+                rows.emplace_back("Error: " + errmsg);
+        }
+
+        //
+        // 3. Build ASCII table
         //    (+populate aliveStacks var)
         //    NOTE: the contents below look mis-aligned in some editors.
         //          In (my) terminal, it all looks correct though.
@@ -55,8 +95,9 @@ namespace MMAI {
         //   ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕
         //
 
-        std::vector<std::stringstream> rows;
         std::array<bool, 14> alivestacks{0};
+
+        auto tablestartrow = rows.size();
 
         rows.emplace_back() << "  ▕₁▕₂▕₃▕₄▕₅▕₆▕₇▕₈▕₉▕₀▕₁▕₂▕₃▕₄▕₅▕";
         rows.emplace_back() << " ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃ ";
@@ -91,7 +132,8 @@ namespace MMAI {
                     }
                 }
             break; case HexState::FREE_UNREACHABLE:
-                ASSERT(!anyham, "FREE_UNREACHABLE but anyham is true");
+                // at end-of-battle, hexes are updated bug hexactmasks are not
+                ASSERT(!anyham || r.ended, "FREE_UNREACHABLE but anyham is true");
                 sym = "\033[90m◌\033[0m";
             break; case HexState::OBSTACLE:
                 ASSERT(!anyham, "OBSTACLE but anyham is true");
@@ -140,7 +182,7 @@ namespace MMAI {
         rows.emplace_back() << "  ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕";
 
         //
-        // 2. Add side table stuff
+        // 4. Add side table stuff
         //
         //   ▕₁▕₂▕₃▕₄▕₅▕₆▕₇▕₈▕₉▕₀▕₁▕₂▕₃▕₄▕₅▕
         //  ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃    Last action:
@@ -172,17 +214,17 @@ namespace MMAI {
             case 6: name = "DMG received"; value = std::to_string(r.dmgReceived); break;
             case 7: name = "Units lost"; value = std::to_string(r.unitsLost); break;
             case 8: name = "Value lost"; value = std::to_string(r.valueLost); break;
-            case 9: name = "Battle ended"; value = r.ended ? "yes" : "no"; break;
-            case 10: name = "Victory"; value = r.ended ? (r.victory ? "yes" : "no") : ""; break;
+            case 9: name = "Battle result"; value = r.ended ? (r.victory ? (allycol + "VICTORY" + nocol) : (enemycol + "DEFEAT" + nocol)) : ""; break;
+            // case 10: name = "Victory"; value = r.ended ? (r.victory ? "yes" : "no") : ""; break;
             default:
                 continue;
             }
 
-            rows[i] << padLeft(name, 15, ' ') << ": " << value;
+            rows[tablestartrow + i] << padLeft(name, 15, ' ') << ": " << value;
         }
 
         //
-        // 3. Add stats table:
+        // 5. Add stats table:
         //
         //          Stack # |   1   2   3   4   5   6   7   1   2   3   4   5   6   7
         // -----------------+--------------------------------------------------------
@@ -236,33 +278,38 @@ namespace MMAI {
             std::tuple{nocol, headercolwidth, "Waited"}
         };
 
-        for (int r=1, i=0; r<nrows; r++) {
-            auto nstack = r-1;  // stack number 0..13
+        for (int row=1, i=0; row<nrows; row++) {
+            auto nstack = row-1;  // stack number 0..13
             auto stackdisplay = std::to_string(nstack % 7 + 1); // stack 1..7
             auto &stack = stacks[nstack];
 
-            table[r][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
+            table[row][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
 
-            for (int c=1; c<ncols; c++, i++) {
+            for (int col=1; col<ncols; col++, i++) {
                 auto nv = state[i+BF_SIZE];
                 auto color = nocol;
                 auto attr = 0;
 
                 if (alivestacks[nstack]) {
                     ASSERT(stack, "null stack at " + std::to_string(nstack));
-                    attr = stack->attrs[c-1]; // c starts at 1
+                    attr = stack->attrs[col-1]; // col starts at 1
                     if (nstack > 6)
                         color = enemycol;
                     else
                         color = (aslot == nstack) ? activecol : allycol;
                 } else {
-                    ASSERT(!stack, "alive stack at " + std::to_string(nstack));
+                    // at activeStack(), Stack objects are created only for alive CStacks
+                    // at end-of-battle, Stack objects of dead CStacks are is still there
+                    ASSERT(!stack || (r.ended && !stack->stack->alive()), "alive stack at " + std::to_string(nstack));
                 }
 
-                ASSERT(attr == nv.orig, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
+                // see note above
+                ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
 
-                std::get<0>(table[r][0]) = color;  // change header color
-                table[r][c] = std::tuple{color, colwidth, std::to_string(attr)};
+                std::get<0>(table[row][0]) = color;  // change header color
+
+                // table[row][col] = std::tuple{color, colwidth, std::to_string(attr)};
+                table[row][col] = std::tuple{color, colwidth, stack && stack->stack->alive() ? std::to_string(attr) : ""};
             }
         }
 
@@ -293,45 +340,6 @@ namespace MMAI {
 
         // divider (after last row)
         rows.emplace_back(divrowstr);
-
-        //
-        // 4. Add logs below table:
-        //
-        // #1 attacks #5 for 16 dmg (1 killed)
-        // #5 attacks #1 for 4 dmg (0 killed)
-        // ...
-        //
-        for (auto &alog : attackLogs) {
-            auto row = std::stringstream();
-            auto col1 = allycol;
-            auto col2 = enemycol;
-
-            if (alog.isOurStackAttacked) {
-                col1 = enemycol;
-                col2 = allycol;
-            }
-
-            row << col1 << "#" << alog.attslot + 1 << nocol;
-            row << " attacks ";
-            row << col2 << "#" << alog.defslot + 1 << nocol;
-            row << " for " << alog.dmg << " dmg";
-            row << " (kills: " << alog.units << ", value: " << alog.value << ")";
-            rows.push_back(std::move(row));
-        }
-
-        //
-        // 5. Add errors below table:
-        //
-        // Error: target hex is unreachable
-        // ...
-
-        for (const auto& pair : Export::ERRORS) {
-            auto errtuple = pair.second;
-            auto errflag = std::get<0>(errtuple);
-            auto errmsg = std::get<2>(errtuple);
-            if (r.errmask & errflag)
-                rows.emplace_back("Error: " + errmsg);
-        }
 
         //
         // 6. Join rows into a single string

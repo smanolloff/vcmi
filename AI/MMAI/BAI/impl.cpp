@@ -43,11 +43,6 @@ namespace MMAI {
         debug("*** battleUnitsChanged ***");
     }
 
-    void BAI::actionFinished(const BattleAction &action) {
-        debug("*** actionFinished ***");
-        // NOTE: not triggered for retreat
-    }
-
     // NOTE: battleLogMessage is not called for non-player interfaces :(
     // void BAI::battleLogMessage(const std::vector<MetaString> &lines) {
     //   debug("*** battleLogMessage ***");

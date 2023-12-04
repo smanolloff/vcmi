@@ -65,7 +65,6 @@ namespace MMAI {
 
     // static
     Hexes Battlefield::initHexes(CBattleCallback* cb, const CStack* astack) {
-        // TEST
         auto ainfo = cb->getAccesibility();
         auto rinfo = cb->getReachability(astack);
         auto res = Hexes{};
@@ -268,5 +267,43 @@ namespace MMAI {
         ASSERT(i == Export::N_ACTIONS, "unexpected i: " + std::to_string(i));
 
         return res;
+    }
+
+    void Battlefield::offTurnUpdate(CBattleCallback* cb) {
+        auto shouldupdate = false;
+
+        for (auto &stack : stacks) {
+            if(stack && !stack->stack->alive()) {
+                shouldupdate = true;
+                break;
+            }
+        }
+
+        if (!shouldupdate)
+            return;
+
+        auto ainfo = cb->getAccesibility();
+
+        for (auto &hex : hexes) {
+            switch(ainfo[hex.bhex.hex]) {
+            case EAccessibility::ACCESSIBLE:
+                hex.state = HexState::FREE_UNREACHABLE;
+            break;
+            case EAccessibility::OBSTACLE:
+                hex.state = HexState::OBSTACLE;
+            break;
+            case EAccessibility::ALIVE_STACK:
+                hex.stack = cb->battleGetStackByPos(hex.bhex.hex, true);
+                hex.state = (hex.stack->unitSide() == cb->battleGetMySide())
+                    ? HexState(EI(HexState::FRIENDLY_STACK_0) + hex.stack->unitSlot())
+                    : HexState(EI(HexState::ENEMY_STACK_0) + hex.stack->unitSlot());
+            break;
+            default:
+              throw std::runtime_error(
+                "Unexpected hex accessibility for hex "+ std::to_string(hex.bhex.hex) + ": "
+                  + std::to_string(static_cast<int>(ainfo[hex.bhex.hex]))
+              );
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 #include "NetPacks.h"
 #include "BAI.h"
+#include "vstd/CLoggerBase.h"
 
 namespace MMAI {
     // HNS = short for HexNState
@@ -218,9 +219,14 @@ namespace MMAI {
                 elem.killedAmount,
                 elem.killedAmount * defender->creatureId().toCreature()->getAIValue()
             );
-
             attackLogs.push_back(std::move(al));
         }
+    }
+
+    void BAI::actionFinished(const BattleAction &action) {
+        debug("*** actionFinished ***");
+        // NOTE: not triggered for retreat
+        battlefield->offTurnUpdate(cb.get());
     }
 
     void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side, bool replayAllowed) {
@@ -231,7 +237,8 @@ namespace MMAI {
     void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
         info("*** battleEnd ***");
         // Export::Result res(std::move(*result), true);
-        result = std::make_unique<Export::Result>(std::move(*result), true);
+        auto victory = br->winner == cb->battleGetMySide();
+        result = std::make_unique<Export::Result>(buildResult(*battlefield), victory);
         ASSERT(result->ended, "expected result->ended to be true");
     }
 }

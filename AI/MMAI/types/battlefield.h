@@ -70,11 +70,13 @@ namespace MMAI {
             {};
 
         const CStack* const astack;
-        const Hexes hexes;
-        const Stacks stacks;
+        Hexes hexes;
+        Stacks stacks;
         const Export::State exportState();
         const Export::ActMask exportActMask();
         const CStack * getEnemyStackBySlot(int slot);
+
+        void offTurnUpdate(CBattleCallback* cb);
     };
 
     // Sync check hard-coded values in Export
@@ -85,40 +87,4 @@ namespace MMAI {
     );
 
     static_assert(std::tuple_size<Export::ActMask>::value == N_ACTIONS);
-
-    // static std::string hexStateName(HexState hs) {
-    //     switch(hs) {
-    //     case HexState::FREE_REACHABLE:   return "FREE_REACHABLE";
-    //     case HexState::FREE_UNREACHABLE: return "FREE_UNREACHABLE";
-    //     case HexState::OBSTACLE:         return "OBSTACLE";
-    //     case HexState::FRIENDLY_STACK_0: return "FRIENDLY_STACK_0";
-    //     case HexState::FRIENDLY_STACK_1: return "FRIENDLY_STACK_1";
-    //     case HexState::FRIENDLY_STACK_2: return "FRIENDLY_STACK_2";
-    //     case HexState::FRIENDLY_STACK_3: return "FRIENDLY_STACK_3";
-    //     case HexState::FRIENDLY_STACK_4: return "FRIENDLY_STACK_4";
-    //     case HexState::FRIENDLY_STACK_5: return "FRIENDLY_STACK_5";
-    //     case HexState::FRIENDLY_STACK_6: return "FRIENDLY_STACK_6";
-    //     case HexState::ENEMY_STACK_0:    return "ENEMY_STACK_0";
-    //     case HexState::ENEMY_STACK_1:    return "ENEMY_STACK_1";
-    //     case HexState::ENEMY_STACK_2:    return "ENEMY_STACK_2";
-    //     case HexState::ENEMY_STACK_3:    return "ENEMY_STACK_3";
-    //     case HexState::ENEMY_STACK_4:    return "ENEMY_STACK_4";
-    //     case HexState::ENEMY_STACK_5:    return "ENEMY_STACK_5";
-    //     case HexState::ENEMY_STACK_6:    return "ENEMY_STACK_6";
-    //     default:
-    //         throw std::runtime_error("Unknown state: " + std::to_string(EI(hs)));
-    //     }
-    // };
-
-    // NOTE: function is very inefficient and must not be called often
-    // static HexState hexStateValue(std::string name) {
-    //     // Invert the key-value pairs
-    //     for (int i=0; i<EI(HexState::count); i++) {
-    //         auto hs = HexState(i);
-    //         if (hexStateName(hs) == name)
-    //             return hs;
-    //     }
-
-    //     throw std::runtime_error("Unknown state name: " + name);
-    // }
 }
