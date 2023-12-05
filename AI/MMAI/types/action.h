@@ -20,10 +20,10 @@ namespace MMAI {
             {};
 
         const Export::Action action;
-        const Hex * hex; // XXX: must come after action
+        const std::unique_ptr<Hex> hex; // XXX: must come after action
         const HexAction hexaction; // XXX: must come after action
 
-        const Hex * initHex(const Battlefield * bf);
+        const std::unique_ptr<Hex> initHex(const Battlefield * bf);
         HexAction initHexAction();
         std::string name() const;
     };

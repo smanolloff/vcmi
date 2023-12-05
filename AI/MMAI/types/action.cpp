@@ -2,14 +2,14 @@
 #include "types/action.h"
 
 namespace MMAI {
-    const Hex * Action::initHex(const Battlefield * bf) {
+    const std::unique_ptr<Hex> Action::initHex(const Battlefield * bf) {
         // Control actions (<0) should never reach here
         ASSERT(action >= 0 && action < N_ACTIONS, "Invalid action: " + std::to_string(action));
 
         auto res = BattleHex();
         auto i = action - EI(NonHexAction::count);
 
-        return (i < 0) ? nullptr : &bf->hexes[i / EI(HexAction::count)];
+        return (i < 0) ? nullptr : std::make_unique<Hex>(bf->hexes[i / EI(HexAction::count)]);
     }
 
     HexAction Action::initHexAction() {
