@@ -51,7 +51,7 @@ namespace MMAI::Export {
         int orig;
         float norm;
 
-        NValue() : orig(0), norm(-1) {};
+        NValue() : orig(0), norm(NV_MIN) {};
         NValue(int v, int vmin, int vmax) {
             assert(vmin < vmax);
 
