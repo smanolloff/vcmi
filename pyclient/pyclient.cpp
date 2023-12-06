@@ -161,6 +161,18 @@ const MMAI::Export::F_Sys init_vcmi(
 }
 
 void start_vcmi(std::string mapname) {
+  // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
+  auto mappath = std::filesystem::path("maps") / std::filesystem::path(mapname);
+  // convert to "maps/ai/simotest.vmap" to "maps/ai/simotest"
+  auto mappathstr = (mappath.parent_path() / mappath.stem()).string();
+  // convert to "maps/ai/simotest" to "MAPS/AI/SIMOTEST"
+  std::transform(mappathstr.begin(), mappathstr.end(), mappathstr.begin(), [](unsigned char c) { return std::toupper(c); });
+
+  // Set "lastMap" setting to prevent an occasional race condition
+  // debugStartTest() where the last map was loaded regardless the given one
+  // (seems to happen only when UI is enabled, but better be safe)
+  Settings(settings.write({"general", "lastMap"}))->String() = mappathstr;
+
   auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
 

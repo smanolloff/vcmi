@@ -87,7 +87,6 @@ int mymain(std::string resdir, std::string mapname, std::string ainame, std::str
     if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
 
     // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
-    auto model = "/Users/simo/Projects/vcmi-gym/data/M8-PBT-MPPO-20231204_191243/576e9_00000/checkpoint_000139/model.zip";
     init(model);
     logGlobal->error("INIT AI DONE");
   }
@@ -122,6 +121,16 @@ int mymain(std::string resdir, std::string mapname, std::string ainame, std::str
   Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
   Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
   Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;
+
+
+  // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
+  auto mappath = std::filesystem::path("maps") / std::filesystem::path(mapname);
+  // convert to "maps/ai/simotest.vmap" to "maps/ai/simotest"
+  auto mappathstr = (mappath.parent_path() / mappath.stem()).string();
+  // convert to "maps/ai/simotest" to "MAPS/AI/SIMOTEST"
+  std::transform(mappathstr.begin(), mappathstr.end(), mappathstr.begin(), [](unsigned char c) { return std::toupper(c); });
+  // Set "lastMap" to prevent some race condition debugStartTest+Menu screen
+  Settings(settings.write({"general", "lastMap"}))->String() = mappathstr;
 
   //
   // Configure logging
