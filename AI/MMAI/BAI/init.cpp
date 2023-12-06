@@ -1,4 +1,8 @@
+#include <dlfcn.h>
+
 #include "BAI.h"
+#include "export.h"
+#include "include/loader.h"
 
 // Contains initialization-related code
 
@@ -15,14 +19,29 @@ namespace MMAI {
             cb->waitTillRealize = wasWaitingForRealize;
             cb->unlockGsWhenWaiting = wasUnlockingGs;
         }
+
+        // if (shutdown)
+        //     shutdown();
     }
 
     void BAI::initBattleInterface(
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB
     ) {
-        error("*** initBattleInterface -- BUT NO F_GetAction ***");
-        myInitBattleInterface(ENV, CB, nullptr);
+        error("*** initBattleInterface -- BUT NO F_GetAction - LOADING libconnload.dylib ***");
+
+        auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
+        void* handle = dlopen(libfile, RTLD_LAZY);
+        ASSERT(handle, "Error loading the library: " + std::string(dlerror()));
+
+        // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
+        // init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
+        // ASSERT(init, "Error getting init fn: " + std::string(dlerror()));
+
+        getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
+        ASSERT(getAction, "Error getting getAction fn: " + std::string(dlerror()));
+
+        myInitBattleInterface(ENV, CB, getAction);
     }
 
     void BAI::initBattleInterface(

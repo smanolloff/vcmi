@@ -1,10 +1,14 @@
 #include <cstdio>
 #include <iostream>
+#include <dlfcn.h>
 
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
+#include "AI/MMAI/export.h"
 #include "myclient.h"
+#include "mmai_export.h"
+#include "loader.h"
 
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/CGeneralTextHandler.h"
@@ -39,8 +43,7 @@
 #include "../lib/VCMIDirs.h"
 #include "../lib/VCMI_Lib.h"
 #include "../lib/CConfigHandler.h"
-
-namespace bfs = boost::filesystem;
+#include "vstd/CLoggerBase.h"
 
 extern boost::thread_specific_ptr<bool> inGuiThread;
 
@@ -69,6 +72,32 @@ static void mainLoop()
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
 // int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
 int mymain(std::string resdir, std::string mapname, bool ai) {
+  //
+  // Init AI stuff
+  // XXX: this makes it impossible to use lldb (invalid instruction error)
+  // comment out all this code and use dummy getAction below instead:
+  // auto getAction = [](const MMAI::Export::Result* r) { return 42; };
+  //
+  auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
+  void* handle = dlopen(libfile, RTLD_LAZY);
+  if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
+
+  auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
+  if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+
+  auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
+  if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
+
+  // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
+  init();
+  logGlobal->error("INIT AI DONE");
+
+  //
+  // EOF Init AI stuff
+  //
+
+  // rest
+
   boost::filesystem::current_path(boost::filesystem::path(resdir));
   std::cout.flags(std::ios::unitbuf);
   console = new CConsoleHandler();
@@ -82,21 +111,36 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   *console->cb = callbackFunction;
   console->start();
 
-  const bfs::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
+  const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
   logConfig = new CBasicLogConfigurator(logPath, console);
   logConfig->configureDefault();
-  logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
-  logGlobal->info("The log file will be saved to %s", logPath);
 
   preinitDLL(::console);
 
   Settings(settings.write({"session", "headless"}))->Bool() = false;
   Settings(settings.write({"session", "onlyai"}))->Bool() = false;
   Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
-  Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
+  Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
+  Settings(settings.write({"adventure", "quickCombat"}))->Bool() = false;
+  Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
 
-  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %m";
+  //
+  // Configure logging
+  //
+  Settings loggers = settings.write["logging"]["loggers"];
+  loggers->Vector().clear();
+
+  auto conflog = [&loggers](std::string domain, std::string lvl) {
+    JsonNode jlog, jlvl, jdomain;
+    jdomain.String() = domain;
+    jlvl.String() = lvl;
+    jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
+    loggers->Vector().push_back(jlog);
+  };
+
+  conflog("global", "debug");
+  conflog("ai", "debug");
 
   logConfig->configure();
   // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());

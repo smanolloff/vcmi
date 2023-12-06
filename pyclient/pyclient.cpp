@@ -163,7 +163,6 @@ const MMAI::Export::F_Sys init_vcmi(
 void start_vcmi(std::string mapname) {
   auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
   inGuiThread.reset(new bool(true));
-  // GH.screenHandler().close();
 
   while (true) {
     boost::this_thread::sleep(boost::posix_time::milliseconds(1000));

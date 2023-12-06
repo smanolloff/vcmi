@@ -20,6 +20,7 @@ set(MMAI_FILES
   types/hexactmask.h
   types/hexstate.h
 
+  include/loader.h
   common.h
   MMAI.h
   export.h
