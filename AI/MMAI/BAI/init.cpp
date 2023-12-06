@@ -28,7 +28,7 @@ namespace MMAI {
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB
     ) {
-        error("*** initBattleInterface -- BUT NO F_GetAction - LOADING libconnload.dylib ***");
+        info("*** initBattleInterface -- BUT NO F_GetAction - LOADING libconnload.dylib ***");
 
         auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
         void* handle = dlopen(libfile, RTLD_LAZY);
@@ -49,8 +49,7 @@ namespace MMAI {
         std::shared_ptr<CBattleCallback> CB,
         AutocombatPreferences autocombatPreferences
     ) {
-        error("*** initBattleInterface -- BUT NO F_GetAction ***");
-        myInitBattleInterface(ENV, CB, nullptr);
+        initBattleInterface(ENV, CB);
     }
 
     void BAI::myInitBattleInterface(

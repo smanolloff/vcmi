@@ -71,30 +71,26 @@ static void mainLoop()
 // build/bin/myclient
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
 // int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
-int mymain(std::string resdir, std::string mapname, bool ai) {
-  //
-  // Init AI stuff
-  // XXX: this makes it impossible to use lldb (invalid instruction error)
-  // comment out all this code and use dummy getAction below instead:
-  // auto getAction = [](const MMAI::Export::Result* r) { return 42; };
-  //
-  auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
-  void* handle = dlopen(libfile, RTLD_LAZY);
-  if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
+int mymain(std::string resdir, std::string mapname, std::string ainame, std::string model) {
+  if (ainame == "MMAI") {
+    //
+    // XXX: this makes it impossible to use lldb (invalid instruction error...)
+    //
+    auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
+    void* handle = dlopen(libfile, RTLD_LAZY);
+    if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
 
-  auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
-  if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+    auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
+    if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
 
-  auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
-  if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
+    auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
+    if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
 
-  // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
-  init();
-  logGlobal->error("INIT AI DONE");
-
-  //
-  // EOF Init AI stuff
-  //
+    // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
+    auto model = "/Users/simo/Projects/vcmi-gym/data/M8-PBT-MPPO-20231204_191243/576e9_00000/checkpoint_000139/model.zip";
+    init(model);
+    logGlobal->error("INIT AI DONE");
+  }
 
   // rest
 
@@ -120,10 +116,12 @@ int mymain(std::string resdir, std::string mapname, bool ai) {
   Settings(settings.write({"session", "headless"}))->Bool() = false;
   Settings(settings.write({"session", "onlyai"}))->Bool() = false;
   Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
-  Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
+  Settings(settings.write({"server", "friendlyAI"}))->String() = ainame;
   Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
   Settings(settings.write({"adventure", "quickCombat"}))->Bool() = false;
   Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
+  Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
+  Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;
 
   //
   // Configure logging
