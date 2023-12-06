@@ -41,6 +41,11 @@ namespace MMAI::Export {
         {ErrType::ATTACK_IMPOSSIBLE, {ErrMask(1 << 8), "ERR_ATTACK_IMPOSSIBLE", "melee attack not possible"}},
     };
 
+    // XXX: the normalization formula is simplified for (0,1)
+    constexpr int NV_MIN = float(0);
+    constexpr int NV_MAX = float(1);
+    constexpr int NV_DIFF = NV_MAX - NV_MIN;
+
     // Arbitary int value normalized as -1..1 float
     extern "C" struct DLL_EXPORT NValue {
         int orig;
@@ -54,7 +59,8 @@ namespace MMAI::Export {
             else if (v > vmax) v = vmax;
 
             orig = v;
-            norm = 2.0 * static_cast<float>(v - vmin) / (vmax - vmin) - 1.0;
+            norm = static_cast<float>(v - vmin) / (vmax - vmin);
+            // norm = NV_DIFF * static_cast<float>(v - vmin) / (vmax - vmin) + NV_MIN;
         }
     };
 
