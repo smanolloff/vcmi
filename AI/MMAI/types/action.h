@@ -1,30 +1,23 @@
 #pragma once
 
 #include "export.h"
-#include "types/action_enums.h"
+#include "types/hexaction.h"
 #include "types/battlefield.h"
 
 namespace MMAI {
-    static_assert(EI(HexAction::MOVE_AND_ATTACK_0) == 0, "code assumes corresponding stack slot");
-
-    // forward declaration needed to break cyclic dependency
-
     /**
      * Wrapper around Export::Action
      */
     struct Action {
-        Action(const Export::Action action_, const Battlefield * bf) :
-            action(action_),
-            hex(initHex(bf)),
-            hexaction(initHexAction())
-            {};
+        static std::unique_ptr<Hex> initHex(const Export::Action &a, const Battlefield * bf);
+        static HexAction initHexAction(const Export::Action &a, const Battlefield * bf);
+
+        Action(const Export::Action action_, const Battlefield * bf);
 
         const Export::Action action;
-        const std::unique_ptr<Hex> hex; // XXX: must come after action
+        const std::unique_ptr<Hex> hex;
         const HexAction hexaction; // XXX: must come after action
 
-        const std::unique_ptr<Hex> initHex(const Battlefield * bf);
-        HexAction initHexAction();
         std::string name() const;
     };
 }

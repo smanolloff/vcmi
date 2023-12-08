@@ -4,8 +4,10 @@
 #include "battle/BattleHex.h"
 #include "hexactmask.h"
 #include "hexstate.h"
+#include "stack.h"
 
 namespace MMAI {
+
     /**
      * A wrapper around BattleHex. Differences:
      *
@@ -19,7 +21,7 @@ namespace MMAI {
 
         BattleHex bhex;
         int id;
-        const CStack* stack = nullptr; // stack occupying this hex
+        std::shared_ptr<Stack> stack = INVALID_STACK; // stack occupying this hex
 
         HexState state;
         HexActMask hexactmask;

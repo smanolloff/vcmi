@@ -12,13 +12,15 @@ set(MMAI_FILES
 
   types/action.cpp
   types/action.h
-  types/action_enums.h
   types/battlefield.cpp
   types/battlefield.h
   types/hex.cpp
   types/hex.h
+  types/hexaction.h
   types/hexactmask.h
   types/hexstate.h
+  types/stack.cpp
+  types/stack.h
 
   include/loader.h
   common.h

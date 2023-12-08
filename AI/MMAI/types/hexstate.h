@@ -3,26 +3,19 @@
 #include "../common.h"
 
 namespace MMAI {
+    // XXX: there *can* be a stack on top of a FREE_REACHABLE hex only if:
+    //      * it's the back hex of the active stack
+    //      * AND the stack can move there
+    // XXX: Can't encode the stack slot here -- a slot *must* be present in
+    //      the stack, because in the case of a REACHABLE back hex of cur stack
+    //      there is no way to indicate the slot.
+
     enum class HexState : int {
-        FREE_REACHABLE,     // 0
-        FREE_UNREACHABLE,   // 1
-        OBSTACLE,           // 2
-        FRIENDLY_STACK_0,   // 3
-        FRIENDLY_STACK_1,   // 4
-        FRIENDLY_STACK_2,   // 5
-        FRIENDLY_STACK_3,   // 6
-        FRIENDLY_STACK_4,   // 7
-        FRIENDLY_STACK_5,   // 8
-        FRIENDLY_STACK_6,   // 9
-        ENEMY_STACK_0,      // 10
-        ENEMY_STACK_1,      // 11
-        ENEMY_STACK_2,      // 12
-        ENEMY_STACK_3,      // 13
-        ENEMY_STACK_4,      // 14
-        ENEMY_STACK_5,      // 15
-        ENEMY_STACK_6,      // 16
+        INVALID,  // no hex
+        OBSTACLE,
+        OCCUPIED, // alive stack
+        FREE_UNREACHABLE,
+        FREE_REACHABLE,
         count
     };
-
-    static_assert(EI(HexState::count) - EI(HexState::FRIENDLY_STACK_0) == 14, "Code assumes 14 stack states");
 }

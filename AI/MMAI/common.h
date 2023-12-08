@@ -14,4 +14,19 @@ namespace MMAI {
     #define BF_XMAX 15    // GameConstants::BFIELD_WIDTH - 2 (ignore "side" cols)
     #define BF_YMAX 11    // GameConstants::BFIELD_HEIGHT
     #define BF_SIZE 165   // BF_XMAX * BF_YMAX
+
+    inline void expect(bool exp, const char* format, ...) {
+        if (exp) return;
+
+        constexpr int bufferSize = 2048; // Adjust this size according to your needs
+        char buffer[bufferSize];
+
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, bufferSize, format, args);
+        va_end(args);
+
+        throw std::runtime_error(buffer);
+    }
+
 }

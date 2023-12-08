@@ -1,5 +1,10 @@
-#include "CStack.h"
 #include "types/battlefield.h"
+#include "CCallback.h"
+#include "battle/AccessibilityInfo.h"
+#include "battle/Unit.h"
+#include "types/hexaction.h"
+#include "types/stack.h"
+#include <stdexcept>
 
 namespace MMAI {
     using NValue = Export::NValue;
@@ -8,13 +13,13 @@ namespace MMAI {
     void Battlefield::initHex(
         Hex &hex,
         BattleHex bh,
-        CBattleCallback* cb,
         const CStack* astack,
         const AccessibilityInfo &ainfo,
         const ReachabilityInfo &rinfo
     ) {
         hex.bhex = bh;
         hex.id = Hex::calcId(bh);
+        hex.hexactmask.fill(false);
 
         switch(ainfo[bh.hex]) {
         case EAccessibility::ACCESSIBLE:
@@ -29,27 +34,10 @@ namespace MMAI {
         case EAccessibility::OBSTACLE:
             hex.state = HexState::OBSTACLE;
             break;
-        case EAccessibility::ALIVE_STACK:
-            hex.stack = cb->battleGetStackByPos(bh, true);
-            hex.state = (hex.stack->unitSide() == cb->battleGetMySide())
-                ? HexState(EI(HexState::FRIENDLY_STACK_0) + hex.stack->unitSlot())
-                : HexState(EI(HexState::ENEMY_STACK_0) + hex.stack->unitSlot());
-
-            // Handle moving to the "back" hex of two-hex active stacks:
-            // (xxooxx -> xooxx)
-            //
-            // If this is the active stack
-            // AND this hex is the "occupied" (ie. the "back") hex of this (2-hex) stack
-            // AND it is is accessible by a 2-hex stack
-            // => can move to this hex.
-            if (
-              astack->unitId() == hex.stack->unitId() &&
-              astack->occupiedHex() == bh &&
-              ainfo.accessible(bh, true, astack->unitSide())
-            ) {
-              hex.hexactmask[EI(HexAction::MOVE)] = true;
-            }
+        case EAccessibility::ALIVE_STACK: {
+            hex.state = HexState::OCCUPIED;
             break;
+        }
         // XXX: unhandled hex states
         // case EAccessibility::DESTRUCTIBLE_WALL:
         // case EAccessibility::GATE:
@@ -64,97 +52,165 @@ namespace MMAI {
     }
 
     // static
+    // result is a vector<UnitID>
+    Queue Battlefield::getQueue(CBattleCallback* cb) {
+        auto res = Queue{};
+
+        auto tmp = std::vector<battle::Units>{};
+        cb->battleGetTurnOrder(tmp, QSIZE, 0);
+        for (auto &units : tmp)
+            for (auto &unit : units)
+                res.insert(res.end(), unit->unitId());
+
+        return res;
+    }
+
+    /**
+     * Handle attacking a hex from "surrounding" hexes
+     *
+     * Tricky part is if attacking with a 2-hex stack
+     * (comments in HexAction enum for more info)
+     */
+    // static
+    void Battlefield::updateMaskForAttackCases(
+        const CStack * astack,
+        const Hexes &hexes,
+        Hex &hex
+    ) {
+        auto maybeupdate = [&astack, &hexes, &hex](const HexAction &hexaction, const BattleHex &nbh) {
+            if (!nbh.isAvailable())
+                return;
+
+            auto &nhex = hexes[Hex::calcId(nbh)];
+
+            // We can melee attack from nbh (neughbouring hex) if:
+            // A. we can *move* to it
+            // B. we already stand there
+            if (nhex.hexactmask[EI(HexAction::MOVE)] || astack->getPosition().hex == nbh.hex) {
+                // TODO: remove (expensive check)
+                ASSERT(hex.stack->cstack->isMeleeAttackPossible(astack, hex.stack->cstack, nbh), "expected possible melee attack");
+                hex.hexactmask[EI(hexaction)] = true;
+            }
+        };
+
+        auto side = BattleSide::Type(astack->unitSide());
+        auto &[special, tspecial, bspecial] = EDIR_SPECIALS[side];
+
+        for (const auto& [edir, hexaction] : EDIR_TO_MELEE) {
+            auto nbh = hex.bhex.cloneInDirection(edir, false); // neighbouring bhex
+            if (astack->doubleWide()) {
+                if (edir == special) {
+                    // L/R => transpose
+                    maybeupdate(hexaction, nbh.cloneInDirection(special, false));
+                } else if (edir == tspecial) {
+                    // TL/TR => transpose + add T
+                    maybeupdate(hexaction, nbh.cloneInDirection(special, false));
+                    maybeupdate(HexAction::MELEE_T, nbh);
+                } else if (edir == bspecial) {
+                    // BL/BR => transpose + add B
+                    maybeupdate(hexaction, nbh.cloneInDirection(special, false));
+                    maybeupdate(HexAction::MELEE_B, nbh);
+                } else {
+                    maybeupdate(hexaction, nbh);
+                }
+            } else {
+                maybeupdate(hexaction, nbh);
+            }
+        }
+    }
+
+    /**
+     * Handle moving to the "back" hex:
+     * (xxooxx -> xooxx)
+     *
+     * If this is the active stack
+     * AND this hex is the "occupied" (ie. the "back") hex of this (2-hex) stack
+     * AND it is is accessible by a 2-hex stack
+     * => can move to this hex.
+     */
+    // static
+    void Battlefield::updateMaskForSpecialMoveCase(
+        Hex &hex,
+        const CStack* astack,
+        const AccessibilityInfo &ainfo
+    ) {
+        if (astack->unitId() == hex.stack->cstack->unitId() &&
+            astack->occupiedHex().hex == hex.bhex.hex &&
+            astack->speed() > 0 &&
+            ainfo.accessible(hex.bhex, true, astack->unitSide())
+        ) {
+            hex.hexactmask[EI(HexAction::MOVE)] = true;
+        }
+    }
+
+    /**
+     * Handle moving to "self" (aka. defend)
+     */
+    // static
+    void Battlefield::updateMaskForSpecialDefendCase(Hex &hex, const CStack* astack) {
+        if (astack->unitId() != hex.stack->cstack->unitId())
+            return;
+
+        if (astack->getPosition().hex == hex.bhex.hex)
+            hex.hexactmask[EI(HexAction::MOVE)] = true;
+    }
+
+    // static
     Hexes Battlefield::initHexes(CBattleCallback* cb, const CStack* astack) {
+        auto res = Hexes{};
         auto ainfo = cb->getAccesibility();
         auto rinfo = cb->getReachability(astack);
-        auto res = Hexes{};
 
         int i = 0;
 
+        // state: set OBSTACLE/OCCUPIED/FREE_*
+        // hexactmask: set MOVE
         for(int y=0; y < GameConstants::BFIELD_HEIGHT; y++) {
             // 0 and 16 are unreachable "side" hexes => exclude
             for(int x=1; x < GameConstants::BFIELD_WIDTH - 1; x++) {
-                initHex(res[i++], BattleHex(x, y), cb, astack, ainfo, rinfo);
+                initHex(res[i++], BattleHex(x, y), astack, ainfo, rinfo);
             }
         }
 
         ASSERT(i == res.size(), "unexpected i: " + std::to_string(i));
 
         auto canshoot = cb->battleCanShoot(astack);
-        auto &astackhex = res.at(Hex::calcId(astack->getPosition()));
+        auto queue = getQueue(cb);
 
-        for (auto &estack : cb->battleGetStacks(CBattleCallback::ONLY_ENEMY)) {
-            // If we can shoot, that enemy stack is attackable from our own pos
-            // TODO: if we can shoot, maybe we can STILL melee attack
-            //       reachable hexes? If so, "continue" must be removed.
-            if (canshoot) {
-                astackhex.hexactmask[estack->unitSlot()] = true;
-                continue;
+        ASSERT(queue.size() == QSIZE, "queue size: " + std::to_string(queue.size()));
+
+        // stack: set stack
+        // hexactmask:
+        // * set SHOOT, MELEE_*
+        // * set MOVE special case: back hex for 2-hex active stack
+        for (auto &hex : res) {
+            switch (hex.state) {
+            break; case HexState::INVALID:
+            break; case HexState::OBSTACLE:
+                // TODO: action mask for obstacles ("remove obstacle" spell)
+            break; case HexState::FREE_UNREACHABLE:
+                   case HexState::FREE_REACHABLE:
+                // TODO: action mask for free hexes (ie. spells)
+            break; case HexState::OCCUPIED: {
+                auto cstack = cb->battleGetStackByPos(hex.bhex, true);
+                ASSERT(cstack, "OCCUPIED but no cstack");
+                hex.stack = std::make_unique<Stack>(initStack(cb, queue, cstack));
+
+                updateMaskForSpecialMoveCase(hex, astack, ainfo);
+                updateMaskForSpecialDefendCase(hex, astack);
+
+                if (hex.stack->cstack->unitSide() == cb->battleGetMySide())
+                    // TODO: action mask for friendly stacks (ie. spells)
+                    continue;
+
+                if (canshoot)
+                    hex.hexactmask[EI(HexAction::SHOOT)] = true;
+
+                updateMaskForAttackCases(astack, res, hex); // XXX: must come last
             }
-
-            auto apos = astack->getPosition();
-
-            // For each hex surrounding that stack, if we [can move to|stand on] it
-            // => we can melee that stack
-            for (auto &bh : estack->getSurroundingHexes()) {
-                auto id = Hex::calcId(bh);
-                auto &hex = res[id];
-                auto &mask = hex.hexactmask;
-
-                ASSERT(hex.bhex.isValid(), "uninitialized hex at " + std::to_string(id));
-
-                // We can move+attack from that (neugbhouring) hex if:
-                // A. we can *move* to it
-                // B. if we already stand there.
-                //
-                // HexAction::MOVE covers A. and (partially) B.
-                // (partially = standing with our "back" hex there)
-                if (mask[EI(HexAction::MOVE)] || bh.hex == apos) {
-                    mask[estack->unitSlot()] = true;
-                }
-            }
-
-            if (!astack->doubleWide())
-                continue;
-
-            // If we are "A" (2-hex stack), we can attack from distant hexes:
-            //
-            //  o o o o   o o o o    o A A o
-            // o x o o   o x A A o  o x o o o
-            //  o A A o   o o o o    o o o o
-            //      ^ from here we can attack
-            //
-            // (using a modified version of Unit::getSurroundingHexes())
-            //
-
-            auto directions = std::array<BattleHex::EDir, 3>{
-                BattleHex::EDir::TOP_RIGHT,
-                BattleHex::EDir::RIGHT,
-                BattleHex::EDir::BOTTOM_RIGHT
-            };
-
-            // From a defender's perspective, it's vertically mirrored
-            if(astack->unitSide() == BattleSide::DEFENDER) {
-                directions[0] = BattleHex::EDir::TOP_LEFT;
-                directions[1] = BattleHex::EDir::LEFT;
-                directions[2] = BattleHex::EDir::BOTTOM_LEFT;
-            }
-
-            auto epos = estack->getPosition();
-
-            for (auto &dir : directions) {
-                auto tmpbh = epos.cloneInDirection(dir, false);
-                if (!tmpbh.isAvailable()) continue;
-
-                tmpbh = tmpbh.cloneInDirection(directions[1]);
-                if (!tmpbh.isAvailable()) continue;
-
-                auto &hex = res[Hex::calcId(tmpbh)];
-                auto &mask = hex.hexactmask;
-
-                if (mask[EI(HexAction::MOVE)] || tmpbh.hex == apos) {
-                    mask[estack->unitSlot()] = true;
-                }
+            break; default:
+                throw std::runtime_error("Unexpected hex state: " + std::to_string(EI(hex.state)));
+                break;
             }
         }
 
@@ -162,43 +218,43 @@ namespace MMAI {
     };
 
     // static
-    Stacks Battlefield::initStacks(const CBattleCallback * cb) {
-        auto res = Stacks{};
-        auto allstacks = cb->battleGetStacks();
+    // XXX: queue is a flattened battleGetTurnOrder, with *prepended* astack
+    Stack Battlefield::initStack(CBattleCallback* cb, const Queue &q, const CStack* cstack) {
+        auto attrs = StackAttrs{};
 
-        // summoned units?
-        ASSERT(allstacks.size() <= 14, "unexpected allstacks size: " + std::to_string(allstacks.size()));
+        auto it = std::find(q.begin(), q.end(), cstack->unitId());
+        auto qpos = (it == q.end()) ? QSIZE-1 : it - q.begin();
 
-        for (auto &stack : allstacks) {
-            auto attrs = StackAttrs{};
+        for (int i=0; i<EI(StackAttr::count); i++) {
+            int a;
 
-            attrs[EI(StackAttr::Quantity)] = stack->getCount();
-            attrs[EI(StackAttr::Attack)] = stack->getAttack(false);
-            attrs[EI(StackAttr::Defense)] = stack->getDefense(false);
-            attrs[EI(StackAttr::Shots)] = stack->shots.available();
-            attrs[EI(StackAttr::DmgMin)] = stack->getMinDamage(false);
-            attrs[EI(StackAttr::DmgMax)] = stack->getMaxDamage(false);
-            attrs[EI(StackAttr::HP)] = stack->getMaxHealth();
-            attrs[EI(StackAttr::HPLeft)] = stack->getFirstHPleft();
-            attrs[EI(StackAttr::Speed)] = stack->speed();
-            attrs[EI(StackAttr::Waited)] = stack->waitedThisTurn;
-            static_assert(EI(StackAttr::count) == 10);
+            switch(StackAttr(i)) {
+            break; case StackAttr::Quantity: a = cstack->getCount();
+            break; case StackAttr::Attack: a = cstack->getAttack(false);
+            break; case StackAttr::Defense: a = cstack->getDefense(false);
+            break; case StackAttr::Shots: a = cstack->shots.available();
+            break; case StackAttr::DmgMin: a = cstack->getMinDamage(false);
+            break; case StackAttr::DmgMax: a = cstack->getMaxDamage(false);
+            break; case StackAttr::HP: a = cstack->getMaxHealth();
+            break; case StackAttr::HPLeft: a = cstack->getFirstHPleft();
+            break; case StackAttr::Speed: a = cstack->speed();
+            break; case StackAttr::Waited: a = cstack->waitedThisTurn;
+            break; case StackAttr::QueuePos:
+                a = qpos;
+                ASSERT(a >= 0 && a < QSIZE, "unexpected qpos: " + std::to_string(a));
+            break; case StackAttr::IsEnemy: a = cstack->unitSide() != cb->battleGetMySide();
+            break; case StackAttr::Slot:
+                a = cstack->unitSlot();
+                ASSERT(a >= 0 && a < 7, "unexpected slot: " + std::to_string(a));
+            break; default:
+                throw std::runtime_error("Unexpected StackAttr: " + std::to_string(i));
+            }
 
-            // summoned slots?
-            int slot = stack->unitSlot();
-            ASSERT(slot >= 0 && slot < 7, "unexpected slot: " + std::to_string(slot));
-
-            auto i = (stack->unitSide() == cb->battleGetMySide()) ? slot : slot + 7;
-            res[i] = std::make_unique<Stack>(stack, attrs);
+            attrs[i] = a;
         }
 
-        return res;
+        return Stack(cstack, attrs);
     }
-
-    const CStack * Battlefield::getEnemyStackBySlot(int slot) {
-        auto res = stacks[slot+7].get();
-        return res ? res->stack : nullptr;
-    };
 
     const Export::State Battlefield::exportState() {
         auto res = Export::State{};
@@ -206,38 +262,33 @@ namespace MMAI {
 
         for (auto &hex : hexes) {
             res[i++] = NValue(EI(hex.state), 0, EI(HexState::count) - 1);
-        }
-
-        for (auto &stack : stacks) {
-            if (!stack) {
-                i += EI(StackAttr::count);
-                continue;
-            }
+            auto &stack = hex.stack;
 
             for (int j=0; j<EI(StackAttr::count); j++) {
-                auto &a = stack->attrs[j];
+                int max;
 
-                switch(StackAttr(j)) {
-                case StackAttr::Quantity:   res[i++] = NValue(a, 0, 5000); break;
-                case StackAttr::Attack:     res[i++] = NValue(a, 0, 100); break;
-                case StackAttr::Defense:    res[i++] = NValue(a, 0, 100); break;
-                case StackAttr::Shots:      res[i++] = NValue(a, 0, 24); break;
-                case StackAttr::DmgMin:     res[i++] = NValue(a, 0, 100); break;
-                case StackAttr::DmgMax:     res[i++] = NValue(a, 0, 100); break;
-                case StackAttr::HP:         res[i++] = NValue(a, 0, 1500); break;
-                case StackAttr::HPLeft:     res[i++] = NValue(a, 0, 1500); break;
-                case StackAttr::Speed:      res[i++] = NValue(a, 0, 30); break;
-                case StackAttr::Waited:     res[i++] = NValue(a, 0, 1); break;
-                default:
-                    throw std::runtime_error("Unexpected StackAttr");
+                switch (StackAttr(j)) {
+                break; case StackAttr::Quantity: max = 5000;
+                break; case StackAttr::Attack:   max = 100;
+                break; case StackAttr::Defense:  max = 100;
+                break; case StackAttr::Shots:    max = 24;
+                break; case StackAttr::DmgMin:   max = 100;
+                break; case StackAttr::DmgMax:   max = 100;
+                break; case StackAttr::HP:       max = 1500;
+                break; case StackAttr::HPLeft:   max = 1500;
+                break; case StackAttr::Speed:    max = 30;
+                break; case StackAttr::Waited:   max = 1;
+                break; case StackAttr::QueuePos: max = QSIZE-1;
+                break; case StackAttr::IsEnemy:  max = 1;
+                break; case StackAttr::Slot:     max = 6;
+                break; default:
+                    throw std::runtime_error("Unexpected StackAttr: " + std::to_string(EI(j)));
                 }
+
+                res[i++] = NValue(stack->attrs[j], ATTR_NA, max);
             }
         }
 
-        // active stack
-        res[i++] = NValue(astack->unitSlot(), 0, 6);
-
-        // static_assert in battlefield.h makes this redundant?
         ASSERT(i == Export::STATE_SIZE, "unexpected i: " + std::to_string(i));
 
         return res;
@@ -249,11 +300,10 @@ namespace MMAI {
 
         for (int j=0; j<EI(NonHexAction::count); j++) {
             switch (NonHexAction(j)) {
-            case NonHexAction::RETREAT: res[i++] = true; break;
-            case NonHexAction::DEFEND: res[i++] = true; break;
-            case NonHexAction::WAIT: res[i++] = !astack->waitedThisTurn; break;
-            default:
-                throw std::runtime_error("Unexpected NonHexAction");
+            break; case NonHexAction::RETREAT: res[i++] = true;
+            break; case NonHexAction::WAIT: res[i++] = !astack->waitedThisTurn;
+            break; default:
+                throw std::runtime_error("Unexpected NonHexAction: " + std::to_string(j));
             }
         }
 
@@ -269,36 +319,33 @@ namespace MMAI {
         return res;
     }
 
+    /**
+     * Update state between turns:
+     * - used if expecting a battle end (for terminal state/render)
+     * - no "reachable" hexes (off-turn means no active stack)
+     */
     void Battlefield::offTurnUpdate(CBattleCallback* cb) {
-        auto shouldupdate = false;
-
-        for (auto &stack : stacks) {
-            if(stack && !stack->stack->alive()) {
-                shouldupdate = true;
-                break;
-            }
-        }
-
-        if (!shouldupdate)
-            return;
-
         auto ainfo = cb->getAccesibility();
+        auto queue = getQueue(cb);
 
         for (auto &hex : hexes) {
             switch(ainfo[hex.bhex.hex]) {
-            case EAccessibility::ACCESSIBLE:
+            break; case EAccessibility::ACCESSIBLE:
                 hex.state = HexState::FREE_UNREACHABLE;
-            break;
-            case EAccessibility::OBSTACLE:
+            break; case EAccessibility::OBSTACLE:
                 hex.state = HexState::OBSTACLE;
-            break;
-            case EAccessibility::ALIVE_STACK:
-                hex.stack = cb->battleGetStackByPos(hex.bhex.hex, true);
-                hex.state = (hex.stack->unitSide() == cb->battleGetMySide())
-                    ? HexState(EI(HexState::FRIENDLY_STACK_0) + hex.stack->unitSlot())
-                    : HexState(EI(HexState::ENEMY_STACK_0) + hex.stack->unitSlot());
-            break;
-            default:
+            break; case EAccessibility::ALIVE_STACK: {
+                hex.state = HexState::OCCUPIED;
+
+                auto cstack = cb->battleGetStackByPos(hex.bhex, true);
+                ASSERT(cstack, "null cstack on ALIVE_STACK hex");
+                hex.stack = std::make_unique<Stack>(initStack(cb, queue, cstack));
+
+                // nothing else needed here: no active stack
+                // => no special move case
+                // => no action mask
+            }
+            break; default:
               throw std::runtime_error(
                 "Unexpected hex accessibility for hex "+ std::to_string(hex.bhex.hex) + ": "
                   + std::to_string(static_cast<int>(ainfo[hex.bhex.hex]))

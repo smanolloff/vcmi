@@ -22,11 +22,13 @@ namespace MMAI::Export {
         MOVE_SELF,
         HEX_UNREACHABLE,
         HEX_BLOCKED,
+        HEX_MELEE_NA,
         STACK_NA,
         STACK_DEAD,
         STACK_INVALID,
-        MOVE_SHOOT,
-        ATTACK_IMPOSSIBLE,
+        CANNOT_SHOOT,
+        FRIENDLY_FIRE,
+        INVALID_DIR,
     };
 
     static const std::map<const ErrType, std::tuple<const ErrMask, const std::string, const std::string>> ERRORS = {
@@ -34,11 +36,13 @@ namespace MMAI::Export {
         {ErrType::MOVE_SELF,         {ErrMask(1 << 1), "ERR_MOVE_SELF", "cannot move to self unless attacking"}},
         {ErrType::HEX_UNREACHABLE,   {ErrMask(1 << 2), "ERR_HEX_UNREACHABLE", "target hex is unreachable"}},
         {ErrType::HEX_BLOCKED,       {ErrMask(1 << 3), "ERR_HEX_BLOCKED", "target hex is blocked"}},
-        {ErrType::STACK_NA,          {ErrMask(1 << 4), "ERR_STACK_NA", "target stack does not exist"}},
-        {ErrType::STACK_DEAD,        {ErrMask(1 << 5), "ERR_STACK_DEAD", "target stack is dead"}},
-        {ErrType::STACK_INVALID,     {ErrMask(1 << 6), "ERR_STACK_INVALID", "target stack is invalid (turret?)"}},
-        {ErrType::MOVE_SHOOT,        {ErrMask(1 << 7), "ERR_MOVE_SHOOT", "cannot move and shoot"}},
-        {ErrType::ATTACK_IMPOSSIBLE, {ErrMask(1 << 8), "ERR_ATTACK_IMPOSSIBLE", "melee attack not possible"}},
+        {ErrType::HEX_MELEE_NA,      {ErrMask(1 << 4), "ERR_HEX_MELEE_NA", "hex to perform the melee attack from is N/A"}},
+        {ErrType::STACK_NA,          {ErrMask(1 << 5), "ERR_STACK_NA", "no stack at target"}},
+        {ErrType::STACK_DEAD,        {ErrMask(1 << 6), "ERR_STACK_DEAD", "target stack is dead"}},
+        {ErrType::STACK_INVALID,     {ErrMask(1 << 7), "ERR_STACK_INVALID", "target stack is invalid (turret?)"}},
+        {ErrType::CANNOT_SHOOT,      {ErrMask(1 << 8), "ERR_CANNOT_SHOOT", "ranged attack not possible"}},
+        {ErrType::FRIENDLY_FIRE,     {ErrMask(1 << 9), "ERR_FRIENDLY_FIRE", "attempted to attack a friendly stack"}},
+        {ErrType::INVALID_DIR,       {ErrMask(1 << 10), "ERR_INVALID_DIR", "attempted to attack from a T/B direction with a 1-hex stack"}},
     };
 
     // XXX: the normalization formula is simplified for (0,1)
@@ -53,10 +57,13 @@ namespace MMAI::Export {
 
         NValue() : orig(0), norm(NV_MIN) {};
         NValue(int v, int vmin, int vmax) {
-            assert(vmin < vmax);
+            // if (vmin < vmax)
+            //     throw std::runtime_error(std::to_string(vmin) + ">" + std::to_string(vmax));
 
-            if (v < vmin) v = vmin;
-            else if (v > vmax) v = vmax;
+            if (v < vmin)
+                throw std::runtime_error(std::to_string(v) + " < " + std::to_string(vmin) + " (NValue error)");
+            else if (v > vmax)
+                throw std::runtime_error(std::to_string(v) + " > " + std::to_string(vmax));
 
             orig = v;
             norm = static_cast<float>(v - vmin) / (vmax - vmin);
@@ -64,27 +71,33 @@ namespace MMAI::Export {
         }
     };
 
+    constexpr int N_STACK_ATTRS = 13;
+
     /**
      * State:
-     * 165 hex + (14 stack * 10 attrs) + current_stack
-     *
+     * 165 hexes, N_HEX_ATTRS each
      */
-    constexpr int STATE_SIZE = 306;
+    constexpr int N_HEX_ATTRS = 1 + N_STACK_ATTRS;  // hexstate + attrs
+    constexpr int STATE_SIZE = 165 * N_HEX_ATTRS;
     using State = std::array<NValue, STATE_SIZE>;
     using Action = int16_t;
 
     /**
-     * Regular actions to be passed by GymEnv:
-     * 3 non-move actions (retreat, defend, wait)
-     * 1320 move[+attack] actions (165 hexes * 8 actions each)
-     *
+     * 2 non-hex actions:
+     * retreat, wait
      */
-    constexpr int N_ACTIONS = 1323;
-    using ActMask = std::array<bool, N_ACTIONS>;
-
+    constexpr int N_NONHEX_ACTIONS = 2;
     constexpr Action ACTION_RETREAT = 0;
-    constexpr Action ACTION_DEFEND = 1;
-    constexpr Action ACTION_WAIT = 2;
+    constexpr Action ACTION_WAIT = 1;
+
+    /**
+     * 8 hex actions:
+     * move, move+att1, ... move+att7
+     */
+    constexpr int N_HEX_ACTIONS = 10;
+    constexpr int N_ACTIONS = N_NONHEX_ACTIONS + 165 * N_HEX_ACTIONS;
+
+    using ActMask = std::array<bool, N_ACTIONS>;
 
     // Control actions(not part of the regular action space)
     constexpr Action ACTION_UNSET = INT16_MIN;

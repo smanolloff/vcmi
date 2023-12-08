@@ -1290,6 +1290,14 @@ AttackableTiles CBattleInfoCallback::getPotentiallyAttackableHexes(const battle:
 
 				// if targeted double-wide creature is attacked from above or below ( -> second hex is also adjacent to attack origin)
 				// then dragon breath should target tile on the opposite side of targeted creature
+				//
+				// SIMO comment:
+				// o o o o o
+				//  o o 1 o o
+				// o o 2 2 o
+				//  o o * o o
+				//      ^ this hex is affected by 1's dragon breath!
+				//
 				if (BattleHex::mutualPosition(attackOriginHex, secondHex) != BattleHex::NONE)
 					nextHex = secondHex.cloneInDirection(direction, false);
 			}

@@ -7,7 +7,7 @@
 // Contains initialization-related code
 
 namespace MMAI {
-    BAI::BAI() : side(-1), wasWaitingForRealize(false), wasUnlockingGs(false) {
+    BAI::BAI() : side(BattleSide::ATTACKER), wasWaitingForRealize(false), wasUnlockingGs(false) {
         info("+++ constructor +++");
     }
 

@@ -37,7 +37,7 @@ namespace MMAI {
     {
         friend class AAI;
 
-        int side;
+        BattleSide::Type side;
         std::shared_ptr<CBattleCallback> cb;
         std::shared_ptr<Environment> env;
 

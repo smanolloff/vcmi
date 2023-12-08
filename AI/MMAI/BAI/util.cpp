@@ -1,5 +1,7 @@
 #include "BAI.h"
+#include "export.h"
 #include "types/battlefield.h"
+#include "types/stack.h"
 
 namespace MMAI {
     std::string padLeft(const std::string& input, size_t desiredLength, char paddingChar) {
@@ -20,9 +22,9 @@ namespace MMAI {
     // it validates that the result is correct
     std::string BAI::renderANSI() {
         const auto &r = *result;
-        const auto &aslot = r.state[r.state.size() - 1].orig;
         const auto &bf = *battlefield;
-        const auto &stacks = bf.stacks;
+
+        ASSERT(r.state.size() == 165 * (1 + EI(StackAttr::count)), "Unexpected state size: " + std::to_string(r.state.size()));
 
         auto state = r.state;
 
@@ -67,9 +69,10 @@ namespace MMAI {
         for (const auto& pair : Export::ERRORS) {
             auto errtuple = pair.second;
             auto errflag = std::get<0>(errtuple);
+            auto errname = std::get<1>(errtuple);
             auto errmsg = std::get<2>(errtuple);
             if (r.errmask & errflag)
-                rows.emplace_back("Error: " + errmsg);
+                rows.emplace_back("[" + errname + "] Error: " + errmsg);
         }
 
         //
@@ -95,7 +98,7 @@ namespace MMAI {
         //   ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕
         //
 
-        std::array<bool, 14> alivestacks{0};
+        auto stacks = std::array<std::shared_ptr<Stack>, 14>{};
 
         auto tablestartrow = rows.size();
 
@@ -108,66 +111,83 @@ namespace MMAI {
             auto sym = std::string("?");
             auto &hex = bf.hexes[i];
             auto &ham = hex.hexactmask;
-            auto anyham = std::any_of(std::begin(ham), std::end(ham), [](bool val) { return val; });
 
-            auto &nv = state[i];
             auto &row = (i % BF_XMAX == 0)
                 ? (rows.emplace_back() << nummap[(i/BF_XMAX)%10] << "┨" << (i % 2 == 0 ? " " : ""))
                 : rows.back();
 
             row << " ";
 
-            ASSERT(hex.state == HexState(nv.orig), "hex.state: " + std::to_string(EI(hex.state)) + " != " + std::to_string(nv.orig));
+            // ibase = first state index of the i-th hex
+            // eg. for hex 2, ibase=15 where:
+            //  state[15] is hexstate for hex2
+            //  state[16] is hex.stack->attr[Qty] for hex2
+            //  state[17] is hex.stack->attr[Att] for hex2
+            //  ... etc
+            auto ibase = i * (1 + EI(StackAttr::count));
+            auto &nvstate = state[ibase];
+            expect(hex.state == HexState(nvstate.orig), "hex.state=%d != state[%d]=%d", hex.state, ibase, nvstate.orig);
+
+            // true if any hexactionmask is true
+            auto anyham = std::any_of(ham.begin(), ham.end(), [](bool val) { return val; });
+
+            // true if any stack attribute for that hex is valid
+            auto anyattr = std::any_of(
+                state.begin()+ibase+1,
+                state.begin()+ibase+1+EI(StackAttr::count),
+                [](Export::NValue nv) { return nv.orig != ATTR_NA; }
+            );
 
             switch(hex.state) {
-            break; case HexState::FREE_REACHABLE:
+            case HexState::FREE_REACHABLE: {
+                ASSERT(!anyattr, "FREE_REACHABLE but anyattr is true");
                 ASSERT(ham[EI(HexAction::MOVE)], "FREE_REACHABLE but mask[MOVE] is false");
                 sym = "○";
 
-                // check if hex also allows attack
-                for (int j=0; j<=EI(HexAction::MOVE_AND_ATTACK_6); j++) {
-                    if(ham[j]) {
+                for (const auto& [_, hexaction] : EDIR_TO_MELEE) {
+                    if (ham[EI(hexaction)]) {
                         sym = "◎";
                         break;
                     }
                 }
-            break; case HexState::FREE_UNREACHABLE:
-                // at end-of-battle, hexes are updated bug hexactmasks are not
+            }
+            break;
+            case HexState::FREE_UNREACHABLE:
+                ASSERT(!anyattr, "FREE_UNREACHABLE but anyattr is true");
+                // at end-of-battle, hexes are updated but hexactmasks are not
                 ASSERT(!anyham || r.ended, "FREE_UNREACHABLE but anyham is true");
                 sym = "\033[90m◌\033[0m";
-            break; case HexState::OBSTACLE:
+            break;
+            case HexState::OBSTACLE:
+                ASSERT(!anyattr, "OBSTACLE but anyattr is true");
                 ASSERT(!anyham, "OBSTACLE but anyham is true");
                 sym = "\033[90m▦\033[0m";
-            break; case HexState::FRIENDLY_STACK_0:
-            case HexState::FRIENDLY_STACK_1:
-            case HexState::FRIENDLY_STACK_2:
-            case HexState::FRIENDLY_STACK_3:
-            case HexState::FRIENDLY_STACK_4:
-            case HexState::FRIENDLY_STACK_5:
-            case HexState::FRIENDLY_STACK_6:
-            case HexState::ENEMY_STACK_0:
-            case HexState::ENEMY_STACK_1:
-            case HexState::ENEMY_STACK_2:
-            case HexState::ENEMY_STACK_3:
-            case HexState::ENEMY_STACK_4:
-            case HexState::ENEMY_STACK_5:
-            case HexState::ENEMY_STACK_6: {
-                static_assert(EI(HexState::ENEMY_STACK_0) == 10);
-                static_assert(EI(HexState::FRIENDLY_STACK_0) == 3);
+            break;
+            case HexState::OCCUPIED: {
+                ASSERT(anyattr, "OCCUPIED but anyattr is false");
+                auto cstack = hex.stack->cstack;
+                ASSERT(cstack, "OCCUPIED hex with nullptr cstack");
+                auto slot = hex.stack->attrs[EI(StackAttr::Slot)];
+                auto enemy = hex.stack->attrs[EI(StackAttr::IsEnemy)];
+                auto col = enemy ? enemycol : allycol;
 
-                auto slot = EI(hex.state) - 10;
-                auto col = enemycol;
+                if (cstack->unitId() == bf.astack->unitId())
+                    col = activecol;
 
-                if (EI(hex.state) < EI(HexState::ENEMY_STACK_0)) {
-                    slot = EI(hex.state) - 3;
-                    col = (aslot == slot) ? activecol : allycol;
-                }
-
-                // alivestacks contains 14 elements, not 7 (don't use slot)
-                alivestacks[EI(hex.state) - 3] = true;
+                // stacks contains 14 elements, not 7 (don't use slot)
+                stacks[slot + (enemy ? 7 : 0)] = hex.stack;
                 sym = col + std::to_string(slot+1) + nocol;
+
+                // Check attributes
+                // TODO: do I need to account for dead stacks at end-of-battle?
+                //      ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
+                for (int j=0; j<EI(StackAttr::count); j++) {
+                    // ASSERT(state[ibase+1+j].orig == hex.stack->attrs[j], "attr check failed");
+                    expect(state[ibase+1+j].orig == hex.stack->attrs[j], "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+1+j, state[ibase+1+j].orig, j, hex.stack->attrs[j]);
+                }
             }
-            break; default:
+            break;
+            default:
                 throw std::runtime_error("unexpected hex.state: " + std::to_string(EI(hex.state)));
             }
 
@@ -205,7 +225,7 @@ namespace MMAI {
             switch(i) {
             case 1:
                 name = "Last action";
-                value = action ? action->name() + " (" + std::to_string(action->action) + ")" : "";
+                value = action ? action->name() + " [" + std::to_string(action->action) + "]" : "";
                 break;
             case 2: name = "Errors"; value = std::to_string(n_errors); break;
             case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
@@ -234,11 +254,15 @@ namespace MMAI {
         // -----------------+--------------------------------------------------------
         //
 
-        // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
-        static_assert(BF_SIZE + 14*EI(StackAttr::count) == std::tuple_size<Export::State>::value - 1);
+        //
+        // XXX: Table is initially constructed in rotated form
+        // => read "rows" as "cols" and vice versa...
+        //    (until the comment line "XXX: table is rotated here")
+        //
 
+        // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
         const auto nrows = 14+1;
-        const auto ncols = EI(StackAttr::count) + 1;
+        const auto ncols = EI(StackAttr::count) + 1 - 2; // hide IsEnemy and Slot
 
         // Table with nrows and ncells, each cell a 3-element tuple
         auto table = std::array<
@@ -252,7 +276,7 @@ namespace MMAI {
         auto colwidth = 4;
         auto headercolwidth = 16;
 
-        static_assert(ncols == 11);
+        static_assert(ncols == 12);
         static_assert(EI(StackAttr::Quantity) == 0);
         static_assert(EI(StackAttr::Attack) == 1);
         static_assert(EI(StackAttr::Defense) == 2);
@@ -263,6 +287,7 @@ namespace MMAI {
         static_assert(EI(StackAttr::HPLeft) == 7);
         static_assert(EI(StackAttr::Speed) == 8);
         static_assert(EI(StackAttr::Waited) == 9);
+        static_assert(EI(StackAttr::QueuePos) == 10); // 0=active stack
 
         table[0] = {
             std::tuple{nocol, headercolwidth, "Stack #"},
@@ -275,7 +300,9 @@ namespace MMAI {
             std::tuple{nocol, headercolwidth, "HP"},
             std::tuple{nocol, headercolwidth, "HP left"},
             std::tuple{nocol, headercolwidth, "Speed"},
-            std::tuple{nocol, headercolwidth, "Waited"}
+            std::tuple{nocol, headercolwidth, "Waited"},
+            std::tuple{nocol, headercolwidth, "Queue"},
+
         };
 
         for (int row=1, i=0; row<nrows; row++) {
@@ -286,30 +313,30 @@ namespace MMAI {
             table[row][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
 
             for (int col=1; col<ncols; col++, i++) {
-                auto nv = state[i+BF_SIZE];
                 auto color = nocol;
-                auto attr = 0;
+                auto attr = ATTR_NA;
 
-                if (alivestacks[nstack]) {
-                    ASSERT(stack, "null stack at " + std::to_string(nstack));
-                    attr = stack->attrs[col-1]; // col starts at 1
-                    if (nstack > 6)
-                        color = enemycol;
-                    else
-                        color = (aslot == nstack) ? activecol : allycol;
-                } else {
+                if (stack) {
                     // at activeStack(), Stack objects are created only for alive CStacks
                     // at end-of-battle, Stack objects of dead CStacks are is still there
-                    ASSERT(!stack || (r.ended && !stack->stack->alive()), "alive stack at " + std::to_string(nstack));
+                    // => there should be no dead stacks unless battle ends
+                    if (!stack->cstack->alive()) {
+                        ASSERT(r.ended, "dead stack at " + std::to_string(nstack));
+                    } else {
+                        attr = stack->attrs[col-1]; // col starts at 1
+                        if (stack->attrs[EI(StackAttr::IsEnemy)])
+                            color = enemycol;
+                        else if (stack->attrs[EI(StackAttr::QueuePos)] == 0)
+                            color = activecol;
+                        else
+                            color = allycol;
+                    }
                 }
-
-                // see note above
-                ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
 
                 std::get<0>(table[row][0]) = color;  // change header color
 
                 // table[row][col] = std::tuple{color, colwidth, std::to_string(attr)};
-                table[row][col] = std::tuple{color, colwidth, stack && stack->stack->alive() ? std::to_string(attr) : ""};
+                table[row][col] = std::tuple{color, colwidth, (attr == ATTR_NA) ? "" : std::to_string(attr)};
             }
         }
 
@@ -350,5 +377,4 @@ namespace MMAI {
 
         return res;
     }
-
 }

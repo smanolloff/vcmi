@@ -5,11 +5,28 @@
 int main(int argc, char * argv[]) {
     std::function<void(int)> wactioncb;
 
-    // NOTE: the .vmap extension may be ommitted
-    std::string mapname(argc > 1 ? argv[1] : "ai/M6.vmap");
     // int act(argc > 2 ? std::stoi(std::string(argv[2])) : 35);
 
-    auto actions = std::array {2, 2, 964, 1156, 1156, 964, 1156, 2, 963, 1035, 963, 1035, 963};
+    // NOTE: the .vmap extension may be ommitted
+    std::string mapname = "ai/M8.vmap";
+    auto actions = std::array{
+        1,
+        1,
+        1,
+        602,
+        2,
+        1502,
+        1082,
+        1,
+        1,
+        2,
+        602,
+        1502,
+        936,
+    };
+
+    if (argc > 1) mapname = argv[1];
+
     int i = 0;
     bool rendered = false;
 
