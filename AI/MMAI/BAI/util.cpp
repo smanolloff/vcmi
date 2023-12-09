@@ -153,18 +153,18 @@ namespace MMAI {
             }
             break;
             case HexState::FREE_UNREACHABLE:
-                ASSERT(!anyattr, "FREE_UNREACHABLE but anyattr is true");
+                ASSERT(!anyattr || r.ended, "FREE_UNREACHABLE but anyattr is true");
                 // at end-of-battle, hexes are updated but hexactmasks are not
                 ASSERT(!anyham || r.ended, "FREE_UNREACHABLE but anyham is true");
                 sym = "\033[90m◌\033[0m";
             break;
             case HexState::OBSTACLE:
-                ASSERT(!anyattr, "OBSTACLE but anyattr is true");
-                ASSERT(!anyham, "OBSTACLE but anyham is true");
+                ASSERT(!anyattr || r.ended, "OBSTACLE but anyattr is true");
+                ASSERT(!anyham || r.ended, "OBSTACLE but anyham is true");
                 sym = "\033[90m▦\033[0m";
             break;
             case HexState::OCCUPIED: {
-                ASSERT(anyattr, "OCCUPIED but anyattr is false");
+                ASSERT(anyattr || r.ended, "OCCUPIED but anyattr is false");
                 auto cstack = hex.stack->cstack;
                 ASSERT(cstack, "OCCUPIED hex with nullptr cstack");
                 auto slot = hex.stack->attrs[EI(StackAttr::Slot)];
