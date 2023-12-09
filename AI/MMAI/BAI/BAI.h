@@ -57,6 +57,11 @@ namespace MMAI {
 
         std::string renderANSI();
 
+        // DEBUG ONLY
+        std::string debugInfo(Action &action, const CStack* astack, BattleHex* nbh);
+        // DEBUG ONLY
+        std::vector<Export::Action> allactions;
+
         void error(const std::string &text) const;
         void warn(const std::string &text) const;
         void info(const std::string &text) const;

@@ -27,7 +27,9 @@ namespace MMAI {
         std::shared_ptr<BattleAction> ba;
 
         while(true) {
-            action = std::make_unique<Action>(getAction(result.get()), battlefield.get());
+            auto _action = getAction(result.get());
+            allactions.push_back(_action);
+            action = std::make_unique<Action>(_action, battlefield.get());
             debug("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
             auto actres = buildAction(*battlefield, *action);
 
@@ -208,8 +210,12 @@ namespace MMAI {
                     break;
                 }
 
-                if (estack->unitSide() == bf.astack->unitSide())
+                auto frfire = false;
+
+                if (estack->unitSide() == bf.astack->unitSide()) {
                     res.addError(ErrType::FRIENDLY_FIRE);
+                    frfire = true;
+                }
 
                 auto nbh = BattleHex();
 
@@ -243,24 +249,28 @@ namespace MMAI {
 
                 switch (nh.state) {
                 case HexState::OBSTACLE:
-                    ASSERT(!reachable, "OBSTACLE state for reachable hex " + nh.name());
+                    ASSERT(!reachable, "OBSTACLE state for reachable hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_BLOCKED);
                     break;
                 case HexState::FREE_UNREACHABLE:
-                    ASSERT(!reachable, "FREE_UNREACHABLE state for reachable hex " + nh.name());
+                    ASSERT(!reachable, "FREE_UNREACHABLE state for reachable hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_UNREACHABLE);
                     break;
                 case HexState::OCCUPIED:
-                    ASSERT(nbh != bf.astack->getPosition(), "mask prevented attack from a neighbouring hex " + nh.name());
-                    res.addError(ErrType::HEX_BLOCKED);
+                    if (nbh == bf.astack->getPosition()) {
+                        ASSERT(frfire, "mask prevented attack from a neighbouring hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
+                    } else {
+                        res.addError(ErrType::HEX_BLOCKED);
+                    }
+
                     break;
                 case HexState::FREE_REACHABLE:
                     // possible only if our "nbh" and "bhex" are somehow not neighbours (vcmi bug in cloneInDirection()?)
-                    expect(bf.astack->isMeleeAttackPossible(bf.astack, estack, nbh), "VCMI says melee attack is impossible, but hex is reachable [BUG?]");
-                    ASSERT(estack->unitSide() == bf.astack->unitSide(), "Mask prevented possible attack from a reachable hex " + nh.name());
+                    ASSERT(bf.astack->isMeleeAttackPossible(bf.astack, estack, nbh), "VCMI says melee attack is impossible, but hex is reachable [BUG?]" + debugInfo(action, bf.astack, nullptr));
+                    ASSERT(estack->unitSide() == bf.astack->unitSide(), "Mask prevented possible attack from a reachable hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
 
                     // friendly fire is added early to prevent hiding it if other errors also occurred
-                    ASSERT(res.errmask & std::get<0>(Export::ERRORS.at(ErrType::FRIENDLY_FIRE)), "FRIENDLY_FIRE error should already have been added");
+                    ASSERT(res.errmask & std::get<0>(Export::ERRORS.at(ErrType::FRIENDLY_FIRE)), "FRIENDLY_FIRE error should already have been added" + debugInfo(action, bf.astack, nullptr));
                     break;
                 default:
                     throw std::runtime_error("Unexpected hex state while error checking: " + std::to_string(EI(nh.state)));
@@ -271,9 +281,67 @@ namespace MMAI {
                 throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(action.hexaction)));
             }
 
-        ASSERT(res.errmask, "Could not identify why the action is invalid");
+        ASSERT(res.errmask, "Could not identify why the action is invalid" + debugInfo(action, bf.astack, nullptr));
 
         return res;
+    }
+
+    std::string BAI::debugInfo(Action &action, const CStack* astack, BattleHex* nbh) {
+        auto info = std::stringstream();
+        info << "\n*** DEBUG INFO ***\n";
+        info << "action: " << action.name() << " [" << action.action << "]\n";
+        info << "action.hex->bhex.hex = " << action.hex->bhex.hex << "\n";
+
+        auto ainfo = cb->getAccesibility();
+        auto rinfo = cb->getReachability(astack);
+
+        info << "ainfo[bhex]=" << EI(ainfo[action.hex->bhex.hex]) << "\n";
+        info << "rinfo.distances[bhex] <= astack->speed(): " << (rinfo.distances[action.hex->bhex.hex] <= astack->speed()) << "\n";
+
+        info << "action.hex->name = " << action.hex->name() << "\n";
+        info << "action.hex->state = " << EI(action.hex->state) << "\n";
+        info << "action.hex->hexactmask = [";
+        for (const auto& b : action.hex->hexactmask)
+            info << int(b) << ",";
+        info << "]\n";
+
+        info << "action.hex->stack->attrs: [";
+        for (const auto& a : action.hex->stack->attrs)
+            info << a << ",";
+        info << "]\n";
+
+        auto estack = action.hex->stack->cstack;
+        if (estack) {
+            info << "estack->getPosition().hex=" << estack->getPosition().hex << "\n";
+            info << "estack->slot=" << estack->unitSlot() << "\n";
+            info << "estack->doubleWide=" << estack->doubleWide() << "\n";
+            info << "cb->battleCanShoot(estack)=" << cb->battleCanShoot(estack) << "\n";
+        } else {
+            info << "estack: (nullptr)\n";
+        }
+
+        info << "astack->getPosition().hex=" << astack->getPosition().hex << "\n";
+        info << "astack->slot=" << astack->unitSlot() << "\n";
+        info << "astack->doubleWide=" << estack->doubleWide() << "\n";
+        info << "cb->battleCanShoot(astack)=" << cb->battleCanShoot(astack) << "\n";
+
+        if (nbh) {
+            info << "nbh->hex=" << nbh->hex << "\n";
+            info << "ainfo[nbh]=" << EI(ainfo[*nbh]) << "\n";
+            info << "rinfo.distances[nbh] <= astack->speed(): " << (rinfo.distances[*nbh] <= astack->speed()) << "\n";
+
+            if (estack)
+                info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, estack, *nbh) << "\n";
+        }
+
+        info << "\nACTION TRACE:\n";
+        for (const auto& a : allactions)
+            info << a << ",";
+
+        info << "\nRENDER:\n";
+        info << renderANSI();
+
+        return info.str();
     }
 
     void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> &bsa, bool ranged) {
