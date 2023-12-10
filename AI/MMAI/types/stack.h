@@ -19,7 +19,7 @@ namespace MMAI {
         Speed,
         Waited,
         QueuePos,  // 0=active stack
-        Side,  // 0=DEFENDER
+        Side,  // 0=attacker, 1=defender
         Slot,  // 0..6
         count
     };

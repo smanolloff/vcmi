@@ -11,10 +11,10 @@ namespace MMAI {
 
     using ErrType = Export::ErrType;
 
-    void BAI::error(const std::string &text) const { logAi->error("BAI %s", text); }
-    void BAI::warn(const std::string &text) const { logAi->warn("BAI %s", text); }
-    void BAI::info(const std::string &text) const { logAi->info("BAI %s", text); }
-    void BAI::debug(const std::string &text) const { logAi->debug("BAI %s", text); }
+    void BAI::error(const std::string &text) const { logAi->error("[%p] BAI %s", this, text); }
+    void BAI::warn(const std::string &text) const { logAi->warn("[%p] BAI %s", this, text); }
+    void BAI::info(const std::string &text) const { logAi->info("[%p] BAI %s", this, text); }
+    void BAI::debug(const std::string &text) const { logAi->debug("[%p] BAI %s", this, text); }
 
     void BAI::activeStack(const CStack * astack)
     {
@@ -389,6 +389,14 @@ namespace MMAI {
         info("*** battleEnd ***");
         // Export::Result res(std::move(*result), true);
         auto victory = br->winner == cb->battleGetMySide();
+
+        // Null battlefield means the battle ended without us receiving a turn
+        // (can only happen if we are DEFENDER)
+        if (!battlefield) {
+            ASSERT(side == BattleSide::DEFENDER, "no battlefield, but we are ATTACKER");
+            return;
+        }
+
         result = std::make_unique<Export::Result>(buildResult(*battlefield), victory);
         ASSERT(result->ended, "expected result->ended to be true");
     }

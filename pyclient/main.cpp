@@ -55,7 +55,7 @@ int main(int argc, char * argv[]) {
     // std::string mapname = "simotest-enchanters.vmap";
 
     LOG("Start VCMI");
-    init_vcmi(resdir, "trace", "trace", &cbprovider);
+    init_vcmi(resdir, "trace", "trace", "", "", &cbprovider);
 
     // WTF for some reason linker says this is undefined symbol WTF
     // fix: check pyclient.cpp start_vcmi arguments!

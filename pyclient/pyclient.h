@@ -8,6 +8,8 @@ const MMAI::Export::F_Sys __attribute__((visibility("default"))) init_vcmi(
   std::string resdir,
   std::string loglevelGlobal,
   std::string loglevelAI,
+  std::string enemyAImodel,
+  std::string enemyAItype,
   MMAI::Export::CBProvider * cbprovider
 );
 

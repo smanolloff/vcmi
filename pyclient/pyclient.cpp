@@ -1,11 +1,14 @@
+#include <boost/filesystem/operations.hpp>
 #include <cstdio>
 #include <iostream>
+#include <dlfcn.h>
 
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
 #include "pyclient.h"
 #include "logging/CLogger.h"
+#include "loader.h"
 
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/CGeneralTextHandler.h"
@@ -42,6 +45,7 @@
 #include "../lib/CConfigHandler.h"
 #include "vstd/CLoggerBase.h"
 
+#include <stdexcept>
 #include <string_view>
 
 extern boost::thread_specific_ptr<bool> inGuiThread;
@@ -49,134 +53,165 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 static CBasicLogConfigurator *logConfig;
 
 const MMAI::Export::F_Sys init_vcmi(
-  std::string resdir,
-  std::string loglevelGlobal,
-  std::string loglevelAI,
-  MMAI::Export::CBProvider * cbprovider
+    std::string resdir,
+    std::string loglevelGlobal,
+    std::string loglevelAI,
+    std::string enemyAImodel, // path to model.zip
+    std::string enemyAItype, // "MPPO"
+    MMAI::Export::CBProvider * cbprovider
 ) {
-  boost::filesystem::current_path(boost::filesystem::path(resdir));
-  std::cout.flags(std::ios::unitbuf);
-  console = new CConsoleHandler();
+    std::string neutralAI = "StupidAI";
 
-  auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole)
-  {
-    ClientCommandManager commandController;
-    commandController.processCommand(buffer, calledFromIngameConsole);
-  };
+    // init before chdir
+    if (enemyAImodel != "") {
+        //
+        // XXX: this makes it impossible to use lldb (invalid instruction error...)
+        //
+        if (enemyAItype != "MPPO")
+            throw std::runtime_error("Loading AI from file is supported only for AI type 'MPPO'");
 
-  *console->cb = callbackFunction;
-  console->start();
+        neutralAI = "MMAI";
 
-  const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
-  logConfig = new CBasicLogConfigurator(logPath, console);
-  logConfig->configureDefault();
-  logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
-  logGlobal->info("The log file will be saved to %s", logPath);
+        auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
+        void* handle = dlopen(libfile, RTLD_LAZY);
+        if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
 
-  preinitDLL(::console);
+        auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
+        if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
 
-  Settings(settings.write({"session", "headless"}))->Bool() = true;
-  Settings(settings.write({"session", "onlyai"}))->Bool() = true;
-  Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-  // NOTE: friendlyAI is hard-coded in MMAI's AAI::getBattleAIName()
-  Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
-  // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
-  Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
-  Settings(settings.write({"logging", "console", "coloredOutputEnabled"}))->Bool() = true;
+        auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
+        if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
 
-  Settings colors = settings.write["logging"]["console"]["colorMapping"];
-  colors->Vector().clear();
+        std::cout << "CUR PATH: " << boost::filesystem::current_path().string() << "\n";
 
-  auto confcolor = [&colors](std::string domain, std::string lvl, std::string color) {
-    JsonNode jentry, jlvl, jdomain, jcolor;
-    jdomain.String() = domain;
-    jlvl.String() = lvl;
-    jcolor.String() = color;
-    jentry.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}, {"color", jcolor}};
-    colors->Vector().push_back(jentry);
-  };
+        // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
+        init(enemyAImodel);
+        logGlobal->error("INIT AI DONE");
+    }
 
-  confcolor("global", "trace", "gray");
-  confcolor("ai",     "trace", "gray");
-  confcolor("global", "debug", "gray");
-  confcolor("ai",     "debug", "gray");
-  confcolor("global", "info", "white");
-  confcolor("ai",     "info", "white");
-  confcolor("global", "warn", "yellow");
-  confcolor("ai",     "warn", "yellow");
-  confcolor("global", "error", "red");
-  confcolor("ai",     "error", "red");
+    boost::filesystem::current_path(boost::filesystem::path(resdir));
+    std::cout.flags(std::ios::unitbuf);
+    console = new CConsoleHandler();
 
-  //
-  // Configure logging
-  //
-  Settings loggers = settings.write["logging"]["loggers"];
-  loggers->Vector().clear();
+    auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole)
+    {
+        ClientCommandManager commandController;
+        commandController.processCommand(buffer, calledFromIngameConsole);
+    };
 
-  auto conflog = [&loggers](std::string domain, std::string lvl) {
-    JsonNode jlog, jlvl, jdomain;
-    jdomain.String() = domain;
-    jlvl.String() = lvl;
-    jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
-    loggers->Vector().push_back(jlog);
-  };
+    *console->cb = callbackFunction;
+    console->start();
 
-  conflog("global", loglevelGlobal);
-  conflog("ai", loglevelAI);
+    const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
+    logConfig = new CBasicLogConfigurator(logPath, console);
+    logConfig->configureDefault();
+    logGlobal->info("Starting client of '%s'", GameConstants::VCMI_VERSION);
+    logGlobal->info("The log file will be saved to %s", logPath);
 
-  // this line must come after "conflog" stuff
-  logConfig->configure();
+    preinitDLL(::console);
 
-  srand ( (unsigned int)time(nullptr) );
+    Settings(settings.write({"session", "headless"}))->Bool() = true;
+    Settings(settings.write({"session", "onlyai"}))->Bool() = true;
+    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    // NOTE: friendlyAI is hard-coded in MMAI's AAI::getBattleAIName()
+    // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
+    Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
+    Settings(settings.write({"logging", "console", "coloredOutputEnabled"}))->Bool() = true;
+    Settings(settings.write({"server", "neutralAI"}))->String() = neutralAI;
 
-  // This initializes SDL and requires main thread.
-  // GH.init();
+    Settings colors = settings.write["logging"]["console"]["colorMapping"];
+    colors->Vector().clear();
 
-  CCS = new CClientState();
-  CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-  auto baggage = std::make_any<MMAI::Export::CBProvider*>(cbprovider);
-  CSH = new CServerHandler(baggage);
+    auto confcolor = [&colors](std::string domain, std::string lvl, std::string color) {
+        JsonNode jentry, jlvl, jdomain, jcolor;
+        jdomain.String() = domain;
+        jlvl.String() = lvl;
+        jcolor.String() = color;
+        jentry.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}, {"color", jcolor}};
+        colors->Vector().push_back(jentry);
+    };
 
-  boost::thread loading([]() {
-    loadDLLClasses();
-    const_cast<CGameInfo*>(CGI)->setFromLib();
-  });
-  loading.join();
+    confcolor("global", "trace", "gray");
+    confcolor("ai",     "trace", "gray");
+    confcolor("global", "debug", "gray");
+    confcolor("ai",     "debug", "gray");
+    confcolor("global", "info", "white");
+    confcolor("ai",     "info", "white");
+    confcolor("global", "warn", "yellow");
+    confcolor("ai",     "warn", "yellow");
+    confcolor("global", "error", "red");
+    confcolor("ai",     "error", "red");
 
-  // graphics = new Graphics(); // should be before curh
-  // CCS->curh = new CursorHandler();
-  // CMessage::init();
-  // CCS->curh->show();
+    //
+    // Configure logging
+    //
+    Settings loggers = settings.write["logging"]["loggers"];
+    loggers->Vector().clear();
 
-  // We have the GIL, safe to call syscbcb now
-  return [](std::string cmd) {
-    logGlobal->error("!!!!!!!!!!! SYS !!!!!!!!!! Received command: %s", cmd);
-    if (cmd == "terminate")
-      exit(0);
-    else if (cmd == "reset")
-      CSH->sendRestartGame();
-    else
-      logGlobal->error("Unknown sys command: '%s'", cmd);
-  };
+    auto conflog = [&loggers](std::string domain, std::string lvl) {
+        JsonNode jlog, jlvl, jdomain;
+        jdomain.String() = domain;
+        jlvl.String() = lvl;
+        jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
+        loggers->Vector().push_back(jlog);
+    };
+
+    conflog("global", loglevelGlobal);
+    conflog("ai", loglevelAI);
+
+    // this line must come after "conflog" stuff
+    logConfig->configure();
+
+    srand ( (unsigned int)time(nullptr) );
+
+    // This initializes SDL and requires main thread.
+    // GH.init();
+
+    CCS = new CClientState();
+    CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
+    auto baggage = std::make_any<MMAI::Export::CBProvider*>(cbprovider);
+    CSH = new CServerHandler(baggage);
+
+    boost::thread loading([]() {
+        loadDLLClasses();
+        const_cast<CGameInfo*>(CGI)->setFromLib();
+    });
+    loading.join();
+
+    // graphics = new Graphics(); // should be before curh
+    // CCS->curh = new CursorHandler();
+    // CMessage::init();
+    // CCS->curh->show();
+
+    // We have the GIL, safe to call syscbcb now
+    return [](std::string cmd) {
+        logGlobal->error("!!!!!!!!!!! SYS !!!!!!!!!! Received command: %s", cmd);
+        if (cmd == "terminate")
+            exit(0);
+        else if (cmd == "reset")
+            CSH->sendRestartGame();
+        else
+            logGlobal->error("Unknown sys command: '%s'", cmd);
+    };
 }
 
 void start_vcmi(std::string mapname) {
-  // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
-  auto mappath = std::filesystem::path("maps") / std::filesystem::path(mapname);
-  // convert to "maps/ai/simotest.vmap" to "maps/ai/simotest"
-  auto mappathstr = (mappath.parent_path() / mappath.stem()).string();
-  // convert to "maps/ai/simotest" to "MAPS/AI/SIMOTEST"
-  std::transform(mappathstr.begin(), mappathstr.end(), mappathstr.begin(), [](unsigned char c) { return std::toupper(c); });
+    // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
+    auto mappath = std::filesystem::path("maps") / std::filesystem::path(mapname);
+    // convert to "maps/ai/simotest.vmap" to "maps/ai/simotest"
+    auto mappathstr = (mappath.parent_path() / mappath.stem()).string();
+    // convert to "maps/ai/simotest" to "MAPS/AI/SIMOTEST"
+    std::transform(mappathstr.begin(), mappathstr.end(), mappathstr.begin(), [](unsigned char c) { return std::toupper(c); });
 
-  // Set "lastMap" setting to prevent an occasional race condition
-  // debugStartTest() where the last map was loaded regardless the given one
-  // (seems to happen only when UI is enabled, but better be safe)
-  Settings(settings.write({"general", "lastMap"}))->String() = mappathstr;
+    // Set "lastMap" setting to prevent an occasional race condition
+    // debugStartTest() where the last map was loaded regardless the given one
+    // (seems to happen only when UI is enabled, but better be safe)
+    Settings(settings.write({"general", "lastMap"}))->String() = mappathstr;
 
-  auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
-  inGuiThread.reset(new bool(true));
+    auto t = boost::thread(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
+    inGuiThread.reset(new bool(true));
 
-  while (true) {
-    boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-  }
+    while (true) {
+        boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+    }
 }
