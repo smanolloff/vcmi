@@ -242,7 +242,7 @@ namespace MMAI {
             break; case StackAttr::QueuePos:
                 a = qpos;
                 ASSERT(a >= 0 && a < QSIZE, "unexpected qpos: " + std::to_string(a));
-            break; case StackAttr::IsEnemy: a = cstack->unitSide() != cb->battleGetMySide();
+            break; case StackAttr::Side: a = cstack->unitSide();
             break; case StackAttr::Slot:
                 a = cstack->unitSlot();
                 ASSERT(a >= 0 && a < 7, "unexpected slot: " + std::to_string(a));
@@ -279,7 +279,7 @@ namespace MMAI {
                 break; case StackAttr::Speed:    max = 30;
                 break; case StackAttr::Waited:   max = 1;
                 break; case StackAttr::QueuePos: max = QSIZE-1;
-                break; case StackAttr::IsEnemy:  max = 1;
+                break; case StackAttr::Side:     max = 1;
                 break; case StackAttr::Slot:     max = 6;
                 break; default:
                     throw std::runtime_error("Unexpected StackAttr: " + std::to_string(EI(j)));

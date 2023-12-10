@@ -168,7 +168,8 @@ namespace MMAI {
                 auto cstack = hex.stack->cstack;
                 ASSERT(cstack, "OCCUPIED hex with nullptr cstack");
                 auto slot = hex.stack->attrs[EI(StackAttr::Slot)];
-                auto enemy = hex.stack->attrs[EI(StackAttr::IsEnemy)];
+                auto enemy = cstack->unitSide() != bf.astack->unitSide();
+                ASSERT(hex.stack->attrs[EI(StackAttr::Side)] == cstack->unitSide(), "wrong unit side");
                 auto col = enemy ? enemycol : allycol;
 
                 if (cstack->unitId() == bf.astack->unitId())
@@ -317,19 +318,22 @@ namespace MMAI {
                 auto attr = ATTR_NA;
 
                 if (stack) {
+                    auto cstack = stack->cstack;
+                    ASSERT(cstack, "NULL cstack");
+                    ASSERT(cstack->unitSide() == stack->attrs[EI(StackAttr::Side)], "stack side mismatch");
                     // at activeStack(), Stack objects are created only for alive CStacks
                     // at end-of-battle, Stack objects of dead CStacks are is still there
                     // => there should be no dead stacks unless battle ends
-                    if (!stack->cstack->alive()) {
+                    if (!cstack->alive()) {
                         ASSERT(r.ended, "dead stack at " + std::to_string(nstack));
                     } else {
                         attr = stack->attrs[col-1]; // col starts at 1
-                        if (stack->attrs[EI(StackAttr::IsEnemy)])
-                            color = enemycol;
-                        else if (stack->attrs[EI(StackAttr::QueuePos)] == 0)
+                        if (cstack->unitId() == bf.astack->unitId())
                             color = activecol;
-                        else
+                        else if (cstack->unitSide() == bf.astack->unitSide())
                             color = allycol;
+                        else
+                            color = enemycol;
                     }
                 }
 

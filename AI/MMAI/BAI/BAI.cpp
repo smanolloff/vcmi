@@ -381,6 +381,7 @@ namespace MMAI {
 
     void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
+        // side is FALSE for attacker
         side = side_ ? BattleSide::DEFENDER : BattleSide::ATTACKER;
     }
 
