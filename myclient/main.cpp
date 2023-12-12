@@ -1,50 +1,123 @@
 #include "myclient.h"
 #include <cstdio>
+#include <stdexcept>
 #include <string>
+#include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
+
+const std::vector<std::string> AIS = {
+    AI_STUPIDAI,
+    AI_BATTLEAI,
+    AI_MMAI_USER,
+    AI_MMAI_MODEL
+};
+
+// "default" is a reserved word => use "fallback"
+std::string values(std::vector<std::string> all, std::string fallback) {
+    auto found = false;
+    for (int i=0; i<all.size(); i++) {
+        if (all[i] == fallback) {
+            all[i] = fallback + "*";
+            found = true;
+        }
+    }
+
+    if (!found)
+        throw std::runtime_error("Default value '" + fallback + "' not found");
+
+    return "Values: " + boost::algorithm::join(all, " | ");
+}
 
 int main(int argc, char * argv[])
 {
-  if (argc < 4) {
-    printf("Usage: %s <map> <mode> <AI> [model]\n\n", argv[0]);
-    printf("Supported modes:\n");
-    printf("  mode=1 => enemy AI is StupidAI\n");
-    printf("  mode=2 => enemy AI is BattleAI\n\n");
-    printf("  mode=3 => enemy AI is also <AI>\n\n");
-    printf("Supported AIs: MMAI, StupidAI, BattleAI\n");
-    exit(1);
-  }
+    // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
+    auto omap = std::map<std::string, std::string> {
+        {"map", "ai/P1.vmap"},
+        {"loglevel", "debug"},
+        {"attacker-ai", AI_MMAI_USER},
+        {"defender-ai", AI_STUPIDAI},
+        {"attacker-model", "AI/MMAI/models/model.zip"},
+        {"defender-model", "AI/MMAI/models/model.zip"}
+    };
 
-  std::string resdir("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin");
-  std::string mapname(argv[1]); // eg. "ai/M8.vmap"
-  std::string mode(argv[2]); // "mode=1", "mode=2"
-  std::string ainame(argv[3]); // "MMAI", "StupidAI", "BattleAI"
+    auto usage = std::stringstream();
+    usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
+    usage << "Available options (* denotes default value)";
 
-  if (mode != "mode=1" && mode != "mode=2" && mode != "mode=3") {
-    printf("mode should be one of: mode=1, mode=2, mode=3 got: %s\n", mode.c_str());
-    exit(1);
-  }
+    auto opts = po::options_description(usage.str(), 0);
 
-  if (ainame != "MMAI" && ainame != "StupidAI" && ainame != "BattleAI") {
-    printf("AI should be one of: MMAI, StupidAI, BattleAI, got: %s\n", ainame.c_str());
-    exit(1);
-  }
+    opts.add_options()
+        ("help,h", "Show this help")
+        ("map", po::value<std::string>()->value_name("<MAP>"),
+            ("Path to map (" + omap.at("map") + "*)").c_str())
+        ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
+            values(AIS, omap.at("attacker-ai")).c_str())
+        ("defender-ai", po::value<std::string>()->value_name("<AI>"),
+            values(AIS, omap.at("defender-ai")).c_str())
+        ("attacker-model", po::value<std::string>()->value_name("<FILE>"),
+            ("Path to model.zip (" + omap.at("attacker-model") + "*)").c_str())
+        ("defender-model", po::value<std::string>()->value_name("<FILE>"),
+            ("Path to model.zip (" + omap.at("defender-model") + "*)").c_str());
 
-  std::string model = "";
+    po::variables_map vm;
 
-  if (ainame == "MMAI") {
-    if (argc < 4) {
-      printf("MMAI also requires a model arg\n");
-      exit(1);
+    try {
+            po::store(po::command_line_parser(argc, argv).options(opts).run(), vm);
+            po::notify(vm);
+    } catch (const po::error& e) {
+            std::cerr << "Error: " << e.what() << "\n";
+            std::cout << opts << "\n"; // Display the help message
+            return 1;
     }
-    model = argv[4];
-  }
 
-  return mymain(resdir, mapname, mode, ainame, model);
+    if (vm.count("help")) {
+            std::cout << opts << "\n";
+            return 1;
+    }
 
-  // return mymain(
-  //   std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin"),
-  //   false,
-  //   callback
-  // );
+    for (auto &[opt, _] : omap) {
+        if (vm.count(opt))
+            omap[opt] = vm.at(opt).as<std::string>();
+
+        std::cout << opt << ": " << omap.at(opt) << "\n";
+    }
+
+    std::string resdir("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin");
+
+    // The user CB function is hard-coded
+    // (no way to provide this from the cmd line args)
+    int i = 1;
+    bool rendered = false;
+
+    MMAI::Export::F_GetAction getaction = [&i, &rendered](const MMAI::Export::Result * r){
+        if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
+            std::cout << r->ansiRender << "\n";
+        }
+
+        if (i % 2 == 0 && !rendered) {
+            rendered = true;
+            return MMAI::Export::ACTION_RENDER_ANSI;
+        }
+
+        rendered = false;
+
+        auto act = i++ % MMAI::Export::N_ACTIONS;
+        std::cout << "user-callback getAction returning: " << act << "\n";
+
+        return MMAI::Export::Action(act);
+    };
+
+    return mymain(
+        new MMAI::Export::Baggage(getaction),
+        std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin"),
+        omap.at("map"),
+        omap.at("loglevel"),
+        omap.at("loglevel"),
+        omap.at("attacker-ai"),
+        omap.at("defender-ai"),
+        omap.at("attacker-model"),
+        omap.at("defender-model")
+    );
 }
 

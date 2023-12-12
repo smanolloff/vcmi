@@ -4,6 +4,7 @@
 
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
+#include <stdexcept>
 
 #include "AI/MMAI/export.h"
 #include "myclient.h"
@@ -72,33 +73,27 @@ static void mainLoop()
 // /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
 // int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
 int mymain(
+    MMAI::Export::Baggage* baggage,
     std::string resdir,
     std::string mapname,
-    std::string mode,
-    std::string ainame,
-    std::string model
+    std::string loglevelGlobal,
+    std::string loglevelAI,
+    std::string attackerAI,
+    std::string defenderAI,
+    std::string attackerModel,
+    std::string defenderModel
 ) {
-    if (ainame == "MMAI") {
-        //
-        // XXX: this makes it impossible to use lldb (invalid instruction error...)
-        //
-        auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
-        void* handle = dlopen(libfile, RTLD_LAZY);
-        if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
+    if (!baggage) throw std::runtime_error("baggage is required");
+    if (!baggage->f_getAction) throw std::runtime_error("baggage->f_getAction is required");
 
-        auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
-        if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+    // Default f_idGetAction is a simple proxy to f_getAction
+    baggage->f_idGetAction = [&baggage](MMAI::Export::Side _, const MMAI::Export::Result* result) {
+        return baggage->f_getAction(result);
+    };
 
-        auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
-        if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
 
-        // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
-        init(model);
-        logGlobal->error("INIT AI DONE");
-    }
-
-    // rest
-
+    // the CWD will change for VCMI to work in non-dist mode
+    boost::filesystem::path oldcwd = boost::filesystem::current_path();
     boost::filesystem::current_path(boost::filesystem::path(resdir));
     std::cout.flags(std::ios::unitbuf);
     console = new CConsoleHandler();
@@ -116,26 +111,124 @@ int mymain(
     logConfig = new CBasicLogConfigurator(logPath, console);
     logConfig->configureDefault();
 
+    // XXX: apparently this needs to be invoked before Settings() changes
     preinitDLL(::console);
+
+    //
+    // NOTE:
+    // This requires 2-player maps where player 1 is HUMAN
+    // The player hero moves 1 tile to the right and engages into a battle
+    //
+    auto loadmodel = [&oldcwd](MMAI::Export::Side side, std::string model) {
+        boost::filesystem::path savecwd = boost::filesystem::current_path();
+        boost::filesystem::current_path(oldcwd);
+
+        //
+        // XXX: this makes it impossible to use lldb (invalid instruction error...)
+        //
+        auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
+        void* handle = dlopen(libfile, RTLD_LAZY);
+        if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
+
+        auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
+        if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+
+        auto idGetAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
+        if(!idGetAction) throw std::runtime_error("Error getting idGetAction fn: " + std::string(dlerror()));
+
+        // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
+        init(side, model);
+        logGlobal->error("INIT AI DONE FOR: " + std::to_string(static_cast<int>(side)));
+
+        boost::filesystem::current_path(savecwd);
+        return idGetAction;
+    };
+
+
+    // Notes on AI creation
+    //
+    // *** Game start - adventure interfaces ***
+    // initGameInterface() is called on:
+    // * CPlayerInterface (CPI) for humans
+    // * settings["playerAI"] for computers
+    //
+    // *** Battle start - battle interfaces ***
+    // * battleStart() is called on the adventure interfaces for all players
+    //
+    // VCAI - (via parent class) reads settings["enemyAI"]) and calls GetNewBattleAI()
+    // MMAI - creates BAI directly, passing the user's getAction fn via baggage
+    // CPI - reads settings["friendlyAI"], but modified to init it with baggage
+    //       (baggage ignored by non-MMAIs)
+    //
+    // *** Auto-combat button clicked ***
+    // BattleWindow()::bAutofightf() has been patched to reuse code in CPI
+    // (in order to also pass baggage)
+    //
+
+    //
+    // AI for attacker
+    // Attacker is human, ie. CPI
+    // It creates battle interfaces as per settings["friendlyAI"]
+    // (CPI is modded to pass the baggage, which is used only by MMAI::BAI)
+    //
+    if (attackerAI == AI_MMAI_MODEL) {
+        Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
+        auto idGetAction = loadmodel(MMAI::Export::Side::ATTACKER, attackerModel);
+
+        // TODO: handle control actions (eg. render)
+        baggage->f_idGetAction = [&baggage, &idGetAction](MMAI::Export::Side side, const MMAI::Export::Result* result) {
+            return (side == MMAI::Export::Side::ATTACKER)
+                ? idGetAction(side, result) :
+                baggage->f_idGetAction(side, result);
+        };
+    } else if (attackerAI == AI_MMAI_USER) {
+        Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
+    } else if (attackerAI == AI_STUPIDAI) {
+        Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
+    } else if (attackerAI == AI_BATTLEAI) {
+        Settings(settings.write({"server", "friendlyAI"}))->String() = "BattleAI";
+    } else {
+        throw std::runtime_error("Unexpected attackerAI: " + attackerAI);
+    }
+
+    //
+    // AI for defender (aka. computer, aka. some AI)
+    // Defender is computer with adventure interface from settings["playerAI"]:
+    //
+    // * "VCAI", which will create battle interfaces as per settings["enemyAI"]
+    //   (will not pass baggage if settings["enemyAI"]="MMAI")
+    //
+    // * "MMAI", which will always create MMAI::BAI battle interfaces
+    //   (will pass baggage)
+    //
+    if (defenderAI == AI_MMAI_MODEL) {
+        // baggage needed => use MMAI adv. interface
+        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+        auto idGetAction = loadmodel(MMAI::Export::Side::DEFENDER, defenderModel);
+        baggage->f_idGetAction = [&baggage, &idGetAction](MMAI::Export::Side side, const MMAI::Export::Result* result) {
+            return (side == MMAI::Export::Side::DEFENDER)
+                ? idGetAction(side, result) :
+                baggage->f_idGetAction(side, result);
+        };
+    } else if (defenderAI == AI_MMAI_USER) {
+        // baggage needed => use MMAI adv. interface
+        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    } else if (defenderAI == AI_STUPIDAI) {
+        Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
+        Settings(settings.write({"server", "enemyAI"}))->String() = "StupidAI";
+    } else if (defenderAI == AI_BATTLEAI) {
+        Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
+        Settings(settings.write({"server", "enemyAI"}))->String() = "BattleAI";
+    } else {
+        throw std::runtime_error("Unexpected defenderAI: " + defenderAI);
+    }
 
     Settings(settings.write({"session", "headless"}))->Bool() = false;
     Settings(settings.write({"session", "onlyai"}))->Bool() = false;
-    Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
-    Settings(settings.write({"server", "friendlyAI"}))->String() = ainame;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = false;
     Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
     Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
     Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;
-
-    if (mode == "mode=1")
-        Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
-    else if (mode == "mode=2")
-        Settings(settings.write({"server", "neutralAI"}))->String() = "BattleAI";
-    else if (mode == "mode=3")
-        Settings(settings.write({"server", "neutralAI"}))->String() = ainame;
-    else
-        throw std::runtime_error("Invalid mode: " + mode);
-
 
     // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
     auto mappath = std::filesystem::path("maps") / std::filesystem::path(mapname);
@@ -160,8 +253,8 @@ int mymain(
         loggers->Vector().push_back(jlog);
     };
 
-    conflog("global", "debug");
-    conflog("ai", "debug");
+    conflog("global", loglevelGlobal);
+    conflog("ai", loglevelAI);
 
     logConfig->configure();
     // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
@@ -185,7 +278,7 @@ int mymain(
 
     CCS = new CClientState();
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-    CSH = new CServerHandler();
+    CSH = new CServerHandler(std::make_any<MMAI::Export::Baggage*>(baggage));
 
     CSH->uuid = "00000000-0000-0000-0000-000000000000";
 

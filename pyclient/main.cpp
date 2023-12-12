@@ -1,4 +1,5 @@
 #include "main.h"
+#include "AI/MMAI/export.h"
 #include "pyclient.h"
 #include <cstdio>
 
@@ -27,7 +28,7 @@ int main(int argc, char * argv[]) {
 
     if (argc > 1) mapname = argv[1];
 
-    int i = 0;
+    int i = 1;
     bool rendered = false;
 
     MMAI::Export::F_GetAction getaction = [&i, &actions, &rendered](const MMAI::Export::Result * r){
@@ -35,19 +36,19 @@ int main(int argc, char * argv[]) {
             std::cout << r->ansiRender << "\n";
         }
 
-        if (i == actions.size())
-            throw std::runtime_error("No more actions");
+        // if (i == actions.size())
+        //     throw std::runtime_error("No more actions");
 
-        if (i % 2 == 0 && !rendered) {
-            rendered = true;
-            return MMAI::Export::ACTION_RENDER_ANSI;
-        }
+        // if (i % 2 == 0 && !rendered) {
+        //     rendered = true;
+        //     return MMAI::Export::ACTION_RENDER_ANSI;
+        // }
 
         rendered = false;
-        return MMAI::Export::Action(actions[i++]);
+        return MMAI::Export::Action(actions[i++ % MMAI::Export::N_ACTIONS]);
     };
 
-    auto cbprovider = MMAI::Export::CBProvider(getaction);
+    auto baggage = MMAI::Export::Baggage(getaction);
 
     // TODO: config values
     std::string resdir = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin";
@@ -55,7 +56,7 @@ int main(int argc, char * argv[]) {
     // std::string mapname = "simotest-enchanters.vmap";
 
     LOG("Start VCMI");
-    init_vcmi(resdir, "trace", "trace", "", "", &cbprovider);
+    init_vcmi(resdir, "trace", "trace", "", "", &baggage);
 
     // WTF for some reason linker says this is undefined symbol WTF
     // fix: check pyclient.cpp start_vcmi arguments!

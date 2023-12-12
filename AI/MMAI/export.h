@@ -161,20 +161,36 @@ namespace MMAI::Export {
 
     };
 
+    enum class Side : int {
+        ATTACKER,
+        DEFENDER
+    };
+
     // F_Sys is a CPP function returned by pyclient's `init`
     // GymEnv will invoke it on "close()" calls (or "reset(hard=True)" ?)
     using F_Sys = std::function<void(std::string cmd)>;
 
-    // F_GetAction is a Python function passed to the AI constructor.
-    // AI will invoke it on every "yourTurn()" call, with 1 argument: a Result
+    // F_GetAction is optionally called via F_IDGetAction only (see below).
+    // - can be libconnector's getAction (VCMI started as a Gym env)
+    //   (VcmiEnv->PyConnector->Connector::initBaggage())
+    // - can be a dummy getAction (VCMI started as a standalone program)
+    //   (myclient->main())
     using F_GetAction = std::function<Action(const Result * result)>;
 
-    // The CB functions above are all bundled into CBProvider struct
-    // whose purpose is to be seamlessly transportable through VCMI code
-    // as a std::any object, then cast back to CBProvider in the AI constructor
-    struct DLL_EXPORT CBProvider {
-        F_GetAction f_getAction = nullptr;
-        CBProvider(F_GetAction f) : f_getAction(f) {}
-    };
+    // F_IDGetAction is called by BAI on each "activeStack()" call.
+    // It is set only manually during init_vcmi(...) depending on the args:
+    // - can be a proxy to F_GetAction (if attacker/defenderAI is AI_MMAI_USER)
+    // - can be libloader's getAction (if attackerAI = AI_MMAI_MODEL)
+    using F_IDGetAction = std::function<Action(Side side, const Result * result)>;
 
+    // The CB functions above are all bundled into Baggage struct
+    // whose purpose is to be seamlessly transportable through VCMI code
+    // as a std::any object, then cast back to Baggage in the AI constructor
+    struct DLL_EXPORT Baggage {
+        Baggage() = delete;
+        Baggage(F_GetAction f) : f_getAction(f) {}
+        const F_GetAction f_getAction;
+
+        F_IDGetAction f_idGetAction;
+    };
 }

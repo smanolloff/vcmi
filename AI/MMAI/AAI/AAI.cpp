@@ -1,3 +1,4 @@
+#include "export.h"
 #include "gameState/CGameState.h"
 #include "AAI.h"
 
@@ -22,38 +23,40 @@ namespace MMAI {
         initGameInterface(env, CB, std::any{});
     }
 
-    void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage) {
+    void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage_) {
         info("*** initGameInterface ***");
+        ASSERT(baggage_.has_value(), "baggage has no value");
+        ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
+        baggage = std::any_cast<Export::Baggage*>(baggage_);
+
+        // A wrapper around baggage->idGetAction
+        // It ensures special handling for non-game actions (eg. render, reset)
+        idGetActionWrapper = [this](Export::Side side, const Export::Result* result) {
+            auto action = idGetNonRenderAction(side, result);
+
+            if (action == Export::ACTION_RESET) {
+                // AAI::getAction is called only by BAI, only during battle
+                // FIXME: retreat may be impossible, a _real_ reset should be implemented
+                info("Will retreat in order to reset battle");
+                ASSERT(!bai->result->ended, "expected active battle");
+                action = Export::ACTION_RETREAT;
+            }
+
+            return action;
+        };
+
         cb = CB;
         cbc = CB;
         cb->waitTillRealize = true;
         cb->unlockGsWhenWaiting = true;
+    };
 
-        ASSERT(baggage.has_value(), "baggage has no value");
-        ASSERT(baggage.type() == typeid(Export::CBProvider*), "baggage of unexpected type");
-        cbprovider = std::any_cast<Export::CBProvider*>(baggage);
-    }
-
-    Export::Action AAI::getNonRenderAction(const Export::Result * result) {
-        auto action = cbprovider->f_getAction(result);
+    Export::Action AAI::idGetNonRenderAction(Export::Side side, const Export::Result* result) {
+        auto action = this->baggage->f_idGetAction(side, result);
 
         while (action == Export::ACTION_RENDER_ANSI) {
             auto res = Export::Result(bai->renderANSI());
-            action = cbprovider->f_getAction(&res);
-        }
-
-        return action;
-    }
-
-    Export::Action AAI::getAction(const Export::Result * result) {
-        auto action = getNonRenderAction(result);
-
-        if (action == Export::ACTION_RESET) {
-            // AAI::getAction is called only by BAI, only during battle
-            // FIXME: retreat may be impossible, a _real_ reset should be implemented
-            info("Will retreat in order to reset battle");
-            ASSERT(!bai->result->ended, "expected active battle");
-            action = Export::ACTION_RETREAT;
+            action = this->baggage->f_idGetAction(side, result);
         }
 
         return action;
@@ -81,16 +84,9 @@ namespace MMAI {
         assert(!battleAI);
         assert(cbc);
 
-        auto aiName = getBattleAIName();
-        ASSERT(aiName == "MMAI", "wrong battle AI: " + aiName);
-
-        battleAI = CDynLibHandler::getNewBattleAI(aiName);
-
+        battleAI = CDynLibHandler::getNewBattleAI(getBattleAIName());
         bai = std::static_pointer_cast<BAI>(battleAI);
-
-        Export::F_GetAction fga = [this](const Export::Result * r) { return this->getAction(r); };
-        bai->myInitBattleInterface(env, cbc, fga);
-
+        bai->myInitBattleInterface(env, cbc, idGetActionWrapper);
         battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
     }
 
@@ -106,7 +102,7 @@ namespace MMAI {
             // (in case there are render actions)
             bai->battleEnd(br, queryID);
 
-            auto action = getNonRenderAction(bai->result.get());
+            auto action = idGetNonRenderAction(static_cast<Export::Side>(bai->side), bai->result.get());
 
             info("Reset battle");
             // Any non-render action *must* be a reset (battle has ended)
@@ -338,6 +334,7 @@ namespace MMAI {
     }
 
     std::string AAI::getBattleAIName() const {
+        debug("*** getBattleAIName ***");
         return "MMAI";
     }
 }

@@ -24,24 +24,53 @@ namespace MMAI {
         //     shutdown();
     }
 
+    // XXX:
+    // This call is made when BAI is created for a Human (by CPlayerInterface)
+    // If BAI is created for a computer (by MMAI), "myInitBattleInterface"
+    //   is called instead with a wrapped f_idGetAction fn that never returns
+    //   control actions (like RENDER or RESET).
+    //
+    // In this case, however, baggage is passed in directly - we must make
+    // sure to wrap its f_idGetAction ourselves.
+    //
+    void BAI::initBattleInterface(
+        std::shared_ptr<Environment> ENV,
+        std::shared_ptr<CBattleCallback> CB,
+        std::any baggage_
+    ) {
+        info("*** initBattleInterface -- WITH baggage ***");
+
+        ASSERT(baggage_.has_value(), "baggage has no value");
+        ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
+
+        // XXX: this may need to be stored?
+        auto baggage = std::any_cast<Export::Baggage*>(baggage_);
+
+        Export::F_IDGetAction f_idGetAction = [this, baggage](Export::Side side, const Export::Result* result) {
+            auto action = baggage->f_idGetAction(side, result);
+            while (action == Export::ACTION_RENDER_ANSI) {
+                auto res = Export::Result(renderANSI());
+                action = baggage->f_idGetAction(side, result);
+            }
+
+            if (action == Export::ACTION_RESET) {
+                info("Will retreat in order to reset battle");
+                ASSERT(!result->ended, "expected active battle");
+                action = Export::ACTION_RETREAT;
+            }
+
+            return action;
+        };
+
+        myInitBattleInterface(ENV, CB, f_idGetAction);
+    }
+
     void BAI::initBattleInterface(
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB
     ) {
-        info("*** initBattleInterface -- BUT NO F_GetAction - LOADING libconnload.dylib ***");
-
-        auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
-        void* handle = dlopen(libfile, RTLD_LAZY);
-        ASSERT(handle, "Error loading the library: " + std::string(dlerror()));
-
-        // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
-        // init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
-        // ASSERT(init, "Error getting init fn: " + std::string(dlerror()));
-
-        getAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
-        ASSERT(getAction, "Error getting getAction fn: " + std::string(dlerror()));
-
-        myInitBattleInterface(ENV, CB, getAction);
+        info("*** initBattleInterface -- BUT NO BAGGAGE ***");
+        myInitBattleInterface(ENV, CB, nullptr);
     }
 
     void BAI::initBattleInterface(
@@ -55,16 +84,14 @@ namespace MMAI {
     void BAI::myInitBattleInterface(
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB,
-        Export::F_GetAction f_getAction
+        Export::F_IDGetAction f_idGetAction
     ) {
         info("*** myInitBattleInterface ***");
-
-        ASSERT(f_getAction, "f_getAction is null");
+        ASSERT(f_idGetAction, "f_idGetAction is null");
+        idGetAction = f_idGetAction;
 
         env = ENV;
         cb = CB;
-        getAction = f_getAction;
-
         wasWaitingForRealize = CB->waitTillRealize;
         wasUnlockingGs = CB->unlockGsWhenWaiting;
         CB->waitTillRealize = false;

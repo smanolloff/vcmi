@@ -50,7 +50,7 @@ namespace MMAI {
 
         std::unique_ptr<Action> action;
         std::unique_ptr<Export::Result> result;
-        Export::F_GetAction getAction;
+        Export::F_IDGetAction idGetAction;
 
         BuildActionResult buildAction(Battlefield &bf, Action &action);
         Export::Result buildResult(Battlefield &bf);
@@ -66,14 +66,17 @@ namespace MMAI {
         void warn(const std::string &text) const;
         void info(const std::string &text) const;
         void debug(const std::string &text) const;
+
+        void setInitBattleInterfaceVars(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB);
+        void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, Export::F_IDGetAction f_idGetAction);
     public:
         BAI();
         ~BAI();
 
 
         void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
+        void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) override;
         void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
-        void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, Export::F_GetAction f_getAction);
         void activeStack(const CStack * stack) override; //called when it's turn of that stack
         void yourTacticPhase(int distance) override;
 

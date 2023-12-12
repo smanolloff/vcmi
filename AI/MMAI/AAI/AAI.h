@@ -5,10 +5,11 @@
 
 namespace MMAI {
     class DLL_EXPORT AAI : public CAdventureAI {
-        Export::CBProvider * cbprovider = new Export::CBProvider(nullptr);
+        Export::Baggage * baggage = new Export::Baggage(nullptr);
         std::shared_ptr<BAI> bai;
-        Export::Action getAction(const Export::Result * result);
-        Export::Action getNonRenderAction(const Export::Result * result);
+        Export::F_IDGetAction idGetActionWrapper;
+
+        Export::Action idGetNonRenderAction(Export::Side side, const Export::Result* result);
 
         void error(const std::string &text) const;
         void warn(const std::string &text) const;

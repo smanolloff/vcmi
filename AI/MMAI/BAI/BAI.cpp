@@ -1,5 +1,6 @@
 #include "NetPacks.h"
 #include "BAI.h"
+#include "battle/BattleHex.h"
 #include "types/hexaction.h"
 #include "types/stack.h"
 #include "vstd/CLoggerBase.h"
@@ -26,8 +27,11 @@ namespace MMAI {
 
         std::shared_ptr<BattleAction> ba;
 
+        static_assert(EI(BattleSide::ATTACKER) == EI(Export::Side::ATTACKER));
+        static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
+
         while(true) {
-            auto _action = getAction(result.get());
+            auto _action = idGetAction(static_cast<Export::Side>(side), result.get());
             allactions.push_back(_action);
             action = std::make_unique<Action>(_action, battlefield.get());
             debug("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
@@ -383,10 +387,12 @@ namespace MMAI {
         info("*** battleStart ***");
         // side is FALSE for attacker
         side = side_ ? BattleSide::DEFENDER : BattleSide::ATTACKER;
+
+        ASSERT(idGetAction, "BAI->idGetAction is null!");
     }
 
     void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
-        info("*** battleEnd ***");
+        info("*** battleEnd (QueryID: " + std::to_string(queryID.getNum()) + ") ***");
         // Export::Result res(std::move(*result), true);
         auto victory = br->winner == cb->battleGetMySide();
 

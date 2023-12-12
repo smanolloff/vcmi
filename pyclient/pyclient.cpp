@@ -58,7 +58,7 @@ const MMAI::Export::F_Sys init_vcmi(
     std::string loglevelAI,
     std::string enemyAImodel, // path to model.zip
     std::string enemyAItype, // "MPPO"
-    MMAI::Export::CBProvider * cbprovider
+    MMAI::Export::Baggage * baggage
 ) {
     std::string neutralAI = "StupidAI";
 
@@ -85,7 +85,7 @@ const MMAI::Export::F_Sys init_vcmi(
         std::cout << "CUR PATH: " << boost::filesystem::current_path().string() << "\n";
 
         // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
-        init(enemyAImodel);
+        // init(enemyAImodel);
         logGlobal->error("INIT AI DONE");
     }
 
@@ -112,11 +112,24 @@ const MMAI::Export::F_Sys init_vcmi(
 
     Settings(settings.write({"session", "headless"}))->Bool() = true;
     Settings(settings.write({"session", "onlyai"}))->Bool() = true;
-    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
     // NOTE: friendlyAI is hard-coded in MMAI's AAI::getBattleAIName()
     // Settings(settings.write({"logging", "console", "format"}))->String() = "[VCMI] %c [%n] %l %m";
     Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
     Settings(settings.write({"logging", "console", "coloredOutputEnabled"}))->Bool() = true;
+
+
+    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    Settings(settings.write({"server", "enemyAI"}))->String() = "VCAI";
+    Settings(settings.write({"server", "neutralAI"}))->String() = "StupidAI";
+    // if (side == MMAI::Export::Side::ATTACKER) {
+    //     Settings(settings.write({"server", "enemyAI"}))->String() = "MMAI";
+    //     Settings(settings.write({"server", "neutralAI"}))->String() = neutralAI;
+    // } else {
+
+    // }
+
+    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    // Settings(settings.write({"server", "enemyAI"}))->String() = "MMAI";
     Settings(settings.write({"server", "neutralAI"}))->String() = neutralAI;
 
     Settings colors = settings.write["logging"]["console"]["colorMapping"];
@@ -169,8 +182,7 @@ const MMAI::Export::F_Sys init_vcmi(
 
     CCS = new CClientState();
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-    auto baggage = std::make_any<MMAI::Export::CBProvider*>(cbprovider);
-    CSH = new CServerHandler(baggage);
+    CSH = new CServerHandler(std::make_any<MMAI::Export::Baggage*>(baggage));
 
     boost::thread loading([]() {
         loadDLLClasses();

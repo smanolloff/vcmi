@@ -10,7 +10,7 @@ const MMAI::Export::F_Sys __attribute__((visibility("default"))) init_vcmi(
   std::string loglevelAI,
   std::string enemyAImodel,
   std::string enemyAItype,
-  MMAI::Export::CBProvider * cbprovider
+  MMAI::Export::Baggage * baggage
 );
 
 void __attribute__((visibility("default"))) start_vcmi(std::string mapname);
