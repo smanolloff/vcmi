@@ -7,6 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "CGameInterface.h"
 #include "StdInc.h"
 #include "CPlayerInterface.h"
 
@@ -165,6 +166,11 @@ void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::
 
 	// always recreate advmap interface to avoid possible memory-corruption bugs
 	adventureInt.reset(new AdventureMapInterface());
+}
+void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, std::any aiBaggage_)
+{
+	aiBaggage = aiBaggage_;
+	initGameInterface(ENV, CB);
 }
 
 void CPlayerInterface::playerStartsTurn(PlayerColor player)
@@ -649,6 +655,21 @@ void CPlayerInterface::battleStartBefore(const CCreatureSet *army1, const CCreat
 		waitForAllDialogs();
 }
 
+void CPlayerInterface::prepareAutoFightingAI(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side) {
+	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
+	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
+	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
+
+	if (aiBaggage.has_value()) {
+		autofightingAI->initBattleInterface(env, cb, aiBaggage);
+	} else {
+		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+	}
+	autofightingAI->battleStart(army1, army2, tile, hero1, hero2, side, false);
+	isAutoFightOn = true;
+	cb->registerBattleInterface(autofightingAI);
+}
+
 void CPlayerInterface::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
@@ -658,15 +679,7 @@ void CPlayerInterface::battleStart(const CCreatureSet *army1, const CCreatureSet
 
 	if ((replayAllowed && useQuickCombat) || forceQuickCombat)
 	{
-		autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
-
-		AutocombatPreferences autocombatPreferences = AutocombatPreferences();
-		autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-
-		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
-		autofightingAI->battleStart(army1, army2, tile, hero1, hero2, side, false);
-		isAutoFightOn = true;
-		cb->registerBattleInterface(autofightingAI);
+		prepareAutoFightingAI(army1, army2, tile, hero1, hero2, side);
 	}
 
 	//Don't wait for dialogs when we are non-active hot-seat player
