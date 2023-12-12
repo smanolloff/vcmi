@@ -1,3 +1,4 @@
+#include "AI/MMAI/export.h"
 #include "myclient.h"
 #include <cstdio>
 #include <stdexcept>
@@ -87,7 +88,7 @@ int main(int argc, char * argv[])
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
-    int i = 1;
+    int i = 2;
     bool rendered = false;
 
     MMAI::Export::F_GetAction getaction = [&i, &rendered](const MMAI::Export::Result * r){
@@ -103,7 +104,15 @@ int main(int argc, char * argv[])
         rendered = false;
 
         auto act = i++ % MMAI::Export::N_ACTIONS;
-        std::cout << "user-callback getAction returning: " << act << "\n";
+
+        // Uncomment to disable sporadic retreats
+        // if (act < 2) act = 2;
+
+        // MMAI::AAI will expect a RESET action here
+        if (r->ended)
+            act = MMAI::Export::ACTION_RESET;
+
+        LOGSTR("user-callback getAction returning: ", std::to_string(act));
 
         return MMAI::Export::Action(act);
     };

@@ -88,9 +88,9 @@ int mymain(
 
     // Default f_idGetAction is a simple proxy to f_getAction
     baggage->f_idGetAction = [&baggage](MMAI::Export::Side _, const MMAI::Export::Result* result) {
+        printf("*** BASE WRAPPER: CALL USER FN ***");
         return baggage->f_getAction(result);
     };
-
 
     // the CWD will change for VCMI to work in non-dist mode
     boost::filesystem::path oldcwd = boost::filesystem::current_path();
@@ -119,6 +119,9 @@ int mymain(
     // This requires 2-player maps where player 1 is HUMAN
     // The player hero moves 1 tile to the right and engages into a battle
     //
+    // XXX:
+    // This will not work unless the current dir is vcmi-gym's root dir
+    // (the python module resolution gets messed up otherwise)
     auto loadmodel = [&oldcwd](MMAI::Export::Side side, std::string model) {
         boost::filesystem::path savecwd = boost::filesystem::current_path();
         boost::filesystem::current_path(oldcwd);
@@ -165,6 +168,12 @@ int mymain(
     // (in order to also pass baggage)
     //
 
+    // Notes on AI deletion
+    // *** Battle end ***
+    // The battleEnd() is sent to the ADVENTURE AI:
+    // * for CPI, it's NOT forwarded to the battle AI (which is just destroyed)
+    // * for MMAI, it's forwarded to the battle AI and THEN it gets destroyed
+
     //
     // AI for attacker
     // Attacker is human, ie. CPI
@@ -173,13 +182,14 @@ int mymain(
     //
     if (attackerAI == AI_MMAI_MODEL) {
         Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
-        auto idGetAction = loadmodel(MMAI::Export::Side::ATTACKER, attackerModel);
 
-        // TODO: handle control actions (eg. render)
-        baggage->f_idGetAction = [&baggage, &idGetAction](MMAI::Export::Side side, const MMAI::Export::Result* result) {
+        // if not static => SIGSEGV...
+        static auto idGetActionAttacker = loadmodel(MMAI::Export::Side::ATTACKER, attackerModel);
+        static auto fallbackAttacker = baggage->f_idGetAction;
+        baggage->f_idGetAction = [](MMAI::Export::Side side, const MMAI::Export::Result* result) {
             return (side == MMAI::Export::Side::ATTACKER)
-                ? idGetAction(side, result) :
-                baggage->f_idGetAction(side, result);
+                ? idGetActionAttacker(side, result)
+                : fallbackAttacker(side, result);
         };
     } else if (attackerAI == AI_MMAI_USER) {
         Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
@@ -204,11 +214,15 @@ int mymain(
     if (defenderAI == AI_MMAI_MODEL) {
         // baggage needed => use MMAI adv. interface
         Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-        auto idGetAction = loadmodel(MMAI::Export::Side::DEFENDER, defenderModel);
-        baggage->f_idGetAction = [&baggage, &idGetAction](MMAI::Export::Side side, const MMAI::Export::Result* result) {
+
+        // if not static => SIGSEGV...
+        static auto idGetActionDefender = loadmodel(MMAI::Export::Side::DEFENDER, defenderModel);
+        static auto fallbackDefender = baggage->f_idGetAction;
+
+        baggage->f_idGetAction = [](MMAI::Export::Side side, const MMAI::Export::Result* result) {
             return (side == MMAI::Export::Side::DEFENDER)
-                ? idGetAction(side, result) :
-                baggage->f_idGetAction(side, result);
+                ? idGetActionDefender(side, result)
+                : fallbackDefender(side, result);
         };
     } else if (defenderAI == AI_MMAI_USER) {
         // baggage needed => use MMAI adv. interface

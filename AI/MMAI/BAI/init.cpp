@@ -89,7 +89,6 @@ namespace MMAI {
         info("*** myInitBattleInterface ***");
         ASSERT(f_idGetAction, "f_idGetAction is null");
         idGetAction = f_idGetAction;
-
         env = ENV;
         cb = CB;
         wasWaitingForRealize = CB->waitTillRealize;

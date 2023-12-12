@@ -387,7 +387,6 @@ namespace MMAI {
         info("*** battleStart ***");
         // side is FALSE for attacker
         side = side_ ? BattleSide::DEFENDER : BattleSide::ATTACKER;
-
         ASSERT(idGetAction, "BAI->idGetAction is null!");
     }
 

@@ -1,3 +1,5 @@
+#include "GameConstants.h"
+#include "battle/BattleHex.h"
 #include "export.h"
 #include "gameState/CGameState.h"
 #include "AAI.h"
@@ -91,7 +93,7 @@ namespace MMAI {
     }
 
     void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
-        info("*** battleEnd ***");
+        info("*** battleEnd (QueryID: " + std::to_string(static_cast<int>(queryID)) + ") ***");
 
         // TODO: must add check that *we* have retreated and not the enemy
         if (bai->action->action != Export::ACTION_RETREAT) {
@@ -104,13 +106,26 @@ namespace MMAI {
 
             auto action = idGetNonRenderAction(static_cast<Export::Side>(bai->side), bai->result.get());
 
-            info("Reset battle");
             // Any non-render action *must* be a reset (battle has ended)
-            ASSERT(action == Export::ACTION_RESET, "unexpected action: " + std::to_string(action));
+            ASSERT(action == Export::ACTION_RESET, "expected RESET, got: " + std::to_string(action));
         }
 
         battleAI.reset();
-        cb->selectionMade(1, queryID);
+
+        if (queryID == -1) {
+            // if this fails, then something is wrong with replay mechanics
+            ASSERT(bai->side == BattleSide::DEFENDER, "QueryID is -1, but we are not a DEFENDER");
+            // The defender does not get the "replay battle" query
+            warn("Query ID is -1 (can't replay battle as defender)");
+
+            // we can't fulfill the received RESET action in this case
+            // we will just for the other side to reset.
+            return;
+        } else {
+            info("Answering query to re-play battle");
+            cb->selectionMade(1, queryID);
+        }
+
     }
 
     //
