@@ -4361,7 +4361,7 @@ bool CGameHandler::queryReply(QueryID qid, const JsonNode & answer, PlayerColor 
 		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer())
 			currentQuery->setReply(answer);
 
-		COMPLAIN_RET("This player top query has different ID!"); //topQuery->queryID != qid
+		COMPLAIN_RET("This player top query (" + topQuery->toString() + ") has ID != " + std::to_string(qid)); //topQuery->queryID != qid
 	}
 	COMPLAIN_RET_FALSE_IF(!topQuery->endsByPlayerAnswer(), "This query cannot be ended by player's answer!");
 

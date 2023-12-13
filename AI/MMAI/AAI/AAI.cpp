@@ -158,7 +158,7 @@ namespace MMAI {
             ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
             info("Answering query " + std::to_string(queryID) + " to re-play battle");
 
-            std::make_unique<boost::thread>([this, &queryID]() {
+            std::make_unique<boost::thread>([this, queryID]() {
                 boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
                 cb->selectionMade(1, queryID);
             });
