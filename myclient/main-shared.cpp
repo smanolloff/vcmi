@@ -86,7 +86,7 @@ Args parse_args(int argc, char * argv[])
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
-    static int i = -1;
+    static int i = 0;
     bool rendered = false;
 
     MMAI::Export::F_GetAction getaction = [&rendered](const MMAI::Export::Result * r){
@@ -94,19 +94,17 @@ Args parse_args(int argc, char * argv[])
             std::cout << r->ansiRender << "\n";
         }
 
-        if (++i == MMAI::Export::N_ACTIONS)
-            i = 2;
+        MMAI::Export::Action act;
 
-        auto act = i;
-
-        // MMAI::AAI will expect a RESET action here
         if (r->ended) {
             LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
-        } else if (i % 2 == 0 && !rendered) {
+        } else if (!rendered) {
             rendered = true;
             act = MMAI::Export::ACTION_RENDER_ANSI;
         } else {
+            if (i >= MMAI::Export::N_ACTIONS) i = 0;
+            act = i++;
             rendered = false;
         }
 
@@ -114,8 +112,36 @@ Args parse_args(int argc, char * argv[])
         return MMAI::Export::Action(act);
     };
 
+    static auto recorded = std::array{1, 1, 1, 1, 1, 1, 1, 1, 732, 2};
+
+    MMAI::Export::F_GetAction getactionRec = [&rendered](const MMAI::Export::Result * r){
+        if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
+            std::cout << r->ansiRender << "\n";
+        }
+
+        MMAI::Export::Action act;
+
+        if (r->ended) {
+            LOG("user-callback battle ended => sending ACTION_RESET");
+            if (i < recorded.size()) throw std::runtime_error("Trailing actions");
+            act = MMAI::Export::ACTION_RESET;
+        } else if (!rendered) {
+            rendered = true;
+            act = MMAI::Export::ACTION_RENDER_ANSI;
+        } else {
+            if (i >= recorded.size()) throw std::runtime_error("No more recorded actions");
+            act = recorded[i++];
+            rendered = false;
+        }
+
+        LOGSTR("user-callback getAction returning: ", std::to_string(act));
+        return MMAI::Export::Action(act);
+    };
+
+
     return {
-        new MMAI::Export::Baggage(getaction),
+        // new MMAI::Export::Baggage(getaction),
+        new MMAI::Export::Baggage(getactionRec),
         gymdir,
         resdir,
         omap.at("map"),
