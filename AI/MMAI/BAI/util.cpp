@@ -29,11 +29,19 @@ namespace MMAI {
         auto state = r.state;
 
         std::string nocol = "\033[0m";
-        std::string enemycol = "\033[31m"; // red
-        std::string allycol = "\033[32m"; // green
-        std::string activecol = "\033[32m\033[1m"; // green bold
+        std::string redcol = "\033[31m"; // red
+        std::string bluecol = "\033[34m"; // blue
+        std::string activemod = "\033[1m"; // green bold
 
         std::vector<std::stringstream> rows;
+
+        auto ourcol = redcol;
+        auto enemycol = bluecol;
+        if (bf.astack->unitSide() == LIB_CLIENT::BattleSide::DEFENDER) {
+            ourcol = bluecol;
+            enemycol = redcol;
+        }
+
 
         //
         // 1. Add logs table:
@@ -44,12 +52,12 @@ namespace MMAI {
         //
         for (auto &alog : attackLogs) {
             auto row = std::stringstream();
-            auto col1 = allycol;
+            auto col1 = ourcol;
             auto col2 = enemycol;
 
             if (alog.isOurStackAttacked) {
                 col1 = enemycol;
-                col2 = allycol;
+                col2 = ourcol;
             }
 
             row << col1 << "#" << alog.attslot + 1 << nocol;
@@ -170,13 +178,16 @@ namespace MMAI {
                 auto slot = hex.stack->attrs[EI(StackAttr::Slot)];
                 auto enemy = cstack->unitSide() != bf.astack->unitSide();
                 ASSERT(hex.stack->attrs[EI(StackAttr::Side)] == cstack->unitSide(), "wrong unit side");
-                auto col = enemy ? enemycol : allycol;
+                auto col = enemy ? enemycol : ourcol;
 
                 if (cstack->unitId() == bf.astack->unitId())
-                    col = activecol;
+                    col += activemod;
 
                 // stacks contains 14 elements, not 7 (don't use slot)
-                stacks[slot + (enemy ? 7 : 0)] = hex.stack;
+                auto myslot = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
+                    ? slot : slot + 7;
+
+                stacks[myslot] = hex.stack;
                 sym = col + std::to_string(slot+1) + nocol;
 
                 // Check attributes
@@ -235,7 +246,14 @@ namespace MMAI {
             case 6: name = "DMG received"; value = std::to_string(r.dmgReceived); break;
             case 7: name = "Units lost"; value = std::to_string(r.unitsLost); break;
             case 8: name = "Value lost"; value = std::to_string(r.valueLost); break;
-            case 9: name = "Battle result"; value = r.ended ? (r.victory ? (allycol + "VICTORY" + nocol) : (enemycol + "DEFEAT" + nocol)) : ""; break;
+            case 9: {
+                auto restext = r.victory
+                    ? (ourcol == redcol ? redcol + "RED WINS" : bluecol + "BLUE WINS")
+                    : (ourcol == redcol ? bluecol + "BLUE WINS" : redcol + "RED WINS");
+
+                name = "Battle result"; value = r.ended ? (restext + nocol) : "";
+                break;
+            }
             // case 10: name = "Victory"; value = r.ended ? (r.victory ? "yes" : "no") : ""; break;
             default:
                 continue;
@@ -328,12 +346,11 @@ namespace MMAI {
                         ASSERT(r.ended, "dead stack at " + std::to_string(nstack));
                     } else {
                         attr = stack->attrs[col-1]; // col starts at 1
+                        color = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
+                            ? redcol : bluecol;
+
                         if (cstack->unitId() == bf.astack->unitId())
-                            color = activecol;
-                        else if (cstack->unitSide() == bf.astack->unitSide())
-                            color = allycol;
-                        else
-                            color = enemycol;
+                            color += activemod;
                     }
                 }
 

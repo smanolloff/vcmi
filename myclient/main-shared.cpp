@@ -112,6 +112,8 @@ Args parse_args(int argc, char * argv[])
         return MMAI::Export::Action(act);
     };
 
+    // Reproduce issue with active stack having queuePos=1
+    // ai/P1.vmap, MMAI_USER + MMAI_USER
     static auto recorded = std::array{1, 1, 1, 1, 1, 1, 1, 1, 732, 2};
 
     MMAI::Export::F_GetAction getactionRec = [&rendered](const MMAI::Export::Result * r){
