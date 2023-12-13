@@ -4,6 +4,7 @@
 #include "export.h"
 #include "gameState/CGameState.h"
 #include "AAI.h"
+#include "NetPacks.h"
 
 #include <boost/thread.hpp>
 
@@ -136,7 +137,10 @@ namespace MMAI {
             ASSERT(getBattleAIName() != "MMAI", "no bai, but battleAIName is MMAI");
             // We are not MMAI, nothing to do
         } else if (!bai->action) {
-            ASSERT(bai->side == BattleSide::DEFENDER, "no action at battle end, but we are ATTACKER");
+            // Battle ended without us receiving a turn
+            // Happens if the enemy immediately retreats (we won)
+            // or if the enemy one-shots us (we lost)
+            // Nothing to do
         } else if (bai->action->action != Export::ACTION_RETREAT) {
             // TODO: must add check that *we* have retreated and not the enemy
             // battleEnd after MOVE

@@ -31,7 +31,7 @@ namespace MMAI {
         std::string nocol = "\033[0m";
         std::string redcol = "\033[31m"; // red
         std::string bluecol = "\033[34m"; // blue
-        std::string activemod = "\033[1m"; // green bold
+        std::string activemod = "\033[107m\033[7m"; // reversed
 
         std::vector<std::stringstream> rows;
 
