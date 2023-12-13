@@ -94,27 +94,20 @@ Args parse_args(int argc, char * argv[])
             std::cout << r->ansiRender << "\n";
         }
 
-        if (i % 2 == 0 && !rendered) {
-            rendered = true;
-            return MMAI::Export::ACTION_RENDER_ANSI;
-        }
-
-        rendered = false;
-
-        if (++i == MMAI::Export::N_ACTIONS) {
+        if (++i == MMAI::Export::N_ACTIONS)
             i = 2;
-            // i = 0; => results in sporadic retreats
-
-        }
 
         auto act = i;
-
-        // Uncomment to disable sporadic retreats
 
         // MMAI::AAI will expect a RESET action here
         if (r->ended) {
             LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
+        } else if (i % 2 == 0 && !rendered) {
+            rendered = true;
+            act = MMAI::Export::ACTION_RENDER_ANSI;
+        } else {
+            rendered = false;
         }
 
         LOGSTR("user-callback getAction returning: ", std::to_string(act));

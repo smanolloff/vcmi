@@ -154,9 +154,6 @@ namespace MMAI {
             ASSERT(action == Export::ACTION_RESET, "expected RESET, got: " + std::to_string(action));
         }
 
-        battleAI.reset();
-        bai = nullptr;  // XXX: call this last, it changes cb->waitTillRealize
-
         if (cb->battleGetMySide() == BattlePerspective::LEFT_SIDE) {
             ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
             info("Answering query " + std::to_string(queryID) + " to re-play battle");
@@ -174,6 +171,9 @@ namespace MMAI {
             // The defender should not answer "replay" queries
             info("Ignoring query " + std::to_string(queryID));
         }
+
+        battleAI.reset();
+        bai = nullptr;  // XXX: call this last, it changes cb->waitTillRealize
     }
 
     std::string AAI::getBattleAIName() const {

@@ -621,7 +621,9 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 		// XXX: only attacker gets to choose
 		// TODO: resetting battle for both players should also
 		// 			call heroManaPointsChanged() on the defender side
-		battleDialogQuery->players.pop_back();
+		if (gs->curB->sides[1].color.isValidPlayer())
+			battleDialogQuery->players.pop_back();
+
 		battleResult.data->queryID = battleDialogQuery->queryID;
 		queries.addQuery(battleDialogQuery);
 	}
