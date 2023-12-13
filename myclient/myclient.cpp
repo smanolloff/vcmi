@@ -170,10 +170,10 @@ void validateArguments(
         exit(1);
     }
 
-    if (headless && attackerAI != AI_MMAI_MODEL && attackerAI != AI_MMAI_USER) {
-        std::cerr << "headless mode requires an MMAI-type attackerAI\n";
-        exit(1);
-    }
+    // if (headless && attackerAI != AI_MMAI_MODEL && attackerAI != AI_MMAI_USER) {
+    //     std::cerr << "headless mode requires an MMAI-type attackerAI\n";
+    //     exit(1);
+    // }
 
     if (!baggage) {
         if (attackerAI == AI_MMAI_USER || defenderAI == AI_MMAI_USER)
