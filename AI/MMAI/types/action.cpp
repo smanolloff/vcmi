@@ -50,7 +50,7 @@ namespace MMAI {
         }
 
         switch (HexAction(ha)) {
-        break; case HexAction::MOVE:     res = "Move to " + hex->name();
+        break; case HexAction::MOVE:     res = (hex->stack->cstack ? "Defend on " : "Move to ") + hex->name();
         break; case HexAction::SHOOT:    res = "Attack " + stackstr + " " + hex->name() + " (ranged)";
         break; case HexAction::MELEE_TL: res = "Attack " + stackstr + " " + hex->name() + " from top-left";
         break; case HexAction::MELEE_TR: res = "Attack " + stackstr + " " + hex->name() + " from top-right";

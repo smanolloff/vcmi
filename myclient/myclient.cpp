@@ -314,12 +314,13 @@ void processArguments(
         loggers->Vector().push_back(jlog);
     };
 
+    conflog("global", loglevelGlobal);
+    conflog("ai", loglevelAI);
+
     // conflog("global", "trace");
     // conflog("ai", "trace");
     // conflog("network", "trace");
     // conflog("animation", "trace");
-    conflog("global", loglevelGlobal);
-    conflog("ai", loglevelAI);
 }
 
 void init_vcmi(
