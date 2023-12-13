@@ -246,6 +246,8 @@ namespace MMAI {
             break; case StackAttr::Slot:
                 a = cstack->unitSlot();
                 ASSERT(a >= 0 && a < 7, "unexpected slot: " + std::to_string(a));
+            break; case StackAttr::CreatureType:
+                a = cstack->creatureId();
             break; default:
                 throw std::runtime_error("Unexpected StackAttr: " + std::to_string(i));
             }
@@ -281,6 +283,7 @@ namespace MMAI {
                 break; case StackAttr::QueuePos: max = QSIZE-1;
                 break; case StackAttr::Side:     max = 1;
                 break; case StackAttr::Slot:     max = 6;
+                break; case StackAttr::CreatureType: max = 150;
                 break; default:
                     throw std::runtime_error("Unexpected StackAttr: " + std::to_string(EI(j)));
                 }

@@ -71,7 +71,7 @@ namespace MMAI::Export {
         }
     };
 
-    constexpr int N_STACK_ATTRS = 13;
+    constexpr int N_STACK_ATTRS = 14;
 
     /**
      * State:

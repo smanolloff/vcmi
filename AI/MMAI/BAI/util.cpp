@@ -285,7 +285,7 @@ namespace MMAI {
 
         // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
         const auto nrows = 14+1;
-        const auto ncols = EI(StackAttr::count) + 1 - 2; // hide IsEnemy and Slot
+        const auto ncols = EI(StackAttr::count) + 1 - 3; // hide IsEnemy, Slot and CreatureType
 
         // Table with nrows and ncells, each cell a 3-element tuple
         auto table = std::array<
