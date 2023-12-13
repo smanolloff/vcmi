@@ -12,10 +12,10 @@ namespace MMAI {
 
     using ErrType = Export::ErrType;
 
-    void BAI::error(const std::string &text) const { logAi->error("[%p] BAI %s", this, text); }
-    void BAI::warn(const std::string &text) const { logAi->warn("[%p] BAI %s", this, text); }
-    void BAI::info(const std::string &text) const { logAi->info("[%p] BAI %s", this, text); }
-    void BAI::debug(const std::string &text) const { logAi->debug("[%p] BAI %s", this, text); }
+    void BAI::error(const std::string &text) const { logAi->error("BAI [%s] %s", sidestr, text); }
+    void BAI::warn(const std::string &text) const { logAi->warn("BAI [%s] %s", sidestr, text); }
+    void BAI::info(const std::string &text) const { logAi->info("BAI [%s] %s", sidestr, text); }
+    void BAI::debug(const std::string &text) const { logAi->debug("BAI [%s] %s", sidestr, text); }
 
     void BAI::activeStack(const CStack * astack)
     {
@@ -31,7 +31,7 @@ namespace MMAI {
         static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
 
         while(true) {
-            auto _action = idGetAction(static_cast<Export::Side>(side), result.get());
+            auto _action = getAction(result.get());
             allactions.push_back(_action);
             action = std::make_unique<Action>(_action, battlefield.get());
             debug("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
@@ -386,8 +386,15 @@ namespace MMAI {
     void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
         // side is FALSE for attacker
-        side = side_ ? BattleSide::DEFENDER : BattleSide::ATTACKER;
-        ASSERT(idGetAction, "BAI->idGetAction is null!");
+        if (side_) {
+            debug("Side: DEFENDER (" + std::to_string(static_cast<int>(side)) + ")");
+            side = BattleSide::DEFENDER;
+        } else {
+            debug("Side: ATTACKER (" + std::to_string(static_cast<int>(side)) + ")");
+            side = BattleSide::ATTACKER;
+        }
+
+        ASSERT(getAction, "BAI->getAction is null!");
     }
 
     void BAI::battleEnd(const BattleResult *br, QueryID queryID) {

@@ -188,9 +188,16 @@ namespace MMAI::Export {
     // as a std::any object, then cast back to Baggage in the AI constructor
     struct DLL_EXPORT Baggage {
         Baggage() = delete;
-        Baggage(F_GetAction f) : f_getAction(f) {}
+        Baggage(F_GetAction f)
+        : f_getAction(f), f_getActionAttacker(f), f_getActionDefender(f) {}
         const F_GetAction f_getAction;
 
-        F_IDGetAction f_idGetAction;
+        // Set during vcmi_init(...) to "MMAI", "BattleAI" or "StupidAI"
+        std::string AttackerBattleAIName;
+        std::string DefenderBattleAIName;
+
+        // Optionally set during vcmi_init(...) to a pre-trained model func
+        F_GetAction f_getActionAttacker;
+        F_GetAction f_getActionDefender;
     };
 }

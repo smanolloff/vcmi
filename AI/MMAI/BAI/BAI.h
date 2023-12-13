@@ -37,6 +37,7 @@ namespace MMAI {
     {
         friend class AAI;
 
+        std::string sidestr = "?";
         BattleSide::Type side;
         std::shared_ptr<CBattleCallback> cb;
         std::shared_ptr<Environment> env;
@@ -50,7 +51,10 @@ namespace MMAI {
 
         std::unique_ptr<Action> action;
         std::unique_ptr<Export::Result> result;
-        Export::F_IDGetAction idGetAction;
+        Export::F_GetAction getAction;
+
+        // used only if when initialized with baggage (ie. via CPI)
+        Export::F_GetAction getActionOrig;
 
         BuildActionResult buildAction(Battlefield &bf, Action &action);
         Export::Result buildResult(Battlefield &bf);
@@ -68,7 +72,7 @@ namespace MMAI {
         void debug(const std::string &text) const;
 
         void setInitBattleInterfaceVars(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB);
-        void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, Export::F_IDGetAction f_idGetAction);
+        void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, Export::F_GetAction f_getAction);
     public:
         BAI();
         ~BAI();

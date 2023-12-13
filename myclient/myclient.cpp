@@ -1,3 +1,4 @@
+#include <boost/filesystem/operations.hpp>
 #include <cstdio>
 #include <iostream>
 #include <dlfcn.h>
@@ -50,105 +51,162 @@ extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
 
-void myinit()
-{
-    loadDLLClasses();
-    const_cast<CGameInfo*>(CGI)->setFromLib();
+std::string mapname;
+MMAI::Export::Baggage* baggage;
+
+//
+// NOTE:
+// This requires 2-player maps where player 1 is HUMAN
+// The player hero moves 1 tile to the right and engages into a battle
+//
+// XXX:
+// This will not work unless the current dir is vcmi-gym's root dir
+// (the python module resolution gets messed up otherwise)
+MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, std::string gymdir) {
+    auto old = boost::filesystem::current_path();
+    auto gympath = boost::filesystem::path(gymdir);
+
+    //
+    // XXX: this makes it impossible to use lldb (invalid instruction error...)
+    //
+    auto libfile = gympath / "vcmi_gym/envs/v0/connector/build/libloader.dylib";
+    void* handle = dlopen(libfile.c_str(), RTLD_LAZY);
+    if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
+
+    if (side == MMAI::Export::Side::ATTACKER) {
+        // can't be shared var - func pointers are too complex for me
+        auto init = reinterpret_cast<decltype(&ConnectorLoader_initAttacker)>(dlsym(handle, "ConnectorLoader_initAttacker"));
+        if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+
+        auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getActionAttacker)>(dlsym(handle, "ConnectorLoader_getActionAttacker"));
+        if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
+
+        init(gymdir, model);
+        boost::filesystem::current_path(old);
+        return getAction;
+    }
+
+    // defender
+    auto init = reinterpret_cast<decltype(&ConnectorLoader_initDefender)>(dlsym(handle, "ConnectorLoader_initDefender"));
+    if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+
+    auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getActionDefender)>(dlsym(handle, "ConnectorLoader_getActionDefender"));
+    if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
+
+    init(gymdir, model);
+    boost::filesystem::current_path(old);
+    return getAction;
+};
+
+void validateValue(std::string name, std::string value, std::vector<std::string> values) {
+    if (std::find(values.begin(), values.end(), value) != values.end())
+        return;
+    std::cerr << "Bad value for " << name << ": " << value << "\n";
+    exit(1);
 }
 
+void validateFile(std::string name, std::string path, boost::filesystem::path wd) {
+    auto p = boost::filesystem::path(path);
 
-static void mainLoop()
-{
-    inGuiThread.reset(new bool(true));
+    if (p.is_absolute()) {
+        if (boost::filesystem::is_regular_file(path))
+            return;
 
-    while(1) //main SDL events loop
-    {
-        GH.input().fetchEvents();
-        CSH->applyPacksOnLobbyScreen();
-        GH.renderFrame();
+        std::cerr << "Bad value for " << name << ": " << path << "\n";
+    } else {
+        if (boost::filesystem::is_regular_file(wd / path))
+            return;
+
+        std::cerr << "Bad value for " << name << ": " << path << "\n";
+        std::cerr << "(relative to: " << wd.string() << ")\n";
+    }
+
+    exit(1);
+}
+
+void validateArguments(
+    std::string &gymdir,
+    std::string &resdir,
+    std::string &map,
+    std::string &loglevelGlobal,
+    std::string &loglevelAI,
+    std::string &attackerAI,
+    std::string &defenderAI,
+    std::string &attackerModel,
+    std::string &defenderModel,
+    bool headless
+) {
+    auto wd = boost::filesystem::current_path();
+
+    validateValue("attackerAI", attackerAI, AIS);
+    validateValue("defenderAI", defenderAI, AIS);
+
+    if (attackerAI == AI_MMAI_MODEL)
+        validateFile("attackerModel", attackerModel, wd);
+
+    if (defenderAI == AI_MMAI_MODEL)
+        validateFile("defenderModel", defenderModel, wd);
+
+    // XXX: this might blow up since preinitDLL is not yet called here
+    validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
+
+    if (boost::filesystem::is_directory(resdir)) {
+        if (!boost::filesystem::is_regular_file(boost::filesystem::path(resdir) / "AI" / "libMMAI.dylib")) {
+            std::cerr << "Bad value for resdir: exists, but AI/libMMAI.dylib was not found: " << resdir << "\n";
+            exit(1);
+        }
+    } else {
+        std::cerr << "Bad value for resdir: " << resdir << "\n(not a directory)\n";
+            exit(1);
+    }
+
+    if (boost::filesystem::is_directory(gymdir)) {
+        if (!boost::filesystem::is_regular_file(boost::filesystem::path(gymdir) / "vcmi_gym" / "__init__.py")) {
+            std::cerr << "Bad value for gymdir: exists, but vcmi_gym/__init__.py was not found: " << gymdir << "\n";
+            exit(1);
+        }
+    } else {
+        std::cerr << "Bad value for gymdir: not a directory: " << gymdir << "\n";
+        exit(1);
+    }
+
+    if (headless && attackerAI != AI_MMAI_MODEL && attackerAI != AI_MMAI_USER) {
+        std::cerr << "headless mode requires an MMAI-type attackerAI\n";
+        exit(1);
+    }
+
+    if (!baggage) {
+        if (attackerAI == AI_MMAI_USER || defenderAI == AI_MMAI_USER)
+            throw std::runtime_error("baggage is required in order to use an AI of type " + std::string(AI_MMAI_USER));
+    }
+
+    if (!baggage->f_getAction)
+        throw std::runtime_error("baggage->f_getAction is required");
+
+    if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), loglevelAI) == LOGLEVELS.end()) {
+        std::cerr << "Bad value for loglevelAI: " << loglevelAI << "\n";
+        exit(1);
+    }
+
+    if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), loglevelGlobal) == LOGLEVELS.end()) {
+        std::cerr << "Bad value for loglevelGlobal: " << loglevelGlobal << "\n";
+        exit(1);
     }
 }
 
-// build/bin/myclient
-// /Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin
-// int mymain(std::string resourcedir, bool headless, const std::function<void(int)> &callback) {
-int mymain(
-    MMAI::Export::Baggage* baggage,
-    std::string resdir,
-    std::string mapname,
-    std::string loglevelGlobal,
-    std::string loglevelAI,
-    std::string attackerAI,
-    std::string defenderAI,
-    std::string attackerModel,
-    std::string defenderModel
+void processArguments(
+    std::string &gymdir,
+    std::string &map,
+    std::string &loglevelGlobal,
+    std::string &loglevelAI,
+    std::string &attackerAI,
+    std::string &defenderAI,
+    std::string &attackerModel,
+    std::string &defenderModel,
+    bool headless
 ) {
-    if (!baggage) throw std::runtime_error("baggage is required");
-    if (!baggage->f_getAction) throw std::runtime_error("baggage->f_getAction is required");
-
-    // Default f_idGetAction is a simple proxy to f_getAction
-    baggage->f_idGetAction = [&baggage](MMAI::Export::Side _, const MMAI::Export::Result* result) {
-        printf("*** BASE WRAPPER: CALL USER FN ***");
-        return baggage->f_getAction(result);
-    };
-
-    // the CWD will change for VCMI to work in non-dist mode
-    boost::filesystem::path oldcwd = boost::filesystem::current_path();
-    boost::filesystem::current_path(boost::filesystem::path(resdir));
-    std::cout.flags(std::ios::unitbuf);
-    console = new CConsoleHandler();
-
-    auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole)
-    {
-        ClientCommandManager commandController;
-        commandController.processCommand(buffer, calledFromIngameConsole);
-    };
-
-    *console->cb = callbackFunction;
-    console->start();
-
-    const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
-    logConfig = new CBasicLogConfigurator(logPath, console);
-    logConfig->configureDefault();
-
-    // XXX: apparently this needs to be invoked before Settings() changes
-    preinitDLL(::console);
-
-    //
-    // NOTE:
-    // This requires 2-player maps where player 1 is HUMAN
-    // The player hero moves 1 tile to the right and engages into a battle
-    //
-    // XXX:
-    // This will not work unless the current dir is vcmi-gym's root dir
-    // (the python module resolution gets messed up otherwise)
-    auto loadmodel = [&oldcwd](MMAI::Export::Side side, std::string model) {
-        boost::filesystem::path savecwd = boost::filesystem::current_path();
-        boost::filesystem::current_path(oldcwd);
-
-        //
-        // XXX: this makes it impossible to use lldb (invalid instruction error...)
-        //
-        auto libfile = "/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/connector/build/libloader.dylib";
-        void* handle = dlopen(libfile, RTLD_LAZY);
-        if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
-
-        auto init = reinterpret_cast<decltype(&ConnectorLoader_init)>(dlsym(handle, "ConnectorLoader_init"));
-        if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
-
-        auto idGetAction = reinterpret_cast<decltype(&ConnectorLoader_getAction)>(dlsym(handle, "ConnectorLoader_getAction"));
-        if(!idGetAction) throw std::runtime_error("Error getting idGetAction fn: " + std::string(dlerror()));
-
-        // preemptive init done in myclient to avoid freezing at first click of "auto-combat"
-        init(side, model);
-        logGlobal->error("INIT AI DONE FOR: " + std::to_string(static_cast<int>(side)));
-
-        boost::filesystem::current_path(savecwd);
-        return idGetAction;
-    };
-
-
     // Notes on AI creation
+    //
     //
     // *** Game start - adventure interfaces ***
     // initGameInterface() is called on:
@@ -167,7 +225,6 @@ int mymain(
     // BattleWindow()::bAutofightf() has been patched to reuse code in CPI
     // (in order to also pass baggage)
     //
-
     // Notes on AI deletion
     // *** Battle end ***
     // The battleEnd() is sent to the ADVENTURE AI:
@@ -176,27 +233,22 @@ int mymain(
 
     //
     // AI for attacker
-    // Attacker is human, ie. CPI
-    // It creates battle interfaces as per settings["friendlyAI"]
-    // (CPI is modded to pass the baggage, which is used only by MMAI::BAI)
+    // Attacker is MMAI headless is true, human (ie. CPI) otherwise
+    // CPI creates battle interfaces as per settings["friendlyAI"]
+    // => must set that setting also (see further down)
+    // (Note: CPI had to be modded to pass the baggage)
     //
-    if (attackerAI == AI_MMAI_MODEL) {
-        Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
-
-        // if not static => SIGSEGV...
-        static auto idGetActionAttacker = loadmodel(MMAI::Export::Side::ATTACKER, attackerModel);
-        static auto fallbackAttacker = baggage->f_idGetAction;
-        baggage->f_idGetAction = [](MMAI::Export::Side side, const MMAI::Export::Result* result) {
-            return (side == MMAI::Export::Side::ATTACKER)
-                ? idGetActionAttacker(side, result)
-                : fallbackAttacker(side, result);
-        };
-    } else if (attackerAI == AI_MMAI_USER) {
-        Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
+    if (attackerAI == AI_MMAI_USER) {
+        baggage->AttackerBattleAIName = "MMAI";
+    } else if (attackerAI == AI_MMAI_MODEL) {
+        baggage->AttackerBattleAIName = "MMAI";
+        // Same as above, but with replaced "getAction" for attacker
+        // static auto getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
+        baggage->f_getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
     } else if (attackerAI == AI_STUPIDAI) {
-        Settings(settings.write({"server", "friendlyAI"}))->String() = "StupidAI";
+        baggage->AttackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
-        Settings(settings.write({"server", "friendlyAI"}))->String() = "BattleAI";
+        baggage->AttackerBattleAIName = "BattleAI";
     } else {
         throw std::runtime_error("Unexpected attackerAI: " + attackerAI);
     }
@@ -211,47 +263,43 @@ int mymain(
     // * "MMAI", which will always create MMAI::BAI battle interfaces
     //   (will pass baggage)
     //
-    if (defenderAI == AI_MMAI_MODEL) {
-        // baggage needed => use MMAI adv. interface
-        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-
-        // if not static => SIGSEGV...
-        static auto idGetActionDefender = loadmodel(MMAI::Export::Side::DEFENDER, defenderModel);
-        static auto fallbackDefender = baggage->f_idGetAction;
-
-        baggage->f_idGetAction = [](MMAI::Export::Side side, const MMAI::Export::Result* result) {
-            return (side == MMAI::Export::Side::DEFENDER)
-                ? idGetActionDefender(side, result)
-                : fallbackDefender(side, result);
-        };
-    } else if (defenderAI == AI_MMAI_USER) {
-        // baggage needed => use MMAI adv. interface
-        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    if (defenderAI == AI_MMAI_USER) {
+        baggage->DefenderBattleAIName = "MMAI";
+    } else if (defenderAI == AI_MMAI_MODEL) {
+        baggage->DefenderBattleAIName = "MMAI";
+        // Same as above, but with replaced "getAction" for defender
+        // static auto getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
+        baggage->f_getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
     } else if (defenderAI == AI_STUPIDAI) {
-        Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
-        Settings(settings.write({"server", "enemyAI"}))->String() = "StupidAI";
+        baggage->DefenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {
-        Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
-        Settings(settings.write({"server", "enemyAI"}))->String() = "BattleAI";
+        baggage->DefenderBattleAIName = "BattleAI";
     } else {
         throw std::runtime_error("Unexpected defenderAI: " + defenderAI);
     }
 
-    Settings(settings.write({"session", "headless"}))->Bool() = false;
-    Settings(settings.write({"session", "onlyai"}))->Bool() = false;
-    Settings(settings.write({"adventure", "quickCombat"}))->Bool() = false;
-    Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
-    Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
-    Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;
+    // All adventure AIs must be MMAI to properly init the battle AIs
+    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
+
+    Settings(settings.write({"session", "headless"}))->Bool() = headless;
+    Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
+    Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
+
+    // CPI needs this setting in case the attacker is human (headless==false)
+    Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->AttackerBattleAIName;
 
     // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
-    auto mappath = std::filesystem::path("maps") / std::filesystem::path(mapname);
-    // convert to "maps/ai/simotest.vmap" to "maps/ai/simotest"
-    auto mappathstr = (mappath.parent_path() / mappath.stem()).string();
-    // convert to "maps/ai/simotest" to "MAPS/AI/SIMOTEST"
-    std::transform(mappathstr.begin(), mappathstr.end(), mappathstr.begin(), [](unsigned char c) { return std::toupper(c); });
+    auto mappath = std::filesystem::path("Maps") / std::filesystem::path(map);
+    // store "maps/ai/simotest.vmap" into global var
+    mapname = mappath.string();
+
     // Set "lastMap" to prevent some race condition debugStartTest+Menu screen
-    Settings(settings.write({"general", "lastMap"}))->String() = mappathstr;
+    // convert to "maps/ai/simotest.vmap" to "maps/ai/simotest"
+    auto lastmap = (mappath.parent_path() / mappath.stem()).string();
+    // convert to "maps/ai/simotest" to "MAPS/AI/SIMOTEST"
+    std::transform(lastmap.begin(), lastmap.end(), lastmap.begin(), [](unsigned char c) { return std::toupper(c); });
+    Settings(settings.write({"general", "lastMap"}))->String() = lastmap;
 
     //
     // Configure logging
@@ -267,24 +315,107 @@ int mymain(
         loggers->Vector().push_back(jlog);
     };
 
-    conflog("global", loglevelGlobal);
-    conflog("ai", loglevelAI);
+    conflog("global", "trace");
+    conflog("ai", "trace");
+
+    conflog("network", "trace");
+    conflog("animation", "trace");
+}
+
+void init_vcmi(
+    MMAI::Export::Baggage* baggage_,
+    std::string gymdir,
+    std::string resdir,
+    std::string map,
+    std::string loglevelGlobal,
+    std::string loglevelAI,
+    std::string attackerAI,
+    std::string defenderAI,
+    std::string attackerModel,
+    std::string defenderModel,
+    bool headless
+) {
+    // SIGSEGV errors if this is not global
+    // (it muts start_vcmi is called th)
+    baggage = baggage_;
+
+    validateArguments(
+        gymdir,
+        resdir,
+        map,
+        loglevelGlobal,
+        loglevelAI,
+        attackerAI,
+        defenderAI,
+        attackerModel,
+        defenderModel,
+        headless
+    );
+
+    boost::filesystem::current_path(boost::filesystem::path(resdir));
+    std::cout.flags(std::ios::unitbuf);
+    console = new CConsoleHandler();
+
+    auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole)
+    {
+        ClientCommandManager commandController;
+        commandController.processCommand(buffer, calledFromIngameConsole);
+    };
+
+    *console->cb = callbackFunction;
+    console->start();
+
+    const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
+    logConfig = new CBasicLogConfigurator(logPath, console);
+    logConfig->configureDefault();
+
+    // XXX: apparently this needs to be invoked before Settings() stuff
+    preinitDLL(::console);
+
+    processArguments(
+        gymdir,
+        // resdir, // already processed - needed for preinitDLL
+        map,
+        loglevelGlobal,
+        loglevelAI,
+        attackerAI,
+        defenderAI,
+        attackerModel,
+        defenderModel,
+        headless
+    );
+
+    Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
+    Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
+    Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;
+    Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
+    Settings(settings.write({"logging", "console", "coloredOutputEnabled"}))->Bool() = true;
+
+    Settings colors = settings.write["logging"]["console"]["colorMapping"];
+    colors->Vector().clear();
+
+    auto confcolor = [&colors](std::string domain, std::string lvl, std::string color) {
+        JsonNode jentry, jlvl, jdomain, jcolor;
+        jdomain.String() = domain;
+        jlvl.String() = lvl;
+        jcolor.String() = color;
+        jentry.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}, {"color", jcolor}};
+        colors->Vector().push_back(jentry);
+    };
+
+    confcolor("global", "trace", "gray");
+    confcolor("ai",     "trace", "gray");
+    confcolor("global", "debug", "gray");
+    confcolor("ai",     "debug", "gray");
+    confcolor("global", "info", "white");
+    confcolor("ai",     "info", "white");
+    confcolor("global", "warn", "yellow");
+    confcolor("ai",     "warn", "yellow");
+    confcolor("global", "error", "red");
+    confcolor("ai",     "error", "red");
 
     logConfig->configure();
     // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
-
-    // Some basic data validation to produce better error messages in cases of incorrect install
-    auto testFile = [](std::string filename, std::string message)
-    {
-        if (!CResourceHandler::get()->existsResource(ResourceID(filename)))
-            handleFatalError(message, false);
-    };
-
-    testFile("DATA/HELP.TXT", "VCMI requires Heroes III: Shadow of Death or Heroes III: Complete data files to run!");
-    testFile("MODS/VCMI/MOD.JSON", "VCMI installation is corrupted! Built-in mod was not found!");
-    testFile("DATA/PLAYERS.PAL", "Heroes III data files are missing or corruped! Please reinstall them.");
-    testFile("SPRITES/DEFAULT.DEF", "Heroes III data files are missing or corruped! Please reinstall them.");
-    testFile("DATA/TENTCOLR.TXT", "Heroes III: Restoration of Erathia (including HD Edition) data files are not supported!");
 
     srand ( (unsigned int)time(nullptr) );
 
@@ -294,16 +425,15 @@ int mymain(
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
     CSH = new CServerHandler(std::make_any<MMAI::Export::Baggage*>(baggage));
 
-    CSH->uuid = "00000000-0000-0000-0000-000000000000";
-
-    CCS->videoh = new CEmptyVideoPlayer();
-
-    CCS->soundh = new CSoundHandler();
-    CCS->soundh->init();
-    CCS->soundh->setVolume((ui32)settings["general"]["sound"].Float());
-    CCS->musich = new CMusicHandler();
-    CCS->musich->init();
-    CCS->musich->setVolume((ui32)settings["general"]["music"].Float());
+    if (!headless) {
+        CCS->videoh = new CEmptyVideoPlayer();
+        CCS->soundh = new CSoundHandler();
+        CCS->soundh->init();
+        CCS->soundh->setVolume((ui32)settings["general"]["sound"].Float());
+        CCS->musich = new CMusicHandler();
+        CCS->musich->init();
+        CCS->musich->setVolume((ui32)settings["general"]["music"].Float());
+    }
 
     boost::thread loading([]() {
         loadDLLClasses();
@@ -311,26 +441,38 @@ int mymain(
     });
     loading.join();
 
-    graphics = new Graphics(); // should be before curh
-    CCS->curh = new CursorHandler();
-    CMessage::init();
-    CCS->curh->show();
+    if (!headless) {
+        graphics = new Graphics(); // should be before curh
+        CCS->curh = new CursorHandler();
+        CMessage::init();
+        CCS->curh->show();
+    }
+}
 
-    boost::thread t(&CServerHandler::debugStartTest, CSH, std::string("Maps/") + mapname, false);
+void start_vcmi() {
+    if (mapname == "")
+        throw std::runtime_error("call init_vcmi first");
+
+    logGlobal->info("friendlyAI -> " + settings["server"]["friendlyAI"].String());
+    logGlobal->info("playerAI -> " + settings["server"]["playerAI"].String());
+    logGlobal->info("enemyAI -> " + settings["server"]["enemyAI"].String());
+    logGlobal->info("headless -> " + std::to_string(settings["session"]["headless"].Bool()));
+    logGlobal->info("onlyai -> " + std::to_string(settings["session"]["onlyai"].Bool()));
+    logGlobal->info("quickCombat -> " + std::to_string(settings["adventure"]["quickCombat"].Bool()));
+
+    auto t = boost::thread(&CServerHandler::debugStartTest, CSH, mapname, false);
     inGuiThread.reset(new bool(true));
 
-
     if(settings["session"]["headless"].Bool()) {
-        GH.screenHandler().close();
         while (true) {
-            boost::this_thread::sleep(boost::posix_time::milliseconds(7000));
+            boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
         }
     } else {
         GH.screenHandler().clearScreen();
-        // mainLoop cant be in another thread -- SDL can render in main thread only
-        // boost::thread([]() { mainLoop(); });
-        mainLoop();
+        while(true) {
+            GH.input().fetchEvents();
+            CSH->applyPacksOnLobbyScreen();
+            GH.renderFrame();
+        }
     }
-
-    return 0;
 }

@@ -7,9 +7,12 @@ namespace MMAI {
     class DLL_EXPORT AAI : public CAdventureAI {
         Export::Baggage * baggage = new Export::Baggage(nullptr);
         std::shared_ptr<BAI> bai;
-        Export::F_IDGetAction idGetActionWrapper;
 
-        Export::Action idGetNonRenderAction(Export::Side side, const Export::Result* result);
+        std::string colorstr = "?";
+        std::string battleAiName;
+        Export::F_GetAction getActionOrig;
+        Export::F_GetAction getActionWrapper;
+        Export::Action getNonRenderAction(const Export::Result* result);
 
         void error(const std::string &text) const;
         void warn(const std::string &text) const;

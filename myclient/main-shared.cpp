@@ -1,4 +1,5 @@
 #include "AI/MMAI/export.h"
+#include "main.h"
 #include "myclient.h"
 #include <cstdio>
 #include <stdexcept>
@@ -7,12 +8,8 @@
 
 namespace po = boost::program_options;
 
-const std::vector<std::string> AIS = {
-    AI_STUPIDAI,
-    AI_BATTLEAI,
-    AI_MMAI_USER,
-    AI_MMAI_MODEL
-};
+#define LOG(msg) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, msg);
+#define LOGSTR(msg, a1) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, (std::string(msg) + a1).c_str());
 
 // "default" is a reserved word => use "fallback"
 std::string values(std::vector<std::string> all, std::string fallback) {
@@ -30,7 +27,7 @@ std::string values(std::vector<std::string> all, std::string fallback) {
     return "Values: " + boost::algorithm::join(all, " | ");
 }
 
-int main(int argc, char * argv[])
+Args parse_args(int argc, char * argv[])
 {
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
     auto omap = std::map<std::string, std::string> {
@@ -69,29 +66,30 @@ int main(int argc, char * argv[])
     } catch (const po::error& e) {
             std::cerr << "Error: " << e.what() << "\n";
             std::cout << opts << "\n"; // Display the help message
-            return 1;
+            exit(1);
     }
 
     if (vm.count("help")) {
             std::cout << opts << "\n";
-            return 1;
+            exit(1);
     }
 
     for (auto &[opt, _] : omap) {
         if (vm.count(opt))
             omap[opt] = vm.at(opt).as<std::string>();
 
-        std::cout << opt << ": " << omap.at(opt) << "\n";
+        // std::cout << opt << ": " << omap.at(opt) << "\n";
     }
 
-    std::string resdir("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin");
+    std::string gymdir("/Users/simo/Projects/vcmi-gym");
+    std::string resdir(gymdir + "/vcmi_gym/envs/v0/vcmi/build/bin");
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
-    int i = 2;
+    static int i = -1;
     bool rendered = false;
 
-    MMAI::Export::F_GetAction getaction = [&i, &rendered](const MMAI::Export::Result * r){
+    MMAI::Export::F_GetAction getaction = [&rendered](const MMAI::Export::Result * r){
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
             std::cout << r->ansiRender << "\n";
         }
@@ -103,30 +101,36 @@ int main(int argc, char * argv[])
 
         rendered = false;
 
-        auto act = i++ % MMAI::Export::N_ACTIONS;
+        if (i++ == MMAI::Export::N_ACTIONS) {
+            i = 2;
+            // i = 0; => results in sporadic retreats
+
+        }
+
+        auto act = i;
 
         // Uncomment to disable sporadic retreats
-        // if (act < 2) act = 2;
 
         // MMAI::AAI will expect a RESET action here
-        if (r->ended)
+        if (r->ended) {
+            LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
+        }
 
         LOGSTR("user-callback getAction returning: ", std::to_string(act));
-
         return MMAI::Export::Action(act);
     };
 
-    return mymain(
+    return {
         new MMAI::Export::Baggage(getaction),
-        std::string("/Users/simo/Projects/vcmi-gym/vcmi_gym/envs/v0/vcmi/build/bin"),
+        gymdir,
+        resdir,
         omap.at("map"),
         omap.at("loglevel"),
         omap.at("loglevel"),
         omap.at("attacker-ai"),
         omap.at("defender-ai"),
         omap.at("attacker-model"),
-        omap.at("defender-model")
-    );
+        omap.at("defender-model"),
+    };
 }
-

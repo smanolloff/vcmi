@@ -1,6 +1,7 @@
 set(MMAI_FILES
   AAI/AAI.h
   AAI/AAI.cpp
+  AAI/impl.cpp
 
   BAI/build_action_result.cpp
   BAI/build_action_result.h

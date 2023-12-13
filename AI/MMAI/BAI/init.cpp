@@ -1,6 +1,8 @@
 #include <dlfcn.h>
 
 #include "BAI.h"
+#include "battle/BattleHex.h"
+#include "battle/CBattleInfoEssentials.h"
 #include "export.h"
 #include "include/loader.h"
 
@@ -27,11 +29,11 @@ namespace MMAI {
     // XXX:
     // This call is made when BAI is created for a Human (by CPlayerInterface)
     // If BAI is created for a computer (by MMAI), "myInitBattleInterface"
-    //   is called instead with a wrapped f_idGetAction fn that never returns
+    //   is called instead with a wrapped f_getAction fn that never returns
     //   control actions (like RENDER or RESET).
     //
     // In this case, however, baggage is passed in directly - we must make
-    // sure to wrap its f_idGetAction ourselves.
+    // sure to wrap its f_getAction ourselves.
     //
     void BAI::initBattleInterface(
         std::shared_ptr<Environment> ENV,
@@ -43,14 +45,17 @@ namespace MMAI {
         ASSERT(baggage_.has_value(), "baggage has no value");
         ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
 
-        // XXX: this may need to be stored?
         auto baggage = std::any_cast<Export::Baggage*>(baggage_);
 
-        Export::F_IDGetAction f_idGetAction = [this, baggage](Export::Side side, const Export::Result* result) {
-            auto action = baggage->f_idGetAction(side, result);
+        getActionOrig = (CB->battleGetMySide() == BattlePerspective::LEFT_SIDE)
+            ? baggage->f_getActionAttacker
+            : baggage->f_getActionDefender;
+
+        Export::F_GetAction f_getAction = [this](const Export::Result* result) {
+            auto action = getActionOrig(result);
             while (action == Export::ACTION_RENDER_ANSI) {
                 auto res = Export::Result(renderANSI());
-                action = baggage->f_idGetAction(side, result);
+                action = getActionOrig(result);
             }
 
             if (action == Export::ACTION_RESET) {
@@ -62,7 +67,7 @@ namespace MMAI {
             return action;
         };
 
-        myInitBattleInterface(ENV, CB, f_idGetAction);
+        myInitBattleInterface(ENV, CB, f_getAction);
     }
 
     void BAI::initBattleInterface(
@@ -84,11 +89,12 @@ namespace MMAI {
     void BAI::myInitBattleInterface(
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB,
-        Export::F_IDGetAction f_idGetAction
+        Export::F_GetAction f_getAction
     ) {
         info("*** myInitBattleInterface ***");
-        ASSERT(f_idGetAction, "f_idGetAction is null");
-        idGetAction = f_idGetAction;
+        sidestr = (CB->battleGetMySide() == BattlePerspective::LEFT_SIDE) ? "A" : "D";
+        ASSERT(f_getAction, "f_getAction is null");
+        getAction = f_getAction;
         env = ENV;
         cb = CB;
         wasWaitingForRealize = CB->waitTillRealize;
