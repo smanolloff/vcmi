@@ -618,6 +618,7 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 	if (true)
 	{
 		auto battleDialogQuery = std::make_shared<CBattleDialogQuery>(this, gs->curB);
+		battleDialogQuery->players.pop_back();
 		battleResult.data->queryID = battleDialogQuery->queryID;
 		queries.addQuery(battleDialogQuery);
 	}
