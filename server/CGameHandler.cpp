@@ -618,6 +618,9 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 	if (true)
 	{
 		auto battleDialogQuery = std::make_shared<CBattleDialogQuery>(this, gs->curB);
+		// XXX: only attacker gets to choose
+		// TODO: resetting battle for both players should also
+		// 			call heroManaPointsChanged() on the defender side
 		battleDialogQuery->players.pop_back();
 		battleResult.data->queryID = battleDialogQuery->queryID;
 		queries.addQuery(battleDialogQuery);

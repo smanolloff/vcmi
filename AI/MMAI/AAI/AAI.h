@@ -9,6 +9,7 @@ namespace MMAI {
         std::shared_ptr<BAI> bai;
 
         std::string colorstr = "?";
+        std::string colorprint = "\033[0m\033[30m\033[107m?\033[0m"; // black on white
         std::string battleAiName;
         Export::F_GetAction getActionOrig;
         Export::F_GetAction getActionWrapper;

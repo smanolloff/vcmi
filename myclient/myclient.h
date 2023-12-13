@@ -15,7 +15,7 @@ const std::vector<std::string> AIS = {
     AI_MMAI_MODEL
 };
 
-const std::vector<std::string> LOGLEVELS = {"debug", "info", "warn", "error"};
+const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};
 
 void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,

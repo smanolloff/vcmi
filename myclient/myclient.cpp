@@ -53,6 +53,7 @@ static CBasicLogConfigurator *logConfig;
 
 std::string mapname;
 MMAI::Export::Baggage* baggage;
+bool headless;
 
 //
 // NOTE:
@@ -133,8 +134,7 @@ void validateArguments(
     std::string &attackerAI,
     std::string &defenderAI,
     std::string &attackerModel,
-    std::string &defenderModel,
-    bool headless
+    std::string &defenderModel
 ) {
     auto wd = boost::filesystem::current_path();
 
@@ -202,8 +202,7 @@ void processArguments(
     std::string &attackerAI,
     std::string &defenderAI,
     std::string &attackerModel,
-    std::string &defenderModel,
-    bool headless
+    std::string &defenderModel
 ) {
     // Notes on AI creation
     //
@@ -315,11 +314,12 @@ void processArguments(
         loggers->Vector().push_back(jlog);
     };
 
-    conflog("global", "trace");
-    conflog("ai", "trace");
-
-    conflog("network", "trace");
-    conflog("animation", "trace");
+    // conflog("global", "trace");
+    // conflog("ai", "trace");
+    // conflog("network", "trace");
+    // conflog("animation", "trace");
+    conflog("global", loglevelGlobal);
+    conflog("ai", loglevelAI);
 }
 
 void init_vcmi(
@@ -333,11 +333,14 @@ void init_vcmi(
     std::string defenderAI,
     std::string attackerModel,
     std::string defenderModel,
-    bool headless
+    bool headless_
 ) {
     // SIGSEGV errors if this is not global
     // (it muts start_vcmi is called th)
     baggage = baggage_;
+
+    // this is used in start_vcmi()
+    headless = headless_;
 
     validateArguments(
         gymdir,
@@ -348,8 +351,7 @@ void init_vcmi(
         attackerAI,
         defenderAI,
         attackerModel,
-        defenderModel,
-        headless
+        defenderModel
     );
 
     boost::filesystem::current_path(boost::filesystem::path(resdir));
@@ -381,8 +383,7 @@ void init_vcmi(
         attackerAI,
         defenderAI,
         attackerModel,
-        defenderModel,
-        headless
+        defenderModel
     );
 
     Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
@@ -419,7 +420,8 @@ void init_vcmi(
 
     srand ( (unsigned int)time(nullptr) );
 
-    GH.init();
+    if (!headless)
+        GH.init();
 
     CCS = new CClientState();
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
@@ -463,7 +465,7 @@ void start_vcmi() {
     auto t = boost::thread(&CServerHandler::debugStartTest, CSH, mapname, false);
     inGuiThread.reset(new bool(true));
 
-    if(settings["session"]["headless"].Bool()) {
+    if(headless) {
         while (true) {
             boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
         }

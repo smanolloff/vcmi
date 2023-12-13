@@ -16,10 +16,10 @@ namespace MMAI {
         info("--- (destructor) ---");
     }
 
-    void AAI::error(const std::string &text) const { logAi->error("AAI [%s] %s", colorstr, text); }
-    void AAI::warn(const std::string &text) const { logAi->warn("AAI [%s] %s", colorstr, text); }
-    void AAI::info(const std::string &text) const { logAi->info("AAI [%s] %s", colorstr, text); }
-    void AAI::debug(const std::string &text) const { logAi->debug("AAI [%s] %s", colorstr, text); }
+    void AAI::error(const std::string &text) const { logAi->error("AAI [%s] %s", colorprint, text); }
+    void AAI::warn(const std::string &text) const { logAi->warn("AAI [%s] %s", colorprint, text); }
+    void AAI::info(const std::string &text) const { logAi->info("AAI [%s] %s", colorprint, text); }
+    void AAI::debug(const std::string &text) const { logAi->debug("AAI [%s] %s", colorprint, text); }
 
     void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
         error("*** initGameInterface -- BUT NO BAGGAGE ***");
@@ -30,6 +30,9 @@ namespace MMAI {
         info("*** initGameInterface ***");
 
         colorstr = CB->getMyColor()->getStr();
+        colorprint = (colorstr == "red")
+            ? "\033[0m\033[97m\033[41mRED\033[0m"  // white on red
+            : "\033[0m\033[97m\033[44mBLUE\033[0m"; // white on blue
         ASSERT(baggage_.has_value(), "baggage has no value");
         ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
 
@@ -47,7 +50,9 @@ namespace MMAI {
         // A wrapper around baggage->idGetAction
         // It ensures special handling for non-game actions (eg. render, reset)
         getActionWrapper = [this](const Export::Result* result) {
+            info("getActionWrapper called with result type: " + std::to_string(result->type));
             auto action = getNonRenderAction(result);
+            info("getActionWrapper received action: " + std::to_string(action));
 
             if (action == Export::ACTION_RESET) {
                 // AAI::getAction is called only by BAI, only during battle
@@ -67,10 +72,12 @@ namespace MMAI {
     };
 
     Export::Action AAI::getNonRenderAction(const Export::Result* result) {
+        info("getNonRenderAciton called with result type: " + std::to_string(result->type));
         auto action = getActionOrig(result);
         while (action == Export::ACTION_RENDER_ANSI) {
             auto res = Export::Result(bai->renderANSI());
-            action = getActionOrig(result);
+            info("getNonRenderAciton (loop) called with result type: " + std::to_string(res.type));
+            action = getActionOrig(&res);
         }
 
         return action;
@@ -139,7 +146,9 @@ namespace MMAI {
             // (in case there are render actions)
             bai->battleEnd(br, queryID);
 
+            info("<BATTLE_END> Will ASK for an action");
             auto action = getNonRenderAction(bai->result.get());
+            info("<BATTLE_END> Got action: " + std::to_string(action));
 
             // Any non-render action *must* be a reset (battle has ended)
             ASSERT(action == Export::ACTION_RESET, "expected RESET, got: " + std::to_string(action));
