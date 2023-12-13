@@ -1,5 +1,6 @@
 #include "NetPacks.h"
 #include "BAI.h"
+#include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
 #include "types/hexaction.h"
 #include "types/stack.h"
@@ -98,6 +99,10 @@ namespace MMAI {
         auto res = BuildActionResult();
         auto apos = bf.astack->getPosition();
 
+        // auto origq = std::vector<battle::Units>{};
+        // cb->battleGetTurnOrder(origq, QSIZE, 0);
+        // auto myq = bf.getQueue(cb.get());
+
         ASSERT(bf.hexes[Hex::calcId(apos)].stack->attrs[EI(StackAttr::QueuePos)] == 0, "expected 0 queue pos");
 
         if (!action.hex) {
@@ -183,13 +188,36 @@ namespace MMAI {
         // => *throw* errors here only if the mask SHOULD HAVE ALLOWED it
         //    and *set* regular, non-throw errors otherwise
         //
+        auto rinfo = cb->getReachability(bf.astack);
+        auto ainfo = cb->getAccesibility();
 
         switch(action.hexaction) {
-            case HexAction::MOVE:
-                ASSERT(action.hex->state != HexState::FREE_REACHABLE, "mask prevented move to a reachable bhex " + action.hex->name());
-                (action.hex->state == HexState::FREE_UNREACHABLE)
-                    ? res.addError(ErrType::HEX_UNREACHABLE)
-                    : res.addError(ErrType::HEX_BLOCKED);
+            case HexAction::MOVE: {
+                auto a = ainfo[action.hex->bhex];
+                if (a == EAccessibility::ACCESSIBLE) {
+                    ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented move to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
+                    res.addError(ErrType::HEX_UNREACHABLE);
+                } else if (a == EAccessibility::OBSTACLE) {
+                    auto hs = action.hex->state;
+                    ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
+                    res.addError(ErrType::HEX_BLOCKED);
+                } else if (a == EAccessibility::ALIVE_STACK) {
+                    auto bh = action.hex->bhex;
+                    if (bh.hex == bf.astack->getPosition().hex) {
+                        // means we want to defend (moving to self)
+                        // this should always be allowed
+                        ASSERT(false, "mask prevented move to own hex (defend)" + debugInfo(action, bf.astack, nullptr));
+                    } else if (bh.hex == bf.astack->occupiedHex().hex) {
+                        ASSERT(!ainfo.accessible(bh, true, bf.astack->unitSide()), "mask prevented move to self-occupied hex" + debugInfo(action, bf.astack, nullptr));
+                        // means we can't fit on our own back hex
+                        res.addError(ErrType::HEX_BLOCKED);
+                    }
+                    // means we try to move onto another stack
+                    res.addError(ErrType::HEX_BLOCKED);
+                } else {
+                    throw std::runtime_error("Unexpected accessibility: " + std::to_string(EI(a)) + debugInfo(action, bf.astack, nullptr));
+                }
+            }
             break;
             case HexAction::SHOOT:
                 if (!estack)
@@ -247,8 +275,6 @@ namespace MMAI {
                 }
 
                 auto &nh = bf.hexes.at(Hex::calcId(nbh));
-
-                auto rinfo = cb->getReachability(bf.astack);
                 auto reachable = rinfo.distances[nbh] <= bf.astack->speed();
 
                 switch (nh.state) {

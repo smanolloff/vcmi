@@ -334,6 +334,7 @@ namespace MMAI {
             for (int col=1; col<ncols; col++, i++) {
                 auto color = nocol;
                 auto attr = ATTR_NA;
+                auto headersuffix = "";
 
                 if (stack) {
                     auto cstack = stack->cstack;
@@ -349,12 +350,17 @@ namespace MMAI {
                         color = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
                             ? redcol : bluecol;
 
-                        if (cstack->unitId() == bf.astack->unitId())
+                        if (cstack->unitId() == bf.astack->unitId()) {
                             color += activemod;
+                            headersuffix = "*";
+                        }
                     }
                 }
 
-                std::get<0>(table[row][0]) = color;  // change header color
+                if (col == 1) {
+                    std::get<0>(table[row][0]) = color;         // change header color
+                    std::get<2>(table[row][0]) += headersuffix; // mark active unit
+                }
 
                 // table[row][col] = std::tuple{color, colwidth, std::to_string(attr)};
                 table[row][col] = std::tuple{color, colwidth, (attr == ATTR_NA) ? "" : std::to_string(attr)};

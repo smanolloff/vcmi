@@ -36,8 +36,10 @@ Args parse_args(int argc, char * argv[])
         {"attacker-ai", AI_MMAI_USER},
         {"defender-ai", AI_STUPIDAI},
         {"attacker-model", "AI/MMAI/models/model.zip"},
-        {"defender-model", "AI/MMAI/models/model.zip"}
+        {"defender-model", "AI/MMAI/models/model.zip"},
     };
+
+    static auto benchmark = false;
 
     auto usage = std::stringstream();
     usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
@@ -56,7 +58,11 @@ Args parse_args(int argc, char * argv[])
         ("attacker-model", po::value<std::string>()->value_name("<FILE>"),
             ("Path to model.zip (" + omap.at("attacker-model") + "*)").c_str())
         ("defender-model", po::value<std::string>()->value_name("<FILE>"),
-            ("Path to model.zip (" + omap.at("defender-model") + "*)").c_str());
+            ("Path to model.zip (" + omap.at("defender-model") + "*)").c_str())
+        ("loglevel", po::value<std::string>()->value_name("<LVL>"),
+            values(LOGLEVELS, omap.at("loglevel")).c_str())
+        ("benchmark", po::bool_switch(&benchmark),
+            ("Measure performance"));
 
     po::variables_map vm;
 
@@ -113,8 +119,8 @@ Args parse_args(int argc, char * argv[])
     };
 
     // Reproduce issue with active stack having queuePos=1
-    // ai/P1.vmap, MMAI_USER + MMAI_USER
-    static auto recorded = std::array{1, 1, 1, 1, 1, 1, 1, 1, 732, 2};
+    // ai/P2.vmap, MMAI_USER + MMAI_USER (last action is invalid, but does not matter)
+    static auto recorded = std::array{1, 1, 1};
 
     MMAI::Export::F_GetAction getactionRec = [&rendered](const MMAI::Export::Result * r){
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
@@ -141,9 +147,58 @@ Args parse_args(int argc, char * argv[])
     };
 
 
+    if (benchmark)
+        printf("Performance statistics:\n");
+
+    static clock_t t0;
+    static unsigned long steps = 0;
+    static unsigned long resets = 0;
+
+    MMAI::Export::F_GetAction bench = [](const MMAI::Export::Result * r){
+        MMAI::Export::Action act;
+
+        if (steps == 0)
+            t0 = clock();
+
+        steps++;
+
+        if (r->ended) {
+            resets++;
+            switch (resets % 4) {
+            case 0: printf("\r|"); break;
+            case 1: printf("\r\\"); break;
+            case 2: printf("\r-"); break;
+            case 3: printf("\r/"); break;
+            }
+
+            if (resets == 10) {
+                auto s = double(clock() - t0) / CLOCKS_PER_SEC;
+                printf("  steps/s: %-6.0f resets/s: %-6.0f\n", steps/s, resets/s);
+                resets = 0;
+                steps = 0;
+                t0 = clock();
+            }
+
+            std::cout.flush();
+
+            act = MMAI::Export::ACTION_RESET;
+        } else {
+            if (i >= MMAI::Export::N_ACTIONS)
+                i = 0;
+            act = i;
+        }
+
+        i++;
+
+        return MMAI::Export::Action(act);
+    };
+
+
     return {
-        // new MMAI::Export::Baggage(getaction),
-        new MMAI::Export::Baggage(getactionRec),
+        benchmark
+            ? new MMAI::Export::Baggage(bench)
+            // : new MMAI::Export::Baggage(getactionRec),
+            : new MMAI::Export::Baggage(getaction),
         gymdir,
         resdir,
         omap.at("map"),
