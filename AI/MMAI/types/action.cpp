@@ -1,3 +1,4 @@
+#include "battle/CBattleInfoEssentials.h"
 #include "types/hex.h"
 #include "types/action.h"
 #include <stdexcept>
@@ -37,7 +38,16 @@ namespace MMAI {
         auto res = std::string{};
 
         auto slot = hex->stack->attrs[EI(StackAttr::Slot)];
-        auto stackstr = hex->stack->cstack ? "\033[31m#" + std::to_string(slot+1) + "\033[0m" : "?";
+
+        std::string stackstr;
+
+        if (hex->stack->cstack) {
+            std::string color = hex->stack->cstack->unitSide() == BattlePerspective::LEFT_SIDE
+                ? "\033[31m" : "\033[34m";
+            stackstr = color + "#" + std::to_string(slot+1) + "\033[0m";
+        } else {
+            stackstr =  "?";
+        }
 
         switch (HexAction(ha)) {
         break; case HexAction::MOVE:     res = "Move to " + hex->name();

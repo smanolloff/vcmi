@@ -236,17 +236,21 @@ namespace MMAI {
 
             switch(i) {
             case 1:
+                name = "Player";
+                value = ourcol == redcol ? redcol + "RED" + nocol : bluecol + "BLUE" + nocol;
+                break;
+            case 2:
                 name = "Last action";
                 value = action ? action->name() + " [" + std::to_string(action->action) + "]" : "";
                 break;
-            case 2: name = "Errors"; value = std::to_string(n_errors); break;
-            case 3: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
-            case 4: name = "Units killed"; value = std::to_string(r.unitsKilled); break;
-            case 5: name = "Value killed"; value = std::to_string(r.valueKilled); break;
-            case 6: name = "DMG received"; value = std::to_string(r.dmgReceived); break;
-            case 7: name = "Units lost"; value = std::to_string(r.unitsLost); break;
-            case 8: name = "Value lost"; value = std::to_string(r.valueLost); break;
-            case 9: {
+            case 3: name = "Errors"; value = std::to_string(n_errors); break;
+            case 4: name = "DMG dealt"; value = std::to_string(r.dmgDealt); break;
+            case 5: name = "Units killed"; value = std::to_string(r.unitsKilled); break;
+            case 6: name = "Value killed"; value = std::to_string(r.valueKilled); break;
+            case 7: name = "DMG received"; value = std::to_string(r.dmgReceived); break;
+            case 8: name = "Units lost"; value = std::to_string(r.unitsLost); break;
+            case 9: name = "Value lost"; value = std::to_string(r.valueLost); break;
+            case 10: {
                 auto restext = r.victory
                     ? (ourcol == redcol ? redcol + "RED WINS" : bluecol + "BLUE WINS")
                     : (ourcol == redcol ? bluecol + "BLUE WINS" : redcol + "RED WINS");
