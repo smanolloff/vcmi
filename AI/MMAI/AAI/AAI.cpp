@@ -112,6 +112,8 @@ namespace MMAI {
         if (ainame == "MMAI") {
             bai = std::static_pointer_cast<BAI>(battleAI);
             bai->myInitBattleInterface(env, cbc, getActionWrapper);
+        } else {
+            battleAI->initBattleInterface(env, cbc);
         }
 
         battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
@@ -144,12 +146,16 @@ namespace MMAI {
         }
 
         battleAI.reset();
-        bai = nullptr;
+        bai = nullptr;  // XXX: call this last, it changes cb->waitTillRealize
 
         if (cb->battleGetMySide() == BattlePerspective::LEFT_SIDE) {
             ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
             info("Answering query " + std::to_string(queryID) + " to re-play battle");
-            cb->selectionMade(1, queryID);
+
+            std::make_unique<boost::thread>([this, &queryID]() {
+                boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
+                cb->selectionMade(1, queryID);
+            });
         } else {
             // My patch in CGameHandler::endBattle allows replay even
             // both sides are non-neutrals. Could not figure out how to

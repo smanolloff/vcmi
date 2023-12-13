@@ -614,8 +614,8 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 	finishingBattle = std::make_unique<FinishingBattleHelper>(battleQuery, queriedPlayers);
 	
 	// in battles against neutrals, 1st player can ask to replay battle manually
-	if (!gs->curB->sides[1].color.isValidPlayer())
-	// if (true)
+	// if (!gs->curB->sides[1].color.isValidPlayer())
+	if (true)
 	{
 		auto battleDialogQuery = std::make_shared<CBattleDialogQuery>(this, gs->curB);
 		battleResult.data->queryID = battleDialogQuery->queryID;
@@ -2141,8 +2141,8 @@ void CGameHandler::setupBattle(int3 tile, const CArmedInstance *armies[2], const
 	auto lastBattleQuery = std::dynamic_pointer_cast<CBattleQuery>(queries.topQuery(bs.info->sides[0].color));
 
 	if (VLC->settings()->getBoolean(EGameSettings::COMBAT_INFINITE_QUICK_COMBAT_REPLAYS))
-		bs.info->replayAllowed = !bs.info->sides[1].color.isValidPlayer();
-		// bs.info->replayAllowed = true;
+		// bs.info->replayAllowed = !bs.info->sides[1].color.isValidPlayer();
+		bs.info->replayAllowed = true;
 	else
 		bs.info->replayAllowed = lastBattleQuery == nullptr && !bs.info->sides[1].color.isValidPlayer();
 

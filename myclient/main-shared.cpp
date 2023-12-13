@@ -101,7 +101,7 @@ Args parse_args(int argc, char * argv[])
 
         rendered = false;
 
-        if (i++ == MMAI::Export::N_ACTIONS) {
+        if (++i == MMAI::Export::N_ACTIONS) {
             i = 2;
             // i = 0; => results in sporadic retreats
 
