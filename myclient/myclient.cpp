@@ -243,11 +243,11 @@ void processArguments(
     if (attackerAI == AI_MMAI_USER) {
         baggage->AttackerBattleAIName = "MMAI";
 
-        // this is callable from BAI. The original f_getActionAttacker IS NOT!
-        baggage->f_getActionAttacker = [](const MMAI::Export::Result* r) {
-            printf("WRAPPER GET_ACTION_ATTACKER CALLED!!!\n");
-            return 1;
-        };
+        // // this is callable from BAI. The original f_getActionAttacker IS NOT!
+        // baggage->f_getActionAttacker = [](const MMAI::Export::Result* r) {
+        //     printf("WRAPPER GET_ACTION_ATTACKER CALLED!!!\n");
+        //     return 1;
+        // };
 
         printf("*********** TEST baggage fn *************\n");
         auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
@@ -257,17 +257,7 @@ void processArguments(
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->AttackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        static auto getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
-        baggage->f_getActionAttacker = [](const MMAI::Export::Result* r) {
-            printf("WRAPPER GET_ACTION_ATTACKER CALLED!!!\n");
-            return getActionAttacker(r);
-        };
-
-        printf("*********** TEST baggage fn *************\n");
-        auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
-        baggage->f_getActionAttacker(&res);
-        printf("***********TEST baggage fn: SUCCESS");
-
+        baggage->f_getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
     } else if (attackerAI == AI_STUPIDAI) {
         baggage->AttackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
@@ -451,14 +441,22 @@ void init_vcmi(
     CCS = new CClientState();
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
 
+    printf("*********** TEST origbaggage fn *************\n");
+    auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    baggage->f_getAction(&res01);
+    printf("***********TEST restoredbaggage fn: SUCCESS");
 
     auto anybaggage = std::make_any<MMAI::Export::Baggage*>(baggage);
-
     auto restoredbaggage = std::any_cast<MMAI::Export::Baggage*>(baggage_);
+
+    printf("*********** TEST origbaggage fn *************\n");
+    auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    baggage->f_getAction(&res0);
+    printf("***********TEST restoredbaggage fn: SUCCESS");
 
     printf("*********** TEST restoredbaggage fn *************\n");
     auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
-    restoredbaggage->f_getActionAttacker(&res);
+    restoredbaggage->f_getAction(&res);
     printf("***********TEST restoredbaggage fn: SUCCESS");
 
 

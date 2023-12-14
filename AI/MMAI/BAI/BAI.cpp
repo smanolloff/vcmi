@@ -54,9 +54,9 @@ namespace MMAI {
         info("BAI3");
 
         while(true) {
-            // auto _action = getAction(result.get());
-            getAction(result.get());
-            auto _action = randomValidAction(result->actmask);
+            auto _action = getAction(result.get());
+            // getAction(result.get());
+            // auto _action = randomValidAction(result->actmask);
             i++;
             info("BAI4");
             allactions.push_back(_action);
