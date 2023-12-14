@@ -214,6 +214,9 @@ void processArguments(
     // initGameInterface() is called on:
     // * CPlayerInterface (CPI) for humans
     // * settings["playerAI"] for computers
+    //   settings["playerAI"] is fixed to "MMAI" (ie. MMAI::AAI), which
+    //   can create battle interfaces as per `attackerAI` and `defenderAI`
+    //   script arguments (this info is passed to AAI via baggage).
     //
     // *** Battle start - battle interfaces ***
     // * battleStart() is called on the adventure interfaces for all players
@@ -235,62 +238,60 @@ void processArguments(
 
     //
     // AI for attacker
-    // Attacker is MMAI headless is true, human (ie. CPI) otherwise
+    // When attacker is "MMAI":
+    //  * if headless=true, VCMI will create MMAI::AAI which inits BAI via myInitBattleInterface()
+    //  * if headless=false, it will create CPI which inits BAI via the (default) initBattleInterface()
+    //
     // CPI creates battle interfaces as per settings["friendlyAI"]
     // => must set that setting also (see further down)
     // (Note: CPI had to be modded to pass the baggage)
     //
     if (attackerAI == AI_MMAI_USER) {
-        baggage->AttackerBattleAIName = "MMAI";
+        baggage->attackerBattleAIName = "MMAI";
     } else if (attackerAI == AI_MMAI_MODEL) {
-        baggage->AttackerBattleAIName = "MMAI";
+        baggage->attackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
         baggage->f_getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
     } else if (attackerAI == AI_STUPIDAI) {
-        baggage->AttackerBattleAIName = "StupidAI";
+        baggage->attackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
-        baggage->AttackerBattleAIName = "BattleAI";
+        baggage->attackerBattleAIName = "BattleAI";
     } else {
         throw std::runtime_error("Unexpected attackerAI: " + attackerAI);
     }
 
     //
     // AI for defender (aka. computer, aka. some AI)
-    // Defender is computer with adventure interface from settings["playerAI"]:
+    // Defender is computer with adventure interface as per settings["playerAI"]
+    // (ie. always MMAI::AAI)
     //
-    // * "VCAI", which will create battle interfaces as per settings["enemyAI"]
-    //   (will not pass baggage if settings["enemyAI"]="MMAI")
+    // * "MMAI", which will create BAI/StupidAI/BattleAI battle interfaces
+    //   based on info provided via baggage.
     //
-    // * "MMAI", which will always create MMAI::BAI battle interfaces
-    //   (will pass baggage)
-    //
-    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
     if (defenderAI == AI_MMAI_USER) {
-        baggage->DefenderBattleAIName = "MMAI";
+        baggage->defenderBattleAIName = "MMAI";
     } else if (defenderAI == AI_MMAI_MODEL) {
-        baggage->DefenderBattleAIName = "MMAI";
+        baggage->defenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
         baggage->f_getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
     } else if (defenderAI == AI_STUPIDAI) {
-        Settings(settings.write({"session", "oneGoodAI"}))->Bool() = true;
-        Settings(settings.write({"server", "enemyAI"}))->String() = "StupidAI";
-        // baggage->DefenderBattleAIName = "StupidAI";
+        baggage->defenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {
-        baggage->DefenderBattleAIName = "BattleAI";
+        baggage->defenderBattleAIName = "BattleAI";
     } else {
         throw std::runtime_error("Unexpected defenderAI: " + defenderAI);
     }
 
     // All adventure AIs must be MMAI to properly init the battle AIs
-    // Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-    // Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
+    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
 
     Settings(settings.write({"session", "headless"}))->Bool() = headless;
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
 
     // CPI needs this setting in case the attacker is human (headless==false)
-    Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->AttackerBattleAIName;
+    Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->attackerBattleAIName;
 
     // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
     auto mappath = std::filesystem::path("Maps") / std::filesystem::path(map);

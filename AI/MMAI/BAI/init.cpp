@@ -52,12 +52,9 @@ namespace MMAI {
             : baggage->f_getActionDefender;
 
         Export::F_GetAction f_getAction = [this](const Export::Result* result) {
-            info("BAI6");
             auto act = getActionOrig(result);
-            info("BAI7");
             while (act == Export::ACTION_RENDER_ANSI) {
                 auto res = Export::Result(renderANSI());
-                info("BAI8");
                 act = getActionOrig(&res);
             }
 

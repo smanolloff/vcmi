@@ -41,10 +41,10 @@ namespace MMAI {
 
         // Attackers are red, defenders are blue
         if (colorstr == "red") {
-            battleAiName = baggage->AttackerBattleAIName;
+            battleAiName = baggage->attackerBattleAIName;
             getActionOrig = baggage->f_getActionAttacker;
         } else {
-            battleAiName = baggage->DefenderBattleAIName;
+            battleAiName = baggage->defenderBattleAIName;
             getActionOrig = baggage->f_getActionDefender;
         }
 
@@ -185,7 +185,7 @@ namespace MMAI {
 
         // Attackers are red, defenders are blue
         return (colorstr == "red")
-            ? baggage->AttackerBattleAIName
-            : baggage->DefenderBattleAIName;
+            ? baggage->attackerBattleAIName
+            : baggage->defenderBattleAIName;
     }
 }

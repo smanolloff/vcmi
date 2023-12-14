@@ -485,7 +485,7 @@ std::string CClient::aiNameForPlayer(bool battleAI, bool alliedToHuman)
 	std::string goodAdventureAI = alliedToHuman ? settings["server"]["alliedAI"].String() : settings["server"]["playerAI"].String();
 	std::string goodBattleAI = settings["server"]["neutralAI"].String();
 	std::string goodAI = battleAI ? goodBattleAI : goodAdventureAI;
-	std::string badAI = battleAI ? "StupidAI" : "VCAI";
+	std::string badAI = battleAI ? "StupidAI" : "EmptyAI";
 
 	//TODO what about human players
 	if(battleints.size() >= sensibleAILimit)

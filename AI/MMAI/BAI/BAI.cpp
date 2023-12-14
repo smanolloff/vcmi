@@ -18,6 +18,7 @@ namespace MMAI {
     void BAI::info(const std::string &text) const { logAi->info("BAI [%s] %s", sidestr, text); }
     void BAI::debug(const std::string &text) const { logAi->debug("BAI [%s] %s", sidestr, text); }
 
+    // For debugging
     MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
         auto validActions = std::vector<MMAI::Export::Action>{};
 

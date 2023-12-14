@@ -216,7 +216,6 @@ endif()
 
 if(ENABLE_DEV_BUILD)
 	add_definitions(-DDEV_BUILD=1)
-	add_definitions(-DVCMI_BUILD_DIR="123123${CMAKE_BINARY_DIR}")
 endif()
 
 if(APPLE_IOS)
