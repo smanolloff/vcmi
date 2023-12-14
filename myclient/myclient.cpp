@@ -242,8 +242,8 @@ void processArguments(
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->AttackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        // static auto getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
-        baggage->f_getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
+        static auto getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
+        baggage->f_getActionAttacker = getActionAttacker;
     } else if (attackerAI == AI_STUPIDAI) {
         baggage->AttackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
@@ -267,8 +267,8 @@ void processArguments(
     } else if (defenderAI == AI_MMAI_MODEL) {
         baggage->DefenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        // static auto getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
-        baggage->f_getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
+        static auto getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
+        baggage->f_getActionDefender = getActionDefender;
     } else if (defenderAI == AI_STUPIDAI) {
         baggage->DefenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {
@@ -317,9 +317,9 @@ void processArguments(
     conflog("global", loglevelGlobal);
     conflog("ai", loglevelAI);
 
-    // conflog("global", "trace");
-    // conflog("ai", "trace");
-    // conflog("network", "trace");
+    conflog("global", "trace");
+    conflog("ai", "trace");
+    conflog("network", "trace");
     // conflog("animation", "trace");
 }
 
