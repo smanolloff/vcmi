@@ -265,6 +265,7 @@ void processArguments(
     // * "MMAI", which will always create MMAI::BAI battle interfaces
     //   (will pass baggage)
     //
+    Settings(settings.write({"session", "oneGoodAI"}))->Bool() = true;
     if (defenderAI == AI_MMAI_USER) {
         baggage->DefenderBattleAIName = "MMAI";
     } else if (defenderAI == AI_MMAI_MODEL) {
@@ -273,7 +274,8 @@ void processArguments(
         static auto getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
         baggage->f_getActionDefender = getActionDefender;
     } else if (defenderAI == AI_STUPIDAI) {
-        baggage->DefenderBattleAIName = "StupidAI";
+        Settings(settings.write({"server", "enemyAI"}))->String() = "StupidAI";
+        // baggage->DefenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {
         baggage->DefenderBattleAIName = "BattleAI";
     } else {
@@ -281,8 +283,8 @@ void processArguments(
     }
 
     // All adventure AIs must be MMAI to properly init the battle AIs
-    Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-    Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
+    // Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+    // Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
 
     Settings(settings.write({"session", "headless"}))->Bool() = headless;
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
