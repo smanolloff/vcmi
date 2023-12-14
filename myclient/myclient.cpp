@@ -207,6 +207,11 @@ void processArguments(
     std::string &attackerModel,
     std::string &defenderModel
 ) {
+    printf("*********** TEST IN-PROCESS baggage fn *************\n");
+    auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    baggage->f_getActionAttacker(&res);
+    printf("***********TEST IN-PROCESS baggage fn: SUCCESS\n");
+
     // Notes on AI creation
     //
     //
@@ -248,11 +253,6 @@ void processArguments(
         //     printf("WRAPPER GET_ACTION_ATTACKER CALLED!!!\n");
         //     return 1;
         // };
-
-        printf("*********** TEST baggage fn *************\n");
-        auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
-        baggage->f_getActionAttacker(&res);
-        printf("***********TEST baggage fn: SUCCESS\n");
 
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->AttackerBattleAIName = "MMAI";
@@ -394,6 +394,12 @@ void init_vcmi(
     auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
     baggage->f_getAction(&res0);
     printf("***********TEST PREPROCESS baggage fn: SUCCESS\n");
+
+    printf("*********** TEST PREPROCESS baggage fn *************\n");
+    auto res1 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    baggage->f_getAction(&res1);
+    printf("***********TEST PREPROCESS baggage fn: SUCCESS\n");
+
 
 
     processArguments(

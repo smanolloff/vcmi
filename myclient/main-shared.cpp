@@ -115,6 +115,7 @@ Args parse_args(int argc, char * argv[])
     static bool rendered = false;
 
     MMAI::Export::F_GetAction getaction = [](const MMAI::Export::Result * r){
+        printf("---------- IN BAGGAGE -------------");
         MMAI::Export::Action act;
 
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
