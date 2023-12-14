@@ -273,7 +273,7 @@ namespace MMAI {
                 break; case StackAttr::Quantity: max = 5000;
                 break; case StackAttr::Attack:   max = 100;
                 break; case StackAttr::Defense:  max = 100;
-                break; case StackAttr::Shots:    max = 24;
+                break; case StackAttr::Shots:    max = 32;
                 break; case StackAttr::DmgMin:   max = 100;
                 break; case StackAttr::DmgMax:   max = 100;
                 break; case StackAttr::HP:       max = 1500;
