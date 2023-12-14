@@ -11,7 +11,7 @@ namespace po = boost::program_options;
 #define LOG(msg) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, msg);
 #define LOGSTR(msg, a1) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, (std::string(msg) + a1).c_str());
 
-static MMAI::Export::ActMask lastmask{};
+static std::array<MMAI::Export::ActMask, 2> lastmasks{};
 
 MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
     auto validActions = std::vector<MMAI::Export::Action>{};
@@ -112,33 +112,70 @@ Args parse_args(int argc, char * argv[])
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
     static int i = 0;
-    static bool rendered = false;
+    static std::array<bool, 2> renders = {false, false};
+
+    static clock_t t0;
+    static unsigned long steps = 0;
+    static unsigned long resets = 0;
+    static int benchside = -1;
 
     MMAI::Export::F_GetAction getaction = [](const MMAI::Export::Result * r){
         MMAI::Export::Action act;
+        auto side = static_cast<int>(r->side);
+
+        if (steps == 0) {
+            t0 = clock();
+            benchside = side;
+        }
+
+        steps++;
 
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
             std::cout << r->ansiRender << "\n";
-            act = randomValidAction(lastmask);
+            // use stored mask from pre-render result
+            act = randomValidAction(lastmasks.at(side));
         } else if (r->ended) {
-            LOG("user-callback battle ended => sending ACTION_RESET");
+            if (side == benchside) {
+                resets++;
+
+                switch (resets % 4) {
+                case 0: printf("\r|"); break;
+                case 1: printf("\r\\"); break;
+                case 2: printf("\r-"); break;
+                case 3: printf("\r/"); break;
+                }
+
+                if (resets == 10) {
+                    auto s = double(clock() - t0) / CLOCKS_PER_SEC;
+                    printf("  steps/s: %-6.0f resets/s: %-6.0f\n", steps/s, resets/s);
+                    resets = 0;
+                    steps = 0;
+                    t0 = clock();
+                }
+
+                std::cout.flush();
+            }
+
+            if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
-        } else if (!rendered) {
-            rendered = true;
-            lastmask = r->actmask;
+        } else if (!benchmark && !renders.at(side)) {
+            renders[side] = true;
+            // store mask of this result for the next action
+            lastmasks.at(side) = r->actmask;
             act = MMAI::Export::ACTION_RENDER_ANSI;
         } else {
-            rendered = false;
-            act = randomValidAction(lastmask);
+            renders.at(side) = false;
+            act = randomValidAction(r->actmask);
         }
 
-        LOGSTR("user-callback getAction returning: ", std::to_string(act));
+        if (!benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
         return act;
     };
 
     // Reproduce issue with active stack having queuePos=1
     // ai/P2.vmap, MMAI_USER + MMAI_USER (last action is invalid, but does not matter)
     static auto recorded = std::array{592, 612, 692, 82, 232, 1282, 752, 852};
+    static bool rendered = false;
 
     MMAI::Export::F_GetAction getactionRec = [](const MMAI::Export::Result * r){
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
@@ -148,8 +185,8 @@ Args parse_args(int argc, char * argv[])
         MMAI::Export::Action act;
 
         if (r->ended) {
-            LOG("user-callback battle ended => sending ACTION_RESET");
-            if (i < recorded.size()) throw std::runtime_error("Trailing actions");
+
+            if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
         } else if (!rendered) {
             rendered = true;
@@ -160,7 +197,7 @@ Args parse_args(int argc, char * argv[])
             rendered = false;
         }
 
-        LOGSTR("user-callback getAction returning: ", std::to_string(act));
+        if (!benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
         return MMAI::Export::Action(act);
     };
 
@@ -168,54 +205,8 @@ Args parse_args(int argc, char * argv[])
     if (benchmark)
         printf("Performance statistics:\n");
 
-    static clock_t t0;
-    static unsigned long steps = 0;
-    static unsigned long resets = 0;
-
-    MMAI::Export::F_GetAction bench = [](const MMAI::Export::Result * r){
-        MMAI::Export::Action act;
-
-        if (steps == 0)
-            t0 = clock();
-
-        steps++;
-
-        if (r->ended) {
-            resets++;
-            switch (resets % 4) {
-            case 0: printf("\r|"); break;
-            case 1: printf("\r\\"); break;
-            case 2: printf("\r-"); break;
-            case 3: printf("\r/"); break;
-            }
-
-            if (resets == 10) {
-                auto s = double(clock() - t0) / CLOCKS_PER_SEC;
-                printf("  steps/s: %-6.0f resets/s: %-6.0f\n", steps/s, resets/s);
-                resets = 0;
-                steps = 0;
-                t0 = clock();
-            }
-
-            std::cout.flush();
-
-            act = MMAI::Export::ACTION_RESET;
-        } else {
-            if (i >= MMAI::Export::N_ACTIONS)
-                i = 0;
-            act = i;
-        }
-
-        i++;
-
-        return MMAI::Export::Action(act);
-    };
-
     return {
-        benchmark
-            ? new MMAI::Export::Baggage(bench)
-            // : new MMAI::Export::Baggage(getactionRec),
-            : new MMAI::Export::Baggage(getaction),
+        new MMAI::Export::Baggage(getaction),
         gymdir,
         omap.at("map"),
         omap.at("loglevel"),

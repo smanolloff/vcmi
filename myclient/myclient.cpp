@@ -178,10 +178,8 @@ void validateArguments(
     //     exit(1);
     // }
 
-    if (!baggage) {
-        if (attackerAI == AI_MMAI_USER || defenderAI == AI_MMAI_USER)
-            throw std::runtime_error("baggage is required in order to use an AI of type " + std::string(AI_MMAI_USER));
-    }
+    if (!baggage)
+        throw std::runtime_error("baggage is required");
 
     if (!baggage->f_getAction)
         throw std::runtime_error("baggage->f_getAction is required");
@@ -322,11 +320,11 @@ void processArguments(
     conflog("global", loglevelGlobal);
     conflog("ai", loglevelAI);
 
-    conflog("global", "trace");
-    conflog("ai", "trace");
-    conflog("network", "error");
-    conflog("mod", "error");
-    conflog("animation", "error");
+    // conflog("global", "trace");
+    // conflog("ai", "trace");
+    // conflog("network", "error");
+    // conflog("mod", "error");
+    // conflog("animation", "error");
 }
 
 void init_vcmi(

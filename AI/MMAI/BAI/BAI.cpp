@@ -105,6 +105,7 @@ namespace MMAI {
         return Export::Result(
             bf.exportState(),
             bf.exportActMask(),
+            Export::Side(cb->battleGetMySide()),
             dmgDealt,
             dmgReceived,
             unitsLost,

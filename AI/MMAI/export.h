@@ -106,6 +106,8 @@ namespace MMAI::Export {
 
     enum ResultType {REGULAR, ANSI_RENDER, UNSET};
 
+    enum class Side : int {ATTACKER, DEFENDER};
+
     struct Result {
         Result() {};
 
@@ -114,11 +116,12 @@ namespace MMAI::Export {
         : type(ResultType::ANSI_RENDER), ansiRender(ansiRender_) {};
 
         // Constructor 1: regular result
-        Result(State state_, ActMask actmask_, int dmgDealt_, int dmgReceived_,
+        Result(State state_, ActMask actmask_, Side side_, int dmgDealt_, int dmgReceived_,
             int unitsLost_, int unitsKilled_, int valueLost_, int valueKilled_
         ) : type(ResultType::REGULAR),
             state(state_),
             actmask(actmask_),
+            side(side_),
             dmgDealt(dmgDealt_),
             dmgReceived(dmgReceived_),
             unitsLost(unitsLost_),
@@ -131,6 +134,7 @@ namespace MMAI::Export {
         : type(ResultType::REGULAR),
           state(other.state),
           actmask(other.actmask),
+          side(other.side),
           dmgDealt(other.dmgDealt),
           dmgReceived(other.dmgReceived),
           unitsLost(other.unitsLost),
@@ -144,6 +148,7 @@ namespace MMAI::Export {
         const ResultType type = ResultType::UNSET;
         const State state = {};
         const ActMask actmask = {};
+        const Side side = Side::ATTACKER;
         const int dmgDealt = 0;
         const int dmgReceived = 0;
         const int unitsLost = 0;
@@ -161,27 +166,16 @@ namespace MMAI::Export {
 
     };
 
-    enum class Side : int {
-        ATTACKER,
-        DEFENDER
-    };
-
     // F_Sys is a CPP function returned by pyclient's `init`
     // GymEnv will invoke it on "close()" calls (or "reset(hard=True)" ?)
     using F_Sys = std::function<void(std::string cmd)>;
 
-    // F_GetAction is optionally called via F_IDGetAction only (see below).
-    // - can be libconnector's getAction (VCMI started as a Gym env)
+    // An F_GetAction type function is called by BAI on each "activeStack()" call.
+    // Such a function is usually be:
+    // - libconnector's getAction (when VCMI is started as a Gym env)
     //   (VcmiEnv->PyConnector->Connector::initBaggage())
-    // - can be a dummy getAction (VCMI started as a standalone program)
-    //   (myclient->main())
+    // - a dummy getAction (when VCMI is started as a standalone program)
     using F_GetAction = std::function<Action(const Result * result)>;
-
-    // F_IDGetAction is called by BAI on each "activeStack()" call.
-    // It is set only manually during init_vcmi(...) depending on the args:
-    // - can be a proxy to F_GetAction (if attacker/defenderAI is AI_MMAI_USER)
-    // - can be libloader's getAction (if attackerAI = AI_MMAI_MODEL)
-    using F_IDGetAction = std::function<Action(Side side, const Result * result)>;
 
     // The CB functions above are all bundled into Baggage struct
     // whose purpose is to be seamlessly transportable through VCMI code
