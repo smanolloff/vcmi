@@ -265,7 +265,6 @@ void processArguments(
     // * "MMAI", which will always create MMAI::BAI battle interfaces
     //   (will pass baggage)
     //
-    Settings(settings.write({"session", "oneGoodAI"}))->Bool() = true;
     if (defenderAI == AI_MMAI_USER) {
         baggage->DefenderBattleAIName = "MMAI";
     } else if (defenderAI == AI_MMAI_MODEL) {
@@ -274,6 +273,8 @@ void processArguments(
         static auto getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
         baggage->f_getActionDefender = getActionDefender;
     } else if (defenderAI == AI_STUPIDAI) {
+        Settings(settings.write({"session", "oneGoodAI"}))->Bool() = false;
+        Settings(settings.write({"server", "playerAI"}))->String() = "VCAI";
         Settings(settings.write({"server", "enemyAI"}))->String() = "StupidAI";
         // baggage->DefenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {

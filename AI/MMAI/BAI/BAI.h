@@ -42,6 +42,9 @@ namespace MMAI {
         std::shared_ptr<CBattleCallback> cb;
         std::shared_ptr<Environment> env;
 
+        std::vector<Export::Action> recorded = std::vector<Export::Action>{592, 612, 692, 82, 232, 1282, 752, 852};
+        int i = 0;
+
         //Previous setting of cb
         bool wasWaitingForRealize;
         bool wasUnlockingGs;

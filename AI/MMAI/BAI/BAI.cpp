@@ -37,6 +37,9 @@ namespace MMAI {
 
         while(true) {
             auto _action = getAction(result.get());
+            // getAction(result.get());
+            // auto _action = recorded.at(i);
+            i++;
             info("BAI4");
             allactions.push_back(_action);
             info("BAI5?!?!?!?!?!?!?!?");

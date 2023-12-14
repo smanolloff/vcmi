@@ -11,6 +11,26 @@ namespace po = boost::program_options;
 #define LOG(msg) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, msg);
 #define LOGSTR(msg, a1) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, (std::string(msg) + a1).c_str());
 
+static MMAI::Export::ActMask lastmask{};
+
+MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
+    auto validActions = std::vector<MMAI::Export::Action>{};
+
+    for (int j = 1; j <= mask.size(); j++) {
+        if (mask[j])
+            validActions.push_back(j);
+    }
+
+    if (validActions.empty())
+        throw std::runtime_error("No valid actions?!");
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(0, validActions.size() - 1);
+    int randomIndex = dist(gen);
+    return validActions[randomIndex];
+}
+
 // "default" is a reserved word => use "fallback"
 std::string values(std::vector<std::string> all, std::string fallback) {
     auto found = false;
@@ -95,26 +115,25 @@ Args parse_args(int argc, char * argv[])
     bool rendered = false;
 
     MMAI::Export::F_GetAction getaction = [&rendered](const MMAI::Export::Result * r){
-        if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
-            std::cout << r->ansiRender << "\n";
-        }
-
         MMAI::Export::Action act;
 
-        if (r->ended) {
+        if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
+            std::cout << r->ansiRender << "\n";
+            act = randomValidAction(lastmask);
+        } else if (r->ended) {
             LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
         } else if (!rendered) {
             rendered = true;
+            lastmask = r->actmask;
             act = MMAI::Export::ACTION_RENDER_ANSI;
         } else {
-            if (i >= MMAI::Export::N_ACTIONS) i = 0;
-            act = i++;
             rendered = false;
+            act = randomValidAction(lastmask);
         }
 
         LOGSTR("user-callback getAction returning: ", std::to_string(act));
-        return MMAI::Export::Action(act);
+        return act;
     };
 
     // Reproduce issue with active stack having queuePos=1
@@ -196,8 +215,8 @@ Args parse_args(int argc, char * argv[])
     return {
         benchmark
             ? new MMAI::Export::Baggage(bench)
-            : new MMAI::Export::Baggage(getactionRec),
-            // : new MMAI::Export::Baggage(getaction),
+            // : new MMAI::Export::Baggage(getactionRec),
+            : new MMAI::Export::Baggage(getaction),
         gymdir,
         omap.at("map"),
         omap.at("loglevel"),
