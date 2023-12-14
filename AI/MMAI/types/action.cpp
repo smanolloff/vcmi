@@ -12,7 +12,7 @@ namespace MMAI {
         auto res = BattleHex();
         auto i = a - EI(NonHexAction::count);
 
-        return (i < 0) ? nullptr : std::make_unique<Hex>(bf->hexes[i / EI(HexAction::count)]);
+        return (i < 0) ? nullptr : std::make_unique<Hex>(bf->hexes.at(i / EI(HexAction::count)));
     }
 
     // static
@@ -37,7 +37,7 @@ namespace MMAI {
         auto ha = (action - EI(NonHexAction::count)) % EI(HexAction::count);
         auto res = std::string{};
 
-        auto slot = hex->stack->attrs[EI(StackAttr::Slot)];
+        auto slot = hex->stack->attrs.at(EI(StackAttr::Slot));
 
         std::string stackstr;
 

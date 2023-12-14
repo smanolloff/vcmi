@@ -122,11 +122,11 @@ namespace MMAI {
 
         for (int i=0; i < BF_SIZE; i++) {
             auto sym = std::string("?");
-            auto &hex = bf.hexes[i];
+            auto &hex = bf.hexes.at(i);
             auto &ham = hex.hexactmask;
 
             auto &row = (i % BF_XMAX == 0)
-                ? (rows.emplace_back() << nummap[(i/BF_XMAX)%10] << "┨" << (i % 2 == 0 ? " " : ""))
+                ? (rows.emplace_back() << nummap.at((i/BF_XMAX)%10) << "┨" << (i % 2 == 0 ? " " : ""))
                 : rows.back();
 
             row << " ";
@@ -138,7 +138,7 @@ namespace MMAI {
             //  state[17] is hex.stack->attr[Att] for hex2
             //  ... etc
             auto ibase = i * (1 + EI(StackAttr::count));
-            auto &nvstate = state[ibase];
+            auto &nvstate = state.at(ibase);
             expect(hex.state == HexState(nvstate.orig), "hex.state=%d != state[%d]=%d", hex.state, ibase, nvstate.orig);
 
             // true if any hexactionmask is true
@@ -154,11 +154,11 @@ namespace MMAI {
             switch(hex.state) {
             case HexState::FREE_REACHABLE: {
                 ASSERT(!anyattr, "FREE_REACHABLE but anyattr is true");
-                ASSERT(ham[EI(HexAction::MOVE)], "FREE_REACHABLE but mask[MOVE] is false");
+                ASSERT(ham.at(EI(HexAction::MOVE)), "FREE_REACHABLE but mask[MOVE] is false");
                 sym = "○";
 
                 for (const auto& [_, hexaction] : EDIR_TO_MELEE) {
-                    if (ham[EI(hexaction)]) {
+                    if (ham.at(EI(hexaction))) {
                         sym = "◎";
                         break;
                     }
@@ -180,9 +180,9 @@ namespace MMAI {
                 ASSERT(anyattr || r.ended, "OCCUPIED but anyattr is false");
                 auto cstack = hex.stack->cstack;
                 ASSERT(cstack, "OCCUPIED hex with nullptr cstack");
-                auto slot = hex.stack->attrs[EI(StackAttr::Slot)];
+                auto slot = hex.stack->attrs.at(EI(StackAttr::Slot));
                 auto enemy = cstack->unitSide() != bf.astack->unitSide();
-                ASSERT(hex.stack->attrs[EI(StackAttr::Side)] == cstack->unitSide(), "wrong unit side");
+                ASSERT(hex.stack->attrs.at(EI(StackAttr::Side)) == cstack->unitSide(), "wrong unit side");
                 auto col = enemy ? enemycol : ourcol;
 
                 if (cstack->unitId() == bf.astack->unitId())
@@ -192,7 +192,7 @@ namespace MMAI {
                 auto myslot = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
                     ? slot : slot + 7;
 
-                stacks[myslot] = hex.stack;
+                stacks.at(myslot) = hex.stack;
                 sym = col + std::to_string(slot+1) + nocol;
 
                 // Check attributes
@@ -200,7 +200,7 @@ namespace MMAI {
                 //      ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
                 for (int j=0; j<EI(StackAttr::count); j++) {
                     // ASSERT(state[ibase+1+j].orig == hex.stack->attrs[j], "attr check failed");
-                    expect(state[ibase+1+j].orig == hex.stack->attrs[j], "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+1+j, state[ibase+1+j].orig, j, hex.stack->attrs[j]);
+                    expect(state.at(ibase+1+j).orig == hex.stack->attrs.at(j), "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+1+j, state[ibase+1+j].orig, j, hex.stack->attrs[j]);
                 }
             }
             break;
@@ -211,7 +211,7 @@ namespace MMAI {
             row << sym;
 
             if (i % BF_XMAX == BF_XMAX-1) {
-                row << (i % 2 == 0 ? " " : "  ") << "┠" << nummap[(i/BF_XMAX)%10];
+                row << (i % 2 == 0 ? " " : "  ") << "┠" << nummap.at((i/BF_XMAX)%10);
             }
         }
 
@@ -268,7 +268,7 @@ namespace MMAI {
                 continue;
             }
 
-            rows[tablestartrow + i] << padLeft(name, 15, ' ') << ": " << value;
+            rows.at(tablestartrow + i) << padLeft(name, 15, ' ') << ": " << value;
         }
 
         //
@@ -336,7 +336,7 @@ namespace MMAI {
         for (int row=1, i=0; row<nrows; row++) {
             auto nstack = row-1;  // stack number 0..13
             auto stackdisplay = std::to_string(nstack % 7 + 1); // stack 1..7
-            auto &stack = stacks[nstack];
+            auto &stack = stacks.at(nstack);
 
             table[row][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
 
@@ -348,14 +348,14 @@ namespace MMAI {
                 if (stack) {
                     auto cstack = stack->cstack;
                     ASSERT(cstack, "NULL cstack");
-                    ASSERT(cstack->unitSide() == stack->attrs[EI(StackAttr::Side)], "stack side mismatch");
+                    ASSERT(cstack->unitSide() == stack->attrs.at(EI(StackAttr::Side)), "stack side mismatch");
                     // at activeStack(), Stack objects are created only for alive CStacks
                     // at end-of-battle, Stack objects of dead CStacks are is still there
                     // => there should be no dead stacks unless battle ends
                     if (!cstack->alive()) {
                         ASSERT(r.ended, "dead stack at " + std::to_string(nstack));
                     } else {
-                        attr = stack->attrs[col-1]; // col starts at 1
+                        attr = stack->attrs.at(col-1); // col starts at 1
                         color = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
                             ? redcol : bluecol;
 

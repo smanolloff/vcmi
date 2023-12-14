@@ -92,7 +92,7 @@ namespace MMAI {
 
             auto heroes = cb->getHeroesInfo();
             assert(!heroes.empty());
-            auto h = heroes[0];
+            auto h = heroes.at(0);
 
             cb->moveHero(h, int3{2,1,0}, false);
         });

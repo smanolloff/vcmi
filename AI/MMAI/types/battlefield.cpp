@@ -21,11 +21,11 @@ namespace MMAI {
         hex.id = Hex::calcId(bh);
         hex.hexactmask.fill(false);
 
-        switch(ainfo[bh.hex]) {
+        switch(ainfo.at(bh.hex)) {
         case EAccessibility::ACCESSIBLE:
             if (rinfo.distances[bh] <= astack->speed()) {
                 hex.state = HexState::FREE_REACHABLE;
-                hex.hexactmask[EI(HexAction::MOVE)] = true;
+                hex.hexactmask.at(EI(HexAction::MOVE)) = true;
             } else {
                 hex.state = HexState::FREE_UNREACHABLE;
             }
@@ -46,7 +46,7 @@ namespace MMAI {
         default:
           throw std::runtime_error(
             "Unexpected hex accessibility for hex "+ std::to_string(bh.hex) + ": "
-              + std::to_string(static_cast<int>(ainfo[bh.hex]))
+              + std::to_string(static_cast<int>(ainfo.at(bh.hex)))
           );
         }
     }
@@ -81,20 +81,20 @@ namespace MMAI {
             if (!nbh.isAvailable())
                 return;
 
-            auto &nhex = hexes[Hex::calcId(nbh)];
+            auto &nhex = hexes.at(Hex::calcId(nbh));
 
             // We can melee attack from nbh (neughbouring hex) if:
             // A. we can *move* to it
             // B. we already stand there
-            if (nhex.hexactmask[EI(HexAction::MOVE)] || astack->getPosition().hex == nbh.hex) {
+            if (nhex.hexactmask.at(EI(HexAction::MOVE)) || astack->getPosition().hex == nbh.hex) {
                 // TODO: remove (expensive check)
                 ASSERT(hex.stack->cstack->isMeleeAttackPossible(astack, hex.stack->cstack, nbh), "expected possible melee attack");
-                hex.hexactmask[EI(hexaction)] = true;
+                hex.hexactmask.at(EI(hexaction)) = true;
             }
         };
 
         auto side = BattleSide::Type(astack->unitSide());
-        auto &[special, tspecial, bspecial] = EDIR_SPECIALS[side];
+        auto &[special, tspecial, bspecial] = EDIR_SPECIALS.at(side);
 
         for (const auto& [edir, hexaction] : EDIR_TO_MELEE) {
             auto nbh = hex.bhex.cloneInDirection(edir, false); // neighbouring bhex
@@ -139,7 +139,7 @@ namespace MMAI {
             astack->speed() > 0 &&
             ainfo.accessible(hex.bhex, true, astack->unitSide())
         ) {
-            hex.hexactmask[EI(HexAction::MOVE)] = true;
+            hex.hexactmask.at(EI(HexAction::MOVE)) = true;
         }
     }
 
@@ -152,7 +152,7 @@ namespace MMAI {
             return;
 
         if (astack->getPosition().hex == hex.bhex.hex)
-            hex.hexactmask[EI(HexAction::MOVE)] = true;
+            hex.hexactmask.at(EI(HexAction::MOVE)) = true;
     }
 
     // static
@@ -168,7 +168,7 @@ namespace MMAI {
         for(int y=0; y < GameConstants::BFIELD_HEIGHT; y++) {
             // 0 and 16 are unreachable "side" hexes => exclude
             for(int x=1; x < GameConstants::BFIELD_WIDTH - 1; x++) {
-                initHex(res[i++], BattleHex(x, y), astack, ainfo, rinfo);
+                initHex(res.at(i++), BattleHex(x, y), astack, ainfo, rinfo);
             }
         }
 
@@ -204,7 +204,7 @@ namespace MMAI {
                     continue;
 
                 if (canshoot)
-                    hex.hexactmask[EI(HexAction::SHOOT)] = true;
+                    hex.hexactmask.at(EI(HexAction::SHOOT)) = true;
 
                 updateMaskForAttackCases(astack, res, hex); // XXX: must come last
             }
@@ -252,7 +252,7 @@ namespace MMAI {
                 throw std::runtime_error("Unexpected StackAttr: " + std::to_string(i));
             }
 
-            attrs[i] = a;
+            attrs.at(i) = a;
         }
 
         return Stack(cstack, attrs);
@@ -263,7 +263,7 @@ namespace MMAI {
         int i = 0;
 
         for (auto &hex : hexes) {
-            res[i++] = NValue(EI(hex.state), 0, EI(HexState::count) - 1);
+            res.at(i++) = NValue(EI(hex.state), 0, EI(HexState::count) - 1);
             auto &stack = hex.stack;
 
             for (int j=0; j<EI(StackAttr::count); j++) {
@@ -288,7 +288,7 @@ namespace MMAI {
                     throw std::runtime_error("Unexpected StackAttr: " + std::to_string(EI(j)));
                 }
 
-                res[i++] = NValue(stack->attrs[j], ATTR_NA, max);
+                res.at(i++) = NValue(stack->attrs.at(j), ATTR_NA, max);
             }
         }
 
@@ -303,8 +303,8 @@ namespace MMAI {
 
         for (int j=0; j<EI(NonHexAction::count); j++) {
             switch (NonHexAction(j)) {
-            break; case NonHexAction::RETREAT: res[i++] = true;
-            break; case NonHexAction::WAIT: res[i++] = !astack->waitedThisTurn;
+            break; case NonHexAction::RETREAT: res.at(i++) = true;
+            break; case NonHexAction::WAIT: res.at(i++) = !astack->waitedThisTurn;
             break; default:
                 throw std::runtime_error("Unexpected NonHexAction: " + std::to_string(j));
             }
@@ -312,7 +312,7 @@ namespace MMAI {
 
         for (auto &hex : hexes) {
             for (auto &m : hex.hexactmask) {
-                res[i++] = m;
+                res.at(i++) = m;
             }
         }
 
@@ -332,7 +332,7 @@ namespace MMAI {
         auto queue = getQueue(cb);
 
         for (auto &hex : hexes) {
-            switch(ainfo[hex.bhex.hex]) {
+            switch(ainfo.at(hex.bhex.hex)) {
             break; case EAccessibility::ACCESSIBLE:
                 hex.state = HexState::FREE_UNREACHABLE;
             break; case EAccessibility::OBSTACLE:
@@ -351,7 +351,7 @@ namespace MMAI {
             break; default:
               throw std::runtime_error(
                 "Unexpected hex accessibility for hex "+ std::to_string(hex.bhex.hex) + ": "
-                  + std::to_string(static_cast<int>(ainfo[hex.bhex.hex]))
+                  + std::to_string(static_cast<int>(ainfo.at(hex.bhex.hex)))
               );
             }
         }
