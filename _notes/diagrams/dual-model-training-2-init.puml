@@ -24,7 +24,6 @@ skinparam sequenceBoxBorderColor #FFF
   !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
 !endfunction
 
-
 !function $lock_acq_fail_text()
   !return "<back:yellow><color:red>acquire lock</color></back>"
 !endfunction
@@ -68,7 +67,6 @@ skinparam sequenceBoxBorderColor #FFF
   !endwhile
   !return $replaced + $txt
 !endfunction
-
 
 !procedure $sharevar($node1, $node2, $txt)
   $node1 <--[#gray]> $node2 : <color:gray>$replace($txt,"\n","</color>\n<color:gray>")</color>
