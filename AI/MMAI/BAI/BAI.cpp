@@ -18,6 +18,24 @@ namespace MMAI {
     void BAI::info(const std::string &text) const { logAi->info("BAI [%s] %s", sidestr, text); }
     void BAI::debug(const std::string &text) const { logAi->debug("BAI [%s] %s", sidestr, text); }
 
+    MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
+        auto validActions = std::vector<MMAI::Export::Action>{};
+
+        for (int j = 1; j <= mask.size(); j++) {
+            if (mask[j])
+                validActions.push_back(j);
+        }
+
+        if (validActions.empty())
+            throw std::runtime_error("No valid actions?!");
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dist(0, validActions.size() - 1);
+        int randomIndex = dist(gen);
+        return validActions[randomIndex];
+    }
+
     void BAI::activeStack(const CStack * astack)
     {
         info("*** activeStack ***");
@@ -36,9 +54,9 @@ namespace MMAI {
         info("BAI3");
 
         while(true) {
-            auto _action = getAction(result.get());
+            // auto _action = getAction(result.get());
             // getAction(result.get());
-            // auto _action = recorded.at(i);
+            auto _action = randomValidAction(result->actmask);
             i++;
             info("BAI4");
             allactions.push_back(_action);
