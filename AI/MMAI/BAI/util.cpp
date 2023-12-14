@@ -31,7 +31,7 @@ namespace MMAI {
         std::string nocol = "\033[0m";
         std::string redcol = "\033[31m"; // red
         std::string bluecol = "\033[34m"; // blue
-        std::string activemod = "\033[107m\033[7m"; // reversed
+        std::string activemod = "\033[107m\033[7m"; // bold+reversed
 
         std::vector<std::stringstream> rows;
 
@@ -63,7 +63,7 @@ namespace MMAI {
             if (alog.attslot >= 0)
                 row << col1 << "#" << alog.attslot + 1 << nocol;
             else
-                row << "(effect)";
+                row << "\033[7m" << "FX" << nocol;
 
             row << " attacks ";
             row << col2 << "#" << alog.defslot + 1 << nocol;
