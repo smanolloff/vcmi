@@ -208,7 +208,7 @@ void processArguments(
     std::string &defenderModel
 ) {
     printf("*********** TEST IN-PROCESS baggage fn *************\n");
-    auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     baggage->f_getActionAttacker(&res);
     printf("***********TEST IN-PROCESS baggage fn: SUCCESS\n");
 
@@ -391,12 +391,12 @@ void init_vcmi(
     preinitDLL(::console);
 
     printf("*********** TEST PREPROCESS baggage fn *************\n");
-    auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     baggage->f_getAction(&res0);
     printf("***********TEST PREPROCESS baggage fn: SUCCESS\n");
 
     printf("*********** TEST PREPROCESS baggage fn *************\n");
-    auto res1 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    auto res1 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     baggage->f_getAction(&res1);
     printf("***********TEST PREPROCESS baggage fn: SUCCESS\n");
 
@@ -413,7 +413,7 @@ void init_vcmi(
         defenderModel
     );
     printf("*********** TEST POSTPROCESS baggage fn *************\n");
-    auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     baggage->f_getAction(&res01);
     printf("***********TEST POSTPROCESS baggage fn: SUCCESS\n");
 
@@ -458,7 +458,7 @@ void init_vcmi(
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
 
     // printf("*********** TEST origbaggage fn *************\n");
-    // auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    // auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     // baggage->f_getAction(&res01);
     // printf("***********TEST restoredbaggage fn: SUCCESS\n");
 
@@ -466,12 +466,12 @@ void init_vcmi(
     // auto restoredbaggage = std::any_cast<MMAI::Export::Baggage*>(baggage_);
 
     // printf("*********** TEST origbaggage fn *************\n");
-    // auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    // auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     // baggage->f_getAction(&res0);
     // printf("***********TEST restoredbaggage fn: SUCCESS\n");
 
     // printf("*********** TEST restoredbaggage fn *************\n");
-    // auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask(),0,0,0,0,0,0);
+    // auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
     // restoredbaggage->f_getAction(&res);
     // printf("***********TEST restoredbaggage fn: SUCCESS\n");
 

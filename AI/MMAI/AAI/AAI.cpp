@@ -40,7 +40,7 @@ namespace MMAI {
         baggage = std::any_cast<Export::Baggage*>(baggage_);
 
         info("TEST baggage fn");
-        auto res = Export::Result(Export::State(), Export::ActMask(),0,0,0,0,0,0);
+        auto res = Export::Result(Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
         baggage->f_getAction(&res);
         info("TEST baggage fn: SUCCESS");
 

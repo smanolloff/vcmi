@@ -16,7 +16,7 @@ static MMAI::Export::ActMask lastmask{};
 MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
     auto validActions = std::vector<MMAI::Export::Action>{};
 
-    for (int j = 1; j <= mask.size(); j++) {
+    for (int j = 1; j < mask.size(); j++) {
         if (mask[j])
             validActions.push_back(j);
     }
@@ -115,22 +115,31 @@ Args parse_args(int argc, char * argv[])
     static bool rendered = false;
 
     MMAI::Export::F_GetAction getaction = [](const MMAI::Export::Result * r){
-        printf("---------- IN BAGGAGE -------------");
+        // printf("---------- IN BAGGAGE -------------\n");
         MMAI::Export::Action act;
 
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
+            // printf("---------- IN BAGGAGE 01 -------------\n");
             std::cout << r->ansiRender << "\n";
             act = randomValidAction(lastmask);
+            // printf("---------- IN BAGGAGE 1 -------------\n");
         } else if (r->ended) {
+            // printf("---------- IN BAGGAGE 02 -------------\n");
             LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
+            // printf("---------- IN BAGGAGE 2 -------------\n");
         } else if (!rendered) {
+            // printf("---------- IN BAGGAGE 03 -------------\n");
             rendered = true;
             lastmask = r->actmask;
+
             act = MMAI::Export::ACTION_RENDER_ANSI;
+            // printf("---------- IN BAGGAGE 3 -------------\n");
         } else {
+            // printf("---------- IN BAGGAGE 04 -------------\n");
             rendered = false;
             act = randomValidAction(lastmask);
+            // printf("---------- IN BAGGAGE 4 -------------\n");
         }
 
         LOGSTR("user-callback getAction returning: ", std::to_string(act));
@@ -213,11 +222,25 @@ Args parse_args(int argc, char * argv[])
     };
 
 
+    auto baggage = new MMAI::Export::Baggage(getaction);
+
+    printf("*********** TEST MAIN baggage fn *************\n");
+    auto res1 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
+    baggage->f_getAction(&res1);
+    printf("***********TEST MAIN baggage fn: SUCCESS\n");
+
+    printf("*********** TEST MAIN baggage fn *************\n");
+    auto res2 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
+    baggage->f_getAction(&res2);
+    printf("***********TEST MAIN baggage fn: SUCCESS\n");
+
+
     return {
-        benchmark
-            ? new MMAI::Export::Baggage(bench)
-            // : new MMAI::Export::Baggage(getactionRec),
-            : new MMAI::Export::Baggage(getaction),
+        // benchmark
+        //     ? new MMAI::Export::Baggage(bench)
+        //     // : new MMAI::Export::Baggage(getactionRec),
+        //     : new MMAI::Export::Baggage(getaction),
+        baggage,
         gymdir,
         omap.at("map"),
         omap.at("loglevel"),
