@@ -39,6 +39,11 @@ namespace MMAI {
 
         baggage = std::any_cast<Export::Baggage*>(baggage_);
 
+        info("TEST baggage fn");
+        auto res = Export::Result(Export::State(), Export::ActMask(),0,0,0,0,0,0);
+        baggage->f_getActionAttacker(&res);
+        info("TEST baggage fn: SUCCESS");
+
         // Attackers are red, defenders are blue
         if (colorstr == "red") {
             battleAiName = baggage->AttackerBattleAIName;
@@ -74,7 +79,9 @@ namespace MMAI {
 
     Export::Action AAI::getNonRenderAction(const Export::Result* result) {
         info("getNonRenderAciton called with result type: " + std::to_string(result->type));
-        auto action = getActionOrig(result);
+        // auto action = getActionOrig(result);
+        auto action = baggage->f_getActionAttacker(result);
+        info("baggage->f_getActionAttacker returned");
         while (action == Export::ACTION_RENDER_ANSI) {
             auto res = Export::Result(bai->renderANSI());
             info("getNonRenderAciton (loop) called with result type: " + std::to_string(res.type));
