@@ -41,7 +41,7 @@ namespace MMAI {
 
         info("TEST baggage fn");
         auto res = Export::Result(Export::State(), Export::ActMask(),0,0,0,0,0,0);
-        baggage->f_getActionAttacker(&res);
+        baggage->f_getAction(&res);
         info("TEST baggage fn: SUCCESS");
 
         // Attackers are red, defenders are blue
