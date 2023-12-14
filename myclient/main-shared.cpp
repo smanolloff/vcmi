@@ -88,7 +88,6 @@ Args parse_args(int argc, char * argv[])
     }
 
     std::string gymdir("/Users/simo/Projects/vcmi-gym");
-    std::string resdir(gymdir + "/vcmi_gym/envs/v0/vcmi/build/bin");
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
@@ -120,7 +119,7 @@ Args parse_args(int argc, char * argv[])
 
     // Reproduce issue with active stack having queuePos=1
     // ai/P2.vmap, MMAI_USER + MMAI_USER (last action is invalid, but does not matter)
-    static auto recorded = std::array{592};
+    static auto recorded = std::array{592, 612, 692, 82, 232, 1282, 752, 852};
 
     MMAI::Export::F_GetAction getactionRec = [&rendered](const MMAI::Export::Result * r){
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
@@ -200,7 +199,6 @@ Args parse_args(int argc, char * argv[])
             : new MMAI::Export::Baggage(getactionRec),
             // : new MMAI::Export::Baggage(getaction),
         gymdir,
-        resdir,
         omap.at("map"),
         omap.at("loglevel"),
         omap.at("loglevel"),

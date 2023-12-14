@@ -20,7 +20,6 @@ const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "e
 void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,
     std::string gymdir,
-    std::string resdir,
     std::string mapname,
     std::string loglevelGlobal,
     std::string loglevelAI,

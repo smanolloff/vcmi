@@ -59,7 +59,7 @@ CZipLoader::CZipLoader(const std::string & mountPoint, const boost::filesystem::
 	mountPoint(mountPoint),
 	files(listFiles(mountPoint, archive))
 {
-	logGlobal->trace("Zip archive loaded, %d files found", files.size());
+	// logGlobal->trace("Zip archive loaded, %d files found", files.size());
 }
 
 std::unordered_map<ResourceID, unz64_file_pos> CZipLoader::listFiles(const std::string & mountPoint, const boost::filesystem::path & archive)

@@ -4,7 +4,6 @@ int main(int argc, char * argv[]) {
     auto [
         baggage_,
         gymdir,
-        resdir,
         map,
         loglevelGlobal,
         loglevelAI,
@@ -17,7 +16,6 @@ int main(int argc, char * argv[]) {
     init_vcmi(
         baggage_,
         gymdir,
-        resdir,
         map,
         loglevelGlobal,
         loglevelAI,

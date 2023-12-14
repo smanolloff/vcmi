@@ -52,19 +52,22 @@ namespace MMAI {
             : baggage->f_getActionDefender;
 
         Export::F_GetAction f_getAction = [this](const Export::Result* result) {
-            auto action = getActionOrig(result);
-            while (action == Export::ACTION_RENDER_ANSI) {
+            info("BAI6");
+            auto act = getActionOrig(result);
+            info("BAI7");
+            while (act == Export::ACTION_RENDER_ANSI) {
                 auto res = Export::Result(renderANSI());
-                action = getActionOrig(result);
+                info("BAI8");
+                act = getActionOrig(&res);
             }
 
-            if (action == Export::ACTION_RESET) {
+            if (act == Export::ACTION_RESET) {
                 info("Will retreat in order to reset battle");
                 ASSERT(!result->ended, "expected active battle");
-                action = Export::ACTION_RETREAT;
+                act = Export::ACTION_RETREAT;
             }
 
-            return action;
+            return act;
         };
 
         myInitBattleInterface(ENV, CB, f_getAction);

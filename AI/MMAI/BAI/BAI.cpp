@@ -23,19 +23,25 @@ namespace MMAI {
         info("*** activeStack ***");
         // print("activeStack called for " + astack->nodeName());
 
+        printf("ASFGDFDSAFSAFSADFSADFASD\n");
+        info("BAI1");
         battlefield = std::make_unique<Battlefield>(cb.get(), astack);
+        info("BAI2");
         result = std::make_unique<Export::Result>(buildResult(*battlefield));
 
         std::shared_ptr<BattleAction> ba;
 
         static_assert(EI(BattleSide::ATTACKER) == EI(Export::Side::ATTACKER));
         static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
+        info("BAI3");
 
         while(true) {
             auto _action = getAction(result.get());
+            info("BAI4");
             allactions.push_back(_action);
+            info("BAI5?!?!?!?!?!?!?!?");
             action = std::make_unique<Action>(_action, battlefield.get());
-            debug("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
+            info("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
             auto actres = buildAction(*battlefield, *action);
 
             ba = actres.battleAction;

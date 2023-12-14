@@ -1,3 +1,5 @@
+add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
+
 add_library(myclient SHARED myclient.cpp myclient.h)
 add_executable(myclient-gui main-shared.cpp main-gui.cpp main.h)
 add_executable(myclient-headless main-shared.cpp main-headless.cpp main.h)

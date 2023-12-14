@@ -55,6 +55,10 @@ std::string mapname;
 MMAI::Export::Baggage* baggage;
 bool headless;
 
+#ifndef VCMI_BIN_DIR
+#error "VCMI_BIN_DIR compile definition needs to be set"
+#endif
+
 //
 // NOTE:
 // This requires 2-player maps where player 1 is HUMAN
@@ -127,7 +131,6 @@ void validateFile(std::string name, std::string path, boost::filesystem::path wd
 
 void validateArguments(
     std::string &gymdir,
-    std::string &resdir,
     std::string &map,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
@@ -150,13 +153,13 @@ void validateArguments(
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
 
-    if (boost::filesystem::is_directory(resdir)) {
-        if (!boost::filesystem::is_regular_file(boost::filesystem::path(resdir) / "AI" / "libMMAI.dylib")) {
-            std::cerr << "Bad value for resdir: exists, but AI/libMMAI.dylib was not found: " << resdir << "\n";
+    if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
+        if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI.dylib")) {
+            std::cerr << "Bad value for VCMI_BIN_DIR: exists, but AI/libMMAI.dylib was not found: " << VCMI_BIN_DIR << "\n";
             exit(1);
         }
     } else {
-        std::cerr << "Bad value for resdir: " << resdir << "\n(not a directory)\n";
+        std::cerr << "Bad value for VCMI_BIN_DIR: " << VCMI_BIN_DIR << "\n(not a directory)\n";
             exit(1);
     }
 
@@ -319,14 +322,14 @@ void processArguments(
 
     conflog("global", "trace");
     conflog("ai", "trace");
-    conflog("network", "trace");
-    // conflog("animation", "trace");
+    conflog("network", "error");
+    conflog("mod", "error");
+    conflog("animation", "error");
 }
 
 void init_vcmi(
     MMAI::Export::Baggage* baggage_,
     std::string gymdir,
-    std::string resdir,
     std::string map,
     std::string loglevelGlobal,
     std::string loglevelAI,
@@ -337,7 +340,6 @@ void init_vcmi(
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
-    // (it muts start_vcmi is called th)
     baggage = baggage_;
 
     // this is used in start_vcmi()
@@ -345,7 +347,6 @@ void init_vcmi(
 
     validateArguments(
         gymdir,
-        resdir,
         map,
         loglevelGlobal,
         loglevelAI,
@@ -355,7 +356,7 @@ void init_vcmi(
         defenderModel
     );
 
-    boost::filesystem::current_path(boost::filesystem::path(resdir));
+    boost::filesystem::current_path(boost::filesystem::path(VCMI_BIN_DIR));
     std::cout.flags(std::ios::unitbuf);
     console = new CConsoleHandler();
 
@@ -377,7 +378,6 @@ void init_vcmi(
 
     processArguments(
         gymdir,
-        // resdir, // already processed - needed for preinitDLL
         map,
         loglevelGlobal,
         loglevelAI,

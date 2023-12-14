@@ -436,7 +436,7 @@ void CClient::initPlayerInterfaces()
 
 		if(!vstd::contains(playerint, color))
 		{
-			logNetwork->info("Preparing interface for player %s", color.getStr());
+			logGlobal->info("Preparing interface for player %s", color.getStr());
 			if(playerInfo.second.isControlledByAI())
 			{
 				bool alliedToHuman = false;
@@ -445,12 +445,12 @@ void CClient::initPlayerInterfaces()
 						alliedToHuman = true;
 
 				auto AiToGive = aiNameForPlayer(playerInfo.second, false, alliedToHuman);
-				logNetwork->info("Player %s will be lead by %s", color.getStr(), AiToGive);
+				logGlobal->info("Player %s will be lead by %s", color.getStr(), AiToGive);
 				installNewPlayerInterface(CDynLibHandler::getNewAI(AiToGive), color);
 			}
 			else
 			{
-				logNetwork->info("Player %s will be lead by human", color.getStr());
+				logGlobal->info("Player %s will be lead by human", color.getStr());
 				installNewPlayerInterface(std::make_shared<CPlayerInterface>(color), color);
 			}
 		}

@@ -1,0 +1,113 @@
+$ rel/bin/myclient-gui --attacker-ai MMAI_USER --defender-ai StupidAI --loglevel error --map ai/generated/A01.vmap
+...
+[0x1dc759300][ai] INFO BAI [A] *** battleStart ***
+[0x1dc759300][ai] DEBUG BAI [A] Side: ATTACKER (0)
+[0x16bf2f000][ai] INFO BAI [A] *** activeStack ***
+<0x16bf2f000>[CPP][main-shared.cpp] (operator()) user-callback getAction returning: 592
+[0x16bf2f000][ai] DEBUG BAI [A] Got action: 592 (Move to (15,4))
+[0x16bf2f000][ai] INFO BAI [A] Action is VALID: Move to (15,4)
+[0x16bf2f000][ai] DEBUG BAI [A] cb->battleMakeUnitAction(*ba)
+[0x16bf2f000][network] TRACE Sending a request "N10LIB_CLIENT10MakeActionE". It'll have an ID=1.
+[0x16bf2f000][network] TRACE Sending a pack of type N10LIB_CLIENT10MakeActionE
+fish: Job 1, 'rel/bin/myclient-gui --attacker…' terminated by signal SIGSEGV (Address boundary error)
+============================
+$ rel/bin/myclient-gui --attacker-ai MMAI_USER --defender-ai StupidAI --loglevel error --map ai/generated/A01.vmap
+...
+[0x1dc759300][ai] INFO BAI [A] *** battleStart ***
+[0x1dc759300][ai] DEBUG BAI [A] Side: ATTACKER (0)
+[0x178087000][ai] INFO BAI [A] *** activeStack ***
+<0x178087000>[CPP][main-shared.cpp] (operator()) user-callback getAction returning: 592
+myclient-gui(33887,0x1dc759300) malloc: *** error for object 0xaa00000184: pointer being freed was not allocated
+[0x178087000][ai] DEBUG BAI [A] Got action: 592 (Move to (15,4))
+myclient-gui(33887,0x1dc759300) malloc: *** set a breakpoint in malloc_error_break to debug
+[0x178087000][ai] INFO BAI [A] Action is VALID: Move to (15,4)
+fish: Job 1, 'rel/bin/myclient-gui --attacker…' terminated by signal SIGABRT (Abort)
+============================
+=> issue is SOMEWHERE BEFORE the "Got action" line!
+============================
+Some more UB - now BAI destructor got called. Not that it gives me much info...
+============================
+[0x1dc759300][ai] INFO BAI [A] *** battleStart ***
+[0x1dc759300][ai] DEBUG BAI [A] Side: ATTACKER (0)
+[0x16e26b000][ai] INFO BAI [A] *** activeStack ***
+ASFGDFDSAFSAFSADFSADFASD
+[0x16e26b000][ai] INFO BAI [A] BAI1
+[0x16e26b000][ai] INFO BAI [A] BAI2
+[0x16e26b000][ai] INFO BAI [A] BAI3
+[0x16e26b000][ai] INFO BAI [A] BAI6
+<0x16e26b000>[CPP][main-shared.cpp] (operator()) user-callback getAction returning: -2
+[0x16e26b000][ai] INFO BAI [A] BAI7
+[0x16e26b000][ai] INFO BAI [A] BAI8
+  ▕₁▕₂▕₃▕₄▕₅▕₆▕₇▕₈▕₉▕₀▕₁▕₂▕₃▕₄▕₅▕
+ ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃          Player: RED
+₁┨  1 ◌ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ 1 ┠₁    Last action: 
+₂┨ ◌ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  ┠₂         Errors: 0
+₃┨  2 2 ◌ ○ ○ ○ ○ ○ ▦ ▦ ◌ ○ ○ ○ 2 ┠₃      DMG dealt: 0
+₄┨ ◌ ○ ○ ○ ○ ○ ○ ○ ▦ ▦ ▦ ◌ ○ ○ ○  ┠₄   Units killed: 0
+₅┨  3 3 ◌ ○ ▦ ▦ ◌ ○ ○ ○ ○ ○ ○ ○ 3 ┠₅   Value killed: 0
+₆┨ 4 ◌ ○ ○ ▦ ▦ ◌ ○ ○ ○ ○ ○ ○ ○ 4  ┠₆   DMG received: 0
+₇┨  5 5 ◌ ○ ○ ▦ ◌ ○ ○ ○ ○ ▦ ◌ 5 5 ┠₇     Units lost: 0
+₈┨ ◌ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ▦ ▦ ◌ ○  ┠₈     Value lost: 0
+₉┨  6 6 ◌ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ 6 ┠₉  Battle result: 
+₀┨ ◌ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○  ┠₀
+₁┨  7 7 ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ 7 ┠₁
+ ┃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┃
+  ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕
+         Stack # |   1   2   3   4   5   6  7*   1   2   3   4   5   6   7
+-----------------+--------------------------------------------------------
+             Qty |  58 109  82 720  12 112   1 518  51 213 726 295 127 317
+          Attack |  16  11  11   6  18  10  31   7  16   9   6   8  11  10
+         Defense |  18  11  12   7  18  14  33   6  14   9   5   7   9   5
+           Shots |   0   0   0   0   0  24   0   0   0   0   0   0  12   0
+       Dmg (min) |  12   2   5   1  25   3  50   1  12   2   1   2   3   2
+       Dmg (max) |  20   7   9   3  50   7  50   3  20   3   3   3   5   4
+              HP |  50  25  30   6 150  30 750   6  50  16   5  15  22  10
+         HP left |  50  25  30   6 150  30 750   6  50  16   5  15  22  10
+           Speed |   8   8   9   4   9   7  17   5   6   9   4   6   5   6
+          Waited |   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+           Queue |   4   5   2  12   3   6   0  10   7   1  13   8  11   9
+-----------------+--------------------------------------------------------
+<0x16e26b000>[CPP][main-shared.cpp] (operator()) user-callback getAction returning: 592
+[0x16e26b000][ai] INFO BAI [A] BAI4
+[0x16e26b000][ai] INFO BAI [A] BAI5?!?!?!?!?!?!?!?
+[0x16e26b000][ai] INFO BAI [A] Got action: 592 (Move to (15,4))
+[0x16e26b000][ai] INFO BAI [A] Action is VALID: Move to (15,4)
+[0x16e26b000][ai] DEBUG BAI [A] cb->battleMakeUnitAction(*ba)
+[0x16e153000][ai] DEBUG BAI [A] *** actionStarted ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: actionStarted called
+[0x1dc759300][global] TRACE Attempt to play sound 136 with file name BUTTON.wav with cache
+[0x1dc759300][global] TRACE Stopping the autofight...
+[0x16e153000][ai] DEBUG BAI [A] *** battleStackMoved ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleStackMoved called
+[0x16e153000][ai] DEBUG BAI [A] *** actionFinished ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: actionFinished called
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: activeStack called for blue battle stack [9]: 213 of creatures.core.obsidianGargoyle.name.plural from slot 2 of armyobj=2
+[0x16e153000][ai] DEBUG AAI [BLUE] *** requestSent ***
+[0x16e153000][ai] DEBUG BAI [A] *** actionStarted ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: actionStarted called
+[0x16e153000][ai] DEBUG BAI [A] *** battleStackMoved ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleStackMoved called
+[0x16e153000][ai] DEBUG BAI [A] *** battleAttack ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleAttack called
+[0x16e153000][ai] INFO BAI [A] *** battleStacksAttacked ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleStacksAttacked called
+[0x16e153000][global] TRACE CBattleConsole message: The Obsidian Gargoyles do 200 damage.
+[0x16e153000][ai] DEBUG BAI [A] *** battleAttack ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleAttack called
+[0x16e153000][ai] INFO BAI [A] *** battleStacksAttacked ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleStacksAttacked called
+[0x16e153000][global] TRACE CBattleConsole message: The Rust Dragon does 105 damage.
+[0x16e153000][global] TRACE CBattleConsole message: 6 Obsidian Gargoyles perish.
+[0x16e153000][ai] DEBUG BAI [A] *** battleSpellCast ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleSpellCast called
+[0x16e153000][bonus] TRACE blue battle stack [9]: 207 of creatures.core.obsidianGargoyle.name.plural from slot 2 of armyobj=2 receives a new bonus: Acid breath -3
+[0x16e153000][ai] DEBUG BAI [A] *** battleStacksEffectsSet ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleStacksEffectsSet called
+[0x16e153000][ai] INFO BAI [A] *** battleStacksAttacked ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: battleStacksAttacked called
+[0x16e153000][ai] DEBUG BAI [A] *** actionFinished ***
+[0x16e153000][ai] TRACE CStupidAI  [0x600000f8f3b8]: actionFinished called
+[0x16e153000][ai] DEBUG AAI [BLUE] *** requestRealized ***
+[0x16e153000][global] TRACE Awaiting command for red battle stack [2]: 82 of creatures.core.pegasus.name.plural from slot 2 of armyobj=1
+[0x16e153000][ai] INFO BAI [A] --- destructor ---
+

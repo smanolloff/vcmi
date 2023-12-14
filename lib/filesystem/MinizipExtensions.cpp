@@ -78,7 +78,7 @@ inline int streamProxyClose(voidpf opaque, voidpf stream)
 
 	auto * actualStream = static_cast<Stream *>(stream);
 
-	logGlobal->trace("Proxy stream closed");
+	// logGlobal->trace("Proxy stream closed");
 
 	actualStream->seek(0);
 
@@ -197,7 +197,7 @@ zlib_filefunc64_def CProxyROIOApi::getApiStructure()
 
 CInputStream * CProxyROIOApi::openFile(const boost::filesystem::path& filename, int mode)
 {
-	logGlobal->trace("CProxyROIOApi: stream opened for %s with mode %d", filename.string(), mode);
+	// logGlobal->trace("CProxyROIOApi: stream opened for %s with mode %d", filename.string(), mode);
 
 	data->seek(0);
 	return data;

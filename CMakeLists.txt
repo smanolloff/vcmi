@@ -216,6 +216,7 @@ endif()
 
 if(ENABLE_DEV_BUILD)
 	add_definitions(-DDEV_BUILD=1)
+	add_definitions(-DVCMI_BUILD_DIR="123123${CMAKE_BINARY_DIR}")
 endif()
 
 if(APPLE_IOS)
@@ -714,6 +715,8 @@ else()
 	set(CPACK_PACKAGE_FILE_NAME "${PACKAGE_FILE_NAME}")
 endif()
 set(CPACK_PACKAGE_VENDOR "VCMI team")
+
+add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
 
 if(WIN32)
 	# Note: due to NSI script generation process all of the backward slashes here are useful

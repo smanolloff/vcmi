@@ -893,7 +893,7 @@ std::unique_ptr<CMap> CMapLoaderJson::loadMap()
 
 std::unique_ptr<CMapHeader> CMapLoaderJson::loadMapHeader()
 {
-	LOG_TRACE(logGlobal);
+	// LOG_TRACE(logGlobal);
 	map = nullptr;
 	std::unique_ptr<CMapHeader> result = std::make_unique<CMapHeader>();
 	mapHeader = result.get();
