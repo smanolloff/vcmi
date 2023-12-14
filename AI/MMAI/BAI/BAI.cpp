@@ -21,8 +21,8 @@ namespace MMAI {
     MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
         auto validActions = std::vector<MMAI::Export::Action>{};
 
-        for (int j = 1; j <= mask.size(); j++) {
-            if (mask[j])
+        for (int j = 1; j < mask.size(); j++) {
+            if (mask.at(j))
                 validActions.push_back(j);
         }
 
@@ -33,7 +33,7 @@ namespace MMAI {
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dist(0, validActions.size() - 1);
         int randomIndex = dist(gen);
-        return validActions[randomIndex];
+        return validActions.at(randomIndex);
     }
 
     void BAI::activeStack(const CStack * astack)
@@ -130,7 +130,7 @@ namespace MMAI {
         // cb->battleGetTurnOrder(origq, QSIZE, 0);
         // auto myq = bf.getQueue(cb.get());
 
-        ASSERT(bf.hexes[Hex::calcId(apos)].stack->attrs[EI(StackAttr::QueuePos)] == 0, "expected 0 queue pos");
+        ASSERT(bf.hexes.at(Hex::calcId(apos)).stack->attrs.at(EI(StackAttr::QueuePos)) == 0, "expected 0 queue pos");
 
         if (!action.hex) {
             switch(NonHexAction(action.action)) {
@@ -153,7 +153,7 @@ namespace MMAI {
         auto &bhex = action.hex->bhex;
         auto &estack = action.hex->stack->cstack;
 
-        if (action.hex->hexactmask[EI(action.hexaction)]) {
+        if (action.hex->hexactmask.at(EI(action.hexaction))) {
             // Action is VALID
             // XXX: Do minimal asserts to prevent bugs with nullptr deref
             //      Server will log any attempted invalid actions otherwise
@@ -174,11 +174,11 @@ namespace MMAI {
             case HexAction::MELEE_BL:
             case HexAction::MELEE_L: {
                 ASSERT(estack, "no target to melee");
-                auto &edir = MELEE_TO_EDIR[action.hexaction];
+                auto &edir = MELEE_TO_EDIR.at(action.hexaction);
                 auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
 
                 if (bf.astack->doubleWide()) {
-                    auto &[special, tspecial, bspecial] = EDIR_SPECIALS[side];
+                    auto &[special, tspecial, bspecial] = EDIR_SPECIALS.at(side);
                     if (edir == special || edir == tspecial || edir == bspecial)
                         nbh = nbh.cloneInDirection(special, false);
                 }
@@ -191,7 +191,7 @@ namespace MMAI {
             case HexAction::MELEE_T:
             case HexAction::MELEE_B: {
                 ASSERT(bf.astack->doubleWide(), "got T/B action for a single-hex stack");
-                auto &[_, tspecial, bspecial] = EDIR_SPECIALS[side];
+                auto &[_, tspecial, bspecial] = EDIR_SPECIALS.at(side);
                 auto &edir = (action.hexaction == HexAction::MELEE_T) ? tspecial : bspecial;
                 auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
                 res.setAction(BattleAction::makeMeleeAttack(bf.astack, bhex, nbh));
@@ -220,7 +220,7 @@ namespace MMAI {
 
         switch(action.hexaction) {
             case HexAction::MOVE: {
-                auto a = ainfo[action.hex->bhex];
+                auto a = ainfo.at(action.hex->bhex);
                 if (a == EAccessibility::ACCESSIBLE) {
                     ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented move to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_UNREACHABLE);
@@ -283,14 +283,14 @@ namespace MMAI {
                         res.addError(ErrType::INVALID_DIR);
                         break;
                     }
-                    auto &[_, tspecial, bspecial] = EDIR_SPECIALS[side];
+                    auto &[_, tspecial, bspecial] = EDIR_SPECIALS.at(side);
                     auto &edir = (action.hexaction == HexAction::MELEE_T) ? tspecial : bspecial;
                     nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
                 } else {
-                    auto &edir = MELEE_TO_EDIR[action.hexaction];
+                    auto &edir = MELEE_TO_EDIR.at(action.hexaction);
                     nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
                     if (bf.astack->doubleWide()) {
-                        auto &[special, tspecial, bspecial] = EDIR_SPECIALS[side];
+                        auto &[special, tspecial, bspecial] = EDIR_SPECIALS.at(side);
                         if (edir == special || edir == tspecial || edir == bspecial)
                             nbh = nbh.cloneInDirection(special, false);
                     }
@@ -352,7 +352,7 @@ namespace MMAI {
         auto ainfo = cb->getAccesibility();
         auto rinfo = cb->getReachability(astack);
 
-        info << "ainfo[bhex]=" << EI(ainfo[action.hex->bhex.hex]) << "\n";
+        info << "ainfo[bhex]=" << EI(ainfo.at(action.hex->bhex.hex)) << "\n";
         info << "rinfo.distances[bhex] <= astack->speed(): " << (rinfo.distances[action.hex->bhex.hex] <= astack->speed()) << "\n";
 
         info << "action.hex->name = " << action.hex->name() << "\n";
@@ -384,7 +384,7 @@ namespace MMAI {
 
         if (nbh) {
             info << "nbh->hex=" << nbh->hex << "\n";
-            info << "ainfo[nbh]=" << EI(ainfo[*nbh]) << "\n";
+            info << "ainfo[nbh]=" << EI(ainfo.at(*nbh)) << "\n";
             info << "rinfo.distances[nbh] <= astack->speed(): " << (rinfo.distances[*nbh] <= astack->speed()) << "\n";
 
             if (estack)
