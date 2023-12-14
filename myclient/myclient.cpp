@@ -207,11 +207,6 @@ void processArguments(
     std::string &attackerModel,
     std::string &defenderModel
 ) {
-    printf("*********** TEST IN-PROCESS baggage fn *************\n");
-    auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    baggage->f_getActionAttacker(&res);
-    printf("***********TEST IN-PROCESS baggage fn: SUCCESS\n");
-
     // Notes on AI creation
     //
     //
@@ -247,13 +242,6 @@ void processArguments(
     //
     if (attackerAI == AI_MMAI_USER) {
         baggage->AttackerBattleAIName = "MMAI";
-
-        // // this is callable from BAI. The original f_getActionAttacker IS NOT!
-        // baggage->f_getActionAttacker = [](const MMAI::Export::Result* r) {
-        //     printf("WRAPPER GET_ACTION_ATTACKER CALLED!!!\n");
-        //     return 1;
-        // };
-
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->AttackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
@@ -282,8 +270,7 @@ void processArguments(
     } else if (defenderAI == AI_MMAI_MODEL) {
         baggage->DefenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        static auto getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
-        baggage->f_getActionDefender = getActionDefender;
+        baggage->f_getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
     } else if (defenderAI == AI_STUPIDAI) {
         Settings(settings.write({"session", "oneGoodAI"}))->Bool() = true;
         Settings(settings.write({"server", "enemyAI"}))->String() = "StupidAI";
@@ -390,18 +377,6 @@ void init_vcmi(
     // XXX: apparently this needs to be invoked before Settings() stuff
     preinitDLL(::console);
 
-    printf("*********** TEST PREPROCESS baggage fn *************\n");
-    auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    baggage->f_getAction(&res0);
-    printf("***********TEST PREPROCESS baggage fn: SUCCESS\n");
-
-    printf("*********** TEST PREPROCESS baggage fn *************\n");
-    auto res1 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    baggage->f_getAction(&res1);
-    printf("***********TEST PREPROCESS baggage fn: SUCCESS\n");
-
-
-
     processArguments(
         gymdir,
         map,
@@ -412,10 +387,6 @@ void init_vcmi(
         attackerModel,
         defenderModel
     );
-    printf("*********** TEST POSTPROCESS baggage fn *************\n");
-    auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    baggage->f_getAction(&res01);
-    printf("***********TEST POSTPROCESS baggage fn: SUCCESS\n");
 
     Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
     Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
@@ -456,27 +427,7 @@ void init_vcmi(
 
     CCS = new CClientState();
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-
-    // printf("*********** TEST origbaggage fn *************\n");
-    // auto res01 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    // baggage->f_getAction(&res01);
-    // printf("***********TEST restoredbaggage fn: SUCCESS\n");
-
-    auto anybaggage = std::make_any<MMAI::Export::Baggage*>(baggage);
-    // auto restoredbaggage = std::any_cast<MMAI::Export::Baggage*>(baggage_);
-
-    // printf("*********** TEST origbaggage fn *************\n");
-    // auto res0 = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    // baggage->f_getAction(&res0);
-    // printf("***********TEST restoredbaggage fn: SUCCESS\n");
-
-    // printf("*********** TEST restoredbaggage fn *************\n");
-    // auto res = MMAI::Export::Result(MMAI::Export::State(), MMAI::Export::ActMask{false,false,true},0,0,0,0,0,0);
-    // restoredbaggage->f_getAction(&res);
-    // printf("***********TEST restoredbaggage fn: SUCCESS\n");
-
-
-    CSH = new CServerHandler(anybaggage);
+    CSH = new CServerHandler(std::make_any<MMAI::Export::Baggage*>(baggage));
 
     if (!headless) {
         CCS->videoh = new CEmptyVideoPlayer();
