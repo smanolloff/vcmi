@@ -60,11 +60,16 @@ namespace MMAI {
                 col2 = ourcol;
             }
 
-            row << col1 << "#" << alog.attslot + 1 << nocol;
+            if (alog.attslot >= 0)
+                row << col1 << "#" << alog.attslot + 1 << nocol;
+            else
+                row << "(effect)";
+
             row << " attacks ";
             row << col2 << "#" << alog.defslot + 1 << nocol;
             row << " for " << alog.dmg << " dmg";
             row << " (kills: " << alog.units << ", value: " << alog.value << ")";
+
             rows.push_back(std::move(row));
         }
 

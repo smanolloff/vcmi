@@ -408,8 +408,11 @@ namespace MMAI {
             auto * defender = cb->battleGetStackByID(elem.stackAttacked, false);
             auto * attacker = cb->battleGetStackByID(elem.attackerID, false);
 
+            ASSERT(defender, "defender is NULL");
+
             auto al = AttackLog(
-                attacker->unitSlot(),
+                // XXX: attacker can be NULL when an effect does dmg (eg. Acid)
+                attacker ? attacker->unitSlot() : SlotID(-1),
                 defender->unitSlot(),
                 defender->getOwner() == cb->getPlayerID(),
                 elem.damageAmount,

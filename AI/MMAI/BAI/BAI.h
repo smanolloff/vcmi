@@ -23,7 +23,7 @@ namespace MMAI {
         //  we would count it as our dmg dealt - that is OK (we have "tricked" the enemy!)
         const bool isOurStackAttacked;
 
-        const SlotID attslot;
+        const SlotID attslot;  // XXX: can be INVALID when dmg is not from creature
         const SlotID defslot;
         const int dmg;
         const int units;
