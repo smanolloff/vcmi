@@ -387,6 +387,16 @@ void init_vcmi(
         defenderModel
     );
 
+    // printf("gymdir: %s\n", gymdir.c_str());
+    // printf("map: %s\n", map.c_str());
+    // printf("loglevelGlobal: %s\n", loglevelGlobal.c_str());
+    // printf("loglevelAI: %s\n", loglevelAI.c_str());
+    // printf("attackerAI: %s\n", attackerAI.c_str());
+    // printf("defenderAI: %s\n", defenderAI.c_str());
+    // printf("attackerModel: %s\n", attackerModel.c_str());
+    // printf("defenderModel: %s\n", defenderModel.c_str());
+    // printf("headless: %d\n", headless);
+
     Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
     Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
     Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;

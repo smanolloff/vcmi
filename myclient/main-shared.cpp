@@ -13,6 +13,14 @@ namespace po = boost::program_options;
 
 static std::array<MMAI::Export::ActMask, 2> lastmasks{};
 
+MMAI::Export::Action firstValidAction(const MMAI::Export::ActMask &mask) {
+    for (int j = 1; j < mask.size(); j++)
+        if (mask[j]) return j;
+
+    return -5;
+}
+
+
 MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
     auto validActions = std::vector<MMAI::Export::Action>{};
 
@@ -204,7 +212,7 @@ Args parse_args(int argc, char * argv[])
 
     if (benchmark) {
         printf("Benchmark:\n");
-        printf("* Map: %s", omap.at("map").c_str());
+        printf("* Map: %s\n", omap.at("map").c_str());
         printf("* Attacker AI: %s", omap.at("attacker-ai").c_str());
         omap.at("attacker-ai") == "MMAI_MODEL"
             ? printf(" %s\n", omap.at("attacker-model").c_str())
