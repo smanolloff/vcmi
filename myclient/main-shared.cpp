@@ -123,7 +123,7 @@ Args parse_args(int argc, char * argv[])
         MMAI::Export::Action act;
         auto side = static_cast<int>(r->side);
 
-        if (steps == 0) {
+        if (steps == 0 && benchmark) {
             t0 = clock();
             benchside = side;
         }
@@ -147,7 +147,7 @@ Args parse_args(int argc, char * argv[])
 
                 if (resets == 10) {
                     auto s = double(clock() - t0) / CLOCKS_PER_SEC;
-                    printf("  steps/s: %-6.0f resets/s: %-6.0f\n", steps/s, resets/s);
+                    printf("  steps/s: %-6.0f resets/s: %-6.2f\n", steps/s, resets/s);
                     resets = 0;
                     steps = 0;
                     t0 = clock();
@@ -202,8 +202,21 @@ Args parse_args(int argc, char * argv[])
     };
 
 
-    if (benchmark)
-        printf("Performance statistics:\n");
+    if (benchmark) {
+        printf("Benchmark:\n");
+        printf("* Map: %s", omap.at("map").c_str());
+        printf("* Attacker AI: %s", omap.at("attacker-ai").c_str());
+        omap.at("attacker-ai") == "MMAI_MODEL"
+            ? printf(" %s\n", omap.at("attacker-model").c_str())
+            : printf("\n");
+
+        printf("* Defender AI: %s", omap.at("defender-ai").c_str());
+        omap.at("defender-ai") == "MMAI_MODEL"
+            ? printf(" %s\n", omap.at("defender-model").c_str())
+            : printf("\n");
+
+        printf("\n");
+    }
 
     return {
         new MMAI::Export::Baggage(getaction),
