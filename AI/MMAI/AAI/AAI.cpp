@@ -130,19 +130,19 @@ namespace MMAI {
     void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(static_cast<int>(queryID)) + ") ***");
 
-        // Null action means the battle ended without us receiving a turn
-        // (can only happen if we are DEFENDER)
 
         if (!bai) {
             ASSERT(getBattleAIName() != "MMAI", "no bai, but battleAIName is MMAI");
             // We are not MMAI, nothing to do
         } else if (!bai->action) {
-            // Battle ended without us receiving a turn
+            // Null action means the battle ended without us receiving a turn
             // Happens if the enemy immediately retreats (we won)
             // or if the enemy one-shots us (we lost)
             // Nothing to do
         } else if (bai->action->action != Export::ACTION_RETREAT) {
             // TODO: must add check that *we* have retreated and not the enemy
+            // XXX: ^^^ still relevant?
+
             // battleEnd after MOVE
             // => call f_getAction (expecting RESET)
 
@@ -150,7 +150,7 @@ namespace MMAI {
             // (in case there are render actions)
             bai->battleEnd(br, queryID);
 
-            info("<BATTLE_END> Will ASK for an action");
+            info("<BATTLE_END> Will request a non-render action");
             auto action = getNonRenderAction(bai->result.get());
             info("<BATTLE_END> Got action: " + std::to_string(action));
 
@@ -167,12 +167,12 @@ namespace MMAI {
                 cb->selectionMade(1, queryID);
             });
         } else {
-            // My patch in CGameHandler::endBattle allows replay even
+            // My patch in CGameHandler::endBattle allows replay even when
             // both sides are non-neutrals. Could not figure out how to
             // send the query only to the attacker.
             // ASSERT(queryID == -1, "QueryID is not -1, but we are DEFENDER");
 
-            // The defender should not answer "replay" queries
+            // The defender should not answer replay battle queries
             info("Ignoring query " + std::to_string(queryID));
         }
 

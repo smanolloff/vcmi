@@ -101,7 +101,7 @@ $cond_wait(C2)
 == CASE A => A ==
 
 -> E1 ++ : step(action)
-E1 -> C1 ++ : step(action, "A")
+E1 -> C1 ++ : step("A", action)
 
 $lock_acq_direct(C1)
 
@@ -110,14 +110,10 @@ note over C1: assert(state == OBS_A)
 C1 -> env ++ : step(action)
 env -> C1 -- : obs, info
 
-$sharevar("self.obs = obs")
-
 note over C1
 info["side"] == "A"
  => flow **SAME**
 end note
-
-$sharevar("state == OBS_A")
 
 C1 --> E1 -- : obs
 [<-- E1 -- : obs
