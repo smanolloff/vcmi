@@ -4,6 +4,7 @@
 #include "battle/BattleHex.h"
 #include "types/hexaction.h"
 #include "types/stack.h"
+#include "vcmi/Creature.h"
 #include "vstd/CLoggerBase.h"
 #include <stdexcept>
 
@@ -88,6 +89,8 @@ namespace MMAI {
         int dmgDealt = 0;
         int unitsKilled = 0;
         int valueKilled = 0;
+        int side0ArmyValue = 0;
+        int side1ArmyValue = 0;
 
         for (auto &al : attackLogs) {
             if (al.isOurStackAttacked) {
@@ -102,6 +105,13 @@ namespace MMAI {
             }
         }
 
+        for (auto &stack : cb->battleGetStacks()) {
+            auto value = stack->getCount() * stack->unitType()->getAIValue();
+            stack->unitSide() == 0
+                ? side0ArmyValue += value
+                : side1ArmyValue += value;
+        }
+
         return Export::Result(
             bf.exportState(),
             bf.exportActMask(),
@@ -111,7 +121,9 @@ namespace MMAI {
             unitsLost,
             unitsKilled,
             valueLost,
-            valueKilled
+            valueKilled,
+            side0ArmyValue,
+            side1ArmyValue
         );
     }
 

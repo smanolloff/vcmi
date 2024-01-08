@@ -117,7 +117,8 @@ namespace MMAI::Export {
 
         // Constructor 1: regular result
         Result(State state_, ActMask actmask_, Side side_, int dmgDealt_, int dmgReceived_,
-            int unitsLost_, int unitsKilled_, int valueLost_, int valueKilled_
+            int unitsLost_, int unitsKilled_, int valueLost_, int valueKilled_,
+            int side0ArmyValue_, int side1ArmyValue_
         ) : type(ResultType::REGULAR),
             state(state_),
             actmask(actmask_),
@@ -127,7 +128,9 @@ namespace MMAI::Export {
             unitsLost(unitsLost_),
             unitsKilled(unitsKilled_),
             valueLost(valueLost_),
-            valueKilled(valueKilled_) {};
+            valueKilled(valueKilled_),
+            side0ArmyValue(side0ArmyValue_),
+            side1ArmyValue(side1ArmyValue_) {};
 
         // Constructor 2 (move constructor): regular result (battle ended)
         Result(Result &&other, bool victory_)
@@ -141,6 +144,8 @@ namespace MMAI::Export {
           unitsKilled(other.unitsKilled),
           valueLost(other.valueLost),
           valueKilled(other.valueKilled),
+          side0ArmyValue(other.side0ArmyValue),
+          side1ArmyValue(other.side1ArmyValue),
           ended(true),
           victory(victory_) {};
 
@@ -155,6 +160,8 @@ namespace MMAI::Export {
         const int unitsKilled = 0;
         const int valueLost = 0;
         const int valueKilled = 0;
+        const int side0ArmyValue = 0;
+        const int side1ArmyValue = 0;
         const std::string ansiRender = "";
         const bool ended = false;
         const bool victory = false;
