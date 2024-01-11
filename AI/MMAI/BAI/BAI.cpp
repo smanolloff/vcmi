@@ -9,9 +9,6 @@
 #include <stdexcept>
 
 namespace MMAI {
-    // HNS = short for HexNState
-    #define HNS(hs) hexStateNMap.at(static_cast<size_t>(HexState::hs))
-
     using ErrType = Export::ErrType;
 
     void BAI::error(const std::string &text) const { logAi->error("BAI [%s] %s", sidestr, text); }
@@ -440,8 +437,15 @@ namespace MMAI {
             }
         }
 
-        if (shouldupdate)
+        if (shouldupdate) {
+            if (!battlefield) {
+                // Enemy was first and attacked us before our first turn
+                // => battlefield will be nullptr in this case
+                auto stack = cb->battleGetStacks(CBattleCallback::ONLY_MINE).at(0);
+                battlefield = std::make_unique<Battlefield>(cb.get(), stack);
+            }
             battlefield->offTurnUpdate(cb.get());
+        }
     }
 
     void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side_, bool replayAllowed) {
