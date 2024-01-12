@@ -49,6 +49,7 @@ namespace MMAI {
         static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
 
         while(true) {
+            // printf("%s\n", renderANSI().c_str());
             auto _action = getAction(result.get());
             allactions.push_back(_action);
             action = std::make_unique<Action>(_action, battlefield.get());

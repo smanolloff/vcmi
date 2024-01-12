@@ -60,7 +60,8 @@ Args parse_args(int argc, char * argv[])
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
     auto omap = std::map<std::string, std::string> {
         {"map", "ai/P1.vmap"},
-        {"loglevel", "debug"},
+        {"loglevel-global", "error"},
+        {"loglevel-ai", "debug"},
         {"attacker-ai", AI_MMAI_USER},
         {"defender-ai", AI_STUPIDAI},
         {"attacker-model", "AI/MMAI/models/model.zip"},
@@ -87,8 +88,10 @@ Args parse_args(int argc, char * argv[])
             ("Path to model.zip (" + omap.at("attacker-model") + "*)").c_str())
         ("defender-model", po::value<std::string>()->value_name("<FILE>"),
             ("Path to model.zip (" + omap.at("defender-model") + "*)").c_str())
-        ("loglevel", po::value<std::string>()->value_name("<LVL>"),
-            values(LOGLEVELS, omap.at("loglevel")).c_str())
+        ("loglevel-global", po::value<std::string>()->value_name("<LVL>"),
+            values(LOGLEVELS, omap.at("loglevel-global")).c_str())
+        ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
+            values(LOGLEVELS, omap.at("loglevel-ai")).c_str())
         ("benchmark", po::bool_switch(&benchmark),
             ("Measure performance"));
 
@@ -230,8 +233,8 @@ Args parse_args(int argc, char * argv[])
         new MMAI::Export::Baggage(getaction),
         gymdir,
         omap.at("map"),
-        omap.at("loglevel"),
-        omap.at("loglevel"),
+        omap.at("loglevel-global"),
+        omap.at("loglevel-ai"),
         omap.at("attacker-ai"),
         omap.at("defender-ai"),
         omap.at("attacker-model"),
