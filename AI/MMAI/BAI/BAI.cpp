@@ -78,7 +78,7 @@ namespace MMAI {
 
             if (ba) {
                 ASSERT(actres.errmask == 0, "unexpected errmask: " + std::to_string(actres.errmask));
-                info("Action is VALID: " + action->name());
+                debug("Action is VALID: " + action->name());
                 break;
             } else {
                 ASSERT(actres.errmask > 0, "unexpected errmask: " + std::to_string(actres.errmask));

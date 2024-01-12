@@ -67,9 +67,9 @@ namespace MMAI {
         // A wrapper around baggage->idGetAction
         // It ensures special handling for non-game actions (eg. render, reset)
         getActionWrapper = [this](const Export::Result* result) {
-            info("getActionWrapper called with result type: " + std::to_string(result->type));
+            debug("getActionWrapper called with result type: " + std::to_string(result->type));
             auto action = getNonRenderAction(result);
-            info("getActionWrapper received action: " + std::to_string(action));
+            debug("getActionWrapper received action: " + std::to_string(action));
 
             if (action == Export::ACTION_RESET) {
                 // AAI::getAction is called only by BAI, only during battle
@@ -166,7 +166,7 @@ namespace MMAI {
             // (in case there are render actions)
             bai->battleEnd(br, queryID);
 
-            info("<BATTLE_END> Will request a non-render action");
+            debug("<BATTLE_END> Will request a non-render action");
             auto action = getNonRenderAction(bai->result.get());
             info("<BATTLE_END> Got action: " + std::to_string(action));
 
