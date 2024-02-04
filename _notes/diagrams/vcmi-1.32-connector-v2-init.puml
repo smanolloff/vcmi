@@ -89,8 +89,8 @@ end box
 
 box T2
 participant "//cppconnector//\n$desc(T2)" as cpp2
-participant "//AAI//" as aai
-participant "//BAI//" as bai
+participant "VCMI\n//Adventure Interface (AAI)//" as aai
+participant "VCMI\n//Battle Interface (BAI)//" as bai
 participant "//VCMI Client//" as vcmiclient
 end box
 
@@ -107,31 +107,31 @@ $lock_acq_direct(cpp1)
 cpp1 -> vcmi1 ++ : init
 vcmi1 -> vcmi1 : SDL init
 vcmi1 --> cpp1 -- : F_Sys
-cpp1 --> vcmi3 ++ : start(cbprovider)
+cpp1 --> vcmi3 ++ : start(baggage)
 
 $cond_wait(cpp1)
 
-vcmi3 -> vcmiclient ++ : start(cbprovider)
+vcmi3 -> vcmiclient ++ : start(baggage)
 note over vcmiclient : unknown activity\ndeactivated for clarity
 deactivate vcmiclient
 vcmi3 -> vcmi3 -- : loop
 note over vcmi3 : active forever\ndeactivated for clarity
 
-vcmiclient o-> aai ** : <<new>>
+vcmiclient o-> aai ** : <<new>>(baggage)
 vcmiclient o-> aai ++ : initGameInterface
 
 aai --> vcmiclient -- :
 
 vcmiclient o-> aai ++ : battleStart
 |||
-aai -> bai ** : <<new>>
+aai -> bai ** : <<new>>(baggage)
 
 aai -> bai ++ : battleStart
 bai --> aai -- :
 aai --> vcmiclient -- :
 vcmiclient o-> bai ++ : activeStack
 bai -> aai ++ : getAction(Result)
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+aai -> cpp2 ++ : baggage.GetAction(Result)
 $lock_acq_direct(cpp2)
 $sharevar(P_Result)
 $cond_switch(cpp2, cpp1)

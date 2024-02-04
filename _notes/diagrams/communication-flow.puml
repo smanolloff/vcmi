@@ -2,10 +2,7 @@
 
 skinparam defaultTextAlignment center
 
-title "VCMI-1.3.2 packet routing"
-
-' use "w"s to stretch image (VS code preview does not show full diagram)
-title "VCMI-1.3.2 boot process wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+title "VCMI-1.3.2 activity diagram for a server-side incoming LobbyClientConnected packet"
 
 !procedure $node($code, $file, $line, $fun)
   :""$code""
@@ -45,8 +42,8 @@ partition $ms("pack.visit(visitor)") {
   partition $ms("apply = applier->getApplier(...)") {
     $node("CBaseForServerApply * apply = applier->getApplier(typeList.getTypeID(pack.get()))", "CVCMIServer.cpp", 465, "CVCMIServer::handleReceivedPack")
     note right
-    ""pack"" is actually a ""std::unique_ptr"" (ie. smart, garbage-collectable pointer)
-    "pack.get()" returns the pointer to the actual object
+    ""pack"" is actually a ""std::unique_ptr"" (ie. smart pointer)
+    "pack.get()" returns the actual (raw) pointer to the object
     end note
 
     $node("getTypeID(getTypeInfo(ptr))", "CTypeList.h", 146, "template CTypeList::getTypeID")
@@ -106,8 +103,8 @@ partition $ms("pack.visit(visitor)") {
       even if set to ""false"" here, later it may get set to true (before the check)
 
       Also, the function name `isForServer` is confusing here, as it actually
-      checks if the packet is for a //game// server. A more appropriate name
-      would be "isForGameServer" or "isForGH" (GameHandler)
+      checks if the packet is for a //game// server (as opposed to lobby server, for example).
+      A more appropriate name would be "isForGameServer" or "isForGH" (GameHandler)
       end note
 
       :""this.visitTyped(visitor)                  "" $src("NetPacksLib.cpp:50", "CPack::visit")
@@ -115,7 +112,7 @@ partition $ms("pack.visit(visitor)") {
 
       note right
       ""visitTyped"" is implemented by the **leaf** sub-classes like ""LobbyClientConnected""
-      (as opposed to ""visitBasic"" implemented by **mid** sub-classes like ""CPackForLobby"")
+      ""visitBasic"" (called earlier) is implemented by **mid** sub-classes like ""CPackForLobby""
 
       The ""visitTyped"" is not always called: depends on the ""callTyped"" attribute
       end note
@@ -134,8 +131,9 @@ partition $ms("pack.visit(visitor)") {
 
     $node("ApplyOnServerNetPackVisitor applier(*srv)", "CVCMIServer.cpp", 89, "CApplyOnServer::applyOnServerBefore")
     note right
-    Compare to previous two ""visitor""s -- here the visitor is (again) different
-    This will force different behaviour of ""pack->visit""
+    Compare this visitor (named ""applier"" this time) to the previous ""visitors"" above
+    Once again, ""pack->visit(...)"" will be called, but since it has different implementations
+    for the different visitor types, the behaviour will be different.
     end note
 
     partition $ms("pack.visit(applier)") {
@@ -161,7 +159,9 @@ partition $ms("pack.visit(visitor)") {
 
       $node("...", "NetPacksLobbyServer.cpp", "75:110", "ApplyOnServerNetPackVisitor::visitLobbyClientConnected")
       note right
-      Core processing logic for this packet
+      Finally, the core processing logic for this packet
+      In this case, registers the new client, restores a previous
+      state if this is a re-connect after a lost connection, etc.
       end note
     }
 

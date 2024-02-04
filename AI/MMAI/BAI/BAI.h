@@ -77,8 +77,26 @@ namespace MMAI {
 
         std::string renderANSI();
 
+        static std::string PadLeft(const std::string& input, size_t desiredLength, char paddingChar);
+        static std::string PadRight(const std::string& input, size_t desiredLength, char paddingChar);
+
+        static std::tuple<std::array<Hex, BF_SIZE>, const CStack*> Reconstruct(
+            const Export::Result &r,
+            const std::shared_ptr<CBattleCallback> cb
+        );
+
+        static void Verify(const Battlefield &bf, std::array<Hex, BF_SIZE> &hexes, const CStack* astack);
+
+        static std::string Render(
+            const Export::Result &r,
+            const std::shared_ptr<CBattleCallback> cb,
+            const Battlefield &bf,
+            const Action *action,
+            const std::vector<AttackLog> attackLogs
+        );
+
         // DEBUG ONLY
-        std::string debugInfo(Action &action, const CStack* astack, BattleHex* nbh);
+        std::string debugInfo(Action &action, const CStack *astack, BattleHex *nbh);
         // DEBUG ONLY
         std::vector<Export::Action> allactions;
 

@@ -6,12 +6,7 @@ participant Server as server
 participant Client as client
 actor Player as player
 
-note across
-TODO: battle start
-end note
-
-
-== ==
+== (in battle) ==
 
 autoactivate on
 
@@ -26,14 +21,6 @@ server -> client: StartAction
 server -> client: BattleStackMoved
 server -> client: EndAction
 server -> client: PackageApplied
-
-== ==
-
-note across
-TODO: battle end
-end note
-
-
 
 
 @enduml

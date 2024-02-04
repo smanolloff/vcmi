@@ -76,6 +76,11 @@ skinparam sequenceBoxBorderColor #FFF
   !return $replace($txt, "\n", %newline())
 !endfunction
 
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+
 box T1
 participant "//Env//" as env
 participant "//pyconnector//" as py
@@ -84,8 +89,8 @@ end box
 
 box T2
 participant "//cppconnector//\n$desc(T2)" as cpp2
-participant "//AAI//" as aai
-participant "//BAI//" as bai
+participant "VCMI\n//Adventure Interface (AAI)//" as aai
+participant "VCMI\n//Battle Interface (BAI)//" as bai
 participant "//VCMI Client//" as vcmiclient
 end box
 
@@ -96,10 +101,10 @@ activate env
 vcmiclient o-> bai ++ : activeStack
 activate cpp1 #red
 bai -> aai ++ : getAction(Result)
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+aai -> cpp2 ++ : baggage.GetAction(Result)
 $cond_wait(cpp2)
 $lock_acq_latent(cpp1)
-cpp1 --> py -- : $lock_rel(2)\n<<P_InitResult>>
+cpp1 --> py -- : <<P_InitResult>>
 py --> env -- : <<obs>>
 [<-- env -- : obs
 
@@ -115,7 +120,7 @@ cpp2 --> aai -- : <<Action>>\n$desc("render")
 aai --> bai ++ : bai.render()
 note right: same thread\nrecursive call
 bai --> aai -- : <<string>>
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("render data")
+aai -> cpp2 ++ : baggage.GetAction(Result)\n$desc("contains render data")
 $lock_acq_direct(cpp2)
 cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
 $cond_switch(cpp2, cpp1)

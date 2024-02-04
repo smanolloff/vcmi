@@ -1,12 +1,13 @@
 @startuml "vcmi-1.32-routing-server-battle-c4"
 
 !include <C4/C4_Container>
+!include <tupadr3/font-awesome/arrow_circle_right>
 
 HIDE_STEREOTYPE()
 LAYOUT_LEFT_RIGHT()
 skinparam DefaultFontName monospaced
 
-title "VCMI-1.3.2 packet server routing (battle)"
+title "VCMI-1.3.2 routing for MakeAction packets (client → server)"
 
 <style>
 note {
@@ -74,6 +75,7 @@ note {
 
 !function $call($args) return $replace($inc() + " (" + $args + ")", " ", $nbsp)
 
+AddElementTag("start", $borderColor="yellow", $shape=EightSidedShape(), $sprite="arrow_circle_right")
 
 AddRelTag("c1", $textColor=$c1, $lineColor=$c1)
 AddRelTag("c2", $textColor=$c2, $lineColor=$c2)
@@ -92,11 +94,10 @@ AddRelTag("c7", $textColor=$c7, $lineColor=$c7)
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Boundary(CVCMIServer, "CVCMIServer") {
-  Container(CVCMIServer_threadHandleClient, "threadHandleClient")
-  note top of CVCMIServer_threadHandleClient
-<<START HERE>>
-incoming data packet
-(client moves unit in a battle)
+  Container(CVCMIServer_threadHandleClient, "<<INCOMING DATA>>\n\nthreadHandleClient\n", $tags="start")
+  note bottom of CVCMIServer_threadHandleClient
+Server receives MakeAction packet
+(eg. a player moved a unit on the battlefield)
   end note
 }
 
@@ -155,6 +156,19 @@ Rel(MakeAction_visit, MakeAction_visitTyped, $call("ApplyGhNetPackVisitor"), $ta
 Rel(MakeAction_visitTyped, ApplyGhNetPackVisitor_visitMakeAction, $call("MakeAction"), $tags="$ctag()")
 Rel(ApplyGhNetPackVisitor_visitMakeAction, CGameHandler_makeBattleAction, $call("..."), $tags="$ctag()")
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' LEGEND
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+!function $ids_legend($denom)
+  !$res = $denom
+  !$denom = $denom + 7
+  !while $i > $denom
+    !$res=$res + "," + $nbsp + $denom
+    !$denom = $denom + 7
+  !endwhile
+  !return $res
+!endfunction
+
 skinparam legend {
   FontColor Black
   BackgroundColor White
@@ -164,14 +178,14 @@ skinparam legend {
 }
 
 legend bottom left
-  | Color sequence |
-  | <$c1> |
-  | <$c2> |
-  | <$c3> |
-  | <$c4> |
-  | <$c5> |
-  | <$c6> |
-  | <$c7> |
+  | Color | Track |
+  | <$c1> | $ids_legend(1) |
+  | <$c2> | $ids_legend(2) |
+  | <$c3> | $ids_legend(3) |
+  | <$c4> | $ids_legend(4) |
+  | <$c5> | $ids_legend(5) |
+  | <$c6> | $ids_legend(6) |
+  | <$c7> | $ids_legend(7) |
 endlegend
 
 @enduml

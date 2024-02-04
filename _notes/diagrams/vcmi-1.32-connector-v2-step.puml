@@ -88,8 +88,8 @@ end box
 
 box T2
 participant "//cppconnector//\n$desc(T2)" as cpp2
-participant "//AAI//" as aai
-participant "//BAI//" as bai
+participant "VCMI\n//Adventure Interface (AAI)//" as aai
+participant "VCMI\n//Battle Interface (BAI)//" as bai
 participant "//VCMI Client//" as vcmiclient
 end box
 
@@ -100,7 +100,7 @@ activate env
 vcmiclient o-> bai ++ : activeStack
 activate cpp1 #red
 bai -> aai ++ : getAction(Result)
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+aai -> cpp2 ++ : baggage.GetAction(Result)
 $cond_wait(cpp2)
 $lock_acq_latent(cpp1)
 cpp1 --> py -- : <<P_InitResult>>
@@ -121,7 +121,7 @@ bai --> vcmiclient -- : makeAction(...)
 
 vcmiclient o-> bai ++ : activeStack
 bai -> aai ++ : getAction(Result)
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+aai -> cpp2 ++ : baggage.GetAction(Result)
 $lock_acq_direct(cpp2)
 $sharevar(P_Result)
 $cond_switch(cpp2, cpp1)

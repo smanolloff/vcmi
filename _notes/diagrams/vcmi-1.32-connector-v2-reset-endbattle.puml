@@ -1,6 +1,6 @@
 @startuml "vcmi-1.32-connector-v2-reset-endbattle"
 
-title "VCMI-1.3.2 connector-v2 reset (endbattle)"
+title "VCMI-1.3.2 connector-v2 reset (end-battle)"
 
 skinparam sequenceBoxBorderColor #FFF
 
@@ -88,8 +88,8 @@ end box
 
 box T2
 participant "//cppconnector//\n$desc(T2)" as cpp2
-participant "//AAI//" as aai
-participant "//BAI//" as bai
+participant "VCMI\n//Adventure Interface (AAI)//" as aai
+participant "VCMI\n//Battle Interface (BAI)//" as bai
 participant "//BAI 2//" as bai2
 participant "//VCMI Client//" as vcmiclient
 end box
@@ -102,7 +102,7 @@ activate env
 vcmiclient o-> bai ++ : activeStack
 activate cpp1 #red
 bai -> aai ++ : getAction(Result)
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+aai -> cpp2 ++ : baggage.GetAction(Result)
 $cond_wait(cpp2)
 $lock_acq_latent(cpp1)
 cpp1 --> py -- : <<P_InitResult>>
@@ -117,7 +117,7 @@ py -> cpp1 ++ : act(P_Action)
 $lock_acq_direct(cpp1)
 $sharevar(Action)
 $cond_switch(cpp1, cpp2)
-cpp2 --> aai -- : $lock(0)\n<<Action>>
+cpp2 --> aai -- : <<Action>>
 aai --> bai -- : <<Action>>
 bai --> vcmiclient -- : makeAction(...)
 
@@ -132,7 +132,7 @@ battleEnd __after move__
 end note
 
 aai --> aai : read bai.result\n$desc("<<Result>>")
-aai -> cpp2 ++ : F_GetAction(Result~*)\n$desc("~*with battle_end=true")
+aai -> cpp2 ++ : baggage.GetAction(Result~*)\n$desc("~*with battle_end=true")
 $lock_acq_direct(cpp2)
 $sharevar(P_Result)
 $cond_switch(cpp2, cpp1)
@@ -153,7 +153,6 @@ cpp2 --> aai -- : <<Action>>\n$desc(reset)
 
 note over aai : assert(action == reset)
 aai -> bai : bai.reset()\nbattleAI.reset()
-note right #orange: TODO: confirm\ndestructor is called\n(dangling refs?)
 destroy bai
 
 aai --> vcmiclient -- : selectionMade\n$desc(replay)
@@ -168,7 +167,7 @@ aai --> vcmiclient -- :
 
 vcmiclient o-> bai2 ++ : activeStack
 bai2 -> aai ++ : getAction(Result)
-aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+aai -> cpp2 ++ : baggage.GetAction(Result)
 $lock_acq_direct(cpp2)
 $sharevar(P_Result)
 $cond_switch(cpp2, cpp1)

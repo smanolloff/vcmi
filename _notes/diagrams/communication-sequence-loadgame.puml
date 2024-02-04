@@ -16,7 +16,10 @@ participant Client as client
 client -> server: LobbyClientDisconnected ~*
 destroy client
 
+
 == (in lobby)\nSavegame highlighted from the list ==
+
+note across: XXX: use startgame diagram instead
 
 client o-> server: LobbyClientConnected
 server -> client: LobbyClientConnected

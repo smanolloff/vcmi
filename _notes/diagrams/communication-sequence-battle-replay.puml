@@ -83,9 +83,9 @@ $src("BattleInfo.cpp:194", "setupBattle")
 end note
 
 server -> client : PlayerBlocked
-note right: start, reason=UPCOMING_BATTLE, player=0\nTODO: confirm (vscode weird var info)
+note right: start, reason=UPCOMING_BATTLE, player=0
 server -> client : PlayerBlocked
-note right: start, reason=UPCOMING_BATTLE, player=255\nTODO: confirm (vscode weird var info)
+note right: start, reason=UPCOMING_BATTLE, player=255
 server -> client : BattleStart
 
 server -> client : SetMana
@@ -117,11 +117,11 @@ $src("CGameHandler.cpp:801", "endBattleConfirm")
 end note
 
 server -> client : EraseStack
-note right: army #502, slot #0 (hero army: skeletons?)
+note right: army #502, slot #0 (hero army stack of skeletons)
 server -> client : EraseStack
-note right: army #502, slot #1 (hero army: walking dead?)
+note right: army #502, slot #1 (hero army stack of walking dead)
 server -> client : RemoveObject
-note right: object id #502 (hero?)
+note right: object id #502 (hero)
 server -> client : BattleResultAccepted
 server -> client : BattleResultsApplied
 server -> client : RebalanceStacks *

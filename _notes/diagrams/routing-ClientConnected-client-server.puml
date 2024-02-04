@@ -1,12 +1,14 @@
 @startuml "vcmi-1.32-routing-server-lobby-c4"
 
 !include <C4/C4_Container>
+!include <tupadr3/font-awesome/arrow_circle_right>
+
 
 HIDE_STEREOTYPE()
 LAYOUT_LEFT_RIGHT()
 skinparam DefaultFontName monospaced
 
-title "VCMI-1.3.2 packet server routing (lobby)"
+title "VCMI-1.3.2 routing for LobbyClientConnected packets (client → server)"
 
 <style>
 note {
@@ -78,6 +80,8 @@ note {
 ' uncomment to show them (the diagram is a mess)
 !$HIDE_MISC_CALLS = "true"
 
+AddElementTag("start", $borderColor="yellow", $shape=EightSidedShape(), $sprite="arrow_circle_right")
+
 AddRelTag("c1", $textColor=$c1, $lineColor=$c1)
 AddRelTag("c2", $textColor=$c2, $lineColor=$c2)
 AddRelTag("c3", $textColor=$c3, $lineColor=$c3)
@@ -95,21 +99,21 @@ AddRelTag("c7", $textColor=$c7, $lineColor=$c7)
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Boundary(CVCMIServer, "CVCMIServer") {
-  Container(CVCMIServer_threadHandleClient, "threadHandleClient")
-  note top of CVCMIServer_threadHandleClient
-    incoming data
-    <<START HERE>>
+  Container(CVCMIServer_threadHandleClient, "<<INCOMING DATA>>\n\nthreadHandleClient\n", $tags="start")
+  note bottom of CVCMIServer_threadHandleClient
+Server receives LobbyClientConnected packet
+(a player has joined the game)
   end note
 
   Container(CVCMIServer_handleReceivedPack, $fn("handleReceivedPack", "CPackForLobby"))
 
   note top of CVCMIServer_handleReceivedPack
-Bad naming in the source here:
+Confusing naming in the source code here:
 
 apply = applier->getApplier(...)
 
-**applier** should've been applierBase or applierRegistry.
-**apply** should've been applier
+**applier** here is more like... an applierProvider or Registry.
+And **apply** here is referred to as applier later in the code.
   end note
 
   !if ($HIDE_MISC_CALLS != "true")
@@ -179,8 +183,8 @@ Fetches a //shared// applier from the global registry: \
 The //shared// applier can not store any state (my assumption) and \
 CPack::visit will not be called with it.\n\n\
 Instead, the caller will call a specific method on the //shared// applier: \
-applyOnGH, where a //disposable// applier will be beuilt \
-and used for the core processing - CPack::visit will be called with it.")
+applyOnGH, where a //disposable// applier is built \
+and used in the core processing by calling CPack::visit() with it")
   end note
 }
 
@@ -188,12 +192,9 @@ Boundary(CApplyOnServer, "CApplyOnServer<LobbyClientConnected> < CBaseForServerA
   Container(CApplyOnServer_applyOnServerBefore, $fn("applyOnServerBefore", "CVCMIServer,"+$nbsp+"void*"))
 
   note top of CApplyOnServer_applyOnServerBefore
-     $str("The `void*` is then static-casted to its specific type according to \
+     $str("The `void*` is then static_cast-ed to its specific type according to \
 the class specialization\n\
-(`LobbyClientConnected` in this case)\n\
-\n\
-This is completely unnecessary - we can simply accept a `CPack*` \
-arg and not cast anything...")
+(`LobbyClientConnected` in this case)")
   end note
 }
 
@@ -243,8 +244,33 @@ Rel(ApplyOnServerNetPackVisitor_visitLobbyClientConnected, LobbyClientConnected_
 Rel(CApplyOnServer_applyOnServerBefore, ApplyOnServerNetPackVisitor_misc, $inc(), $tags="$ctag()")
 !endif
 
-' Lay_Distance(CVCMIServer, CPack, 1)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' LEGEND
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+AddBoundaryTag("legend_boundary", $borderColor="lightgray", $fontColor="#AAA")
+AddElementTag("legend_element", $bgColor="#EBD8F7", $fontColor="#AAA")
+AddRelTag("legend_rel", $textColor="#AAA", $lineColor="#AAA")
+
+Boundary(Legend, "<<Legend>>\nClassName < ParentClassName", $tags="legend_boundary") {
+  Container(Legend_fn1, "<<function name>>\n<font size=8 color=BBB>(<<argument list>>)</font>\n\nsquareArea\n<font size=8 color=BBB>(int)</font>", $tags="legend_element")
+  Container(Legend_fn2, "<<function name>>\n<font size=8 color=BBB>(<<argument list>>)</font>\n\nmultiply\n<font size=8 color=BBB>(float, float)</font>", $tags="legend_element")
+}
+
+Rel(Legend_fn1, Legend_fn2, "<<TRACK>> (<<call args>>)\n \n8 (int, int)", $tags="legend_rel")
+
+' Lay_Distance(Legend_fn1, Legend_fn2, 1)
 ' Lay_Distance(CPack, Visitor, 1)
+
+!function $ids_legend($denom)
+  !$res = $denom
+  !$denom = $denom + 7
+  !while $i > $denom
+    !$res=$res + "," + $nbsp + $denom
+    !$denom = $denom + 7
+  !endwhile
+  !return $res
+!endfunction
 
 skinparam legend {
   FontColor Black
@@ -255,14 +281,14 @@ skinparam legend {
 }
 
 legend bottom left
-  | Color sequence |
-  | <$c1> |
-  | <$c2> |
-  | <$c3> |
-  | <$c4> |
-  | <$c5> |
-  | <$c6> |
-  | <$c7> |
+  | Color | Track |
+  | <$c1> | $ids_legend(1) |
+  | <$c2> | $ids_legend(2) |
+  | <$c3> | $ids_legend(3) |
+  | <$c4> | $ids_legend(4) |
+  | <$c5> | $ids_legend(5) |
+  | <$c6> | $ids_legend(6) |
+  | <$c7> | $ids_legend(7) |
 endlegend
 
 @enduml

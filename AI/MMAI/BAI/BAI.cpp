@@ -51,8 +51,7 @@ namespace MMAI {
         return validActions.at(randomIndex);
     }
 
-    void BAI::activeStack(const CStack * astack)
-    {
+    void BAI::activeStack(const CStack * astack) {
         info("*** activeStack ***");
         // print("activeStack called for " + astack->nodeName());
 
@@ -64,8 +63,11 @@ namespace MMAI {
         static_assert(EI(BattleSide::ATTACKER) == EI(Export::Side::ATTACKER));
         static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
 
+        printf("%s\n", renderANSI().c_str());
+        std::cout << "Press Enter to continue...";
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
         while(true) {
-            // printf("%s\n", renderANSI().c_str());
             auto _action = getAction(result.get());
             allactions.push_back(_action);
             action = std::make_unique<Action>(_action, battlefield.get());

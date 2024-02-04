@@ -338,7 +338,7 @@ void processArguments(
 
     // conflog("global", "trace");
     // conflog("ai", "trace");
-    // conflog("network", "error");
+    // conflog("network", "trace");
     // conflog("mod", "error");
     // conflog("animation", "error");
 }

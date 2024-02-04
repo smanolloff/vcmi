@@ -10,6 +10,7 @@ set(MMAI_FILES
   BAI/impl.cpp
   BAI/init.cpp
   BAI/util.cpp
+  BAI/render.cpp
 
   types/action.cpp
   types/action.h
