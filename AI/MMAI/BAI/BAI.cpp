@@ -63,9 +63,9 @@ namespace MMAI {
         static_assert(EI(BattleSide::ATTACKER) == EI(Export::Side::ATTACKER));
         static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
 
-        printf("%s\n", renderANSI().c_str());
-        std::cout << "Press Enter to continue...";
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        // printf("%s\n", renderANSI().c_str());
+        // std::cout << "Press Enter to continue...";
+        // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
         while(true) {
             auto _action = getAction(result.get());

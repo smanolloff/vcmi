@@ -61,7 +61,6 @@ namespace MMAI::Export {
         {ErrType::INVALID_DIR,       {ErrMask(1 << 10), "ERR_INVALID_DIR", "attempted to attack from a T/B direction with a 1-hex stack"}},
     };
 
-    // XXX: the normalization formula is simplified for (0,1)
     constexpr int NV_MIN = float(0);
     constexpr int NV_MAX = float(1);
     constexpr int NV_DIFF = NV_MAX - NV_MIN;
@@ -71,7 +70,7 @@ namespace MMAI::Export {
         int orig;
         float norm;
 
-        NValue() : orig(0), norm(NV_MIN) {};
+        NValue() : orig(-1), norm(NV_MIN) {};
         NValue(int v, int vmin, int vmax) {
             // if (vmin < vmax)
             //     throw std::runtime_error(std::to_string(vmin) + ">" + std::to_string(vmax));
@@ -82,8 +81,11 @@ namespace MMAI::Export {
                 throw std::runtime_error(std::to_string(v) + " > " + std::to_string(vmax));
 
             orig = v;
-            norm = static_cast<float>(v - vmin) / (vmax - vmin);
-            // norm = NV_DIFF * static_cast<float>(v - vmin) / (vmax - vmin) + NV_MIN;
+
+            // XXX: this is a simplified version for 0..1
+            // norm = static_cast<float>(v - vmin) / (vmax - vmin);
+
+            norm = NV_DIFF * static_cast<float>(v - vmin) / (vmax - vmin) + NV_MIN;
         }
     };
 
@@ -93,7 +95,7 @@ namespace MMAI::Export {
      * State:
      * 165 hexes, N_HEX_ATTRS each
      */
-    constexpr int N_HEX_ATTRS = 1 + N_STACK_ATTRS;  // hexstate + attrs
+    constexpr int N_HEX_ATTRS = 2 + N_STACK_ATTRS;  // id, hexstate, attrs
     constexpr int STATE_SIZE = 165 * N_HEX_ATTRS;
     using State = std::array<NValue, STATE_SIZE>;
     using Action = int16_t;

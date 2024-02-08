@@ -263,7 +263,11 @@ namespace MMAI {
         int i = 0;
 
         for (auto &hex : hexes) {
-            res.at(i++) = NValue(EI(hex.state), 0, EI(HexState::count) - 1);
+            static_assert(EI(HexState::INVALID) == 0);
+            ASSERT(EI(hex.state) > 0, "INVALID hex during export");
+
+            res.at(i++) = NValue(hex.id, 0, BF_SIZE - 1);
+            res.at(i++) = NValue(EI(hex.state), 1, EI(HexState::count) - 1);
             auto &stack = hex.stack;
 
             for (int j=0; j<EI(StackAttr::count); j++) {

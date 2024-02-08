@@ -66,7 +66,7 @@ namespace MMAI {
 
 
     // Sync check hard-coded values in Export
-    static_assert(Export::N_HEX_ATTRS == 1 + std::tuple_size<StackAttrs>::value);
+    static_assert(Export::N_HEX_ATTRS == 2 + std::tuple_size<StackAttrs>::value);
 
     static_assert(std::tuple_size<Export::State>::value ==
         std::tuple_size<Hexes>::value * Export::N_HEX_ATTRS

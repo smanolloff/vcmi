@@ -42,8 +42,9 @@ namespace MMAI {
             int y = ihex/15;
             hex.bhex = BattleHex(x+1, y);
             hex.id = Hex::calcId(hex.bhex);
+            expect(state.at(ibase).orig == hex.id, "hex id mismatch: %d != %d", state.at(ibase).orig, hex.id);
             hex.hexactmask.fill(false);
-            hex.state = HexState(state.at(ibase).orig);
+            hex.state = HexState(state.at(ibase+1).orig);
 
             if (hex.state == HexState::FREE_REACHABLE)
                 hex.hexactmask.at(EI(HexAction::MOVE)) = true;
@@ -51,20 +52,20 @@ namespace MMAI {
             const CStack *cstack = nullptr;
             auto attrs = Stack::NAAttrs();
 
-            if (state.at(ibase+1+EI(StackAttr::Quantity)).orig > 0) {
+            if (state.at(ibase+2+EI(StackAttr::Quantity)).orig > 0) {
                 // there's a stack on this hex
                 expect(hex.state == HexState::OCCUPIED, "expected OCCUPIED hex");
 
                 auto stacks = cb->battleGetStacksIf([=](const CStack * stack) {
-                    return stack->unitSide() == state.at(ibase+1+EI(StackAttr::Side)).orig
-                        && stack->unitSlot() == state.at(ibase+1+EI(StackAttr::Slot)).orig;
+                    return stack->unitSide() == state.at(ibase+2+EI(StackAttr::Side)).orig
+                        && stack->unitSlot() == state.at(ibase+2+EI(StackAttr::Slot)).orig;
                 });
 
                 expect(stacks.size() == 1, "Expected exactly 1 stack, got: %d", stacks.size());
                 cstack = stacks.at(0);
 
                 for (int j=0; j<EI(StackAttr::count); j++) {
-                    attrs.at(j) = state.at(ibase+1+j).orig;
+                    attrs.at(j) = state.at(ibase+2+j).orig;
 
                     int vreal;
 
@@ -132,7 +133,8 @@ namespace MMAI {
         const Action *action,  // for displaying "last action"
         const std::vector<AttackLog> attackLogs // for displaying log
     ) {
-        ASSERT(r.state.size() == 165 * (1 + EI(StackAttr::count)), "Unexpected state size: " + std::to_string(r.state.size()));
+        static_assert(std::tuple_size<Export::State>::value == 165 * (2 + Export::N_STACK_ATTRS));
+
         auto reconstructed = Reconstruct(r, cb);
         auto hexes = std::get<0>(reconstructed);
         auto astack = std::get<1>(reconstructed);
@@ -245,13 +247,16 @@ namespace MMAI {
             row << " ";
 
             // ibase = first state index of the i-th hex
-            // eg. for hex 2, ibase=15 where:
-            //  state[15] is hexstate for hex2
-            //  state[16] is hex.stack->attr[Qty] for hex2
-            //  state[17] is hex.stack->attr[Att] for hex2
+            // eg. for hex 2, ibase=16 where:
+            //  state[16] is hexid for hex2
+            //  state[17] is hexstate for hex2
+            //  state[18] is hex.stack->attr[Qty] for hex2
+            //  state[19] is hex.stack->attr[Att] for hex2
             //  ... etc
-            auto ibase = i * (1 + EI(StackAttr::count));
-            auto &nvstate = state.at(ibase);
+            auto ibase = i * (2 + EI(StackAttr::count));
+            auto &nvid = state.at(ibase);
+            expect(hex.id == nvid.orig, "hex.id=%d != state[%d]=%d", hex.id, ibase, nvid.orig);
+            auto &nvstate = state.at(ibase+1);
             expect(hex.state == HexState(nvstate.orig), "hex.state=%d != state[%d]=%d", hex.state, ibase, nvstate.orig);
 
             // true if any hexactionmask is true
@@ -259,8 +264,8 @@ namespace MMAI {
 
             // true if any stack attribute for that hex is valid
             auto anyattr = std::any_of(
-                state.begin()+ibase+1,
-                state.begin()+ibase+1+EI(StackAttr::count),
+                state.begin()+ibase+2,
+                state.begin()+ibase+2+EI(StackAttr::count),
                 [](Export::NValue nv) { return nv.orig != ATTR_NA; }
             );
 
@@ -312,8 +317,8 @@ namespace MMAI {
                 // TODO: do I need to account for dead stacks at end-of-battle?
                 //      ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
                 for (int j=0; j<EI(StackAttr::count); j++) {
-                    // ASSERT(state[ibase+1+j].orig == hex.stack->attrs[j], "attr check failed");
-                    expect(state.at(ibase+1+j).orig == hex.stack->attrs.at(j), "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+1+j, state[ibase+1+j].orig, j, hex.stack->attrs[j]);
+                    // ASSERT(state[ibase+2+j].orig == hex.stack->attrs[j], "attr check failed");
+                    expect(state.at(ibase+2+j).orig == hex.stack->attrs.at(j), "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+2+j, state[ibase+2+j].orig, j, hex.stack->attrs[j]);
                 }
             }
             break;
