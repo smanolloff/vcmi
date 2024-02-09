@@ -80,12 +80,12 @@ namespace MMAI {
         static std::string PadLeft(const std::string& input, size_t desiredLength, char paddingChar);
         static std::string PadRight(const std::string& input, size_t desiredLength, char paddingChar);
 
-        static std::tuple<std::array<Hex, BF_SIZE>, const CStack*> Reconstruct(
+        static std::tuple<Hexes, const CStack*> Reconstruct(
             const Export::Result &r,
             const std::shared_ptr<CBattleCallback> cb
         );
 
-        static void Verify(const Battlefield &bf, std::array<Hex, BF_SIZE> &hexes, const CStack* astack);
+        static void Verify(const Battlefield &bf, Hexes &hexes, const CStack* astack);
 
         static std::string Render(
             const Export::Result &r,

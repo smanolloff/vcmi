@@ -89,7 +89,7 @@ namespace MMAI::Export {
         }
     };
 
-    constexpr int N_STACK_ATTRS = 14;
+    constexpr int N_STACK_ATTRS = 16;
 
     /**
      * State:
@@ -112,7 +112,7 @@ namespace MMAI::Export {
      * 8 hex actions:
      * move, move+att1, ... move+att7
      */
-    constexpr int N_HEX_ACTIONS = 10;
+    constexpr int N_HEX_ACTIONS = 14;
     constexpr int N_ACTIONS = N_NONHEX_ACTIONS + 165 * N_HEX_ACTIONS;
 
     using ActMask = std::array<bool, N_ACTIONS>;

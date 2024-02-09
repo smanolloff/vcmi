@@ -35,9 +35,11 @@ namespace MMAI {
         Speed,
         Waited,
         QueuePos,  // 0=active stack
+        RetaliationsLeft,
         Side,  // 0=attacker, 1=defender
         Slot,  // 0..6
         CreatureType,  //0..144
+        AIValue,
         count
     };
 

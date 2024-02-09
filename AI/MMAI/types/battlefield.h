@@ -17,44 +17,59 @@
 #pragma once
 
 #include "CCallback.h"
+#include "battle/ReachabilityInfo.h"
 #include "common.h"
 #include "export.h"
 #include "hex.h"
 #include "stack.h"
 
 namespace MMAI {
-    using Hexes = std::array<Hex, BF_SIZE>;
+    using Hexes = std::array<std::array<Hex, BF_XMAX>, BF_YMAX>;
 
     constexpr int QSIZE = 15;
     using Queue = std::vector<uint32_t>;
+    using ReachabilityInfos = std::map<const CStack*, std::shared_ptr<ReachabilityInfo>>;
+    using XY = std::pair<int, int>;
 
     /**
      * A container for all 165 Hex tiles.
      */
     struct Battlefield {
-        static void initHex(
-            Hex &hex,
-            BattleHex bh,
-            const CStack* astack,
-            const AccessibilityInfo &ainfo,
-            const ReachabilityInfo &rinfo
+        static BattleHex AMoveTarget(BattleHex &bh, HexAction &action);
+
+        static bool IsReachable(
+            const BattleHex &bh,
+            const CStack* cstack,
+            const ReachabilityInfos &rinfos
         );
 
-        static void updateMaskForSpecialMoveCase(Hex &hex, const CStack* astack, const AccessibilityInfo &ainfo);
-        static void updateMaskForSpecialDefendCase(Hex &hex, const CStack* astack);
-        static void updateMaskForAttackCases(const CStack* astack, const Hexes &hexes, Hex &ehex);
+        static HexAction AttackAction(
+            const BattleHex &nbh,
+            const BattleHex &bh,
+            const BattleHex &obh
+        );
 
-        static Hexes initHexes(CBattleCallback* cb, const CStack* astack);
-        static Stack initStack(CBattleCallback* cb, const Queue &q, const CStack* cstack);
-        static Queue getQueue(CBattleCallback* cb);
+        static Hex InitHex(
+            const int id,
+            const std::vector<const CStack*> &allstacks,
+            const CStack* astack,
+            const bool canshoot,
+            const Queue &queue,
+            const AccessibilityInfo &ainfo,
+            const ReachabilityInfos &rinfos
+        );
+
+        static Hexes InitHexes(CBattleCallback* cb, const CStack* astack);
+        static Stack InitStack(const Queue &q, const CStack* cstack);
+        static Queue GetQueue(CBattleCallback* cb);
 
         Battlefield(CBattleCallback* cb, const CStack* astack_) :
             astack(astack_),
-            hexes(initHexes(cb, astack_))
+            hexes(InitHexes(cb, astack_))
             {};
 
+        Hexes hexes; // not const due to offTurnUpdate
         const CStack* const astack;
-        Hexes hexes;
         const Export::State exportState();
         const Export::ActMask exportActMask();
 
@@ -67,10 +82,6 @@ namespace MMAI {
 
     // Sync check hard-coded values in Export
     static_assert(Export::N_HEX_ATTRS == 2 + std::tuple_size<StackAttrs>::value);
-
-    static_assert(std::tuple_size<Export::State>::value ==
-        std::tuple_size<Hexes>::value * Export::N_HEX_ATTRS
-    );
-
+    static_assert(std::tuple_size<Export::State>::value == 165 * Export::N_HEX_ATTRS);
     static_assert(std::tuple_size<Export::ActMask>::value == N_ACTIONS);
 }

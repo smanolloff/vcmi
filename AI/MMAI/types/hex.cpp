@@ -18,12 +18,17 @@
 
 namespace MMAI {
     // static
-    int Hex::calcId(const BattleHex &bh) {
+    int Hex::CalcId(const BattleHex &bh) {
         ASSERT(bh.isAvailable(), "Hex unavailable: " + std::to_string(bh.hex));
         return bh.getX()-1 + bh.getY()*BF_XMAX;
     }
 
+    // static
+    std::pair<int, int> Hex::CalcXY(const BattleHex &bh) {
+        return {bh.getX() - 1, bh.getY()};
+    }
+
     std::string Hex::name() const {
-        return "(" + std::to_string(1 + id%BF_XMAX) + "," + std::to_string(1 + id/BF_XMAX) + ")";
+        return "(" + std::to_string(1 + x) + "," + std::to_string(1 + y) + ")";
     }
 }

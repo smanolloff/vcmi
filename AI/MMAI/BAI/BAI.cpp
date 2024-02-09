@@ -18,6 +18,7 @@
 #include "BAI.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
+#include "battle/ReachabilityInfo.h"
 #include "types/hexaction.h"
 #include "types/stack.h"
 #include "vcmi/Creature.h"
@@ -150,8 +151,8 @@ namespace MMAI {
         // auto origq = std::vector<battle::Units>{};
         // cb->battleGetTurnOrder(origq, QSIZE, 0);
         // auto myq = bf.getQueue(cb.get());
-
-        ASSERT(bf.hexes.at(Hex::calcId(apos)).stack->attrs.at(EI(StackAttr::QueuePos)) == 0, "expected 0 queue pos");
+        auto [x, y] = Hex::CalcXY(apos);
+        ASSERT(bf.hexes.at(y).at(x).stack->attrs.at(EI(StackAttr::QueuePos)) == 0, "expected 0 queue pos");
 
         if (!action.hex) {
             switch(NonHexAction(action.action)) {
@@ -170,10 +171,9 @@ namespace MMAI {
 
         // With action masking, invalid actions should never occur
         // However, for manual playing/testing, it's bad to raise exceptions
-
+        // => return errmask and raise in Gym env if errmask != 0
         auto &bhex = action.hex->bhex;
-        auto &estack = action.hex->stack->cstack;
-
+        auto &cstack = action.hex->stack->cstack;
         if (action.hex->hexactmask.at(EI(action.hexaction))) {
             // Action is VALID
             // XXX: Do minimal asserts to prevent bugs with nullptr deref
@@ -185,36 +185,36 @@ namespace MMAI {
                 : res.setAction(BattleAction::makeMove(bf.astack, bhex));
             break;
             case HexAction::SHOOT:
-                ASSERT(estack, "no target to shoot");
-                res.setAction(BattleAction::makeShotAttack(bf.astack, estack));
+                ASSERT(cstack, "no target to shoot");
+                res.setAction(BattleAction::makeShotAttack(bf.astack, cstack));
             break;
-            case HexAction::MELEE_TL:
-            case HexAction::MELEE_TR:
-            case HexAction::MELEE_R:
-            case HexAction::MELEE_BR:
-            case HexAction::MELEE_BL:
-            case HexAction::MELEE_L: {
-                ASSERT(estack, "no target to melee");
-                auto &edir = MELEE_TO_EDIR.at(action.hexaction);
+            case HexAction::AMOVE_TL:
+            case HexAction::AMOVE_TR:
+            case HexAction::AMOVE_R:
+            case HexAction::AMOVE_BR:
+            case HexAction::AMOVE_BL:
+            case HexAction::AMOVE_L: {
+                auto &edir = AMOVE_TO_EDIR.at(action.hexaction);
                 auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
-
-                if (bf.astack->doubleWide()) {
-                    auto &[special, tspecial, bspecial] = EDIR_SPECIALS.at(side);
-                    if (edir == special || edir == tspecial || edir == bspecial)
-                        nbh = nbh.cloneInDirection(special, false);
-                }
-
-                ASSERT(nbh.isAvailable(), "mask allowed attack from an unavailable hex #" + std::to_string(nbh.hex));
-
-                res.setAction(BattleAction::makeMeleeAttack(bf.astack, bhex, nbh));
+                ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
+                auto estack = cb->battleGetStackByPos(nbh);
+                ASSERT(estack, "no enemy stack for melee attack");
+                res.setAction(BattleAction::makeMeleeAttack(bf.astack, nbh, bhex));
             }
             break;
-            case HexAction::MELEE_T:
-            case HexAction::MELEE_B: {
-                ASSERT(bf.astack->doubleWide(), "got T/B action for a single-hex stack");
-                auto &[_, tspecial, bspecial] = EDIR_SPECIALS.at(side);
-                auto &edir = (action.hexaction == HexAction::MELEE_T) ? tspecial : bspecial;
-                auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
+            case HexAction::AMOVE_2BL:
+            case HexAction::AMOVE_2L:
+            case HexAction::AMOVE_2TL:
+            case HexAction::AMOVE_2TR:
+            case HexAction::AMOVE_2R:
+            case HexAction::AMOVE_2BR: {
+                ASSERT(bf.astack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
+                auto &edir = AMOVE_TO_EDIR.at(action.hexaction);
+                auto obh = bf.astack->occupiedHex();
+                auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
+                ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
+                auto estack = cb->battleGetStackByPos(nbh);
+                ASSERT(estack, "no enemy stack for melee attack");
                 res.setAction(BattleAction::makeMeleeAttack(bf.astack, bhex, nbh));
             }
             break;
@@ -240,10 +240,22 @@ namespace MMAI {
         auto ainfo = cb->getAccesibility();
 
         switch(action.hexaction) {
-            case HexAction::MOVE: {
+            case HexAction::MOVE:
+            case HexAction::AMOVE_TL:
+            case HexAction::AMOVE_TR:
+            case HexAction::AMOVE_R:
+            case HexAction::AMOVE_BR:
+            case HexAction::AMOVE_BL:
+            case HexAction::AMOVE_L:
+            case HexAction::AMOVE_2BL:
+            case HexAction::AMOVE_2L:
+            case HexAction::AMOVE_2TL:
+            case HexAction::AMOVE_2TR:
+            case HexAction::AMOVE_2R:
+            case HexAction::AMOVE_2BR: {
                 auto a = ainfo.at(action.hex->bhex);
                 if (a == EAccessibility::ACCESSIBLE) {
-                    ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented move to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
+                    ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented (A)MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_UNREACHABLE);
                 } else if (a == EAccessibility::OBSTACLE) {
                     auto hs = action.hex->state;
@@ -253,10 +265,11 @@ namespace MMAI {
                     auto bh = action.hex->bhex;
                     if (bh.hex == bf.astack->getPosition().hex) {
                         // means we want to defend (moving to self)
+                        // or attack from same hex we're currently at
                         // this should always be allowed
-                        ASSERT(false, "mask prevented move to own hex (defend)" + debugInfo(action, bf.astack, nullptr));
+                        ASSERT(false, "mask prevented (A)MOVE to own hex" + debugInfo(action, bf.astack, nullptr));
                     } else if (bh.hex == bf.astack->occupiedHex().hex) {
-                        ASSERT(!ainfo.accessible(bh, true, bf.astack->unitSide()), "mask prevented move to self-occupied hex" + debugInfo(action, bf.astack, nullptr));
+                        ASSERT(rinfo.distances.at(bh) == ReachabilityInfo::INFINITE_DIST, "mask prevented (A)MOVE to self-occupied hex" + debugInfo(action, bf.astack, nullptr));
                         // means we can't fit on our own back hex
                         res.addError(ErrType::HEX_BLOCKED);
                     }
@@ -265,56 +278,23 @@ namespace MMAI {
                 } else {
                     throw std::runtime_error("Unexpected accessibility: " + std::to_string(EI(a)) + debugInfo(action, bf.astack, nullptr));
                 }
-            }
-            break;
-            case HexAction::SHOOT:
-                if (!estack)
-                    res.addError(ErrType::STACK_NA);
-                else if (estack->unitSide() == bf.astack->unitSide())
-                    res.addError(ErrType::FRIENDLY_FIRE);
-                else {
-                    ASSERT(!cb->battleCanShoot(bf.astack, bhex), "mask prevented SHOOT at a shootable bhex " + action.hex->name());
-                    res.addError(ErrType::CANNOT_SHOOT);
-                }
-            break;
-            case HexAction::MELEE_TL:
-            case HexAction::MELEE_TR:
-            case HexAction::MELEE_R:
-            case HexAction::MELEE_BR:
-            case HexAction::MELEE_BL:
-            case HexAction::MELEE_L:
-            case HexAction::MELEE_T:
-            case HexAction::MELEE_B: {
-                if (!estack) {
-                    res.addError(ErrType::STACK_NA);
+
+                if (action.hexaction == HexAction::MOVE)
                     break;
-                }
 
-                auto frfire = false;
+                auto nbh = BattleHex{};
 
-                if (estack->unitSide() == bf.astack->unitSide()) {
-                    res.addError(ErrType::FRIENDLY_FIRE);
-                    frfire = true;
-                }
-
-                auto nbh = BattleHex();
-
-                if (action.hexaction == HexAction::MELEE_T || action.hexaction == HexAction::MELEE_B) {
+                if (action.hexaction < HexAction::AMOVE_2BL) {
+                    auto edir = AMOVE_TO_EDIR.at(action.hexaction);
+                    nbh = bhex.cloneInDirection(edir, false);
+                } else {
                     if (!bf.astack->doubleWide()) {
                         res.addError(ErrType::INVALID_DIR);
                         break;
                     }
-                    auto &[_, tspecial, bspecial] = EDIR_SPECIALS.at(side);
-                    auto &edir = (action.hexaction == HexAction::MELEE_T) ? tspecial : bspecial;
-                    nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
-                } else {
-                    auto &edir = MELEE_TO_EDIR.at(action.hexaction);
-                    nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
-                    if (bf.astack->doubleWide()) {
-                        auto &[special, tspecial, bspecial] = EDIR_SPECIALS.at(side);
-                        if (edir == special || edir == tspecial || edir == bspecial)
-                            nbh = nbh.cloneInDirection(special, false);
-                    }
+
+                    auto edir = AMOVE_TO_EDIR.at(action.hexaction);
+                    nbh = bf.astack->occupiedHex().cloneInDirection(edir, false);
                 }
 
                 if (!nbh.isAvailable()) {
@@ -322,38 +302,27 @@ namespace MMAI {
                     break;
                 }
 
-                auto &nh = bf.hexes.at(Hex::calcId(nbh));
-                auto reachable = rinfo.distances[nbh] <= bf.astack->speed();
+                auto estack = cb->battleGetStackByPos(nbh);
 
-                switch (nh.state) {
-                case HexState::OBSTACLE:
-                    ASSERT(!reachable, "OBSTACLE state for reachable hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
-                    res.addError(ErrType::HEX_BLOCKED);
+                if (!estack) {
+                    res.addError(ErrType::STACK_NA);
                     break;
-                case HexState::FREE_UNREACHABLE:
-                    ASSERT(!reachable, "FREE_UNREACHABLE state for reachable hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
-                    res.addError(ErrType::HEX_UNREACHABLE);
-                    break;
-                case HexState::OCCUPIED:
-                    if (nbh == bf.astack->getPosition()) {
-                        ASSERT(frfire, "mask prevented attack from a neighbouring hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
-                    } else {
-                        res.addError(ErrType::HEX_BLOCKED);
-                    }
+                }
 
-                    break;
-                case HexState::FREE_REACHABLE:
-                    // possible only if our "nbh" and "bhex" are somehow not neighbours (vcmi bug in cloneInDirection()?)
-                    ASSERT(bf.astack->isMeleeAttackPossible(bf.astack, estack, nbh), "VCMI says melee attack is impossible, but hex is reachable [BUG?]" + debugInfo(action, bf.astack, nullptr));
-                    ASSERT(estack->unitSide() == bf.astack->unitSide(), "Mask prevented possible attack from a reachable hex " + nh.name() + debugInfo(action, bf.astack, nullptr));
-
-                    // friendly fire is added early to prevent hiding it if other errors also occurred
-                    ASSERT(res.errmask & std::get<0>(Export::ERRORS.at(ErrType::FRIENDLY_FIRE)), "FRIENDLY_FIRE error should already have been added" + debugInfo(action, bf.astack, nullptr));
-                    break;
-                default:
-                    throw std::runtime_error("Unexpected hex state while error checking: " + std::to_string(EI(nh.state)));
+                if (estack->unitSide() == bf.astack->unitSide()) {
+                    res.addError(ErrType::FRIENDLY_FIRE);
                 }
             }
+            break;
+            case HexAction::SHOOT:
+                if (!cstack)
+                    res.addError(ErrType::STACK_NA);
+                else if (cstack->unitSide() == bf.astack->unitSide())
+                    res.addError(ErrType::FRIENDLY_FIRE);
+                else {
+                    ASSERT(!cb->battleCanShoot(bf.astack, bhex), "mask prevented SHOOT at a shootable bhex " + action.hex->name());
+                    res.addError(ErrType::CANNOT_SHOOT);
+                }
             break;
             default:
                 throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(action.hexaction)));
@@ -388,19 +357,19 @@ namespace MMAI {
             info << a << ",";
         info << "]\n";
 
-        auto estack = action.hex->stack->cstack;
-        if (estack) {
-            info << "estack->getPosition().hex=" << estack->getPosition().hex << "\n";
-            info << "estack->slot=" << estack->unitSlot() << "\n";
-            info << "estack->doubleWide=" << estack->doubleWide() << "\n";
-            info << "cb->battleCanShoot(estack)=" << cb->battleCanShoot(estack) << "\n";
+        auto cstack = action.hex->stack->cstack;
+        if (cstack) {
+            info << "cstack->getPosition().hex=" << cstack->getPosition().hex << "\n";
+            info << "cstack->slot=" << cstack->unitSlot() << "\n";
+            info << "cstack->doubleWide=" << cstack->doubleWide() << "\n";
+            info << "cb->battleCanShoot(cstack)=" << cb->battleCanShoot(cstack) << "\n";
         } else {
-            info << "estack: (nullptr)\n";
+            info << "cstack: (nullptr)\n";
         }
 
         info << "astack->getPosition().hex=" << astack->getPosition().hex << "\n";
         info << "astack->slot=" << astack->unitSlot() << "\n";
-        info << "astack->doubleWide=" << estack->doubleWide() << "\n";
+        info << "astack->doubleWide=" << cstack->doubleWide() << "\n";
         info << "cb->battleCanShoot(astack)=" << cb->battleCanShoot(astack) << "\n";
 
         if (nbh) {
@@ -408,8 +377,8 @@ namespace MMAI {
             info << "ainfo[nbh]=" << EI(ainfo.at(*nbh)) << "\n";
             info << "rinfo.distances[nbh] <= astack->speed(): " << (rinfo.distances[*nbh] <= astack->speed()) << "\n";
 
-            if (estack)
-                info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, estack, *nbh) << "\n";
+            if (cstack)
+                info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, cstack, *nbh) << "\n";
         }
 
         info << "\nACTION TRACE:\n";
@@ -450,6 +419,21 @@ namespace MMAI {
         auto shouldupdate = false;
 
         for (auto &cstack : cb->battleGetAllStacks()) {
+            if (battlefield && cstack == battlefield->astack) {
+                auto astack = battlefield->astack;
+                bool same = astack == cstack;
+                std::map<const CStack*, int> kur;
+                kur.insert({cstack, 69});
+                int baba = kur.at(astack);
+
+                auto rinfo = cb->getReachability(battlefield->astack);
+
+                auto r1 = rinfo.distances[astack->getPosition()];
+                auto r2 = rinfo.distances[astack->occupiedHex()];
+
+                printf("%d, %d, %d, %d", same, baba, r1, r2);
+
+            }
             if(cstack && !cstack->alive()) {
                 shouldupdate = true;
                 break;
