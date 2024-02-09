@@ -256,10 +256,7 @@ namespace MMAI {
             case HexAction::AMOVE_2R:
             case HexAction::AMOVE_2BR: {
                 auto a = ainfo.at(action.hex->bhex);
-                if (a == EAccessibility::ACCESSIBLE) {
-                    ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented (A)MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
-                    res.addError(ErrType::HEX_UNREACHABLE);
-                } else if (a == EAccessibility::OBSTACLE) {
+                if (a == EAccessibility::OBSTACLE) {
                     auto hs = action.hex->state;
                     ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_BLOCKED);
@@ -277,12 +274,16 @@ namespace MMAI {
                     }
                     // means we try to move onto another stack
                     res.addError(ErrType::HEX_BLOCKED);
-                } else {
-                    throw std::runtime_error("Unexpected accessibility: " + std::to_string(EI(a)) + debugInfo(action, bf.astack, nullptr));
                 }
 
-                if (action.hexaction == HexAction::MOVE)
+                // only remaining is ACCESSIBLE
+                expect(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: %d", a);
+
+                if (action.hexaction == HexAction::MOVE) {
+                    ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented (A)MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
+                    res.addError(ErrType::HEX_UNREACHABLE);
                     break;
+                }
 
                 auto nbh = BattleHex{};
 
@@ -371,7 +372,7 @@ namespace MMAI {
 
         info << "astack->getPosition().hex=" << astack->getPosition().hex << "\n";
         info << "astack->slot=" << astack->unitSlot() << "\n";
-        info << "astack->doubleWide=" << cstack->doubleWide() << "\n";
+        info << "astack->doubleWide=" << astack->doubleWide() << "\n";
         info << "cb->battleCanShoot(astack)=" << cb->battleCanShoot(astack) << "\n";
 
         if (nbh) {
@@ -417,25 +418,10 @@ namespace MMAI {
 
     // NOTE: not triggered for retreat
     void BAI::actionFinished(const BattleAction &action) {
-        debug("*** actionFinished ***");
+        debug("*** actionFinished - START***");
         auto shouldupdate = false;
 
         for (auto &cstack : cb->battleGetAllStacks()) {
-            if (battlefield && cstack == battlefield->astack) {
-                auto astack = battlefield->astack;
-                bool same = astack == cstack;
-                std::map<const CStack*, int> kur;
-                kur.insert({cstack, 69});
-                int baba = kur.at(astack);
-
-                auto rinfo = cb->getReachability(battlefield->astack);
-
-                auto r1 = rinfo.distances[astack->getPosition()];
-                auto r2 = rinfo.distances[astack->occupiedHex()];
-
-                printf("%d, %d, %d, %d", same, baba, r1, r2);
-
-            }
             if(cstack && !cstack->alive()) {
                 shouldupdate = true;
                 break;

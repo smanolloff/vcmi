@@ -134,7 +134,7 @@ namespace MMAI {
             // NOTE: proper neighbouring hexes are returned if we are 2-hex
             //
             for (const auto &nbh : astack->getSurroundingHexes(bh)) {
-                auto obh = astack->occupiedHex();  // INVALID if astack is 1hex
+                auto obh = astack->occupiedHex(bh); // INVALID if astack is 1hex
                 ASSERT(nbh != obh, "nbh == obh");
 
                 for (const auto &cstack : allstacks) {
@@ -305,7 +305,7 @@ namespace MMAI {
     }
 
     // static
-    void Battlefield::AddToExportState(Export::State state, std::set<const CStack*> stacks, int i, int max) {
+    void Battlefield::AddToExportState(Export::State &state, std::set<const CStack*> &stacks, int i, int max) {
         // this is because we use "slot" for the position
         ASSERT(max == 7, "expected max=7");
 

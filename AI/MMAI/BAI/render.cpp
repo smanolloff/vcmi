@@ -332,10 +332,6 @@ namespace MMAI {
                             break;
                         }
                     }
-
-                    if (hex.x == 13 && hex.y == 5) {
-                        printf("");
-                    }
                 }
                 break;
                 case HexState::FREE_UNREACHABLE:

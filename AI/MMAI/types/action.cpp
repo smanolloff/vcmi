@@ -79,13 +79,11 @@ namespace MMAI {
 
         if (EI(ha) == EI(HexAction::SHOOT)) {
             stack = hex->stack;
-            ASSERT(stack && stack->cstack, "shooted stack is null");
         } else if (aMoveTargetHex) {
             stack = aMoveTargetHex->stack;
-            ASSERT(stack && stack->cstack, "amove target stack is null");
         }
 
-        if (stack) {
+        if (stack && stack->cstack) {
             auto slot = stack->attrs.at(EI(StackAttr::Slot));
             std::string color = stack->cstack->unitSide() == BattlePerspective::LEFT_SIDE
                 ? "\033[31m" : "\033[34m";

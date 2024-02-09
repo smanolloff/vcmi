@@ -62,7 +62,7 @@ namespace MMAI {
         static Hexes InitHexes(CBattleCallback* cb, const CStack* astack);
         static Stack InitStack(const Queue &q, const CStack* cstack);
         static Queue GetQueue(CBattleCallback* cb);
-        static void AddToExportState(Export::State state, std::set<const CStack*> stacks, int i, int max);
+        static void AddToExportState(Export::State &state, std::set<const CStack*> &stacks, int i, int max);
 
         Battlefield(CBattleCallback* cb, const CStack* astack_) :
             astack(astack_),
