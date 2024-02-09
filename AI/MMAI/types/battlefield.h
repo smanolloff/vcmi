@@ -62,6 +62,7 @@ namespace MMAI {
         static Hexes InitHexes(CBattleCallback* cb, const CStack* astack);
         static Stack InitStack(const Queue &q, const CStack* cstack);
         static Queue GetQueue(CBattleCallback* cb);
+        static void AddToExportState(Export::State state, std::set<const CStack*> stacks, int i, int max);
 
         Battlefield(CBattleCallback* cb, const CStack* astack_) :
             astack(astack_),
@@ -81,7 +82,7 @@ namespace MMAI {
 
 
     // Sync check hard-coded values in Export
-    static_assert(Export::N_HEX_ATTRS == 2 + std::tuple_size<StackAttrs>::value);
+    static_assert(Export::N_HEX_ATTRS == 3 + std::tuple_size<StackAttrs>::value + 36);
     static_assert(std::tuple_size<Export::State>::value == 165 * Export::N_HEX_ATTRS);
     static_assert(std::tuple_size<Export::ActMask>::value == N_ACTIONS);
 }

@@ -92,7 +92,7 @@ namespace MMAI {
         // info("getNonRenderAciton called with result type: " + std::to_string(result->type));
         auto action = getActionOrig(result);
         while (action == Export::ACTION_RENDER_ANSI) {
-            auto res = Export::Result(bai->renderANSI());
+            auto res = Export::Result(bai->renderANSI(), Export::Side(cb->battleGetMySide()));
             // info("getNonRenderAciton (loop) called with result type: " + std::to_string(res.type));
             action = getActionOrig(&res);
         }

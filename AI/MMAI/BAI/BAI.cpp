@@ -152,7 +152,9 @@ namespace MMAI {
         // cb->battleGetTurnOrder(origq, QSIZE, 0);
         // auto myq = bf.getQueue(cb.get());
         auto [x, y] = Hex::CalcXY(apos);
-        ASSERT(bf.hexes.at(y).at(x).stack->attrs.at(EI(StackAttr::QueuePos)) == 0, "expected 0 queue pos");
+        auto hex = bf.hexes.at(y).at(x);
+        ASSERT(hex.stack->attrs.at(EI(StackAttr::QueuePos)) == 0, "expected 0 queue pos");
+        ASSERT(hex.stack->attrs.at(EI(StackAttr::IsActive)) == 1, "expected active=1");
 
         if (!action.hex) {
             switch(NonHexAction(action.action)) {

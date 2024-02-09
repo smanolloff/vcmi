@@ -70,7 +70,7 @@ namespace MMAI {
         Export::F_GetAction f_getAction = [this](const Export::Result* result) {
             auto act = getActionOrig(result);
             while (act == Export::ACTION_RENDER_ANSI) {
-                auto res = Export::Result(renderANSI());
+                auto res = Export::Result(renderANSI(), Export::Side(cb->battleGetMySide()));
                 act = getActionOrig(&res);
             }
 

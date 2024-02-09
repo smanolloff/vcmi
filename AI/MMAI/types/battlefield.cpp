@@ -1,4 +1,21 @@
+// =============================================================================
+// Copyright 2024 Simeon Manolov <s.manolloff@gmail.com>.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// =============================================================================
+
 #include "types/battlefield.h"
+#include "AI/VCAI/AIUtility.h"
 #include "CCallback.h"
 #include "CStack.h"
 #include "battle/AccessibilityInfo.h"
@@ -96,14 +113,13 @@ namespace MMAI {
 
         auto hex = Hex{};
         hex.bhex = bh;
-        hex.id = id;
         hex.x = x;
         hex.y = y;
         hex.hexactmask.fill(false);
 
         if (IsReachable(bh, astack, rinfos)) {
             hex.hexactmask.at(EI(HexAction::MOVE)) = true;
-            hex.reachableBy.insert(astack);
+            hex.reachableByFriendlyStacks.insert(astack);
 
             // Report it as FREE_REACHABLE even if we are standing on it
             hex.state = HexState::FREE_REACHABLE;
@@ -150,11 +166,19 @@ namespace MMAI {
         }
 
         for (const auto &cstack : allstacks) {
-            if (!cstack->coversPos(bh)) continue;
+            auto isEnemy = cstack->getOwner() != astack->getOwner();
 
+            // astack already inserted here
+            if (cstack != astack && IsReachable(bh, cstack, rinfos)) {
+                isEnemy
+                    ? hex.reachableByEnemyStacks.insert(cstack)
+                    : hex.reachableByFriendlyStacks.insert(cstack);
+            }
+
+            if (!cstack->coversPos(bh)) continue;
             hex.stack = std::make_shared<Stack>(InitStack(queue, cstack));
 
-            if (canshoot && cstack->getOwner() != astack->getOwner()) {
+            if (canshoot && isEnemy) {
                 hex.hexactmask.at(EI(HexAction::SHOOT)) = true;
                 BattleHex::getDistance(bh, astack->position) > astack->getRangedFullDamageDistance()
                     ? hex.rangedDmgModifier = 0.5
@@ -225,7 +249,7 @@ namespace MMAI {
         // hexactmask: set MOVE
         for (int i=0; i<BF_SIZE; i++) {
             auto hex = InitHex(i, allstacks, astack, canshoot, queue, ainfo, rinfos);
-            expect(hex.id == i, "hex.id != i: %d != %d", hex.id, i);
+            expect(hex.x + hex.y*BF_XMAX == i, "hex.x + hex.y*BF_XMAX != i: %d + %d*%d != %d", hex.x, hex.y, BF_XMAX, i);
             res.at(hex.y).at(hex.x) = hex;
         }
 
@@ -268,6 +292,8 @@ namespace MMAI {
                 a = cstack->creatureId();
             break; case StackAttr::AIValue:
                 a = cstack->creatureId().toCreature()->getAIValue();
+            break; case StackAttr::IsActive:
+                a = (qpos == 0) ? 1 : 0;
             break; default:
                 throw std::runtime_error("Unexpected StackAttr: " + std::to_string(i));
             }
@@ -276,6 +302,23 @@ namespace MMAI {
         }
 
         return Stack(cstack, attrs);
+    }
+
+    // static
+    void Battlefield::AddToExportState(Export::State state, std::set<const CStack*> stacks, int i, int max) {
+        // this is because we use "slot" for the position
+        ASSERT(max == 7, "expected max=7");
+
+        int added = 0;
+        for (const auto &cstack : stacks) {
+            if (added >= max) break;
+            auto slot = static_cast<int>(cstack->unitSlot());
+            expect(slot <= max, "slot > max (%d > %d)", slot, max);
+
+            // the position encodes the slot => value is binary
+            state.at(i+slot) = NValue(1, 0, 1);
+            added += 1;
+        }
     }
 
     const Export::State Battlefield::exportState() {
@@ -287,7 +330,8 @@ namespace MMAI {
                 static_assert(EI(HexState::INVALID) == 0);
                 ASSERT(EI(hex.state) > 0, "INVALID hex during export");
 
-                res.at(i++) = NValue(hex.id, 0, BF_SIZE - 1);
+                res.at(i++) = NValue(hex.y, 0, BF_YMAX - 1);
+                res.at(i++) = NValue(hex.x, 0, BF_XMAX - 1);
                 res.at(i++) = NValue(EI(hex.state), 1, EI(HexState::count) - 1);
                 auto &stack = hex.stack;
 
@@ -311,12 +355,27 @@ namespace MMAI {
                     break; case StackAttr::Slot:             max = 6;
                     break; case StackAttr::CreatureType:     max = 150;
                     break; case StackAttr::AIValue:          max = 40000; // azure dragon is ~80k!
+                    break; case StackAttr::IsActive:         max = 1;
                     break; default:
                         throw std::runtime_error("Unexpected StackAttr: " + std::to_string(EI(j)));
                     }
 
                     res.at(i++) = NValue(stack->attrs.at(j), ATTR_NA, max);
                 }
+
+                res.at(i++) = NValue(hex.rangedDmgModifier, 0, 1);
+                AddToExportState(res, hex.reachableByFriendlyStacks, i, 7);
+                i += 7;
+                AddToExportState(res, hex.reachableByEnemyStacks, i, 7);
+                i += 7;
+                AddToExportState(res, hex.neighbouringFriendlyStacks, i, 7);
+                i += 7;
+                AddToExportState(res, hex.neighbouringEnemyStacks, i, 7);
+                i += 7;
+                AddToExportState(res, hex.potentialEnemyAttackers, i, 7);
+                i += 7;
+
+                expect(i % Export::N_HEX_ATTRS == 0, "i %% Export::N_HEX_ATTRS != 0 (%d %% %d != 0)", i, Export::N_HEX_ATTRS);
             }
         }
 

@@ -40,6 +40,7 @@ namespace MMAI {
         Slot,  // 0..6
         CreatureType,  //0..144
         AIValue,
+        IsActive, // 1=true
         count
     };
 

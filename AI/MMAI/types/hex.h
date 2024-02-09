@@ -37,7 +37,7 @@ namespace MMAI {
         Hex() {};
 
         BattleHex bhex;
-        int id = -1;
+        // int id = -1;
         int x = -1;
         int y = -1;
         std::shared_ptr<Stack> stack = INVALID_STACK; // stack occupying this hex
@@ -48,10 +48,12 @@ namespace MMAI {
         float rangedDmgModifier = 0; // 0..1 (0=not shootable)
 
         // assuming we can go to this hex, add some context
-        std::set<const CStack*> reachableBy;
+        std::set<const CStack*> reachableByFriendlyStacks = {};
+        std::set<const CStack*> reachableByEnemyStacks = {};
+        // below context available only for REACHABLE hexes
+        std::set<const CStack*> neighbouringFriendlyStacks = {};
         std::set<const CStack*> neighbouringEnemyStacks = {};
         std::set<const CStack*> potentialEnemyAttackers = {};
-        std::set<const CStack*> neighbouringFriendlyStacks = {};
 
 
         std::string name() const;

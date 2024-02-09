@@ -55,6 +55,14 @@ MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
     return validActions[randomIndex];
 }
 
+MMAI::Export::Action promptAction(const MMAI::Export::ActMask &mask) {
+    int num;
+    std::cout << "Enter an integer (0 for random valid action): ";
+    std::cin >> num;
+
+    return num == 0 ? randomValidAction(mask) : MMAI::Export::Action(num);
+}
+
 // "default" is a reserved word => use "fallback"
 std::string values(std::vector<std::string> all, std::string fallback) {
     auto found = false;
@@ -85,6 +93,7 @@ Args parse_args(int argc, char * argv[])
     };
 
     static auto benchmark = false;
+    static auto interactive = false;
 
     auto usage = std::stringstream();
     usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
@@ -108,6 +117,8 @@ Args parse_args(int argc, char * argv[])
             values(LOGLEVELS, omap.at("loglevel-global")).c_str())
         ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
             values(LOGLEVELS, omap.at("loglevel-ai")).c_str())
+        ("interactive", po::bool_switch(&interactive),
+            ("Ask for each action"))
         ("benchmark", po::bool_switch(&benchmark),
             ("Measure performance"));
 
@@ -160,7 +171,7 @@ Args parse_args(int argc, char * argv[])
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
             std::cout << r->ansiRender << "\n";
             // use stored mask from pre-render result
-            act = randomValidAction(lastmasks.at(side));
+            act = interactive ? promptAction(lastmasks.at(side)) : randomValidAction(lastmasks.at(side));
         } else if (r->ended) {
             if (side == benchside) {
                 resets++;
@@ -192,7 +203,7 @@ Args parse_args(int argc, char * argv[])
             act = MMAI::Export::ACTION_RENDER_ANSI;
         } else {
             renders.at(side) = false;
-            act = randomValidAction(r->actmask);
+            act = interactive ? promptAction(r->actmask) : randomValidAction(r->actmask);
         }
 
         if (!benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));

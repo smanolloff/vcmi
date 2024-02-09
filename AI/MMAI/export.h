@@ -76,9 +76,9 @@ namespace MMAI::Export {
             //     throw std::runtime_error(std::to_string(vmin) + ">" + std::to_string(vmax));
 
             if (v < vmin)
-                throw std::runtime_error(std::to_string(v) + " < " + std::to_string(vmin) + " (NValue error)");
+                throw std::runtime_error("NValue: " + std::to_string(v) + " < " + std::to_string(vmin) + " (NValue error)");
             else if (v > vmax)
-                throw std::runtime_error(std::to_string(v) + " > " + std::to_string(vmax));
+                throw std::runtime_error("NValue: " + std::to_string(v) + " > " + std::to_string(vmax));
 
             orig = v;
 
@@ -89,13 +89,19 @@ namespace MMAI::Export {
         }
     };
 
-    constexpr int N_STACK_ATTRS = 16;
+    constexpr int N_STACK_ATTRS = 17;
+    constexpr int N_CONTEXT_ATTRS =
+        1 +     // rangedDmgModifier
+        14 +    // 14 x reachableBy
+        7 +     // 7 x neighbouringEnemyStacks
+        7 +     // 7 x potentialEnemyAttackers
+        7;      // 7 x neighbouringFriendlyStacks
 
     /**
      * State:
      * 165 hexes, N_HEX_ATTRS each
      */
-    constexpr int N_HEX_ATTRS = 2 + N_STACK_ATTRS;  // id, hexstate, attrs
+    constexpr int N_HEX_ATTRS = 3 + N_STACK_ATTRS + N_CONTEXT_ATTRS;  // x, y, hexstate
     constexpr int STATE_SIZE = 165 * N_HEX_ATTRS;
     using State = std::array<NValue, STATE_SIZE>;
     using Action = int16_t;
@@ -130,8 +136,8 @@ namespace MMAI::Export {
         Result() {};
 
         // Constructor 1: rendering
-        Result(std::string ansiRender_)
-        : type(ResultType::ANSI_RENDER), ansiRender(ansiRender_) {};
+        Result(std::string ansiRender_, Side side_)
+        : type(ResultType::ANSI_RENDER), ansiRender(ansiRender_), side(side_) {};
 
         // Constructor 1: regular result
         Result(State state_, ActMask actmask_, Side side_, int dmgDealt_, int dmgReceived_,

@@ -40,11 +40,13 @@ namespace MMAI {
             auto hex = Hex{};
             int x = ihex%15;
             int y = ihex/15;
+            ASSERT(y == state.at(ibase).orig, "hex.y mismatch");
+            ASSERT(x == state.at(ibase+1).orig, "hex.x mismatch");
             hex.bhex = BattleHex(x+1, y);
-            hex.id = Hex::CalcId(hex.bhex);
-            expect(state.at(ibase).orig == hex.id, "hex id mismatch: %d != %d", state.at(ibase).orig, hex.id);
+            hex.x = x;
+            hex.y = y;
             hex.hexactmask.fill(false);
-            hex.state = HexState(state.at(ibase+1).orig);
+            hex.state = HexState(state.at(ibase+2).orig);
 
             if (hex.state == HexState::FREE_REACHABLE)
                 hex.hexactmask.at(EI(HexAction::MOVE)) = true;
@@ -52,20 +54,20 @@ namespace MMAI {
             const CStack *cstack = nullptr;
             auto attrs = Stack::NAAttrs();
 
-            if (state.at(ibase+2+EI(StackAttr::Quantity)).orig > 0) {
+            if (state.at(ibase+3+EI(StackAttr::Quantity)).orig > 0) {
                 // there's a stack on this hex
                 expect(hex.state == HexState::OCCUPIED, "expected OCCUPIED hex");
 
                 auto stacks = cb->battleGetStacksIf([=](const CStack * stack) {
-                    return stack->unitSide() == state.at(ibase+2+EI(StackAttr::Side)).orig
-                        && stack->unitSlot() == state.at(ibase+2+EI(StackAttr::Slot)).orig;
+                    return stack->unitSide() == state.at(ibase+3+EI(StackAttr::Side)).orig
+                        && stack->unitSlot() == state.at(ibase+3+EI(StackAttr::Slot)).orig;
                 });
 
                 expect(stacks.size() == 1, "Expected exactly 1 stack, got: %d", stacks.size());
                 cstack = stacks.at(0);
 
                 for (int j=0; j<EI(StackAttr::count); j++) {
-                    attrs.at(j) = state.at(ibase+2+j).orig;
+                    attrs.at(j) = state.at(ibase+3+j).orig;
 
                     int vreal;
 
@@ -96,6 +98,16 @@ namespace MMAI {
                     break; case StackAttr::Slot: vreal = cstack->unitSlot();
                     break; case StackAttr::CreatureType: vreal = cstack->creatureId();
                     break; case StackAttr::AIValue: vreal = cstack->creatureId().toCreature()->getAIValue();
+                    break; case StackAttr::IsActive:
+                        vreal = attrs[j];
+                        if (vreal == 1) {
+                            expect(attrs[EI(StackAttr::QueuePos)] == 0, "active stack on non-0 queue pos");
+                            if (StackAttr::QueuePos < StackAttr::IsActive) {
+                                expect(astack == cstack, "active stack should have been set to cstack");
+                            }
+                        } else {
+                            expect(attrs[EI(StackAttr::QueuePos)] != 0, "non-active stack on 0 queue pos");
+                        }
                     break; default:
                       throw std::runtime_error("Unexpected StackAttr: " + std::to_string(j));
                     }
@@ -119,7 +131,8 @@ namespace MMAI {
                 auto hex = hexes.at(y).at(x);
 
                 expect(hex0.bhex == hex.bhex, "mismatch: hex.bhex");
-                expect(hex0.id == hex.id, "mismatch: hex.id");
+                expect(hex0.y == hex.y, "mismatch: hex.y");
+                expect(hex0.x == hex.x, "mismatch: hex.x");
                 expect(hex0.state == hex.state, "mismatch: hex.state");
 
                 for (int j=0; j<EI(StackAttr::count); j++) {
@@ -139,7 +152,7 @@ namespace MMAI {
         const Action *action,  // for displaying "last action"
         const std::vector<AttackLog> attackLogs // for displaying log
     ) {
-        static_assert(std::tuple_size<Export::State>::value == 165 * (2 + Export::N_STACK_ATTRS));
+        static_assert(std::tuple_size<Export::State>::value == 165 * (3 + Export::N_STACK_ATTRS + Export::N_CONTEXT_ATTRS));
 
         auto reconstructed = Reconstruct(r, cb);
         auto hexes = std::get<0>(reconstructed);
@@ -260,25 +273,55 @@ namespace MMAI {
                 //  state[18] is hex.stack->attr[Qty] for hex2
                 //  state[19] is hex.stack->attr[Att] for hex2
                 //  ... etc
-                auto ibase = (y * BF_XMAX + x) * (2 + EI(StackAttr::count));
-                auto &nvid = state.at(ibase);
-                expect(hex.id == nvid.orig, "hex.id=%d != state[%d]=%d", hex.id, ibase, nvid.orig);
-                auto &nvstate = state.at(ibase+1);
-                expect(hex.state == HexState(nvstate.orig), "hex.state=%d != state[%d]=%d", hex.state, ibase, nvstate.orig);
+                auto ibase = (y * BF_XMAX + x) * (3 + EI(StackAttr::count) + Export::N_CONTEXT_ATTRS);
+                auto &nvy = state.at(ibase);
+                auto &nvx = state.at(ibase+1);
+                expect(hex.y == nvy.orig, "hex.y=%d != state[%d]=%d", hex.y, ibase, nvy.orig);
+                expect(hex.x == nvx.orig, "hex.x=%d != state[%d]=%d", hex.x, ibase+1, nvx.orig);
+                auto &nvstate = state.at(ibase+2);
+                expect(hex.state == HexState(nvstate.orig), "hex.state=%d != state[%d]=%d", hex.state, ibase+2, nvstate.orig);
 
                 // true if any hexactionmask is true
                 auto anyham = std::any_of(ham.begin(), ham.end(), [](bool val) { return val; });
 
                 // true if any stack attribute for that hex is valid
                 auto anyattr = std::any_of(
-                    state.begin()+ibase+2,
-                    state.begin()+ibase+2+EI(StackAttr::count),
+                    state.begin()+ibase+3,
+                    // XXX: asserting only reachablyByFriendly
+                    state.begin()+ibase+3+EI(StackAttr::count),
                     [](Export::NValue nv) { return nv.orig != ATTR_NA; }
                 );
+
+                // true if any any of the following context attributes is available:
+                // * (7) reachableByFriendlyStacks
+                // * (7) reachableByEnemyStacks
+                // Expect to be available for all hexes:
+                auto anycontext_all = std::any_of(
+                    state.begin()+ibase+3+EI(StackAttr::count),
+                    state.begin()+ibase+3+EI(StackAttr::count) + 14,
+                    [](Export::NValue nv) { return nv.orig != 0; }
+                );
+
+                // not checkable
+                // // true if any any of the following context attributes is available:
+                // // * (7) neighbouringFriendlyStacks
+                // // * (7) neighbouringEnemyStacks
+                // // * (7) potentialEnemyAttackers
+                // // Expect to be available for FREE_REACHABLE hexes only:
+                // auto anycontext_free_reachable = std::any_of(
+                //     state.begin()+ibase+3+EI(StackAttr::count)+14,
+                //     state.begin()+ibase+3+EI(StackAttr::count)+14 + 21,
+                //     [](Export::NValue nv) { return nv.orig != 0; }
+                // );
 
                 switch(hex.state) {
                 case HexState::FREE_REACHABLE: {
                     ASSERT(!anyattr, "FREE_REACHABLE but anyattr is true");
+                    // this must be always true as at least 1 stack (astack) can reach this hex
+                    ASSERT(anycontext_all, "FREE_REACHABLE but anycontext_all is false");
+                    // can't check this as there may be no stacks
+                    // ASSERT(anycontext_free_reachable, "FREE_REACHABLE but anycontext_free_reachable is false");
+
                     ASSERT(ham.at(EI(HexAction::MOVE)), "FREE_REACHABLE but mask[MOVE] is false");
                     sym = "○";
 
@@ -288,6 +331,10 @@ namespace MMAI {
                             sym = "◎";
                             break;
                         }
+                    }
+
+                    if (hex.x == 13 && hex.y == 5) {
+                        printf("");
                     }
                 }
                 break;
@@ -325,8 +372,8 @@ namespace MMAI {
                     // TODO: do I need to account for dead stacks at end-of-battle?
                     //      ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
                     for (int j=0; j<EI(StackAttr::count); j++) {
-                        // ASSERT(state[ibase+2+j].orig == hex.stack->attrs[j], "attr check failed");
-                        expect(state.at(ibase+2+j).orig == hex.stack->attrs.at(j), "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+2+j, state[ibase+2+j].orig, j, hex.stack->attrs[j]);
+                        // ASSERT(state[ibase+3+j].orig == hex.stack->attrs[j], "attr check failed");
+                        expect(state.at(ibase+3+j).orig == hex.stack->attrs.at(j), "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+3+j, state[ibase+3+j].orig, j, hex.stack->attrs[j]);
                     }
                 }
                 break;
@@ -417,7 +464,7 @@ namespace MMAI {
 
         // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
         const auto nrows = 14+1;
-        const auto ncols = EI(StackAttr::count) + 1 - 4; // hide IsEnemy, Slot, CreatureType and AIValue
+        const auto ncols = EI(StackAttr::count) + 1 - 5; // hide IsEnemy, Slot, CreatureType, AIValue IsActive
 
         // Table with nrows and ncells, each cell a 3-element tuple
         auto table = std::array<
