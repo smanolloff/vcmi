@@ -66,7 +66,7 @@ MMAI::Export::Action promptAction(const MMAI::Export::ActMask &mask) {
 static auto recorded_i = 0;
 
 MMAI::Export::Action recordedAction(std::vector<int> &recording) {
-    if (recorded_i >= recording.size()) throw std::runtime_error("No more recorded actions");
+    if (recorded_i >= recording.size()) throw std::runtime_error("\n\n*** No more recorded actions in actions.txt ***\n\n");
     return MMAI::Export::Action(recording[recorded_i++]);
 };
 

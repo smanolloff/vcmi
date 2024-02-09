@@ -212,12 +212,12 @@ namespace MMAI {
             case HexAction::AMOVE_2BR: {
                 ASSERT(bf.astack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
                 auto &edir = AMOVE_TO_EDIR.at(action.hexaction);
-                auto obh = bf.astack->occupiedHex();
+                auto obh = bf.astack->occupiedHex(bhex);
                 auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
                 ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
                 auto estack = cb->battleGetStackByPos(nbh);
                 ASSERT(estack, "no enemy stack for melee attack");
-                res.setAction(BattleAction::makeMeleeAttack(bf.astack, bhex, nbh));
+                res.setAction(BattleAction::makeMeleeAttack(bf.astack, nbh, bhex));
             }
             break;
             default:
@@ -260,6 +260,7 @@ namespace MMAI {
                     auto hs = action.hex->state;
                     ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_BLOCKED);
+                    break;
                 } else if (a == EAccessibility::ALIVE_STACK) {
                     auto bh = action.hex->bhex;
                     if (bh.hex == bf.astack->getPosition().hex) {
@@ -274,6 +275,7 @@ namespace MMAI {
                     }
                     // means we try to move onto another stack
                     res.addError(ErrType::HEX_BLOCKED);
+                    break;
                 }
 
                 // only remaining is ACCESSIBLE
