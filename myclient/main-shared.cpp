@@ -63,6 +63,13 @@ MMAI::Export::Action promptAction(const MMAI::Export::ActMask &mask) {
     return num == 0 ? randomValidAction(mask) : MMAI::Export::Action(num);
 }
 
+static auto recorded_i = 0;
+
+MMAI::Export::Action recordedAction(std::vector<int> &recording) {
+    if (recorded_i >= recording.size()) throw std::runtime_error("No more recorded actions");
+    return MMAI::Export::Action(recording[recorded_i++]);
+};
+
 // "default" is a reserved word => use "fallback"
 std::string values(std::vector<std::string> all, std::string fallback) {
     auto found = false;
@@ -94,6 +101,7 @@ Args parse_args(int argc, char * argv[])
 
     static auto benchmark = false;
     static auto interactive = false;
+    static auto prerecorded = false;
 
     auto usage = std::stringstream();
     usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
@@ -119,6 +127,8 @@ Args parse_args(int argc, char * argv[])
             values(LOGLEVELS, omap.at("loglevel-ai")).c_str())
         ("interactive", po::bool_switch(&interactive),
             ("Ask for each action"))
+        ("prerecorded", po::bool_switch(&prerecorded),
+            ("Replay actions from local file named actions.txt"))
         ("benchmark", po::bool_switch(&benchmark),
             ("Measure performance"));
 
@@ -149,13 +159,23 @@ Args parse_args(int argc, char * argv[])
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
-    static int i = 0;
     static std::array<bool, 2> renders = {false, false};
 
     static clock_t t0;
     static unsigned long steps = 0;
     static unsigned long resets = 0;
     static int benchside = -1;
+
+    static std::vector<int> recordings;
+    if (prerecorded) {
+        std::ifstream inputFile("actions.txt"); // Assuming the integers are stored in a file named "input.txt"
+        if (!inputFile.is_open()) throw std::runtime_error("Failed to open actions.txt");
+        int num;
+        while (inputFile >> num) {
+            std::cout << "Loaded action: " << num << "\n";
+            recordings.push_back(num);
+        }
+    }
 
     MMAI::Export::F_GetAction getaction = [](const MMAI::Export::Result * r){
         MMAI::Export::Action act;
@@ -171,7 +191,9 @@ Args parse_args(int argc, char * argv[])
         if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
             std::cout << r->ansiRender << "\n";
             // use stored mask from pre-render result
-            act = interactive ? promptAction(lastmasks.at(side)) : randomValidAction(lastmasks.at(side));
+            act = interactive
+                ? promptAction(lastmasks.at(side))
+                : (prerecorded ? recordedAction(recordings) : randomValidAction(lastmasks.at(side)));
         } else if (r->ended) {
             if (side == benchside) {
                 resets++;
@@ -203,42 +225,14 @@ Args parse_args(int argc, char * argv[])
             act = MMAI::Export::ACTION_RENDER_ANSI;
         } else {
             renders.at(side) = false;
-            act = interactive ? promptAction(r->actmask) : randomValidAction(r->actmask);
+            act = interactive
+                ? promptAction(r->actmask)
+                : (prerecorded ? recordedAction(recordings) : randomValidAction(r->actmask));
         }
 
         if (!benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
         return act;
     };
-
-    // Reproduce issue with active stack having queuePos=1
-    // ai/P2.vmap, MMAI_USER + MMAI_USER (last action is invalid, but does not matter)
-    static auto recorded = std::array{592, 612, 692, 82, 232, 1282, 752, 852};
-    static bool rendered = false;
-
-    MMAI::Export::F_GetAction getactionRec = [](const MMAI::Export::Result * r){
-        if (r->type == MMAI::Export::ResultType::ANSI_RENDER) {
-            std::cout << r->ansiRender << "\n";
-        }
-
-        MMAI::Export::Action act;
-
-        if (r->ended) {
-
-            if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
-            act = MMAI::Export::ACTION_RESET;
-        } else if (!rendered) {
-            rendered = true;
-            act = MMAI::Export::ACTION_RENDER_ANSI;
-        } else {
-            if (i >= recorded.size()) throw std::runtime_error("No more recorded actions");
-            act = recorded[i++];
-            rendered = false;
-        }
-
-        if (!benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
-        return MMAI::Export::Action(act);
-    };
-
 
     if (benchmark) {
         printf("Benchmark:\n");
