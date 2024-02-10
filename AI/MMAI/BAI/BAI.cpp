@@ -281,7 +281,7 @@ namespace MMAI {
                 // only remaining is ACCESSIBLE
                 expect(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: %d", a);
 
-                if (action.hexaction == HexAction::MOVE) {
+                if (action.hexaction != HexAction::SHOOT) {
                     ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented (A)MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_UNREACHABLE);
                     break;

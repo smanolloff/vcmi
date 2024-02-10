@@ -122,6 +122,7 @@ namespace MMAI {
             hex.reachableByFriendlyStacks.insert(astack);
 
             // Report it as FREE_REACHABLE even if we are standing on it
+            // Later, it will be "corrected" to OCCUPIED if needed
             hex.state = HexState::FREE_REACHABLE;
 
             // can also be OCCUPIED (by astack itself)

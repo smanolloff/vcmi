@@ -93,7 +93,8 @@ namespace MMAI {
         }
 
         switch (HexAction(ha)) {
-        break; case HexAction::MOVE:      res = (hex->stack->cstack ? "Defend on " : "Move to ") + hex->name();
+        break; case HexAction::MOVE:
+            res = (hex->stack->cstack && hex->bhex == hex->stack->cstack->getPosition() ? "Defend on " : "Move to ") + hex->name();
         break; case HexAction::AMOVE_TL:  res = "Attack " + stackstr + " from " + hex->name() + " /top-left/";
         break; case HexAction::AMOVE_TR:  res = "Attack " + stackstr + " from " + hex->name() + " /top-right/";
         break; case HexAction::AMOVE_R:   res = "Attack " + stackstr + " from " + hex->name() + " /right/";

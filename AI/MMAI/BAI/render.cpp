@@ -24,6 +24,10 @@
 #include <stdexcept>
 
 namespace MMAI {
+    // static
+    // TODO: fix for terminal observation
+    //       info after off-turn update is somewhat inconsistent
+    //       (have not investigated properly though)
     std::tuple<Hexes, const CStack*> BAI::Reconstruct(
         const Export::Result &r,
         const std::shared_ptr<CBattleCallback> cb
@@ -56,8 +60,6 @@ namespace MMAI {
 
             if (state.at(ibase+3+EI(StackAttr::Quantity)).orig > 0) {
                 // there's a stack on this hex
-                expect(hex.state == HexState::OCCUPIED, "expected OCCUPIED hex");
-
                 auto stacks = cb->battleGetStacksIf([=](const CStack * stack) {
                     return stack->unitSide() == state.at(ibase+3+EI(StackAttr::Side)).orig
                         && stack->unitSlot() == state.at(ibase+3+EI(StackAttr::Slot)).orig;
@@ -65,6 +67,12 @@ namespace MMAI {
 
                 expect(stacks.size() == 1, "Expected exactly 1 stack, got: %d", stacks.size());
                 cstack = stacks.at(0);
+
+                // // XXX: does not work for terminal render
+                // if (!cstack->coversPos(hex.bhex)) {
+                //     auto x = cstack->getPosition();
+                //     throw std::runtime_error("stack on hex, but coversPos() is false");
+                // }
 
                 for (int j=0; j<EI(StackAttr::count); j++) {
                     attrs.at(j) = state.at(ibase+3+j).orig;
