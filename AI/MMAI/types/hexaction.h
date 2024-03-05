@@ -32,17 +32,17 @@ namespace MMAI {
     enum class HexAction : int {
         MOVE,       // = Move to (defend if current hex)
         AMOVE_TL,   // = Move to (*) + attack:
-        AMOVE_TR,   //   . . .  . . . . . 0 1 . . .
-        AMOVE_R,    //   1-hex:  . . . . 5 * 2 . . .
-        AMOVE_BR,   //  . . . . . . . . . 4 3 . . .
-        AMOVE_BL,   //   . . . . . . . . . . . . . .
-        AMOVE_L,    //  . . . . . . . . 8 0 1 . . .
-        AMOVE_2BL,  //   2-hex (L):  . 7 # * 2 . . .
-        AMOVE_2L,   //  . . . . . . . . 6 4 3 . . .
-        AMOVE_2TL,  //   . . . . . . . . . . . . . .
-        AMOVE_2TR,  //  . . . . . . . . . 0 1 9 . .
-        AMOVE_2R,   //   2-hex (R):  . . 5 * # 10. .
-        AMOVE_2BR,  //  . . . . . . . . . 4 3 11. .
+        AMOVE_TR,   //  . . . . . . . . . 0 1 . . . .
+        AMOVE_R,    // . 1-hex:  . . . . 5 * 2 . . .
+        AMOVE_BR,   //  . . . . . . . . . 4 3 . . . .
+        AMOVE_BL,   // . . . . . . . . . . . . . . .
+        AMOVE_L,    //  . . . . . . . . 8 0 1 . . . .
+        AMOVE_2BL,  // . 2-hex (L):  . 7 # * 2 . . .
+        AMOVE_2L,   //  . . . . . . . . 6 4 3 . . . .
+        AMOVE_2TL,  // . . . . . . . . . . . . . . .
+        AMOVE_2TR,  //  . . . . . . . . . 0 1 9 . . .
+        AMOVE_2R,   // . 2-hex (R):  . . 5 * # 10. .
+        AMOVE_2BR,  //  . . . . . . . . . 4 3 11. . .
         SHOOT,      // = shoot at
         count
     };
