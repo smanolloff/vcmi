@@ -320,6 +320,7 @@ assign_source_group(${client_SRCS} ${client_HEADERS} VCMI_client.rc)
 
 if(ENABLE_MYCLIENT_BUILD)
 	add_library(vcmiclient STATIC ${client_SRCS} ${client_HEADERS})
+	set_target_properties(vcmiclient PROPERTIES COMPILE_FLAGS "-fPIC")
 else()
 	if(ANDROID)
 		add_library(vcmiclient SHARED ${client_SRCS} ${client_HEADERS})

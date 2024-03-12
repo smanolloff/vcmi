@@ -13,7 +13,10 @@ $ cmake -S . -B build -G Xcode -Wno-dev -DCMAKE_C_COMPILER=(xcrun -f clang) -DCM
 # now open xcode, load build/VCMI.xcodeproj and builds should work
 
 ############### building via console
-$ pip3 install conan
+### Prerequisite: python & pip installed
+$ pip3 install conan~=1.6
+
+### Prerequisite: conan added to $PATH
 $ conan profile new default --detect
 $ conan profile update settings.compiler.cppstd=11 default
 

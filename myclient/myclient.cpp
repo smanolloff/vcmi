@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <iostream>
 #include <dlfcn.h>
+#include <filesystem>
 
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
@@ -75,6 +76,12 @@ bool headless;
 #error "VCMI_BIN_DIR compile definition needs to be set"
 #endif
 
+#if defined(VCMI_UNIX)
+#define LIBEXT "so"
+#elif defined(VCMI_MAC)
+#define LIBEXT "dylib"
+#endif
+
 //
 // NOTE:
 // This requires 2-player maps where player 1 is HUMAN
@@ -90,7 +97,7 @@ MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, 
     //
     // XXX: this makes it impossible to use lldb (invalid instruction error...)
     //
-    auto libfile = gympath / "vcmi_gym/envs/v0/connector/build/libloader.dylib";
+    auto libfile = gympath / "vcmi_gym/envs/v0/connector/build/libloader." LIBEXT;
     void* handle = dlopen(libfile.c_str(), RTLD_LAZY);
     if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
 
@@ -170,8 +177,8 @@ void validateArguments(
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
 
     if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
-        if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI.dylib")) {
-            std::cerr << "Bad value for VCMI_BIN_DIR: exists, but AI/libMMAI.dylib was not found: " << VCMI_BIN_DIR << "\n";
+        if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI." LIBEXT)) {
+            std::cerr << "Bad value for VCMI_BIN_DIR: exists, but AI/libMMAI." LIBEXT " was not found: " << VCMI_BIN_DIR << "\n";
             exit(1);
         }
     } else {
@@ -185,7 +192,7 @@ void validateArguments(
             exit(1);
         }
     } else {
-        std::cerr << "Bad value for gymdir: not a directory: " << gymdir << "\n";
+        std::cerr << "Bad value for gymdir: not a directory: " << gymdir << "\n(check --gymdir option)\n";
         exit(1);
     }
 

@@ -21,6 +21,8 @@
 #include <stdexcept>
 #include <string>
 #include <boost/program_options.hpp>
+#include <filesystem>
+
 
 namespace po = boost::program_options;
 
@@ -97,6 +99,7 @@ Args parse_args(int argc, char * argv[])
         {"defender-ai", AI_STUPIDAI},
         {"attacker-model", "AI/MMAI/models/model.zip"},
         {"defender-model", "AI/MMAI/models/model.zip"},
+        {"gymdir", "/Users/simo/Projects/vcmi-gym"},
     };
 
     static auto benchmark = false;
@@ -111,6 +114,8 @@ Args parse_args(int argc, char * argv[])
 
     opts.add_options()
         ("help,h", "Show this help")
+        ("gymdir", po::value<std::string>()->value_name("<PATH>"),
+            ("Full path to vcmi-gym directory (" + omap.at("gymdir") + "*)").c_str())
         ("map", po::value<std::string>()->value_name("<MAP>"),
             ("Path to map (" + omap.at("map") + "*)").c_str())
         ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
@@ -154,8 +159,6 @@ Args parse_args(int argc, char * argv[])
 
         // std::cout << opt << ": " << omap.at(opt) << "\n";
     }
-
-    std::string gymdir("/Users/simo/Projects/vcmi-gym");
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
@@ -252,7 +255,7 @@ Args parse_args(int argc, char * argv[])
 
     return {
         new MMAI::Export::Baggage(getaction),
-        gymdir,
+        omap.at("gymdir"),
         omap.at("map"),
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),

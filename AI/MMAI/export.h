@@ -19,6 +19,8 @@
 #include <map>
 #include <string>
 #include <cassert>
+#include <stdexcept>
+#include <functional>
 
 /*****
 ****** THIS FILE LIVES IN:

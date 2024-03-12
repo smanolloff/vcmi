@@ -20,6 +20,8 @@
 #define __LOADED_FROM_MMAI 1
 
 #include "StdInc.h"
+#include <cstdarg>
+#include <filesystem>
 
 namespace MMAI {
     // Enum-to-int need C++23 to use std::to_underlying

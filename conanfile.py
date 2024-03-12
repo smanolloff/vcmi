@@ -168,7 +168,7 @@ class VCMI(ConanFile):
         ]
         self.options["qt"].config = " ".join(_qtOptions)
         self.options["qt"].qttools = True
-        self.options["qt"].with_freetype = self.settings.os == "Android"
+        self.options["qt"].with_freetype = True # self.settings.os == "Android"
         self.options["qt"].with_libjpeg = False
         self.options["qt"].with_md4c = False
         self.options["qt"].with_mysql = False
