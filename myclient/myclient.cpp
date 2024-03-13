@@ -100,7 +100,7 @@ MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, 
     // XXX: this makes it impossible to use lldb (invalid instruction error...)
     //
     auto libfile = gympath / "vcmi_gym/envs/v0/connector/build/libloader." LIBEXT;
-    void* handle = dlopen(libfile.c_str(), RTLD_LAZY);
+    void* handle = dlopen(libfile.c_str(), RTLD_GLOBAL | RTLD_NOW);
     if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
 
     if (side == MMAI::Export::Side::ATTACKER) {

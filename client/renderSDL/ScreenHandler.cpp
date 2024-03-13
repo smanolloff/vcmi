@@ -172,9 +172,10 @@ ScreenHandler::ScreenHandler()
 	SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitor");
 #endif
 
-	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO))
+	// if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO))
+	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER))
 	{
-		logGlobal->error("Something was wrong: %s", SDL_GetError());
+		logGlobal->error("Something was wrong:  %s", SDL_GetError());
 		exit(-1);
 	}
 

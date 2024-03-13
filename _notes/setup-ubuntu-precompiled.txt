@@ -100,4 +100,5 @@
 
         #
         # NOTE: the same command can be used with the the "release" binary (if compiled) to compare the performance
+        # (typically ~10 times faster)
         #

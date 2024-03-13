@@ -641,50 +641,50 @@ std::vector<bfs::path> VCMIDirsXDG::dataPaths() const
 	// in vcmi fs last directory has highest priority
 	std::vector<bfs::path> ret;
 
-	if(developmentMode())
-	{
+	// if(developmentMode())
+	// {
 		//For now we'll disable usage of system directories when VCMI running from bin directory
 		ret.emplace_back(".");
-	}
-	else
-	{
-		ret.emplace_back(M_DATA_DIR);
-		const char * tempResult;
-		if((tempResult = getenv("XDG_DATA_DIRS")) != nullptr)
-		{
-			std::string dataDirsEnv = tempResult;
-			std::vector<std::string> dataDirs;
-			boost::split(dataDirs, dataDirsEnv, boost::is_any_of(":"));
-			for (auto & entry : boost::adaptors::reverse(dataDirs))
-				ret.push_back(bfs::path(entry) / "vcmi");
-		}
-		else
-		{
-			ret.push_back(bfs::path("/usr/share") / "vcmi");
-			ret.push_back(bfs::path("/usr/local/share") / "vcmi");
-		}
+	// }
+	// else
+	// {
+	// 	ret.emplace_back(M_DATA_DIR);
+	// 	const char * tempResult;
+	// 	if((tempResult = getenv("XDG_DATA_DIRS")) != nullptr)
+	// 	{
+	// 		std::string dataDirsEnv = tempResult;
+	// 		std::vector<std::string> dataDirs;
+	// 		boost::split(dataDirs, dataDirsEnv, boost::is_any_of(":"));
+	// 		for (auto & entry : boost::adaptors::reverse(dataDirs))
+	// 			ret.push_back(bfs::path(entry) / "vcmi");
+	// 	}
+	// 	else
+	// 	{
+	// 		ret.push_back(bfs::path("/usr/share") / "vcmi");
+	// 		ret.push_back(bfs::path("/usr/local/share") / "vcmi");
+	// 	}
 
-		// Debian and other distributions might want to use it while it's not part of XDG
-		ret.push_back(bfs::path("/usr/share/games") / "vcmi");
-	}
+	// 	// Debian and other distributions might want to use it while it's not part of XDG
+	// 	ret.push_back(bfs::path("/usr/share/games") / "vcmi");
+	// }
 
 	return ret;
 }
 
 bfs::path VCMIDirsXDG::libraryPath() const
 {
-	if(developmentMode())
+	// if(developmentMode())
 		return ".";
-	else
-		return M_LIB_DIR;
+	// else
+	// 	return M_LIB_DIR;
 }
 
 bfs::path VCMIDirsXDG::binaryPath() const
 {
-	if(developmentMode())
+	// if(developmentMode())
 		return ".";
-	else
-		return M_BIN_DIR;
+	// else
+	// 	return M_BIN_DIR;
 }
 
 std::string VCMIDirsXDG::libraryName(const std::string& basename) const { return "lib" + basename + ".so"; }
