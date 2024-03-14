@@ -99,7 +99,7 @@ Args parse_args(int argc, char * argv[])
         {"defender-ai", AI_STUPIDAI},
         {"attacker-model", "AI/MMAI/models/model.zip"},
         {"defender-model", "AI/MMAI/models/model.zip"},
-        {"gymdir", "/Users/simo/Projects/vcmi-gym"},
+        {"gymdir", "./vcmi-gym"},
     };
 
     static auto benchmark = false;

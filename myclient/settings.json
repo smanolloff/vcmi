@@ -1,0 +1,80 @@
+{
+	"general" : {
+		"lastMap" : "MAPS\/DELUGE"
+	},
+	"launcher" : {
+		"setupCompleted" : true
+	},
+	"logging" : {
+		"console" : {
+			"colorMapping" : [
+				{
+					"color" : "gray",
+					"domain" : "global",
+					"level" : "trace"
+				},
+				{
+					"color" : "gray",
+					"domain" : "ai",
+					"level" : "trace"
+				},
+				{
+					"color" : "gray",
+					"domain" : "global",
+					"level" : "debug"
+				},
+				{
+					"color" : "gray",
+					"domain" : "ai",
+					"level" : "debug"
+				},
+				{
+					"color" : "white",
+					"domain" : "global",
+					"level" : "info"
+				},
+				{
+					"color" : "white",
+					"domain" : "ai",
+					"level" : "info"
+				},
+				{
+					"color" : "yellow",
+					"domain" : "global",
+					"level" : "warn"
+				},
+				{
+					"color" : "yellow",
+					"domain" : "ai",
+					"level" : "warn"
+				},
+				{
+					"color" : "red",
+					"domain" : "global",
+					"level" : "error"
+				},
+				{
+					"color" : "red",
+					"domain" : "ai",
+					"level" : "error"
+				}
+			],
+			"format" : "[%t][%n] %l %m"
+		},
+		"loggers" : [
+			{
+				"domain" : "global",
+				"level" : "error"
+			},
+			{
+				"domain" : "ai",
+				"level" : "error"
+			}
+		]
+	},
+	"server" : {
+		"friendlyAI" : "StupidAI",
+		"playerAI" : "MMAI",
+		"port" : 52894
+	}
+}
