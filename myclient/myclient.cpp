@@ -76,10 +76,12 @@ bool headless;
 #error "VCMI_BIN_DIR compile definition needs to be set"
 #endif
 
-#if defined(VCMI_UNIX)
-#define LIBEXT "so"
-#elif defined(VCMI_MAC)
+#if defined(VCMI_MAC)
 #define LIBEXT "dylib"
+#elif defined(VCMI_UNIX)
+#define LIBEXT "so"
+#else
+#error "Unsupported OS"
 #endif
 
 //
@@ -92,7 +94,7 @@ bool headless;
 // (the python module resolution gets messed up otherwise)
 MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, std::string gymdir) {
     auto old = boost::filesystem::current_path();
-    auto gympath = boost::filesystem::path(gymdir);
+    auto gympath = boost::filesystem::canonical(boost::filesystem::path(gymdir));
 
     //
     // XXX: this makes it impossible to use lldb (invalid instruction error...)

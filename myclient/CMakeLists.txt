@@ -30,3 +30,5 @@ enable_pch(myclient-headless)
 install(TARGETS myclient DESTINATION ${BIN_DIR})
 install(TARGETS myclient-gui DESTINATION ${BIN_DIR})
 install(TARGETS myclient-headless DESTINATION ${BIN_DIR})
+
+file(CREATE_LINK ${CMAKE_SOURCE_DIR}/vcmi-gym ${CMAKE_BINARY_DIR}/bin/vcmi-gym SYMBOLIC)
