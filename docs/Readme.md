@@ -1,12 +1,19 @@
 # VCMI Project (AI fork)
 
-This is a fork of VCMI which adapts the game for AI development purposes and is part of the [vcmi-gym](https://github.com/smanolloff/vcmi-gym) project.
+This is a fork of VCMI which adapts the game for AI development purposes and is
+part of the [vcmi-gym](https://github.com/smanolloff/vcmi-gym) project.
 
-<img src="demo.gif" alt="UNDER CONSTRUCTION">
+<img src="demo.gif" alt="demo">
 
-<p align="center"><img src="Under-Construction.png" alt="UNDER CONSTRUCTION" width="300" height="200"></p>
+## Project state
 
-List of features I would like to have implemented at this point:
+<p align="center"><img src="doc/Under-Construction.png" alt="UNDER CONSTRUCTION" width="300" height="250"></p>
+
+For now, it's mostly quick-and-dirty patches applied around VCMI's codebase
+to enable various features needed by
+[vcmi-gym](https://github.com/smanolloff/vcmi-gym).
+
+Here is a list of features I would like to have implemented:
 
 | Feature | Status | Rationale |
 | ------- | ------ | --------- |
@@ -20,6 +27,25 @@ List of features I would like to have implemented at this point:
 | Battlefield hot-swap | ❌ | Changing the battlefield terrain without re-starting VCMI on a new map would improve performance|
 | Army hot-swap | ❌ | Changing the army compositions without re-starting VCMI on a new map would improve performance |
 
-Being an work-in-progress, this VCMI fork contains many non-portable changes which will cause problems on a non-macOS environment (this will be addressed at a later stages of the development).
+Currently, I am mostly focused on training battle AIs as part of
+[vcmi-gym](https://github.com/smanolloff/vcmi-gym) which is unfortunately quite
+when many of the features above are still not implemented.
 
-One instance of the game can currently handle ~300 actions/s (or ~10 battles/s for an average battle comp of 5 stacks per side).
+## Documentation
+
+* For MacOS OS, please refer to [this setup guide](./doc/setup_macos.md)
+* For Linux/Ubuntu OS, please refer to [this setup guide](./doc/setup_ubuntu.md)
+
+Contributions for a Windows-based setup are welcome.
+
+_It ain't much, but it's honest work._ ;)
+
+## Contributing
+
+You are more than welcome to help with this project.
+
+I will be most grateful if you can help with the features listed above, as I
+have been unable to implement them all.
+
+If you decide to contribute, please follow these
+[guidelines](https://github.com/smanolloff/vcmi-gym).
