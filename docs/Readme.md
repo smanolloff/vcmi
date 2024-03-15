@@ -7,7 +7,7 @@ part of the [vcmi-gym](https://github.com/smanolloff/vcmi-gym) project.
 
 ## Project state
 
-<p align="center"><img src="doc/Under-Construction.png" alt="UNDER CONSTRUCTION" width="300" height="250"></p>
+<p align="center"><img src="Under-Construction.png" alt="UNDER CONSTRUCTION" width="300" height="250"></p>
 
 For now, it's mostly quick-and-dirty patches applied around VCMI's codebase
 to enable various features needed by
@@ -33,8 +33,8 @@ when many of the features above are still not implemented.
 
 ## Documentation
 
-* For MacOS OS, please refer to [this setup guide](./doc/setup_macos.md)
-* For Linux/Ubuntu OS, please refer to [this setup guide](./doc/setup_ubuntu.md)
+* For MacOS, please refer to [this setup guide](./setup_macos.md)
+* For Linux/Ubuntu OS, please refer to [this setup guide](./setup_ubuntu.md)
 
 Contributions for a Windows-based setup are welcome.
 
