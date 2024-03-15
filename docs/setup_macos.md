@@ -149,6 +149,7 @@ Launch the game and replace the default VCMI scripted AI with a pre-trained *rea
 rel/bin/myclient-gui --map ai/P1.vmap --attacker-ai MMAI_MODEL --attacker-model /path/to/model.zip
 ```
 
-where `/path/to/model` is your pre-trained AI model. Refer to the
-[vcmi-gym setup guide](https://github.com/smanolloff/vcmi-gym/blob/main/doc/setup_macos.md)
-docs for further details.
+where `/path/to/model` is your pre-trained AI model. If you don't have such a
+model, you will need to train it first 🤓 That's what the
+[vcmi-gym](https://github.com/smanolloff/vcmi-gym/blob/main/doc/setup_macos.md)
+project is for, so make sure to check it out.

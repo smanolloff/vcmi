@@ -38,6 +38,12 @@ when many of the features above are still not implemented.
 
 Contributions for a Windows-based setup are welcome.
 
+There's actually a lot of [PlantUML](https://plantuml.com/) diagrams for VCMI
+which I have developed over the last few months in an effort to better
+understand how it works, but I did not have time to organize them in a pretty
+manner (there are some NN architecture diagrams for the vcmi-gym project there
+as well.). Feel free to check them out [here](./_notes/diagrams) anyway.
+
 _It ain't much, but it's honest work._ ;)
 
 ## Contributing
