@@ -151,5 +151,5 @@ rel/bin/myclient-gui --map ai/P1.vmap --attacker-ai MMAI_MODEL --attacker-model 
 
 where `/path/to/model` is your pre-trained AI model. If you don't have such a
 model, you will need to train it first 🤓 That's what the
-[vcmi-gym](https://github.com/smanolloff/vcmi-gym/blob/main/doc/setup_macos.md)
+[vcmi-gym](https://github.com/smanolloff/vcmi-gym)
 project is for, so make sure to check it out.
