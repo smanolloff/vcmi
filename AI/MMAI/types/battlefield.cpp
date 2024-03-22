@@ -219,6 +219,13 @@ namespace MMAI {
 
     // static
     // result is a vector<UnitID>
+    // XXX: there is a bug in VCMI when high morale occurs:
+    //      - the stack acts as if it's already the next unit's turn
+    //      - as a result, QueuePos for the ACTIVE stack is non-0
+    //        while the QueuePos for the next (non-active) stack is 0
+    // XXX: possibly similar issues occur when low morale occurs
+    // As a workaround, morale is diabled (all battles are on cursed ground)
+    // Possible solution is to set some flag via BAI->battleTriggerEffect (TODO)
     Queue Battlefield::GetQueue(CBattleCallback* cb) {
         auto res = Queue{};
 

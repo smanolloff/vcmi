@@ -110,7 +110,8 @@ namespace MMAI {
             assert(!heroes.empty());
             auto h = heroes.at(0);
 
-            cb->moveHero(h, int3{2,1,0}, false);
+            // Move 1 tile to the right
+            cb->moveHero(h, h->pos + int3{1,0,0}, false);
         });
     }
 
