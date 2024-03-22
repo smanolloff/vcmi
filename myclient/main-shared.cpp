@@ -92,7 +92,7 @@ Args parse_args(int argc, char * argv[])
 {
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
     auto omap = std::map<std::string, std::string> {
-        {"map", "ai/P1.vmap"},
+        {"map", "gym/A1.vmap"},
         {"loglevel-global", "error"},
         {"loglevel-ai", "debug"},
         {"attacker-ai", AI_MMAI_USER},
@@ -197,6 +197,8 @@ Args parse_args(int argc, char * argv[])
             act = interactive
                 ? promptAction(lastmasks.at(side))
                 : (prerecorded ? recordedAction(recordings) : randomValidAction(lastmasks.at(side)));
+
+            renders.at(side) = false;
         } else if (r->ended) {
             if (side == benchside) {
                 resets++;
@@ -222,7 +224,7 @@ Args parse_args(int argc, char * argv[])
             if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
         } else if (!benchmark && !renders.at(side)) {
-            renders[side] = true;
+            renders.at(side) = true;
             // store mask of this result for the next action
             lastmasks.at(side) = r->actmask;
             act = MMAI::Export::ACTION_RENDER_ANSI;
