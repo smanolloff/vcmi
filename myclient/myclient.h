@@ -43,6 +43,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     std::string defenderAI,
     std::string attackerModel,
     std::string defenderModel,
+    bool printBattleResults,
     bool headless
 );
 

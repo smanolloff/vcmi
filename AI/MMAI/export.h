@@ -226,5 +226,12 @@ namespace MMAI::Export {
         // Optionally set during vcmi_init(...) to a pre-trained model func
         F_GetAction f_getActionAttacker;
         F_GetAction f_getActionDefender;
+
+        // Cmd-line option for evaluating maps
+        // Contains a result counter (win=1, lose=-1) for each possible hero
+        // XXX: this assumes heroes have `id` between 0 and 63
+        std::map<int, int> battleResults;
+        std::string map;
+        bool printBattleResults;
     };
 }

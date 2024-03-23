@@ -55,7 +55,7 @@ namespace MMAI {
 
     void BAI::activeStack(const CStack * astack) {
         info("*** activeStack ***");
-        // print("activeStack called for " + astack->nodeName());
+        debug("activeStack called for " + astack->nodeName());
 
         battlefield = std::make_unique<Battlefield>(cb.get(), astack);
         result = std::make_unique<Export::Result>(buildResult(*battlefield));
@@ -88,10 +88,10 @@ namespace MMAI {
                 ASSERT(actres.errmask > 0, "unexpected errmask: " + std::to_string(actres.errmask));
 
                 // DEBUG ONLY (uncomment if needed):
-                // auto errstring = std::accumulate(errmsgs.begin(), errmsgs.end(), std::string(),
-                //     [](auto &a, auto &b) { return a + "\n" + b; });
-                //
-                // warn("Action is INVALID: " + actname + ":\n" + errstring);
+                auto errstring = std::accumulate(actres.errmsgs.begin(), actres.errmsgs.end(), std::string(),
+                    [](auto &a, auto &b) { return a + "\n" + b; });
+
+                warn("Action is INVALID: " + action->name() + ":\n" + errstring);
             }
         }
 

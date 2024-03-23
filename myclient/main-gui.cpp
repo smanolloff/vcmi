@@ -26,7 +26,8 @@ int main(int argc, char * argv[]) {
         attackerAI,
         defenderAI,
         attackerModel,
-        defenderModel
+        defenderModel,
+        printBattleResults
     ] = parse_args(argc, argv);
 
     init_vcmi(
@@ -39,6 +40,7 @@ int main(int argc, char * argv[]) {
         defenderAI,
         attackerModel,
         defenderModel,
+        printBattleResults,
         false
     );
 

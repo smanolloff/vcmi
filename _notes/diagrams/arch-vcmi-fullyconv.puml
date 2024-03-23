@@ -5,7 +5,7 @@ skinparam defaultTextAlignment center
 skinparam NoteTextAlignment left
 
 <style>
-Collections {
+Usecase {
   BackGroundColor #efe
 }
 
@@ -42,15 +42,15 @@ Collections {
 
 ' Data
 !procedure $Data($id, $name)
-  Collections $id as "$node_text($name)"
+  Usecase $id as "$node_text($name)"
 !endprocedure
 
 !procedure $Data($id, $name, $desc)
-  Collections $id as "$node_text($name, $desc)"
+  Usecase $id as "$node_text($name, $desc)"
 !endprocedure
 
 !procedure $Data($id, $name, $desc, $txt)
-  Collections $id as "$node_text($name, $desc, $txt)"
+  Usecase $id as "$node_text($name, $desc, $txt)"
 !endprocedure
 
 ' MLP (FC)
@@ -107,11 +107,11 @@ Collections {
 
 ' Sum / Mean / etc.
 !procedure $Op($id, $name)
-  Usecase $id as "$name"
+  Label $id as "$name"
 !endprocedure
 !procedure $Op($id, $name, $txt)
-  ' Usecase $id as "$node_text($name, "", $txt)"
-  Usecase $id as "$name\n$tagged_text("<color:888><size:10>", $txt, "</size></color>")"
+  ' Label $id as "$node_text($name, "", $txt)"
+  Label $id as "$name\n$tagged_text("<color:888><size:10>", $txt, "</size></color>")"
 !endprocedure
 
 ' Link
@@ -140,69 +140,60 @@ $Link(conv2, hex_embeddings, "<<ReLU>>\n\n(64, 11, 15)")
 
 Frame "Non-spatial" {
   $MLP(nonspatial_mlp, "MLP", "10560 → 256")
-  $Link(hex_embeddings, nonspatial_mlp, "(64, 11, 15)\n→\n(10560,)")
+  $Link(hex_embeddings, nonspatial_mlp, "\n(64, 11, 15)\n→\n(10560,)")
   $Data(embedded_summary, "Summary\nEmbedding")
   $Link(nonspatial_mlp, embedded_summary, "<<ReLU>>\n\n(256,)")
   $MLP(action1_mlp, "MLP", "256 → 5")
   $Link(embedded_summary, action1_mlp, "")
 
-  $Data(action1, "Action1", "apply mask & sample")
+  $Data(action1, "Action1", "<i>logits</i>\napply mask & sample")
   $Link(action1_mlp, action1, "(5,)")
 
   $MLP(value_mlp, "MLP", "256 → 1")
   $Link(embedded_summary, value_mlp, "")
-  $Data(value, "Value")
+  $Output(value, "Value")
   $Link(value_mlp, value, "")
 }
 
-$Op(cond1, "Needs hex?")
-$Link(action1, cond1, "")
-
 $Output(action1_out, "Action1")
-$Link(cond1, action1_out, "N")
+$Link(action1, action1_out, "")
 
 note bottom of action1_out
 * Defend
 * Wait
 end note
 
-$Op(broadcast1, "broadcast")
-$Link(cond1, broadcast1, "Y")
 $Op(concat1, "concat\n(as channel)")
-$Link(broadcast1, concat1, "(1, 11, 15)")
+$Link(action1_out, concat1, "broadcast\n(1, 11, 15)")
 $Link(hex_embeddings, concat1, "(64, 11, 15)")
-$Data(hex_embeddings2, "Hex\nEmbeddings #2", "i.e. combined with Action1")
+$Data(hex_embeddings2, "Hex\nEmbeddings #2")
 $Link(concat1, hex_embeddings2, "(65, 11, 15)")
 
 Frame "Spatial #1" {
   $Convolution(conv3, "Conv2d", "kernel_size=1\nstride=1\nout_channels=1")
   $Link(hex_embeddings2, conv3, "(65, 11, 15)")
-  $Data(action2, "Action2", "apply mask & sample")
+  $Data(action2, "Action2", "<i>logits</i>\napply mask & sample")
   $Link(conv3, action2, "(1, 11, 15)\n→\n(165,)")
 }
 
-$Op(cond2, "Needs hex?")
-$Link(action2, cond2, "")
 $Output(action2_out, "Action2", "i.e. Hex for Action1")
-$Link(cond2, action2_out, "N")
+$Link(action2, action2_out, "")
 
 note bottom of action2_out
 * Move to Hex
 * Shoot at Hex
 end note
 
-$Op(broadcast2, "broadcast")
-$Link(cond2, broadcast2, "Y")
 $Op(concat2, "concat\n(as channel)")
-$Link(broadcast2, concat2, "(1, 11, 15)")
+$Link(action2_out, concat2, "broadcast\n(1, 11, 15)")
 $Link(hex_embeddings2, concat2, "(65, 11, 15)")
-$Data(hex_embeddings3, "Hex\nEmbeddings #3", "i.e. combined with Hex1")
+$Data(hex_embeddings3, "Hex\nEmbeddings #3")
 $Link(concat2, hex_embeddings3, "(66, 11, 15)")
 
 Frame "Spatial #2" {
   $Convolution(conv4, "Conv2d", "kernel_size=1\nstride=1\nout_channels=1")
   $Link(hex_embeddings3, conv4, "(66, 11, 15)")
-  $Data(action3, "Action3", "apply mask & sample")
+  $Data(action3, "Action3", "<i>logits</i>\napply mask & sample")
   $Link(conv4, action3, "(1, 11, 15)\n→\n(165,)")
 }
 

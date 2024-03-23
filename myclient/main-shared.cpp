@@ -102,6 +102,7 @@ Args parse_args(int argc, char * argv[])
         {"gymdir", "./vcmi-gym"},
     };
 
+    static auto mapeval = false;
     static auto benchmark = false;
     static auto interactive = false;
     static auto prerecorded = false;
@@ -135,7 +136,9 @@ Args parse_args(int argc, char * argv[])
         ("prerecorded", po::bool_switch(&prerecorded),
             ("Replay actions from local file named actions.txt"))
         ("benchmark", po::bool_switch(&benchmark),
-            ("Measure performance"));
+            ("Measure performance"))
+        ("map-eval", po::bool_switch(&mapeval),
+            ("Evaluate map balance (assuming same AIs)"));
 
     po::variables_map vm;
 
@@ -240,6 +243,21 @@ Args parse_args(int argc, char * argv[])
     };
 
     if (benchmark) {
+        if (
+            (omap.at("attacker-ai") == "StupidAI" && omap.at("defender-ai") == "StupidAI") ||
+            (omap.at("attacker-ai") == "StupidAI" && omap.at("defender-ai") == "BattleAI") ||
+            (omap.at("attacker-ai") == "BattleAI" && omap.at("defender-ai") == "StupidAI") ||
+            (omap.at("attacker-ai") == "BattleAI" && omap.at("defender-ai") == "BattleAI")
+        ) {
+            printf("--benchmark requires at least one AI of type MMAI_USER or MMAI_MODEL.\n");
+            exit(1);
+        }
+
+        if (mapeval) {
+            printf("--benchmark and --map-eval are mutually exclusive.");
+            exit(1);
+        }
+
         printf("Benchmark:\n");
         printf("* Map: %s\n", omap.at("map").c_str());
         printf("* Attacker AI: %s", omap.at("attacker-ai").c_str());
@@ -265,5 +283,6 @@ Args parse_args(int argc, char * argv[])
         omap.at("defender-ai"),
         omap.at("attacker-model"),
         omap.at("defender-model"),
+        mapeval,
     };
 }

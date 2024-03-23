@@ -21,6 +21,8 @@
 #include "gameState/CGameState.h"
 #include "AAI.h"
 #include "NetPacks.h"
+#include "mapObjects/CArmedInstance.h"
+#include "mapObjects/CGHeroInstance.h"
 
 #include <boost/thread.hpp>
 
@@ -115,14 +117,25 @@ namespace MMAI {
         });
     }
 
-    void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) {
+    void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
 
+        side = side_;
+
+        // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON
+        //      The gym maps use the hero's experience as a unique ref
+        const CGHeroInstance* hero;
+
         if (colorstr == "red") {
-            ASSERT(side == BattleSide::ATTACKER, "Red is not attacker");
+            ASSERT(side_ == BattleSide::ATTACKER, "Red is not attacker");
+            hero = dynamic_cast<const CGHeroInstance*>(army1);
         } else {
-            ASSERT(side == BattleSide::DEFENDER, "Non-red is not defender");
+            ASSERT(side_ == BattleSide::DEFENDER, "Non-red is not defender");
+            hero = dynamic_cast<const CGHeroInstance*>(army2);
         }
+
+        armyID = int(hero->exp);
+        // debug("Our hero: " + std::to_string(armyID));
 
         // just copied code from CAdventureAI::battleStart
         // only difference is argument to initBattleInterface()
@@ -141,11 +154,44 @@ namespace MMAI {
             battleAI->initBattleInterface(env, cbc);
         }
 
-        battleAI->battleStart(army1, army2, tile, hero1, hero2, side, replayAllowed);
+        battleAI->battleStart(army1, army2, tile, hero1, hero2, side_, replayAllowed);
     }
 
     void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(static_cast<int>(queryID)) + ") ***");
+
+        nbattles++;
+
+        // Only winner increments => no race cond
+        // TODO: a better metric would may be net_casualties (winner - loser)
+        if (baggage->printBattleResults && side == br->winner) {
+            (baggage->battleResults.find(armyID) != baggage->battleResults.end())
+                ? baggage->battleResults.at(armyID)++
+                : baggage->battleResults[armyID] = 1;
+
+            if (nbattles % 1000 == 0) {
+                std::vector<std::pair<int, int>> valueIndexPairs;
+                auto winstream = std::stringstream();
+
+                printf("\n\nResults (%d battles):\n", nbattles);
+
+                for (const auto pair : baggage->battleResults) {
+                    valueIndexPairs.push_back(std::make_pair(pair.second, pair.first));
+                    winstream << "\"hero_" << pair.first << "\":" << pair.second << ",";
+                }
+
+                std::sort(valueIndexPairs.begin(), valueIndexPairs.end());
+
+                printf("Wins | Hero ID\n");
+                printf("-----+--------\n");
+                for (const auto& pair : valueIndexPairs)
+                    printf("%-4d | Hero %d\n", pair.first, pair.second);
+
+                auto wins = winstream.str();
+                wins.pop_back();
+                printf("\nRaw:\n{\"map\":\"%s\",\"battles\":%d,\"wins\":{%s}}\n", baggage->map.c_str(), nbattles, wins.c_str());
+            }
+        }
 
 
         if (!bai) {

@@ -28,7 +28,8 @@ using Args = std::tuple<
     std::string,
     std::string,
     std::string,
-    std::string
+    std::string,
+    bool
 >;
 
 Args parse_args(int argc, char * argv[]);
