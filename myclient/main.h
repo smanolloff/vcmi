@@ -23,6 +23,7 @@ using Args = std::tuple<
     MMAI::Export::Baggage*,
     std::string,
     std::string,
+    bool,
     std::string,
     std::string,
     std::string,

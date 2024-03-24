@@ -331,6 +331,9 @@ bool CVCMIServer::prepareToStartGame()
 		break;
 	}
 
+	if (cmdLineOptions.count("random-combat"))
+		gh->gs->randomCombat = true;
+
 	state = EServerState::GAMEPLAY_STARTING;
 	return true;
 }
@@ -1012,6 +1015,7 @@ static void handleCommandOptions(int argc, const char * argv[], boost::program_o
 	("lobby", po::value<std::string>(), "address to remote lobby")
 	("lobby-port", po::value<ui16>(), "port at which server connect to remote lobby")
 	("lobby-uuid", po::value<std::string>(), "")
+	("random-combat", "pick heroes at random before each combat")
 	("connections", po::value<ui16>(), "amount of connections to remote lobby");
 
 	if(argc > 1)

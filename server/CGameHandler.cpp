@@ -2612,26 +2612,29 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	if(gs->curB)
 		gs->curB.dellNull();
 
-	if (gs->allheroes.size() % 2 != 0)
-		throw std::runtime_error("Heroes size must be even");
+	if (gs->randomCombat) {
+		if (gs->allheroes.size() % 2 != 0)
+			throw std::runtime_error("Heroes size must be even");
 
-	if (gs->herocounter == gs->allheroes.size()) {
-		gs->herocounter = 0;
-	    std::random_device rd;
-	    std::mt19937 g(rd());
-	    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), g);
+		if (gs->herocounter == gs->allheroes.size()) {
+			gs->herocounter = 0;
+
+		    std::random_device rd;
+		    std::mt19937 g(rd());
+		    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), g);
+		}
+
+		hero1 = gs->allheroes.at(gs->herocounter++);
+		hero2 = gs->allheroes.at(gs->herocounter++);
+
+		// Set temp owner of both heroes to player0 and player1
+		// XXX: causes UB after battle, unless it is replayed (ok for training)
+		const_cast<CGHeroInstance*>(hero1)->tempOwner = 0;
+		const_cast<CGHeroInstance*>(hero2)->tempOwner = 1;
+
+		army1 = static_cast<const CArmedInstance*>(hero1);
+		army2 = static_cast<const CArmedInstance*>(hero2);
 	}
-
-	hero1 = gs->allheroes.at(gs->herocounter++);
-	hero2 = gs->allheroes.at(gs->herocounter++);
-
-	// Set temp owner of both heroes to player0 and player1
-	// XXX: causes UB after battle, unless it is replayed (ok for training)
-	const_cast<CGHeroInstance*>(hero1)->tempOwner = 0;
-	const_cast<CGHeroInstance*>(hero2)->tempOwner = 1;
-
-	army1 = static_cast<const CArmedInstance*>(hero1);
-	army2 = static_cast<const CArmedInstance*>(hero2);
 
 	static const CArmedInstance *armies[2];
 	armies[0] = army1;

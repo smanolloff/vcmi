@@ -102,6 +102,7 @@ Args parse_args(int argc, char * argv[])
         {"gymdir", "./vcmi-gym"},
     };
 
+    static auto randomCombat = false;
     static auto mapeval = false;
     static auto benchmark = false;
     static auto interactive = false;
@@ -119,6 +120,8 @@ Args parse_args(int argc, char * argv[])
             ("Full path to vcmi-gym directory (" + omap.at("gymdir") + "*)").c_str())
         ("map", po::value<std::string>()->value_name("<MAP>"),
             ("Path to map (" + omap.at("map") + "*)").c_str())
+        ("random-combat", po::bool_switch(&randomCombat),
+            ("Pick heroes at random before each combat"))
         ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
             values(AIS, omap.at("attacker-ai")).c_str())
         ("defender-ai", po::value<std::string>()->value_name("<AI>"),
@@ -277,6 +280,7 @@ Args parse_args(int argc, char * argv[])
         new MMAI::Export::Baggage(getaction),
         omap.at("gymdir"),
         omap.at("map"),
+        randomCombat,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),
         omap.at("attacker-ai"),

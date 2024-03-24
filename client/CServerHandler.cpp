@@ -217,6 +217,9 @@ void CServerHandler::startLocalServerAndConnect()
 	}
 	ui16 srvport = 0;
 
+	if (settings["server"]["randomCombat"].Bool())
+		args.push_back("--random-combat");
+
 	threadRunLocalServer = std::make_shared<boost::thread>([&cond, &srvport, args, this] {
 		setThreadName("CVCMIServer");
 		CVCMIServer::create(&cond, &srvport, args);
