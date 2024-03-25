@@ -368,7 +368,8 @@ namespace MMAI {
                         throw std::runtime_error("Unexpected StackAttr: " + std::to_string(EI(j)));
                     }
 
-                    res.at(i++) = NValue(stack->attrs.at(j), ATTR_NA, max);
+                    int value = stack->attrs.at(j);
+                    res.at(i++) = (value == ATTR_NA) ? NValue() : NValue(stack->attrs.at(j), 0, max);
                 }
 
                 res.at(i++) = NValue(hex.rangedDmgModifier, 0, 1);

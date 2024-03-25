@@ -63,16 +63,18 @@ namespace MMAI::Export {
         {ErrType::INVALID_DIR,       {ErrMask(1 << 10), "ERR_INVALID_DIR", "attempted to attack from a T/B direction with a 1-hex stack"}},
     };
 
-    constexpr int NV_MIN = float(0);
-    constexpr int NV_MAX = float(1);
-    constexpr int NV_DIFF = NV_MAX - NV_MIN;
+    constexpr int VALUE_NA = -1;
+    constexpr float NV_NA = 1e-9;
+    constexpr float NV_MIN = 0;
+    constexpr float NV_MAX = 1;
+    constexpr float NV_DIFF = float(int(NV_MAX) - int(NV_MIN));
 
     // Arbitary int value normalized as -1..1 float
     extern "C" struct DLL_EXPORT NValue {
         int orig;
         float norm;
 
-        NValue() : orig(-1), norm(NV_MIN) {};
+        NValue() : orig(VALUE_NA), norm(NV_NA) {};
         NValue(int v, int vmin, int vmax) {
             // if (vmin < vmax)
             //     throw std::runtime_error(std::to_string(vmin) + ">" + std::to_string(vmax));

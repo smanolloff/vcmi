@@ -21,7 +21,7 @@
 #include "export.h"
 
 namespace MMAI {
-    constexpr int ATTR_NA = -1;
+    constexpr int ATTR_NA = Export::VALUE_NA;
 
     enum class StackAttr : int {
         Quantity,
