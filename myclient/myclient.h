@@ -37,7 +37,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,
     std::string gymdir,
     std::string mapname,
-    bool randomCombat,
+    int randomCombat,
     std::string loglevelGlobal,
     std::string loglevelAI,
     std::string attackerAI,

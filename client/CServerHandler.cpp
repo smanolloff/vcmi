@@ -23,6 +23,7 @@
 #include "mainmenu/CMainMenu.h"
 #include "mainmenu/CPrologEpilogVideo.h"
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <string>
 
 #ifdef VCMI_ANDROID
 #include "../lib/CAndroidVMHelper.h"
@@ -217,8 +218,7 @@ void CServerHandler::startLocalServerAndConnect()
 	}
 	ui16 srvport = 0;
 
-	if (settings["server"]["randomCombat"].Bool())
-		args.push_back("--random-combat");
+	args.push_back("--random-combat=" + std::to_string(settings["server"]["randomCombat"].Integer()));
 
 	threadRunLocalServer = std::make_shared<boost::thread>([&cond, &srvport, args, this] {
 		setThreadName("CVCMIServer");

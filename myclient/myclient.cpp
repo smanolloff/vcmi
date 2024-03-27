@@ -229,7 +229,7 @@ void processArguments(
     std::string &defenderAI,
     std::string &attackerModel,
     std::string &defenderModel,
-    bool randomCombat
+    int randomCombat
 ) {
     // Notes on AI creation
     //
@@ -313,7 +313,7 @@ void processArguments(
     Settings(settings.write({"session", "headless"}))->Bool() = headless;
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
-    Settings(settings.write({"server", "randomCombat"}))->Bool() = randomCombat;
+    Settings(settings.write({"server", "randomCombat"}))->Integer() = randomCombat;
 
     // CPI needs this setting in case the attacker is human (headless==false)
     Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->attackerBattleAIName;
@@ -358,7 +358,7 @@ void init_vcmi(
     MMAI::Export::Baggage* baggage_,
     std::string gymdir,
     std::string map,
-    bool randomCombat,
+    int randomCombat,
     std::string loglevelGlobal,
     std::string loglevelAI,
     std::string attackerAI,

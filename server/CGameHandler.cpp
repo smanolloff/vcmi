@@ -2612,7 +2612,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	if(gs->curB)
 		gs->curB.dellNull();
 
-	if (gs->randomCombat) {
+	if (gs->randomCombat > 0) {
 		if (gs->allheroes.size() % 2 != 0)
 			throw std::runtime_error("Heroes size must be even");
 
@@ -2624,8 +2624,12 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 		    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), g);
 		}
 
-		hero1 = gs->allheroes.at(gs->herocounter++);
-		hero2 = gs->allheroes.at(gs->herocounter++);
+		hero1 = gs->allheroes.at(gs->herocounter);
+		hero2 = gs->allheroes.at(gs->herocounter+1);
+
+		gs->battlecounter++;
+		if (gs->battlecounter % gs->randomCombat == 0)
+			gs->herocounter += 2;
 
 		// Set temp owner of both heroes to player0 and player1
 		// XXX: causes UB after battle, unless it is replayed (ok for training)
@@ -2634,6 +2638,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 
 		army1 = static_cast<const CArmedInstance*>(hero1);
 		army2 = static_cast<const CArmedInstance*>(hero2);
+
 	}
 
 	static const CArmedInstance *armies[2];

@@ -102,7 +102,7 @@ Args parse_args(int argc, char * argv[])
         {"gymdir", "./vcmi-gym"},
     };
 
-    static auto randomCombat = false;
+    static auto randomCombat = 0;
     static auto mapeval = false;
     static auto benchmark = false;
     static auto interactive = false;
@@ -120,8 +120,8 @@ Args parse_args(int argc, char * argv[])
             ("Full path to vcmi-gym directory (" + omap.at("gymdir") + "*)").c_str())
         ("map", po::value<std::string>()->value_name("<MAP>"),
             ("Path to map (" + omap.at("map") + "*)").c_str())
-        ("random-combat", po::bool_switch(&randomCombat),
-            ("Pick heroes at random before each combat"))
+        ("random-combat", po::value<int>()->value_name("<N>"),
+            ("Pick heroes at random each Nth combat (disabled if 0*)"))
         ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
             values(AIS, omap.at("attacker-ai")).c_str())
         ("defender-ai", po::value<std::string>()->value_name("<AI>"),
@@ -160,9 +160,13 @@ Args parse_args(int argc, char * argv[])
     }
 
     for (auto &[opt, _] : omap) {
-        if (vm.count(opt))
-            omap[opt] = vm.at(opt).as<std::string>();
-
+        if (vm.count(opt)) {
+            if (opt == "random-combat") {
+                randomCombat = vm.at(opt).as<int>();
+            } else {
+                omap[opt] = vm.at(opt).as<std::string>();
+            }
+        }
         // std::cout << opt << ": " << omap.at(opt) << "\n";
     }
 

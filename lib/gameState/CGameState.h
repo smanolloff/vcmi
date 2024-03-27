@@ -84,7 +84,8 @@ public:
 	// SIMO gym battles with random heroes
 	std::vector<const CGHeroInstance*> allheroes;
 	int herocounter = 0;
-	bool randomCombat = false;
+	int battlecounter = 0;
+	int randomCombat = 0;
 
 	//we have here all heroes available on this map that are not hired
 	std::unique_ptr<TavernHeroesPool> heroesPool;
