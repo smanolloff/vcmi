@@ -160,15 +160,12 @@ Args parse_args(int argc, char * argv[])
     }
 
     for (auto &[opt, _] : omap) {
-        if (vm.count(opt)) {
-            if (opt == "random-combat") {
-                randomCombat = vm.at(opt).as<int>();
-            } else {
-                omap[opt] = vm.at(opt).as<std::string>();
-            }
-        }
-        // std::cout << opt << ": " << omap.at(opt) << "\n";
+        if (vm.count(opt))
+            omap[opt] = vm.at(opt).as<std::string>();
     }
+
+    if (vm.count("random-combat"))
+        randomCombat = vm.at("random-combat").as<int>();
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
