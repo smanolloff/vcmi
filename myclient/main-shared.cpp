@@ -230,6 +230,7 @@ Args parse_args(int argc, char * argv[])
 
             if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Export::ACTION_RESET;
+        // } else if (false)
         } else if (!benchmark && !renders.at(side)) {
             renders.at(side) = true;
             // store mask of this result for the next action
