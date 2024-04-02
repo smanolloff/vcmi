@@ -21,8 +21,8 @@ set(MMAI_FILES
   types/hexaction.h
   types/hexactmask.h
   types/hexstate.h
-  types/stack.cpp
-  types/stack.h
+  # types/stack.cpp
+  # types/stack.h
 
   include/loader.h
   common.h

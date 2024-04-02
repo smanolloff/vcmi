@@ -18,11 +18,13 @@
 
 #include "CStack.h"
 #include "battle/BattleHex.h"
+#include "export.h"
 #include "hexactmask.h"
 #include "hexstate.h"
-#include "stack.h"
 
 namespace MMAI {
+    using HexAttrs = std::array<int, EI(Export::Attribute::_count)>;
+    constexpr int ATTR_UNSET = -1;
 
     /**
      * A wrapper around BattleHex. Differences:
@@ -34,28 +36,40 @@ namespace MMAI {
         static int CalcId(const BattleHex &bh);
         static std::pair<int, int> CalcXY(const BattleHex &bh);
 
-        Hex() {};
+        Hex();
 
         BattleHex bhex;
-        // int id = -1;
-        int x = -1;
-        int y = -1;
-        std::shared_ptr<Stack> stack = INVALID_STACK; // stack occupying this hex
 
-        HexState state = HexState::INVALID;
+        const CStack * cstack;
+        HexAttrs attrs;
         HexActMask hexactmask;
 
-        float rangedDmgModifier = 0; // 0..1 (0=not shootable)
-
-        // assuming we can go to this hex, add some context
-        std::set<const CStack*> reachableByFriendlyStacks = {};
-        std::set<const CStack*> reachableByEnemyStacks = {};
-        // below context available only for REACHABLE hexes
-        std::set<const CStack*> neighbouringFriendlyStacks = {};
-        std::set<const CStack*> neighbouringEnemyStacks = {};
-        std::set<const CStack*> potentialEnemyAttackers = {};
-
-
         std::string name() const;
+
+        int attr(Export::Attribute a) const;
+
+        bool isFree() const;
+        bool isObstacle() const;
+        bool isOccupied() const;
+
+        int getX() const;
+        int getY() const;
+        HexState getState() const;
+
+        void setX(int x);
+        void setY(int x);
+        void setState(HexState state);
+        void setReachableByActiveStack(bool value);
+        void setReachableByFriendlyStack(int slot, bool value);
+        void setReachableByEnemyStack(int slot, bool value);
+        void setMeleeableByActiveStack(Export::DmgMod value);
+        void setMeleeableByEnemyStack(int slot, Export::DmgMod value);
+        void setShootableByActiveStack(Export::DmgMod value);
+        void setShootableByEnemyStack(int slot, Export::DmgMod value);
+        void setNextToFriendlyStack(int slot, bool value);
+        void setNextToEnemyStack(int slot, bool value);
+        void setCStackAndAttrs(const CStack* cstack_, int qpos);
+
+        // void initOccupyingStack()
     };
 }

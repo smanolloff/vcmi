@@ -21,7 +21,6 @@
 #include "common.h"
 #include "export.h"
 #include "hex.h"
-#include "stack.h"
 
 namespace MMAI {
     using Hexes = std::array<std::array<Hex, BF_XMAX>, BF_YMAX>;
@@ -29,6 +28,7 @@ namespace MMAI {
     constexpr int QSIZE = 15;
     using Queue = std::vector<uint32_t>;
     using ReachabilityInfos = std::map<const CStack*, std::shared_ptr<ReachabilityInfo>>;
+    using ShooterInfos = std::map<const CStack*, bool>;
     using XY = std::pair<int, int>;
 
     /**
@@ -49,20 +49,28 @@ namespace MMAI {
             const BattleHex &obh
         );
 
+        static void ProcessNeighbouringHexes(
+            Hex &hex,
+            const CStack* astack,
+            const std::vector<const CStack*> &allstacks,
+            const AccessibilityInfo &ainfo, // accessibility info for active stack
+            const ReachabilityInfos &rinfos
+        );
+
         static Hex InitHex(
             const int id,
             const std::vector<const CStack*> &allstacks,
             const CStack* astack,
-            const bool canshoot,
             const Queue &queue,
             const AccessibilityInfo &ainfo,
-            const ReachabilityInfos &rinfos
+            const ReachabilityInfos &rinfos,
+            const ShooterInfos &sinfos
         );
 
         static Hexes InitHexes(CBattleCallback* cb, const CStack* astack);
-        static Stack InitStack(const Queue &q, const CStack* cstack);
         static Queue GetQueue(CBattleCallback* cb);
-        static void AddToExportState(Export::State &state, std::set<const CStack*> &stacks, int i, int max);
+        static void AddToExportState(Export::State &state, std::array<const CStack*, 7> &stacks);
+
 
         Battlefield(CBattleCallback* cb, const CStack* astack_) :
             astack(astack_),
@@ -79,10 +87,4 @@ namespace MMAI {
 
         void offTurnUpdate(CBattleCallback* cb);
     };
-
-
-    // Sync check hard-coded values in Export
-    static_assert(Export::N_HEX_ATTRS == 3 + std::tuple_size<StackAttrs>::value + 36);
-    static_assert(std::tuple_size<Export::State>::value == 165 * Export::N_HEX_ATTRS);
-    static_assert(std::tuple_size<Export::ActMask>::value == N_ACTIONS);
 }

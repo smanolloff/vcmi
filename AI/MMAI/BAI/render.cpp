@@ -15,15 +15,19 @@
 // =============================================================================
 
 #include "BAI.h"
+#include "CStack.h"
 #include "battle/BattleHex.h"
+#include "battle/ReachabilityInfo.h"
+#include "battle/Unit.h"
 #include "common.h"
 #include "export.h"
 #include "types/battlefield.h"
 #include "types/hexaction.h"
-#include "types/stack.h"
 #include <stdexcept>
 
 namespace MMAI {
+    using A = Export::Attribute;
+
     // static
     // TODO: fix for terminal observation
     //       info after off-turn update is somewhat inconsistent
@@ -34,97 +38,350 @@ namespace MMAI {
     ) {
         auto state = r.state;
         auto hexes = Hexes();
+        const CStack* astack; // XXX: can remain nullptr (for terminal obs)
 
-        const CStack *astack = nullptr;
+        auto friendlyCStacks = std::array<const CStack*, 7>{};
+        auto enemyCStacks = std::array<const CStack*, 7>{};
+        auto rinfos = std::map<const CStack*, ReachabilityInfo>{};
+
+        for (auto &cstack : cb->battleGetAllStacks()) {
+            if (cstack->unitId() == cb->battleActiveUnit()->unitId())
+                astack = cstack;
+
+            cstack->unitSide() == cb->battleGetMySide()
+                ? friendlyCStacks.at(cstack->unitSlot()) = cstack
+                : enemyCStacks.at(cstack->unitSlot()) = cstack;
+
+            rinfos.at(cstack) = cb->getReachability(cstack);
+        }
+
+        // Return (attr == N/A), but after performing some checks
+        auto isNA = [](int v, const CStack* stack, const char* attrname) {
+            if (v == Export::VALUE_NA) {
+                expect(!stack, "%s: N/A but stack != nullptr", attrname);
+                return true;
+            }
+            expect(stack, "%s: != N/A but stack = nullptr", attrname);
+            return false;
+        };
+
+        auto ensureReachableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
+            if (isNA(v, stack, attrname)) return;
+            auto distance = rinfos.at(stack).distances.at(bh);
+            expect(stack->speed() >= distance, "%s: =1 but speed=%d < distance=%d", attrname, distance);
+        };
 
         // ihex = 0, 1, 2, .. 164
         // ibase = 0, 15, 30, ... 2460
         for (int ihex=0; ihex < BF_SIZE; ihex++) {
-            int ibase = ihex * Export::N_HEX_ATTRS;
+            int ibase = ihex * EI(A::_count);
             auto hex = Hex{};
             int x = ihex%15;
             int y = ihex/15;
-            ASSERT(y == state.at(ibase).orig, "hex.y mismatch");
-            ASSERT(x == state.at(ibase+1).orig, "hex.x mismatch");
-            hex.bhex = BattleHex(x+1, y);
-            hex.x = x;
-            hex.y = y;
+
+            ASSERT(y == state.at(ibase).v, "hex.y mismatch");
+            ASSERT(x == state.at(ibase+1).v, "hex.x mismatch");
+            auto bh = BattleHex(x+1, y);
+            hex.bhex = bh;
             hex.hexactmask.fill(false);
-            hex.state = HexState(state.at(ibase+2).orig);
 
-            if (hex.state == HexState::FREE_REACHABLE)
-                hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+            for (int i=0; i < EI(A::_count); i++)
+                hex.attrs.at(i) = state.at(ibase + i).v;
 
-            const CStack *cstack = nullptr;
-            auto attrs = Stack::NAAttrs();
+            const CStack *cstack;
+            bool isActive = false;
+            bool isFriendly = false;
 
-            if (state.at(ibase+3+EI(StackAttr::Quantity)).orig > 0) {
+            // Hex offsets for attacking at direction 0..12
+            // Depends if the row is odd or even
+            // XXX: order MUST correspond to the directions in hexaction.h
+            auto getAttackDirs = [rinfos](Hex hex, const CStack* stack){
+                auto bhid = Hex::CalcId(hex.bhex);
+                auto offsets = (hex.getY() % 2 == 0)
+                    ? std::array<int, 12>{-15, -14, 1, 16, 15, -1, 14, -2, -16, -13, 2, 17}
+                    : std::array<int, 12>{-16, -15, 1, 15, 14, -1, 13, -2, -17, -14, 2, 16};
+                auto ndirs = stack->doubleWide() ? 12 : 6;
+                auto res = std::vector<int>{};
+                for (int dir=0; dir<ndirs; dir++) {
+                    auto nbhid = bhid + offsets.at(dir);
+                    if (nbhid < 0 || nbhid > 164) continue;
+                    auto nbhY = nbhid / 15;
+                    auto nbhX = nbhid % 15;
+                    auto nbh = BattleHex(nbhX+1, nbhY);
+                    expect(nbh.isAvailable(), "nbh is not available");
+                    if (rinfos.at(stack).distances.at(nbh) <= stack->speed())
+                        res.push_back(dir);
+                }
+                return res;
+            };
+
+            auto isNeighbouring = [](BattleHex bh, const CStack* stack) {
+                for (auto &nbh : stack->getSurroundingHexes(bh, false, 0))
+                    if (stack->coversPos(nbh))
+                        return true;
+                return false;
+            };
+
+            if (hex.attr(A::STACK_QUANTITY) != Export::VALUE_NA) {
                 // there's a stack on this hex
-                auto stacks = cb->battleGetStacksIf([=](const CStack * stack) {
-                    return stack->unitSide() == state.at(ibase+3+EI(StackAttr::Side)).orig
-                        && stack->unitSlot() == state.at(ibase+3+EI(StackAttr::Slot)).orig;
-                });
+                isFriendly = hex.attr(A::STACK_SIDE) == cb->battleGetMySide();
+                cstack = isFriendly ? friendlyCStacks.at(EI(A::STACK_SLOT)) : enemyCStacks.at(EI(A::STACK_SLOT));
+                isActive = (cstack == astack);
+                expect(cstack, "could not find cstack");
 
-                expect(stacks.size() == 1, "Expected exactly 1 stack, got: %d", stacks.size());
-                cstack = stacks.at(0);
+                if (cstack->doubleWide())
+                    expect(cstack->coversPos(bh), "Hex's stack info about side+slot is incorrect (two-hex stack)");
+                else
+                    expect(cstack->getPosition() == bh, "Hex's stack info about side+slot is incorrect");
+            }
 
-                // // XXX: does not work for terminal render
-                // if (!cstack->coversPos(hex.bhex)) {
-                //     auto x = cstack->getPosition();
-                //     throw std::runtime_error("stack on hex, but coversPos() is false");
-                // }
+            // auto rinfo = cb->getReachability(cstack);
+            auto ainfo = cb->getAccesibility();
+            auto aa = ainfo.at(bh);
 
-                for (int j=0; j<EI(StackAttr::count); j++) {
-                    attrs.at(j) = state.at(ibase+3+j).orig;
+            // Now validate all attributes...
+            for (const auto &a : hex.attrs) {
+                auto attr = A(a);
+                auto v = hex.attrs.at(a);
 
-                    int vreal;
-
-                    switch(StackAttr(j)) {
-                    break; case StackAttr::Quantity: vreal = cstack->getCount();
-                    break; case StackAttr::Attack: vreal = cstack->getAttack(false);
-                    break; case StackAttr::Defense: vreal = cstack->getDefense(false);
-                    break; case StackAttr::Shots: vreal = cstack->shots.available();
-                    break; case StackAttr::DmgMin: vreal = cstack->getMinDamage(false);
-                    break; case StackAttr::DmgMax: vreal = cstack->getMaxDamage(false);
-                    break; case StackAttr::HP: vreal = cstack->getMaxHealth();
-                    break; case StackAttr::HPLeft: vreal = cstack->getFirstHPleft();
-                    break; case StackAttr::Speed: vreal = cstack->speed();
-                    break; case StackAttr::Waited: vreal = cstack->waitedThisTurn;
-                    break; case StackAttr::QueuePos:
-                        vreal = attrs[j];  // not verifying
-                        if (attrs[j] == 0) {
-                            if (astack) {
-                                expect(astack->doubleWide() && astack == cstack, "active stack conflict");
-                            } else {
-                                astack = cstack;
-                            }
-                        }
-                    break; case StackAttr::RetaliationsLeft:
-                        vreal = cstack->counterAttacks.available();
-                        if (vreal > 3) vreal = 3;  // prevent errors from unlimited retals
-                    break; case StackAttr::Side: vreal = cstack->unitSide();
-                    break; case StackAttr::Slot: vreal = cstack->unitSlot();
-                    break; case StackAttr::CreatureType: vreal = cstack->creatureId();
-                    break; case StackAttr::AIValue: vreal = cstack->creatureId().toCreature()->getAIValue();
-                    break; case StackAttr::IsActive:
-                        vreal = attrs[j];
-                        if (vreal == 1) {
-                            expect(attrs[EI(StackAttr::QueuePos)] == 0, "active stack on non-0 queue pos");
-                            if (StackAttr::QueuePos < StackAttr::IsActive) {
-                                expect(astack == cstack, "active stack should have been set to cstack");
-                            }
-                        } else {
-                            expect(attrs[EI(StackAttr::QueuePos)] != 0, "non-active stack on 0 queue pos");
-                        }
+                switch(attr) {
+                break; case A::HEX_Y_COORD:
+                    expect(a == y, "HEX_Y_COORD: %d != %d", a, y);
+                break; case A::HEX_X_COORD:
+                    expect(a == x, "HEX_X_COORD: %d != %d", a, x);
+                break; case A::HEX_STATE:
+                    switch (HexState(a)) {
+                    break; case HexState::OBSTACLE:
+                        expect(aa == EAccessibility::OBSTACLE, "HEX_STATE: OBSTACLE -> %d", aa);
+                    break; case HexState::OCCUPIED:
+                        expect(aa == EAccessibility::ALIVE_STACK, "HEX_STATE: OCCUPIED -> %d", aa);
+                    break; case HexState::FREE:
+                        expect(aa == EAccessibility::ACCESSIBLE, "HEX_STATE: FREE -> %d", aa);
                     break; default:
-                      throw std::runtime_error("Unexpected StackAttr: " + std::to_string(j));
+                        throw std::runtime_error("HEX_STATE: Unexpected HexState: " + std::to_string(a));
+                    }
+                break; case A::HEX_REACHABLE_BY_ACTIVE_STACK:
+                    if (!astack) {
+                        expect(v == Export::VALUE_NA, "HEX_REACHABLE_BY_ACTIVE_STACK: != N/A, but astack=nullptr");
+                        break;
                     }
 
-                    expect(attrs.at(j) == vreal, "attribute mismatch for %d: %d != %d", j, attrs.at(j), vreal);
-                }
+                    if (cstack && cstack->coversPos(bh))
+                        expect(isActive, "HEX_REACHABLE_BY_ACTIVE_STACK: coversPos=true but isActive=false");
+                    else
+                        expect(hex.isFree(), "HEX_REACHABLE_BY_ACTIVE_STACK: hex.isFree()=false");
+                    hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+                    expect(
+                        hex.attrs.at(EI(A::HEX_REACHABLE_BY_FRIENDLY_STACK_0) + astack->speed()) == 1,
+                        "HEX_REACHABLE_BY_ACTIVE_STACK: corresponding FRIENDLY reachability != 1"
+                    );
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_0:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(0), "HEX_REACHABLE_BY_FRIENDLY_STACK_0");
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_1:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(1), "HEX_REACHABLE_BY_FRIENDLY_STACK_1");
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_2:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(2), "HEX_REACHABLE_BY_FRIENDLY_STACK_2");
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_3:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(3), "HEX_REACHABLE_BY_FRIENDLY_STACK_3");
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_4:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(4), "HEX_REACHABLE_BY_FRIENDLY_STACK_4");
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_5:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(5), "HEX_REACHABLE_BY_FRIENDLY_STACK_5");
+                break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_6:
+                    ensureReachableOrNA(bh, v, friendlyCStacks.at(6), "HEX_REACHABLE_BY_FRIENDLY_STACK_6");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_0:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(0), "HEX_REACHABLE_BY_ENEMY_STACK_0");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_1:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(1), "HEX_REACHABLE_BY_ENEMY_STACK_1");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_2:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(2), "HEX_REACHABLE_BY_ENEMY_STACK_2");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_3:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(3), "HEX_REACHABLE_BY_ENEMY_STACK_3");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_4:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(4), "HEX_REACHABLE_BY_ENEMY_STACK_4");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_5:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(5), "HEX_REACHABLE_BY_ENEMY_STACK_5");
+                break; case A::HEX_REACHABLE_BY_ENEMY_STACK_6:
+                    ensureReachableOrNA(bh, v, enemyCStacks.at(6), "HEX_REACHABLE_BY_ENEMY_STACK_6");
+                break; case A::HEX_MELEEABLE_BY_ACTIVE_STACK:
+                    if (!astack) {
+                        expect(v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ACTIVE_STACK: != N/A, but astack=nullptr");
+                        break;
+                    }
 
-                hex.stack = std::make_shared<Stack>(cstack, attrs);
+                    expect(getAttackDirs(hex, astack).size() > 0, "HEX_MELEEABLE_BY_ACTIVE_STACK: no attack dirs");
+                    for (auto &dir : getAttackDirs(hex, astack))
+                        hex.hexactmask.at(1+dir) = true;
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_0:
+                    expect(enemyCStacks.at(0) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_0: != N/A, but enemyCStacks.at(0)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(0)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_0: no attack dirs");
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_1:
+                    expect(enemyCStacks.at(1) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_1: != N/A, but enemyCStacks.at(1)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(1)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_1: no attack dirs");
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_2:
+                    expect(enemyCStacks.at(2) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_2: != N/A, but enemyCStacks.at(2)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(2)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_2: no attack dirs");
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_3:
+                    expect(enemyCStacks.at(3) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_3: != N/A, but enemyCStacks.at(3)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(3)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_3: no attack dirs");
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_4:
+                    expect(enemyCStacks.at(4) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_4: != N/A, but enemyCStacks.at(4)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(4)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_4: no attack dirs");
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_5:
+                    expect(enemyCStacks.at(5) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_5: != N/A, but enemyCStacks.at(5)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(5)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_5: no attack dirs");
+                break; case A::HEX_MELEEABLE_BY_ENEMY_STACK_6:
+                    expect(enemyCStacks.at(6) || v == Export::VALUE_NA, "HEX_MELEEABLE_BY_ENEMY_STACK_6: != N/A, but enemyCStacks.at(6)=nullptr");
+                    expect(getAttackDirs(hex, enemyCStacks.at(6)).size() > 0, "HEX_MELEEABLE_BY_ENEMY_STACK_6: no attack dirs");
+                break; case A::HEX_SHOOTABLE_BY_ACTIVE_STACK:
+                    if (!astack) {
+                        expect(v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ACTIVE_STACK: != N/A, but astack=nullptr");
+                        break;
+                    }
+                    expect(cb->battleCanShoot(astack), "HEX_SHOOTABLE_BY_ACTIVE_STACK: astack can't shoot");
+                    hex.hexactmask.at(EI(HexAction::SHOOT)) = true;
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_0:
+                    expect(enemyCStacks.at(0) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_0: != N/A, but enemyCStacks.at(0)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(0)), "HEX_SHOOTABLE_BY_ENEMY_STACK_0: stack can't shoot");
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_1:
+                    expect(enemyCStacks.at(1) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_1: != N/A, but enemyCStacks.at(1)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(1)), "HEX_SHOOTABLE_BY_ENEMY_STACK_1: stack can't shoot");
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_2:
+                    expect(enemyCStacks.at(2) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_2: != N/A, but enemyCStacks.at(2)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(2)), "HEX_SHOOTABLE_BY_ENEMY_STACK_2: stack can't shoot");
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_3:
+                    expect(enemyCStacks.at(3) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_3: != N/A, but enemyCStacks.at(3)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(3)), "HEX_SHOOTABLE_BY_ENEMY_STACK_3: stack can't shoot");
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_4:
+                    expect(enemyCStacks.at(4) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_4: != N/A, but enemyCStacks.at(4)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(4)), "HEX_SHOOTABLE_BY_ENEMY_STACK_4: stack can't shoot");
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_5:
+                    expect(enemyCStacks.at(5) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_5: != N/A, but enemyCStacks.at(5)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(5)), "HEX_SHOOTABLE_BY_ENEMY_STACK_5: stack can't shoot");
+                break; case A::HEX_SHOOTABLE_BY_ENEMY_STACK_6:
+                    expect(enemyCStacks.at(6) || v == Export::VALUE_NA, "HEX_SHOOTABLE_BY_ENEMY_STACK_6: != N/A, but enemyCStacks.at(6)=nullptr");
+                    expect(cb->battleCanShoot(enemyCStacks.at(6)), "HEX_SHOOTABLE_BY_ENEMY_STACK_6: stack can't shoot");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_0:
+                    expect(friendlyCStacks.at(0) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_0: != N/A, but friendlyCStacks.at(0)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(0)), "HEX_NEXT_TO_FRIENDLY_STACK_0: not neighbouring");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_1:
+                    expect(friendlyCStacks.at(1) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_1: != N/A, but friendlyCStacks.at(1)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(1)), "HEX_NEXT_TO_FRIENDLY_STACK_1: not neighbouring");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_2:
+                    expect(friendlyCStacks.at(2) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_2: != N/A, but friendlyCStacks.at(2)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(2)), "HEX_NEXT_TO_FRIENDLY_STACK_2: not neighbouring");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_3:
+                    expect(friendlyCStacks.at(3) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_3: != N/A, but friendlyCStacks.at(3)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(3)), "HEX_NEXT_TO_FRIENDLY_STACK_3: not neighbouring");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_4:
+                    expect(friendlyCStacks.at(4) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_4: != N/A, but friendlyCStacks.at(4)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(4)), "HEX_NEXT_TO_FRIENDLY_STACK_4: not neighbouring");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_5:
+                    expect(friendlyCStacks.at(5) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_5: != N/A, but friendlyCStacks.at(5)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(5)), "HEX_NEXT_TO_FRIENDLY_STACK_5: not neighbouring");
+                break; case A::HEX_NEXT_TO_FRIENDLY_STACK_6:
+                    expect(friendlyCStacks.at(6) || v == Export::VALUE_NA, "HEX_NEXT_TO_FRIENDLY_STACK_6: != N/A, but friendlyCStacks.at(6)=nullptr");
+                    expect(isNeighbouring(hex.bhex, friendlyCStacks.at(6)), "HEX_NEXT_TO_FRIENDLY_STACK_6: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_0:
+                    expect(enemyCStacks.at(0) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_0: != N/A, but enemyCStacks.at(0)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(0)), "HEX_NEXT_TO_ENEMY_STACK_0: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_1:
+                    expect(enemyCStacks.at(1) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_1: != N/A, but enemyCStacks.at(1)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(1)), "HEX_NEXT_TO_ENEMY_STACK_1: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_2:
+                    expect(enemyCStacks.at(2) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_2: != N/A, but enemyCStacks.at(2)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(2)), "HEX_NEXT_TO_ENEMY_STACK_2: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_3:
+                    expect(enemyCStacks.at(3) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_3: != N/A, but enemyCStacks.at(3)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(3)), "HEX_NEXT_TO_ENEMY_STACK_3: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_4:
+                    expect(enemyCStacks.at(4) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_4: != N/A, but enemyCStacks.at(4)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(4)), "HEX_NEXT_TO_ENEMY_STACK_4: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_5:
+                    expect(enemyCStacks.at(5) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_5: != N/A, but enemyCStacks.at(5)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(5)), "HEX_NEXT_TO_ENEMY_STACK_5: not neighbouring");
+                break; case A::HEX_NEXT_TO_ENEMY_STACK_6:
+                    expect(enemyCStacks.at(6) || v == Export::VALUE_NA, "HEX_NEXT_TO_ENEMY_STACK_6: != N/A, but enemyCStacks.at(6)=nullptr");
+                    expect(isNeighbouring(hex.bhex, enemyCStacks.at(6)), "HEX_NEXT_TO_ENEMY_STACK_6: not neighbouring");
+                break; case A::STACK_QUANTITY:
+                    if (isNA(v, cstack, "STACK_QUANTITY")) break;
+                    expect(v == cstack->getCount(), "STACK_QUANTITY: %d != %d", v, cstack->getCount());
+                break; case A::STACK_ATTACK:
+                    if (isNA(v, cstack, "STACK_ATTACK")) break;
+                    expect(v == cstack->getAttack(false), "STACK_ATTACK: %d != %d", v, cstack->getAttack(false));
+                break; case A::STACK_DEFENSE:
+                    if (isNA(v, cstack, "STACK_DEFENSE")) break;
+                    expect(v == cstack->getDefense(false), "STACK_DEFENSE: %d != %d", v, cstack->getDefense(false));
+                break; case A::STACK_SHOTS:
+                    if (isNA(v, cstack, "STACK_SHOTS")) break;
+                    expect(v == cstack->shots.available(), "STACK_SHOTS: %d != %d", v, cstack->shots.available());
+                break; case A::STACK_DMG_MIN:
+                    if (isNA(v, cstack, "STACK_DMG_MIN")) break;
+                    expect(v == cstack->getMinDamage(false), "STACK_DMG_MIN: %d != %d", v, cstack->getMinDamage(false));
+                break; case A::STACK_DMG_MAX:
+                    if (isNA(v, cstack, "STACK_DMG_MAX")) break;
+                    expect(v == cstack->getMaxDamage(false), "STACK_DMG_MAX: %d != %d", v, cstack->getMaxDamage(false));
+                break; case A::STACK_HP:
+                    if (isNA(v, cstack, "STACK_HP")) break;
+                    expect(v == cstack->getMaxHealth(), "STACK_HP: %d != %d", v, cstack->getMaxHealth());
+                break; case A::STACK_HP_LEFT:
+                    if (isNA(v, cstack, "STACK_HP_LEFT")) break;
+                    expect(v == cstack->getFirstHPleft(), "STACK_HP_LEFT: %d != %d", v, cstack->getFirstHPleft());
+                break; case A::STACK_SPEED:
+                    if (isNA(v, cstack, "STACK_SPEED")) break;
+                    expect(v == cstack->speed(), "STACK_SPEED: %d != %d", v, cstack->speed());
+                break; case A::STACK_WAITED:
+                    if (isNA(v, cstack, "STACK_WAITED")) break;
+                    expect(v == cstack->waitedThisTurn, "STACK_WAITED: %d != %d", v, cstack->waitedThisTurn);
+                break; case A::STACK_QUEUE_POS:
+                    if (isNA(v, cstack, "STACK_QUEUE_POS")) break;
+                    if (v == 0)
+                        expect(isActive, "STACK_QUEUE_POS: =0 but isActive=false");
+                    else
+                        expect(!isActive, "STACK_QUEUE_POS: !=0 but isActive=true");
+                break; case A::STACK_RETALIATIONS_LEFT:
+                    if (isNA(v, cstack, "STACK_RETALIATIONS_LEFT")) break;
+                    // not verifying unlimited retals, just check 0
+                    if (v > 0)
+                        expect(cstack->ableToRetaliate(), "STACK_RETALIATIONS_LEFT: >0 but ableToRetaliate=false");
+                    else
+                        expect(!cstack->ableToRetaliate(), "STACK_RETALIATIONS_LEFT: =0 but ableToRetaliate=true");
+                break; case A::STACK_SIDE:
+                    if (isNA(v, cstack, "STACK_SIDE")) break;
+                    expect(v == cstack->unitSide(), "STACK_SIDE: %d != %d", v, cstack->unitSide());
+                break; case A::STACK_SLOT:
+                    if (isNA(v, cstack, "STACK_SLOT")) break;
+                    expect(v == cstack->unitSlot(), "STACK_SLOT: %d != %d", v, int(cstack->unitSlot()));
+                break; case A::STACK_CREATURE_TYPE:
+                    if (isNA(v, cstack, "STACK_CREATURE_TYPE")) break;
+                    expect(v == cstack->creatureId(), "STACK_CREATURE_TYPE: %d != %d", v, cstack->creatureId());
+                break; case A::STACK_AI_VALUE_TENTH:
+                    if (isNA(v, cstack, "STACK_AI_VALUE_TENTH")) break;
+                    expect(v == cstack->creatureId().toCreature()->getAIValue(), "STACK_AI_VALUE_TENTH: %d != %d", v, cstack->creatureId().toCreature()->getAIValue());
+                break; case A::STACK_IS_ACTIVE:
+                    if (isNA(v, cstack, "STACK_IS_ACTIVE")) break;
+                    expect(v == isActive, "STACK_IS_ACTIVE: %d != %d", v, isActive);
+                break; case A::STACK_FLYING:
+                    if (isNA(v, cstack, "STACK_FLYING")) break;
+                    expect(v == cstack->hasBonusOfType(BonusType::FLYING), "STACK_FLYING: %d != %d", v, cstack->hasBonusOfType(BonusType::FLYING));
+                break; case A::STACK_NO_MELEE_PENALTY:
+                    if (isNA(v, cstack, "STACK_NO_MELEE_PENALTY")) break;
+                    expect(v == cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY), "STACK_NO_MELEE_PENALTY: %d != %d", v, cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY));
+                break; case A::STACK_TWO_HEX_ATTACK_BREATH:
+                    if (isNA(v, cstack, "STACK_TWO_HEX_ATTACK_BREATH")) break;
+                    expect(v == cstack->hasBonusOfType(BonusType::TWO_HEX_ATTACK_BREATH), "STACK_TWO_HEX_ATTACK_BREATH: %d != %d", v, cstack->hasBonusOfType(BonusType::TWO_HEX_ATTACK_BREATH));
+                break; case A::STACK_BLOCKS_RETALIATION:
+                    if (isNA(v, cstack, "STACK_BLOCKS_RETALIATION")) break;
+                    expect(v == cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION), "STACK_BLOCKS_RETALIATION: %d != %d", v, cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION));
+                break; case A::STACK_DEFENSIVE_STANCE:
+                    if (isNA(v, cstack, "STACK_DEFENSIVE_STANCE")) break;
+                    expect(v == cstack->hasBonusOfType(BonusType::DEFENSIVE_STANCE), "STACK_DEFENSIVE_STANCE: %d != %d", v, cstack->hasBonusOfType(BonusType::DEFENSIVE_STANCE));
+                break; default:
+                    throw std::runtime_error("Unexpected attr: " + std::to_string(a));
+                }
             }
+
+            hex.cstack = cstack;
             hexes.at(y).at(x) = hex;
         }
 
@@ -139,13 +396,10 @@ namespace MMAI {
                 auto hex = hexes.at(y).at(x);
 
                 expect(hex0.bhex == hex.bhex, "mismatch: hex.bhex");
-                expect(hex0.y == hex.y, "mismatch: hex.y");
-                expect(hex0.x == hex.x, "mismatch: hex.x");
-                expect(hex0.state == hex.state, "mismatch: hex.state");
+                expect(hex0.cstack == hex.cstack, "mismatch: hex.cstack");
 
-                for (int j=0; j<EI(StackAttr::count); j++) {
-                    expect(hex0.stack->attrs.at(j) == hex.stack->attrs.at(j), "mismatch: hex.stack->attrs[%d]", j);
-                }
+                for (int i=0; i < EI(A::_count); i++)
+                    expect(hex0.attrs.at(i) == hex.attrs.at(i), "mismatch: hex.attrs.at(%d)", i);
             }
         }
 
@@ -160,7 +414,13 @@ namespace MMAI {
         const Action *action,  // for displaying "last action"
         const std::vector<AttackLog> attackLogs // for displaying log
     ) {
-        static_assert(std::tuple_size<Export::State>::value == 165 * (3 + Export::N_STACK_ATTRS + Export::N_CONTEXT_ATTRS));
+        expect(r.state.size() == 165*EI(A::_count), "r.state.size %d != 165*%d", r.state.size(), EI(A::_count));
+
+        int encsize = 0;
+        for (auto &oh : r.state)
+            encsize += oh.n;
+
+        expect(encsize == Export::STATE_SIZE, "encsize: %d != %d", encsize, Export::STATE_SIZE);
 
         auto reconstructed = Reconstruct(r, cb);
         auto hexes = std::get<0>(reconstructed);
@@ -253,7 +513,7 @@ namespace MMAI {
         //   ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕
         //
 
-        auto stacks = std::array<std::shared_ptr<Stack>, 14>{};
+        auto stackhexes = std::array<std::shared_ptr<Hex>, 14>{};
 
         auto tablestartrow = rows.size();
 
@@ -266,49 +526,12 @@ namespace MMAI {
             for (int x=0; x < BF_XMAX; x++) {
                 auto sym = std::string("?");
                 auto &hex = hexes.at(y).at(x);
-                auto &ham = hex.hexactmask;
 
                 auto &row = (x == 0)
                     ? (rows.emplace_back() << nummap.at(y%10) << "┨" << (y % 2 == 0 ? " " : ""))
                     : rows.back();
 
                 row << " ";
-
-                // ibase = first state index of the i-th hex
-                // eg. for hex 2, ibase=16 where:
-                //  state[16] is hexid for hex2
-                //  state[17] is hexstate for hex2
-                //  state[18] is hex.stack->attr[Qty] for hex2
-                //  state[19] is hex.stack->attr[Att] for hex2
-                //  ... etc
-                auto ibase = (y * BF_XMAX + x) * (3 + EI(StackAttr::count) + Export::N_CONTEXT_ATTRS);
-                auto &nvy = state.at(ibase);
-                auto &nvx = state.at(ibase+1);
-                expect(hex.y == nvy.orig, "hex.y=%d != state[%d]=%d", hex.y, ibase, nvy.orig);
-                expect(hex.x == nvx.orig, "hex.x=%d != state[%d]=%d", hex.x, ibase+1, nvx.orig);
-                auto &nvstate = state.at(ibase+2);
-                expect(hex.state == HexState(nvstate.orig), "hex.state=%d != state[%d]=%d", hex.state, ibase+2, nvstate.orig);
-
-                // true if any hexactionmask is true
-                auto anyham = std::any_of(ham.begin(), ham.end(), [](bool val) { return val; });
-
-                // true if any stack attribute for that hex is valid
-                auto anyattr = std::any_of(
-                    state.begin()+ibase+3,
-                    // XXX: asserting only reachablyByFriendly
-                    state.begin()+ibase+3+EI(StackAttr::count),
-                    [](Export::NValue nv) { return nv.orig != ATTR_NA; }
-                );
-
-                // true if any any of the following context attributes is available:
-                // * (7) reachableByFriendlyStacks
-                // * (7) reachableByEnemyStacks
-                // Expect to be available for all hexes:
-                auto anycontext_all = std::any_of(
-                    state.begin()+ibase+3+EI(StackAttr::count),
-                    state.begin()+ibase+3+EI(StackAttr::count) + 14,
-                    [](Export::NValue nv) { return nv.orig != 0; }
-                );
 
                 // not checkable
                 // // true if any any of the following context attributes is available:
@@ -322,67 +545,35 @@ namespace MMAI {
                 //     [](Export::NValue nv) { return nv.orig != 0; }
                 // );
 
-                switch(hex.state) {
-                case HexState::FREE_REACHABLE: {
-                    ASSERT(!anyattr, "FREE_REACHABLE but anyattr is true");
-                    // this must be always true as at least 1 stack (astack) can reach this hex
-                    ASSERT(anycontext_all, "FREE_REACHABLE but anycontext_all is false");
-                    // can't check this as there may be no stacks
-                    // ASSERT(anycontext_free_reachable, "FREE_REACHABLE but anycontext_free_reachable is false");
-
-                    ASSERT(ham.at(EI(HexAction::MOVE)), "FREE_REACHABLE but mask[MOVE] is false");
-                    sym = "○";
-
-                    for (int n=0; n<EI(HexAction::count); n++) {
-                        if (n == EI(HexAction::MOVE)) continue;
-                        if (ham.at(n)) {
-                            sym = "◎";
-                            break;
+                switch(hex.getState()) {
+                break; case HexState::FREE: {
+                    if (hex.attr(A::HEX_REACHABLE_BY_ACTIVE_STACK)) {
+                        sym = "○";
+                        for (int i=0; i<7; i++) {
+                            if (hex.attrs.at(i+EI(A::HEX_MELEEABLE_BY_ENEMY_STACK_0))) {
+                                sym = "◎";
+                                break;
+                            }
                         }
+                    } else {
+                        sym = "\033[90m◌\033[0m";
                     }
                 }
-                break;
-                case HexState::FREE_UNREACHABLE:
-                    ASSERT(!anyattr || r.ended, "FREE_UNREACHABLE but anyattr is true");
-                    // at end-of-battle, hexes are updated but hexactmasks are not
-                    ASSERT(!anyham || r.ended, "FREE_UNREACHABLE but anyham is true");
-                    sym = "\033[90m◌\033[0m";
-                break;
-                case HexState::OBSTACLE:
-                    ASSERT(!anyattr || r.ended, "OBSTACLE but anyattr is true");
-                    ASSERT(!anyham || r.ended, "OBSTACLE but anyham is true");
+                break; case HexState::OBSTACLE:
                     sym = "\033[90m▦\033[0m";
-                break;
-                case HexState::OCCUPIED: {
-                    ASSERT(anyattr || r.ended, "OCCUPIED but anyattr is false");
-                    auto cstack = hex.stack->cstack;
-                    ASSERT(cstack, "OCCUPIED hex with nullptr cstack");
-                    auto slot = hex.stack->attrs.at(EI(StackAttr::Slot));
-                    auto enemy = cstack->unitSide() != astack->unitSide();
-                    ASSERT(hex.stack->attrs.at(EI(StackAttr::Side)) == cstack->unitSide(), "wrong unit side");
-                    auto col = enemy ? enemycol : ourcol;
+                break; case HexState::OCCUPIED: {
+                    auto slot = hex.attr(A::STACK_SLOT);
+                    auto friendly = hex.attr(A::STACK_SIDE) == cb->battleGetMySide();
+                    auto col = friendly ? ourcol : enemycol;
 
-                    if (cstack->unitId() == astack->unitId())
+                    if (hex.attr(A::STACK_IS_ACTIVE))
                         col += activemod;
 
-                    // stacks contains 14 elements, not 7 (don't use slot)
-                    auto myslot = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
-                        ? slot : slot + 7;
-
-                    stacks.at(myslot) = hex.stack;
+                    stackhexes.at(friendly ? slot : slot*2) = std::make_shared<Hex>(hex);
                     sym = col + std::to_string(slot+1) + nocol;
-
-                    // Check attributes
-                    // TODO: do I need to account for dead stacks at end-of-battle?
-                    //      ASSERT(attr == nv.orig || r.ended, "attr: " + std::to_string(attr) + " != " + std::to_string(nv.orig));
-                    for (int j=0; j<EI(StackAttr::count); j++) {
-                        // ASSERT(state[ibase+3+j].orig == hex.stack->attrs[j], "attr check failed");
-                        expect(state.at(ibase+3+j).orig == hex.stack->attrs.at(j), "attr check failed: state[%d].orig=%d != hex.stack->attrs[%d]=%d", ibase+3+j, state[ibase+3+j].orig, j, hex.stack->attrs[j]);
-                    }
                 }
-                break;
-                default:
-                    throw std::runtime_error("unexpected hex.state: " + std::to_string(EI(hex.state)));
+                break; default:
+                    throw std::runtime_error("unexpected hex.state: " + std::to_string(EI(hex.getState())));
                 }
 
                 row << sym;
@@ -460,129 +651,95 @@ namespace MMAI {
         // -----------------+--------------------------------------------------------
         //
 
-        //
-        // XXX: Table is initially constructed in rotated form
-        // => read "rows" as "cols" and vice versa...
-        //    (until the comment line "XXX: table is rotated here")
-        //
+        // table with 16 columns (14 stacks +1 header +1 divider)
+        // Each row represents a separate attribute
 
-        // table with 14+1 rows, ATTRS_PER_STACK+1 cells each (+1 for headers)
-        const auto nrows = 14+1;
-        const auto ncols = EI(StackAttr::count) + 1 - 5; // hide IsEnemy, Slot, CreatureType, AIValue IsActive
+        using RowDef = std::tuple<Export::Attribute, std::string>;
 
-        // Table with nrows and ncells, each cell a 3-element tuple
-        auto table = std::array<
-            std::array<  // row
-                std::tuple<std::string, int, std::string>, // cell: color, width, txt
-                ncols
-            >,
-            nrows
-        >{};
+        // All cell text is aligned right
+        auto colwidths = std::array<int, 16>{};
+        colwidths.fill(4); // default col width
+        colwidths.at(0) = 16; // header col
+        colwidths.at(1) = 2; // header col
 
-        auto colwidth = 4;
-        auto headercolwidth = 16;
-
-        static_assert(ncols == 13);
-        static_assert(EI(StackAttr::Quantity) == 0);
-        static_assert(EI(StackAttr::Attack) == 1);
-        static_assert(EI(StackAttr::Defense) == 2);
-        static_assert(EI(StackAttr::Shots) == 3);
-        static_assert(EI(StackAttr::DmgMin) == 4);
-        static_assert(EI(StackAttr::DmgMax) == 5);
-        static_assert(EI(StackAttr::HP) == 6);
-        static_assert(EI(StackAttr::HPLeft) == 7);
-        static_assert(EI(StackAttr::Speed) == 8);
-        static_assert(EI(StackAttr::Waited) == 9);
-        static_assert(EI(StackAttr::QueuePos) == 10); // 0=active stack
-        static_assert(EI(StackAttr::RetaliationsLeft) == 11);
-
-        table[0] = {
-            std::tuple{nocol, headercolwidth, "Stack #"},
-            std::tuple{nocol, headercolwidth, "Qty"},
-            std::tuple{nocol, headercolwidth, "Attack"},
-            std::tuple{nocol, headercolwidth, "Defense"},
-            std::tuple{nocol, headercolwidth, "Shots"},
-            std::tuple{nocol, headercolwidth, "Dmg (min)"},
-            std::tuple{nocol, headercolwidth, "Dmg (max)"},
-            std::tuple{nocol, headercolwidth, "HP"},
-            std::tuple{nocol, headercolwidth, "HP left"},
-            std::tuple{nocol, headercolwidth, "Speed"},
-            std::tuple{nocol, headercolwidth, "Waited"},
-            std::tuple{nocol, headercolwidth, "Queue"},
-            std::tuple{nocol, headercolwidth, "Ret. left"},
-
+        // {Attribute, name, colwidth}
+        const auto rowdefs = std::vector<RowDef> {
+            RowDef{A::STACK_SLOT, "Stack #"},
+            RowDef{A::HEX_X_COORD, ""},
+            RowDef{A::STACK_QUANTITY, "Qty"},
+            RowDef{A::STACK_ATTACK, "Attack"},
+            RowDef{A::STACK_DEFENSE, "Defense"},
+            RowDef{A::STACK_SHOTS, "Shots"},
+            RowDef{A::STACK_DMG_MIN, "Dmg (min)"},
+            RowDef{A::STACK_DMG_MAX, "Dmg (max)"},
+            RowDef{A::STACK_HP, "HP"},
+            RowDef{A::STACK_HP_LEFT, "HP left"},
+            RowDef{A::STACK_SPEED, "Speed"},
+            RowDef{A::STACK_WAITED, "Waited"},
+            RowDef{A::STACK_QUEUE_POS, "Queue"},
+            RowDef{A::STACK_RETALIATIONS_LEFT, "Ret. left"},
+            RowDef{A::HEX_X_COORD, ""},
         };
 
-        for (int row=1, i=0; row<nrows; row++) {
-            auto nstack = row-1;  // stack number 0..13
-            auto stackdisplay = std::to_string(nstack % 7 + 1); // stack 1..7
-            auto &stack = stacks.at(nstack);
+        // Table with nrows and ncells, each cell a 3-element tuple
+        // cell: color, width, txt
+        using TableCell = std::tuple<std::string, int, std::string>;
+        using TableRow = std::array<TableCell, colwidths.size()>;
 
-            table[row][0] = std::tuple{"X", colwidth, stackdisplay};  // "X" changed later
+        auto table = std::vector<TableRow> {};
 
-            for (int col=1; col<ncols; col++, i++) {
-                auto color = nocol;
-                auto attr = ATTR_NA;
-                auto headersuffix = "";
+        auto divrow = TableRow{};
+        for (int i=0; i<colwidths.size(); i++)
+            divrow[i] = TableCell{nocol, colwidths.at(i), std::string(colwidths.at(i), '-')};
+        divrow.at(1) = TableCell{nocol, colwidths.at(1), std::string(colwidths.at(1)-1, '-') + "+"};
 
-                if (stack) {
-                    auto cstack = stack->cstack;
-                    ASSERT(cstack, "NULL cstack");
-                    ASSERT(cstack->unitSide() == stack->attrs.at(EI(StackAttr::Side)), "stack side mismatch");
-                    // at activeStack(), Stack objects are created only for alive CStacks
-                    // at end-of-battle, Stack objects of dead CStacks are is still there
-                    // => there should be no dead stacks unless battle ends
-                    if (!cstack->alive()) {
-                        ASSERT(r.ended, "dead stack at " + std::to_string(nstack));
-                    } else {
-                        attr = stack->attrs.at(col-1); // col starts at 1
-                        color = (cstack->unitSide() == LIB_CLIENT::BattleSide::ATTACKER)
-                            ? redcol : bluecol;
+        // Header row
+        // table.emplace_back(...) // TODO
 
-                        if (cstack->unitId() == astack->unitId()) {
-                            color += activemod;
-                            headersuffix = "*";
-                        }
-                    }
-                }
+        // Divider row
+        // table.emplace_back(...) // TODO
 
-                if (col == 1) {
-                    std::get<0>(table[row][0]) = color;         // change header color
-                    std::get<2>(table[row][0]) += headersuffix; // mark active unit
-                }
-
-                // table[row][col] = std::tuple{color, colwidth, std::to_string(attr)};
-                table[row][col] = std::tuple{color, colwidth, (attr == ATTR_NA) ? "" : std::to_string(attr)};
+        // Attribute rows
+        for (auto& [a, aname] : rowdefs) {
+            if (a == A::HEX_X_COORD) { // divider row
+                table.push_back(divrow);
+                continue;
             }
-        }
 
-        auto divrow = std::stringstream();
-        divrow << PadLeft("", headercolwidth, '-');
-        divrow << "-+";
-        divrow << PadLeft("", (nrows-1)*colwidth, '-');
-        auto divrowstr = divrow.str();
+            auto row = TableRow{};
+
+            // Header col
+            row.at(0) = {nocol, colwidths.at(0), aname};
+
+            // Div col
+            row.at(1) = {nocol, colwidths.at(1), "|"};
+
+            // Stack cols
+            for (int i=0; i<stackhexes.size(); i++) {
+                auto hex = stackhexes.at(i);
+                auto color = nocol;
+                std::string value = "";
+
+                if (hex->cstack) {
+                    color = (hex->attr(A::STACK_SIDE) == BattleSide::ATTACKER) ? redcol : bluecol;
+                    value = std::to_string(hex->attr(a));
+                    if (hex->attr(A::STACK_IS_ACTIVE)) color += activemod;
+                }
+
+                row.at(2+i) = {color, colwidths.at(2+i), value};
+            }
+
+            table.push_back(row);
+        }
 
         // XXX: table is rotated here
-        for (int r=0; r<ncols; r++) {
+        for (auto &r : table) {
             auto row = std::stringstream();
-            for (int c=0; c<nrows; c++) {
-                auto [color, width, txt] = table[c][r];
+            for (auto& [color, width, txt] : r)
                 row << color << PadLeft(txt, width, ' ') << nocol;
 
-                // divider
-                if (c == 0)
-                    row << " |";
-            }
-
             rows.push_back(std::move(row));
-
-            // divider (after header row)
-            if (r == 0)
-                rows.emplace_back(divrowstr);
         }
-
-        // divider (after last row)
-        rows.emplace_back(divrowstr);
 
         //
         // 6. Join rows into a single string

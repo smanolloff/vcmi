@@ -20,7 +20,6 @@
 #include "battle/BattleHex.h"
 #include "battle/ReachabilityInfo.h"
 #include "types/hexaction.h"
-#include "types/stack.h"
 #include "vcmi/Creature.h"
 #include "vstd/CLoggerBase.h"
 #include <stdexcept>
@@ -154,8 +153,8 @@ namespace MMAI {
         // auto myq = bf.getQueue(cb.get());
         auto [x, y] = Hex::CalcXY(apos);
         auto hex = bf.hexes.at(y).at(x);
-        ASSERT(hex.stack->attrs.at(EI(StackAttr::QueuePos)) == 0, "expected 0 queue pos");
-        ASSERT(hex.stack->attrs.at(EI(StackAttr::IsActive)) == 1, "expected active=1");
+        ASSERT(hex.attr(Export::Attribute::STACK_QUEUE_POS) == 0, "expected 0 queue pos");
+        ASSERT(hex.attr(Export::Attribute::STACK_IS_ACTIVE) == 1, "expected active=1");
 
         if (!action.hex) {
             switch(NonHexAction(action.action)) {
@@ -176,7 +175,7 @@ namespace MMAI {
         // However, for manual playing/testing, it's bad to raise exceptions
         // => return errmask and raise in Gym env if errmask != 0
         auto &bhex = action.hex->bhex;
-        auto &cstack = action.hex->stack->cstack;
+        auto &cstack = action.hex->cstack;
         if (action.hex->hexactmask.at(EI(action.hexaction))) {
             // Action is VALID
             // XXX: Do minimal asserts to prevent bugs with nullptr deref
@@ -258,7 +257,7 @@ namespace MMAI {
             case HexAction::AMOVE_2BR: {
                 auto a = ainfo.at(action.hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
-                    auto hs = action.hex->state;
+                    auto hs = hex.getState();
                     ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_BLOCKED);
                     break;
@@ -283,7 +282,8 @@ namespace MMAI {
                 expect(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: %d", a);
 
                 if (action.hexaction == HexAction::MOVE) {
-                    ASSERT(action.hex->state == HexState::FREE_UNREACHABLE, "mask prevented MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
+                    auto reachable = hex.attr(Export::Attribute::HEX_REACHABLE_BY_ACTIVE_STACK);
+                    ASSERT(reachable == 0, "mask prevented MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_UNREACHABLE);
                     break;
                 }
@@ -352,18 +352,16 @@ namespace MMAI {
         info << "rinfo.distances[bhex] <= astack->speed(): " << (rinfo.distances[action.hex->bhex.hex] <= astack->speed()) << "\n";
 
         info << "action.hex->name = " << action.hex->name() << "\n";
-        info << "action.hex->state = " << EI(action.hex->state) << "\n";
+
+        for (int i=0; i < action.hex->attrs.size(); i++)
+            info << "action.hex->attrs[" << i << "] = " << EI(action.hex->attrs[i]) << "\n";
+
         info << "action.hex->hexactmask = [";
         for (const auto& b : action.hex->hexactmask)
             info << int(b) << ",";
         info << "]\n";
 
-        info << "action.hex->stack->attrs: [";
-        for (const auto& a : action.hex->stack->attrs)
-            info << a << ",";
-        info << "]\n";
-
-        auto cstack = action.hex->stack->cstack;
+        auto cstack = action.hex->cstack;
         if (cstack) {
             info << "cstack->getPosition().hex=" << cstack->getPosition().hex << "\n";
             info << "cstack->slot=" << cstack->unitSlot() << "\n";

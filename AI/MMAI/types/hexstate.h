@@ -27,11 +27,10 @@ namespace MMAI {
     //      there is no way to indicate the slot.
 
     enum class HexState : int {
-        INVALID,  // no hex
+        INVALID = -1,  // no hex
         OBSTACLE,
         OCCUPIED, // alive stack
-        FREE_UNREACHABLE,
-        FREE_REACHABLE,
+        FREE,
         count
     };
 }

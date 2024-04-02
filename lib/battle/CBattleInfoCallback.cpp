@@ -697,8 +697,8 @@ bool CBattleInfoCallback::battleCanShoot(const battle::Unit * attacker) const
 			return false;
 	}
 
-	return attacker->canShoot()	&& (!battleIsUnitBlocked(attacker)
-			|| attacker->hasBonusOfType(BonusType::FREE_SHOOTING));
+	return attacker->canShoot()	&& (attacker->hasBonusOfType(BonusType::FREE_SHOOTING)
+			|| !battleIsUnitBlocked(attacker));
 }
 
 bool CBattleInfoCallback::battleCanShoot(const battle::Unit * attacker, BattleHex dest) const

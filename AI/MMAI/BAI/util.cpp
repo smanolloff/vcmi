@@ -17,7 +17,6 @@
 #include "BAI.h"
 #include "export.h"
 #include "types/battlefield.h"
-#include "types/stack.h"
 
 namespace MMAI {
     std::string BAI::PadLeft(const std::string& input, size_t desiredLength, char paddingChar) {

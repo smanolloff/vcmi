@@ -46,5 +46,4 @@ namespace MMAI {
 
         throw std::runtime_error(buffer);
     }
-
 }
