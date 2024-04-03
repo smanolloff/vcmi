@@ -30,56 +30,56 @@ namespace MMAI {
     };
 
     enum class HexAction : int {
+        AMOVE_TR,   // = Move to (*) + attack:
+        AMOVE_R,    //  . . . . . . . . . 5 0 . . . .
+        AMOVE_BR,   // . 1-hex:  . . . . 4 * 1 . . .
+        AMOVE_BL,   //  . . . . . . . . . 3 2 . . . .
+        AMOVE_L,    // . . . . . . . . . . . . . . .
+        AMOVE_TL,   //  . . . . . . . . . 5 0 6 . . .
+        AMOVE_2TR,  // . 2-hex (R):  . . 4 * # 7 . .
+        AMOVE_2R,   //  . . . . . . . . . 3 2 8 . . .
+        AMOVE_2BR,  // . . . . . . . . . . . . . . .
+        AMOVE_2BL,  //  . . . . . . . .11 5 0 . . . .
+        AMOVE_2L,   // . 2-hex (L):  .10 # * 1 . . .
+        AMOVE_2TL,  //  . . . . . . . . 9 3 2 . . . .
         MOVE,       // = Move to (defend if current hex)
-        AMOVE_TL,   // = Move to (*) + attack:
-        AMOVE_TR,   //  . . . . . . . . . 0 1 . . . .
-        AMOVE_R,    // . 1-hex:  . . . . 5 * 2 . . .
-        AMOVE_BR,   //  . . . . . . . . . 4 3 . . . .
-        AMOVE_BL,   // . . . . . . . . . . . . . . .
-        AMOVE_L,    //  . . . . . . . . 8 0 1 . . . .
-        AMOVE_2BL,  // . 2-hex (L):  . 7 # * 2 . . .
-        AMOVE_2L,   //  . . . . . . . . 6 4 3 . . . .
-        AMOVE_2TL,  // . . . . . . . . . . . . . . .
-        AMOVE_2TR,  //  . . . . . . . . . 0 1 9 . . .
-        AMOVE_2R,   // . 2-hex (R):  . . 5 * # 10. .
-        AMOVE_2BR,  //  . . . . . . . . . 4 3 11. . .
         SHOOT,      // = shoot at
         count
     };
 
     static auto EDIR_TO_AMOVE = std::map<BattleHex::EDir, HexAction>{
-        {BattleHex::TOP_LEFT,       HexAction::AMOVE_TL},
         {BattleHex::TOP_RIGHT,      HexAction::AMOVE_TR},
         {BattleHex::RIGHT,          HexAction::AMOVE_R},
         {BattleHex::BOTTOM_RIGHT,   HexAction::AMOVE_BR},
         {BattleHex::BOTTOM_LEFT,    HexAction::AMOVE_BL},
         {BattleHex::LEFT,           HexAction::AMOVE_L},
+        {BattleHex::TOP_LEFT,       HexAction::AMOVE_TL},
     };
 
     // for double stacks only, occupiedHex's POV
     static auto EDIR_TO_AMOVE_2 = std::map<BattleHex::EDir, HexAction>{
-        {BattleHex::BOTTOM_LEFT,    HexAction::AMOVE_2BL},
-        {BattleHex::LEFT,           HexAction::AMOVE_2L},
-        {BattleHex::TOP_LEFT,       HexAction::AMOVE_2TL},
         {BattleHex::TOP_RIGHT,      HexAction::AMOVE_2TR},
         {BattleHex::RIGHT,          HexAction::AMOVE_2R},
         {BattleHex::BOTTOM_RIGHT,   HexAction::AMOVE_2BR},
+        {BattleHex::BOTTOM_LEFT,    HexAction::AMOVE_2BL},
+        {BattleHex::LEFT,           HexAction::AMOVE_2L},
+        {BattleHex::TOP_LEFT,       HexAction::AMOVE_2TL},
     };
 
 
     static auto AMOVE_TO_EDIR = std::map<HexAction, BattleHex::EDir>{
-        {HexAction::AMOVE_TL,       BattleHex::TOP_LEFT},
         {HexAction::AMOVE_TR,       BattleHex::TOP_RIGHT},
         {HexAction::AMOVE_R,        BattleHex::RIGHT},
         {HexAction::AMOVE_BR,       BattleHex::BOTTOM_RIGHT},
         {HexAction::AMOVE_BL,       BattleHex::BOTTOM_LEFT},
         {HexAction::AMOVE_L,        BattleHex::LEFT},
-        {HexAction::AMOVE_2BL,      BattleHex::BOTTOM_LEFT},
-        {HexAction::AMOVE_2L,       BattleHex::LEFT},
-        {HexAction::AMOVE_2TL,      BattleHex::TOP_LEFT},
+        {HexAction::AMOVE_TL,       BattleHex::TOP_LEFT},
         {HexAction::AMOVE_2TR,      BattleHex::TOP_RIGHT},
         {HexAction::AMOVE_2R,       BattleHex::RIGHT},
         {HexAction::AMOVE_2BR,      BattleHex::BOTTOM_RIGHT},
+        {HexAction::AMOVE_2BL,      BattleHex::BOTTOM_LEFT},
+        {HexAction::AMOVE_2L,       BattleHex::LEFT},
+        {HexAction::AMOVE_2TL,      BattleHex::TOP_LEFT},
     };
 
 

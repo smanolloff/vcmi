@@ -70,9 +70,7 @@ namespace MMAI {
         // It ensures special handling for non-game actions (eg. render, reset)
         getActionWrapper = [this](const Export::Result* result) {
             debug("getActionWrapper called with result type: " + std::to_string(result->type));
-            const auto tmpres = Export::Result();
-            auto action = getNonRenderAction(&tmpres);
-            // auto action = getNonRenderAction(result);
+            auto action = getNonRenderAction(result);
             debug("getActionWrapper received action: " + std::to_string(action));
 
             if (action == Export::ACTION_RESET) {

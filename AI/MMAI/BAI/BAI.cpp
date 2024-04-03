@@ -129,8 +129,11 @@ namespace MMAI {
                 : side1ArmyValue += value;
         }
 
+        auto [state, encstate] = bf.exportState();
+
         return Export::Result(
-            bf.exportState(),
+            state,
+            encstate,
             bf.exportActMask(),
             Export::Side(cb->battleGetMySide()),
             dmgDealt,
@@ -190,12 +193,12 @@ namespace MMAI {
                 ASSERT(cstack, "no target to shoot");
                 res.setAction(BattleAction::makeShotAttack(bf.astack, cstack));
             break;
-            case HexAction::AMOVE_TL:
             case HexAction::AMOVE_TR:
             case HexAction::AMOVE_R:
             case HexAction::AMOVE_BR:
             case HexAction::AMOVE_BL:
-            case HexAction::AMOVE_L: {
+            case HexAction::AMOVE_L:
+            case HexAction::AMOVE_TL: {
                 auto &edir = AMOVE_TO_EDIR.at(action.hexaction);
                 auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
                 ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
@@ -204,12 +207,12 @@ namespace MMAI {
                 res.setAction(BattleAction::makeMeleeAttack(bf.astack, nbh, bhex));
             }
             break;
-            case HexAction::AMOVE_2BL:
-            case HexAction::AMOVE_2L:
-            case HexAction::AMOVE_2TL:
             case HexAction::AMOVE_2TR:
             case HexAction::AMOVE_2R:
-            case HexAction::AMOVE_2BR: {
+            case HexAction::AMOVE_2BR:
+            case HexAction::AMOVE_2BL:
+            case HexAction::AMOVE_2L:
+            case HexAction::AMOVE_2TL: {
                 ASSERT(bf.astack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
                 auto &edir = AMOVE_TO_EDIR.at(action.hexaction);
                 auto obh = bf.astack->occupiedHex(bhex);
@@ -242,19 +245,19 @@ namespace MMAI {
         auto ainfo = cb->getAccesibility();
 
         switch(action.hexaction) {
-            case HexAction::MOVE:
-            case HexAction::AMOVE_TL:
             case HexAction::AMOVE_TR:
             case HexAction::AMOVE_R:
             case HexAction::AMOVE_BR:
             case HexAction::AMOVE_BL:
             case HexAction::AMOVE_L:
+            case HexAction::AMOVE_TL:
+            case HexAction::AMOVE_2TR:
+            case HexAction::AMOVE_2R:
+            case HexAction::AMOVE_2BR:
             case HexAction::AMOVE_2BL:
             case HexAction::AMOVE_2L:
             case HexAction::AMOVE_2TL:
-            case HexAction::AMOVE_2TR:
-            case HexAction::AMOVE_2R:
-            case HexAction::AMOVE_2BR: {
+            case HexAction::MOVE: {
                 auto a = ainfo.at(action.hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
                     auto hs = hex.getState();
@@ -290,7 +293,7 @@ namespace MMAI {
 
                 auto nbh = BattleHex{};
 
-                if (action.hexaction < HexAction::AMOVE_2BL) {
+                if (action.hexaction < HexAction::AMOVE_2TR) {
                     auto edir = AMOVE_TO_EDIR.at(action.hexaction);
                     nbh = bhex.cloneInDirection(edir, false);
                 } else {

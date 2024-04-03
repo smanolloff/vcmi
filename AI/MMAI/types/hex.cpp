@@ -17,31 +17,6 @@
 #include "types/hex.h"
 #include "export.h"
 
-//
-// Compile-time assertions for:
-//
-// 1. The proper position of the given Attribute within the HexEconding[] array
-//      (e.g. that Attribute::HEX_STATE (=2) is found at HexEconding[3*2])
-//
-// 2. The proper encoding scheme for a given attribute
-//      (e.g. that Atribute::HexState has a CATEGORICAL encoding with 4 values)
-//
-// They gurantee the code logic corresponds to the definitions in export.h
-//
-#define ASSERT_ENCODING(attr, type, size) \
-    static_assert(attr == Export::Attribute(Export::HEX_ENCODING[3*EI(attr)])); \
-    static_assert(EI(type) == Export::HEX_ENCODING[1 + 3*EI(attr)]); \
-    static_assert(size == Export::HEX_ENCODING[2 + 3*EI(attr)]);
-
-#define ASSERT_7STACK_ENCODINGS(attr, type, size) \
-    ASSERT_ENCODING(A(EI(attr)), type, size) \
-    ASSERT_ENCODING(A(EI(attr)+1), type, size) \
-    ASSERT_ENCODING(A(EI(attr)+2), type, size) \
-    ASSERT_ENCODING(A(EI(attr)+3), type, size) \
-    ASSERT_ENCODING(A(EI(attr)+4), type, size) \
-    ASSERT_ENCODING(A(EI(attr)+5), type, size) \
-    ASSERT_ENCODING(A(EI(attr)+6), type, size);
-
 namespace MMAI {
     using A = Export::Attribute;
     using E = Export::Encoding;
@@ -63,6 +38,7 @@ namespace MMAI {
     }
 
     int Hex::attr(Export::Attribute a) const { return attrs.at(EI(a)); };
+    void Hex::setattr(Export::Attribute a, int value) { attrs.at(EI(a)) = value; };
 
     bool Hex::isFree() const { return getState() == HexState::FREE; }
     bool Hex::isObstacle() const { return getState() == HexState::OBSTACLE; }
@@ -79,123 +55,143 @@ namespace MMAI {
     //
     // Attribute setters
     //
+
     void Hex::setX(int x) { attrs.at(EI(Export::Attribute::HEX_X_COORD)) = x; }
     void Hex::setY(int y) { attrs.at(EI(Export::Attribute::HEX_Y_COORD)) = y; }
 
-    ASSERT_ENCODING(A::HEX_STATE, E::CATEGORICAL, EI(HexState::count));
     void Hex::setState(HexState state) {
         attrs.at(EI(A::HEX_STATE)) = EI(state);
     }
 
-    ASSERT_7STACK_ENCODINGS(A::HEX_REACHABLE_BY_FRIENDLY_STACK_0, E::CATEGORICAL, 2);
+    //
+    // REACHABLE_BY_*
+    //
+
+    void Hex::setReachableByStack(bool isActive, bool isFriendly, int slot, bool value) {
+        if (isFriendly) {
+            setReachableByFriendlyStack(slot, value);
+            if (isActive) setReachableByActiveStack(value);
+        } else {
+            setReachableByEnemyStack(slot, value);
+        }
+    }
+
+    void Hex::setReachableByActiveStack(bool value) {
+        attrs.at(EI(A::HEX_REACHABLE_BY_ACTIVE_STACK)) = value;
+    }
+
     void Hex::setReachableByFriendlyStack(int slot, bool value) {
         attrs.at(slot + EI(A::HEX_REACHABLE_BY_FRIENDLY_STACK_0)) = value;
     }
 
-    ASSERT_7STACK_ENCODINGS(A::HEX_REACHABLE_BY_ENEMY_STACK_0, E::CATEGORICAL, 2);
     void Hex::setReachableByEnemyStack(int slot, bool value) {
         attrs.at(slot + EI(A::HEX_REACHABLE_BY_ENEMY_STACK_0)) = value;
     }
 
-    ASSERT_7STACK_ENCODINGS(A::HEX_NEXT_TO_FRIENDLY_STACK_0, E::CATEGORICAL, 2);
-    void Hex::setNextToFriendlyStack(int slot, bool value) {
-        attrs.at(slot + EI(A::HEX_NEXT_TO_FRIENDLY_STACK_0)) = value;
+    //
+    // MELEEABLE_BY_*
+    //
+
+    void Hex::setMeleeableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod mod) {
+        if (isFriendly) {
+            setMeleeableByFriendlyStack(slot, mod);
+            if (isActive) setMeleeableByActiveStack(mod);
+        } else {
+            setMeleeableByEnemyStack(slot, mod);
+        }
     }
 
-    ASSERT_7STACK_ENCODINGS(A::HEX_NEXT_TO_ENEMY_STACK_0, E::CATEGORICAL, 2);
-    void Hex::setNextToEnemyStack(int slot, bool value) {
-        attrs.at(slot + EI(A::HEX_NEXT_TO_ENEMY_STACK_0)) = value;
-    }
-
-    ASSERT_7STACK_ENCODINGS(A::HEX_MELEEABLE_BY_ENEMY_STACK_0, E::NUMERIC, EI(Export::DmgMod::_count)); // false, half, full
-    void Hex::setMeleeableByEnemyStack(int slot, Export::DmgMod value) {
-        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_ENEMY_STACK_0)) = EI(value);
-    }
-
-    ASSERT_7STACK_ENCODINGS(A::HEX_SHOOTABLE_BY_ENEMY_STACK_0, E::NUMERIC, EI(Export::DmgMod::_count)); // false, half, full
-    void Hex::setShootableByEnemyStack(int slot, Export::DmgMod value) {
-        attrs.at(slot + EI(A::HEX_SHOOTABLE_BY_ENEMY_STACK_0)) = EI(value);
-    }
-
-    ASSERT_ENCODING(A::HEX_MELEEABLE_BY_ACTIVE_STACK, E::NUMERIC, EI(Export::DmgMod::_count)); // false, half, full
     void Hex::setMeleeableByActiveStack(Export::DmgMod value) {
         attrs.at(EI(A::HEX_MELEEABLE_BY_ACTIVE_STACK)) = EI(value);
     }
 
-    ASSERT_ENCODING(A::HEX_SHOOTABLE_BY_ACTIVE_STACK, E::NUMERIC, EI(Export::DmgMod::_count)); // false, half, full
+    void Hex::setMeleeableByFriendlyStack(int slot, Export::DmgMod value) {
+        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_0)) = EI(value);
+    }
+
+    void Hex::setMeleeableByEnemyStack(int slot, Export::DmgMod value) {
+        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_ENEMY_STACK_0)) = EI(value);
+    }
+
+    //
+    // SHOOTABLE_BY_*
+    //
+
+    void Hex::setShootableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod mod) {
+        if (isFriendly) {
+            setShootableByFriendlyStack(slot, mod);
+            if (isActive) setShootableByActiveStack(mod);
+        } else {
+            setShootableByEnemyStack(slot, mod);
+        }
+    }
+
     void Hex::setShootableByActiveStack(Export::DmgMod value) {
         attrs.at(EI(A::HEX_SHOOTABLE_BY_ACTIVE_STACK)) = EI(value);
+    }
+
+    void Hex::setShootableByFriendlyStack(int slot, Export::DmgMod value) {
+        attrs.at(slot + EI(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0)) = EI(value);
+    }
+
+    void Hex::setShootableByEnemyStack(int slot, Export::DmgMod value) {
+        attrs.at(slot + EI(A::HEX_SHOOTABLE_BY_ENEMY_STACK_0)) = EI(value);
+    }
+
+    //
+    // NEXT_TO_*
+    //
+
+    void Hex::setNextToStack(bool isActive, bool isFriendly, int slot, bool value) {
+        if (isFriendly) {
+            setNextToFriendlyStack(slot, value);
+            if (isActive) setNextToActiveStack(value);
+        } else {
+            setNextToEnemyStack(slot, value);
+        }
+    }
+
+    void Hex::setNextToActiveStack(bool value) {
+        attrs.at(EI(A::HEX_NEXT_TO_ACTIVE_STACK)) = value;
+    }
+
+    void Hex::setNextToFriendlyStack(int slot, bool value) {
+        attrs.at(slot + EI(A::HEX_NEXT_TO_FRIENDLY_STACK_0)) = value;
+    }
+
+    void Hex::setNextToEnemyStack(int slot, bool value) {
+        attrs.at(slot + EI(A::HEX_NEXT_TO_ENEMY_STACK_0)) = value;
     }
 
     void Hex::setCStackAndAttrs(const CStack* cstack_, int qpos) {
         cstack = cstack_;
 
-        ASSERT_ENCODING(A::STACK_QUANTITY, E::NUMERIC_SQRT, 32);
-        attrs.at(EI(A::STACK_QUANTITY)) = cstack->getCount();
+        setattr(A::STACK_QUANTITY,  cstack->getCount());
+        setattr(A::STACK_ATTACK,    cstack->getAttack(false));
+        setattr(A::STACK_DEFENSE,   cstack->getDefense(false));
+        setattr(A::STACK_SHOTS,     cstack->shots.available());
+        setattr(A::STACK_DMG_MIN,   cstack->getMinDamage(false));
+        setattr(A::STACK_DMG_MAX,   cstack->getMaxDamage(false));
+        setattr(A::STACK_HP,        cstack->getMaxHealth());
+        setattr(A::STACK_HP_LEFT,   cstack->getFirstHPleft());
+        setattr(A::STACK_SPEED,     cstack->speed());
+        setattr(A::STACK_WAITED,    cstack->waitedThisTurn);
+        setattr(A::STACK_QUEUE_POS, qpos);
 
-        ASSERT_ENCODING(A::STACK_ATTACK, E::NUMERIC_SQRT, 8);
-        attrs.at(EI(A::STACK_ATTACK)) = cstack->getAttack(false);
-
-        ASSERT_ENCODING(A::STACK_DEFENSE, E::NUMERIC_SQRT, 8);
-        attrs.at(EI(A::STACK_DEFENSE)) = cstack->getDefense(false);
-
-        ASSERT_ENCODING(A::STACK_SHOTS, E::NUMERIC_SQRT, 5);
-        attrs.at(EI(A::STACK_SHOTS)) = cstack->shots.available();
-
-        ASSERT_ENCODING(A::STACK_DMG_MIN, E::NUMERIC_SQRT, 8);
-        attrs.at(EI(A::STACK_DMG_MIN)) = cstack->getMinDamage(false);
-
-        ASSERT_ENCODING(A::STACK_DMG_MAX, E::NUMERIC_SQRT, 8);
-        attrs.at(EI(A::STACK_DMG_MAX)) = cstack->getMaxDamage(false);
-
-        ASSERT_ENCODING(A::STACK_HP, E::NUMERIC_SQRT, 32);
-        attrs.at(EI(A::STACK_HP)) = cstack->getMaxHealth();
-
-        ASSERT_ENCODING(A::STACK_HP_LEFT, E::NUMERIC_SQRT, 32);
-        attrs.at(EI(A::STACK_HP_LEFT)) = cstack->getFirstHPleft();
-
-        ASSERT_ENCODING(A::STACK_SPEED, E::NUMERIC, 20);
-        attrs.at(EI(A::STACK_SPEED)) = cstack->speed();
-
-        ASSERT_ENCODING(A::STACK_WAITED, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_WAITED)) = cstack->waitedThisTurn;
-
-        ASSERT_ENCODING(A::STACK_QUEUE_POS, E::NUMERIC, 14);
-        attrs.at(EI(A::STACK_QUEUE_POS)) = qpos;
-
-        ASSERT_ENCODING(A::STACK_RETALIATIONS_LEFT, E::NUMERIC, 3);
         auto inf = cstack->hasBonusOfType(BonusType::UNLIMITED_RETALIATIONS);
-        attrs.at(EI(A::STACK_RETALIATIONS_LEFT)) = inf ? 3 : cstack->counterAttacks.available();
 
-        ASSERT_ENCODING(A::STACK_SIDE, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_SIDE)) = cstack->unitSide();
-
-        ASSERT_ENCODING(A::STACK_SLOT, E::CATEGORICAL, 6);
-        attrs.at(EI(A::STACK_SLOT)) = cstack->unitSlot();
-
-        ASSERT_ENCODING(A::STACK_CREATURE_TYPE, E::CATEGORICAL, 150);
-        attrs.at(EI(A::STACK_CREATURE_TYPE)) = cstack->creatureId();
-
-        ASSERT_ENCODING(A::STACK_AI_VALUE_TENTH, E::NUMERIC_SQRT, 63);
-        attrs.at(EI(A::STACK_AI_VALUE_TENTH)) = cstack->creatureId().toCreature()->getAIValue() / 10;
-
-        ASSERT_ENCODING(A::STACK_IS_ACTIVE, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_IS_ACTIVE)) = (qpos == 0);
-
-        ASSERT_ENCODING(A::STACK_FLYING, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_FLYING)) = cstack->hasBonusOfType(BonusType::FLYING);
-
-        ASSERT_ENCODING(A::STACK_NO_MELEE_PENALTY, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_NO_MELEE_PENALTY)) = cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY);
-
-        ASSERT_ENCODING(A::STACK_TWO_HEX_ATTACK_BREATH, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_TWO_HEX_ATTACK_BREATH)) = cstack->hasBonusOfType(BonusType::TWO_HEX_ATTACK_BREATH);
-
-        ASSERT_ENCODING(A::STACK_BLOCKS_RETALIATION, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_BLOCKS_RETALIATION)) = cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION);
-
-        ASSERT_ENCODING(A::STACK_DEFENSIVE_STANCE, E::CATEGORICAL, 2);
-        attrs.at(EI(A::STACK_DEFENSIVE_STANCE)) = cstack->hasBonusOfType(BonusType::DEFENSIVE_STANCE);
+        setattr(A::STACK_RETALIATIONS_LEFT,     inf ? 3 : cstack->counterAttacks.available());
+        setattr(A::STACK_SIDE,                  cstack->unitSide());
+        setattr(A::STACK_SLOT,                  cstack->unitSlot());
+        setattr(A::STACK_CREATURE_TYPE,         cstack->creatureId());
+        setattr(A::STACK_AI_VALUE_TENTH,        cstack->creatureId().toCreature()->getAIValue() / 10);
+        setattr(A::STACK_IS_ACTIVE,             (qpos == 0));
+        setattr(A::STACK_IS_WIDE,               cstack-> doubleWide());
+        setattr(A::STACK_FLYING,                cstack->hasBonusOfType(BonusType::FLYING));
+        setattr(A::STACK_NO_MELEE_PENALTY,      cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY));
+        setattr(A::STACK_TWO_HEX_ATTACK_BREATH, cstack->hasBonusOfType(BonusType::TWO_HEX_ATTACK_BREATH));
+        setattr(A::STACK_BLOCKS_RETALIATION,    cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION));
+        setattr(A::STACK_DEFENSIVE_STANCE,      cstack->hasBonusOfType(BonusType::DEFENSIVE_STANCE));
     }
 
 }

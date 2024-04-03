@@ -29,7 +29,10 @@ namespace MMAI {
     using Queue = std::vector<uint32_t>;
     using ReachabilityInfos = std::map<const CStack*, std::shared_ptr<ReachabilityInfo>>;
     using ShooterInfos = std::map<const CStack*, bool>;
+    using HexStacks = std::map<BattleHex, const CStack*>;
     using XY = std::pair<int, int>;
+    using HexActionHex = std::vector<std::pair<HexAction, BattleHex>>;
+    using DirHex = std::vector<std::pair<BattleHex::EDir, BattleHex>>;
 
     /**
      * A container for all 165 Hex tiles.
@@ -43,7 +46,7 @@ namespace MMAI {
             const ReachabilityInfos &rinfos
         );
 
-        static HexAction AttackAction(
+        static HexAction HexActionFromHexes(
             const BattleHex &nbh,
             const BattleHex &bh,
             const BattleHex &obh
@@ -53,9 +56,12 @@ namespace MMAI {
             Hex &hex,
             const CStack* astack,
             const std::vector<const CStack*> &allstacks,
-            const AccessibilityInfo &ainfo, // accessibility info for active stack
-            const ReachabilityInfos &rinfos
+            const ReachabilityInfos &rinfos,
+            const HexStacks &hexstacks
         );
+
+        static HexActionHex NearbyHexesForActmask(BattleHex &bh, const CStack* astack);
+        static DirHex NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack);
 
         static Hex InitHex(
             const int id,
@@ -64,12 +70,12 @@ namespace MMAI {
             const Queue &queue,
             const AccessibilityInfo &ainfo,
             const ReachabilityInfos &rinfos,
-            const ShooterInfos &sinfos
+            const ShooterInfos &sinfos,
+            const HexStacks &hexstacks
         );
 
         static Hexes InitHexes(CBattleCallback* cb, const CStack* astack);
         static Queue GetQueue(CBattleCallback* cb);
-        static void AddToExportState(Export::State &state, std::array<const CStack*, 7> &stacks);
 
 
         Battlefield(CBattleCallback* cb, const CStack* astack_) :
@@ -79,7 +85,7 @@ namespace MMAI {
 
         Hexes hexes; // not const due to offTurnUpdate
         const CStack* const astack;
-        const Export::State exportState();
+        const std::pair<Export::State, Export::EncodedState> exportState();
         const Export::ActMask exportActMask();
 
         // needed only for getting stack by slot

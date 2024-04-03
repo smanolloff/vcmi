@@ -39,14 +39,14 @@ namespace MMAI {
         Hex();
 
         BattleHex bhex;
-
-        const CStack * cstack;
+        const CStack * cstack = nullptr;
         HexAttrs attrs;
         HexActMask hexactmask;
 
         std::string name() const;
 
         int attr(Export::Attribute a) const;
+        void setattr(Export::Attribute a, int value);
 
         bool isFree() const;
         bool isObstacle() const;
@@ -59,17 +59,27 @@ namespace MMAI {
         void setX(int x);
         void setY(int x);
         void setState(HexState state);
+
+        void setReachableByStack(bool isActive, bool isFriendly, int slot, bool value);
         void setReachableByActiveStack(bool value);
         void setReachableByFriendlyStack(int slot, bool value);
         void setReachableByEnemyStack(int slot, bool value);
+
+        void setMeleeableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod value);
         void setMeleeableByActiveStack(Export::DmgMod value);
+        void setMeleeableByFriendlyStack(int slot, Export::DmgMod value);
         void setMeleeableByEnemyStack(int slot, Export::DmgMod value);
+
+        void setShootableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod value);
         void setShootableByActiveStack(Export::DmgMod value);
+        void setShootableByFriendlyStack(int slot, Export::DmgMod value);
         void setShootableByEnemyStack(int slot, Export::DmgMod value);
+
+        void setNextToStack(bool isActive, bool isFriendly, int slot, bool value);
+        void setNextToActiveStack(bool value);
         void setNextToFriendlyStack(int slot, bool value);
         void setNextToEnemyStack(int slot, bool value);
-        void setCStackAndAttrs(const CStack* cstack_, int qpos);
 
-        // void initOccupyingStack()
+        void setCStackAndAttrs(const CStack* cstack_, int qpos);
     };
 }
