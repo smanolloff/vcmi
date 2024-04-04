@@ -568,7 +568,6 @@ namespace MMAI {
                 }
             }
 
-            hex.cstack = cstack;
             hexes.at(y).at(x) = hex;
         }
 
@@ -737,10 +736,10 @@ namespace MMAI {
 
                 switch(hex.getState()) {
                 break; case HexState::FREE: {
-                    if (hex.attr(A::HEX_REACHABLE_BY_ACTIVE_STACK)) {
+                    if (hex.attr(A::HEX_REACHABLE_BY_ACTIVE_STACK) > 0) {
                         sym = "○";
                         for (int i=0; i<7; i++) {
-                            if (hex.attrs.at(i+EI(A::HEX_MELEEABLE_BY_ENEMY_STACK_0))) {
+                            if (hex.attrs.at(i+EI(A::HEX_REACHABLE_BY_ENEMY_STACK_0)) > 0) {
                                 sym = "◎";
                                 break;
                             }
@@ -756,10 +755,10 @@ namespace MMAI {
                     auto friendly = hex.attr(A::STACK_SIDE) == cb->battleGetMySide();
                     auto col = friendly ? ourcol : enemycol;
 
-                    if (hex.attr(A::STACK_IS_ACTIVE))
+                    if (hex.attr(A::STACK_IS_ACTIVE) > 0)
                         col += activemod;
 
-                    stackhexes.at(friendly ? slot : slot*2) = std::make_shared<Hex>(hex);
+                    stackhexes.at(friendly ? slot : 7+slot) = std::make_shared<Hex>(hex);
                     sym = col + std::to_string(slot+1) + nocol;
                 }
                 break; default:
@@ -913,7 +912,7 @@ namespace MMAI {
                 if (hex) {
                     color = (hex->attr(A::STACK_SIDE) == BattleSide::ATTACKER) ? redcol : bluecol;
                     value = std::to_string(hex->attr(a));
-                    if (hex->attr(A::STACK_IS_ACTIVE)) color += activemod;
+                    if (hex->attr(A::STACK_IS_ACTIVE) > 0) color += activemod;
                 }
 
                 row.at(2+i) = {color, colwidths.at(2+i), value};
