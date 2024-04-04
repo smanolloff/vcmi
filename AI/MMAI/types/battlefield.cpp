@@ -167,6 +167,9 @@ namespace MMAI {
             if (cstack->getOwner() == astack->getOwner())
                 continue; // friendly unit on nbh
 
+            if (!IsReachable(hex.bhex, astack, rinfos))
+                continue; // can't reach the hex to attack from
+
             ASSERT(astack->isMeleeAttackPossible(astack, cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
             hex.hexactmask.at(EI(hexaction)) = true;
         }
@@ -174,27 +177,25 @@ namespace MMAI {
 
     // static
     //
-    // Return bh's neighbouring hexes for setting the HexAction attack mask
-    // i.e. assume astack's position is fixed at "X", return nearby hexes "*"
+    // Return bh's neighbouring hexes for setting the AMOVE_* heaxctmasks
+    // i.e. assume astack's position is fixed at "@", return nearby hexes "X"
     // at which astack could perform a melee attack:
     //
-    //  1-hex:       2-hex (right):     2-hex (left):
-    //  . . . . . . . . . . . . . . . . . . . . . . .
-    // . . * * . . . . . * * * . . . . . . * * * . .
-    //  . * X * . . . . * X - * . . . . . * - X * . .
-    // . . * * . . . . . * * * . . . . . . * * * . .
-    //  . . . . . . . . . . . . . . . . . . . . . . .
+    //  1-hex:        2-hex (attacker):     2-hex (defender):
+    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // . . X X . . . . . . . X X X . . . . . . . . X X X . . .
+    //  . X @ X . . . . . . X - @ X . . . . . . . X @ - X . . .
+    // . . X X . . . . . . . X X X . . . . . . . . X X X . . .
+    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     // Legend:
-    // X is astack's front hex
+    // @ is astack's front hex
     // - is astack's rear hex (if astack is a 2-hex creature)
     // * are the nearby hexes to return
-    // right/left is astack's side during combat (left=attacker/right=defender)
+    // attacker/defender is astack's perspective (attacker=left/defender=right)
     //
-    // Hexes outside the map are not returned.
-    // If astack is 1-hex stack, a maximum of 6 hexes is returned.
-    // If astack is a 2-hex stack, a maximum of 8 hexes is returned.
+    // Available "X" hexes are returned according to the unit size.
     //
-    // Each of the "*" has a HexAction associated with it (see hexaction.h),
+    // Each of the "X" has a HexAction associated with it (see hexaction.h),
     // which is returned along with the corresponding hex.
     //
     HexActionHex Battlefield::NearbyHexesForActmask(BattleHex &bh, const CStack* astack) {
@@ -205,49 +206,56 @@ namespace MMAI {
         nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
         if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_TR, nbh);
 
-        nbh = bh.cloneInDirection(D::RIGHT, false);
-        if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_R, nbh);
-
         nbh = bh.cloneInDirection(D::BOTTOM_RIGHT, false);
         if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_BR, nbh);
 
         nbh = bh.cloneInDirection(D::BOTTOM_LEFT, false);
         if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_BL, nbh);
 
-        nbh = bh.cloneInDirection(D::LEFT, false);
-        if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_L, nbh);
-
         nbh = bh.cloneInDirection(D::TOP_LEFT, false);
         if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_TL, nbh);
 
-        if (!astack->doubleWide())
+        if (!astack->doubleWide()) {
+            nbh = bh.cloneInDirection(D::LEFT, false);
+            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_L, nbh);
+
+            nbh = bh.cloneInDirection(D::RIGHT, false);
+            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_R, nbh);
+
             return res;
+        }
 
         // The 6 "special" directions (3 for each side)
         if (astack->unitSide() == BattleSide::ATTACKER) {
             // astack's rear hex is to-the-left
-            auto base = bh.cloneInDirection(D::LEFT, false);
+            nbh = bh.cloneInDirection(D::RIGHT, false);
+            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_R, nbh);
 
-            nbh = base.cloneInDirection(D::BOTTOM_LEFT, false);
+            auto offset = bh.cloneInDirection(D::LEFT, false);
+
+            nbh = offset.cloneInDirection(D::BOTTOM_LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2BL, nbh);
 
-            nbh = base.cloneInDirection(D::LEFT, false);
+            nbh = offset.cloneInDirection(D::LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2L, nbh);
 
-            nbh = base.cloneInDirection(D::TOP_LEFT, false);
+            nbh = offset.cloneInDirection(D::TOP_LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2TL, nbh);
         } else {
             // astack's rear hex is to-the-right
-            auto base = bh.cloneInDirection(D::RIGHT, false);
+            nbh = bh.cloneInDirection(D::LEFT, false);
+            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_L, nbh);
 
-            nbh = base.cloneInDirection(D::TOP_RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2TR, base);
+            auto offset = bh.cloneInDirection(D::RIGHT, false);
 
-            nbh = base.cloneInDirection(D::RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2R, base);
+            nbh = offset.cloneInDirection(D::TOP_RIGHT, false);
+            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2TR, nbh);
 
-            nbh = base.cloneInDirection(D::BOTTOM_RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2BR, base);
+            nbh = offset.cloneInDirection(D::RIGHT, false);
+            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2R, nbh);
+
+            nbh = offset.cloneInDirection(D::BOTTOM_RIGHT, false);
+            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2BR, nbh);
         }
 
         return res;
@@ -256,27 +264,27 @@ namespace MMAI {
     // static
     //
     // Return bh's neighbouring hexes for setting HEX_ATTACKABLE_BY_* attrs
-    // i.e. assume the target hex is fixed at "*", return nearby hexes "X"
+    // i.e. assume the target hex is fixed at "X", return nearby hexes "@"
     // from which cstack could perform a melee attack:
     //
-    //  1-hex:       2-hex (right):     2-hex (left):
-    //  . . . . . . . . . . . . . . . . . . . . . . .
-    // . . X X . . . . X X X - . . . . . . - X X X .
-    //  . X * X . . . X - * X - . . . . . - X * - X .
-    // . . X X . . . . X X X - . . . . . . - X X X .
-    //  . . . . . . . . . . . . . . . . . . . . . . .
+    //  1-hex:        2-hex (attacker):     2-hex (defender):
+    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // . . @ @ . . . . . . - @ @ @ . . . . . . . . @ @ @ - . .
+    //  . @ X @ . . . . . - @ X - @ . . . . . . . @ - X @ - . .
+    // . . @ @ . . . . . . - @ @ @ . . . . . . . . @ @ @ - . .
+    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     // Legend:
-    // * is the target hex
-    // X is cstack's front hex
+    // X is the target hex
+    // @ is cstack's front hex
     // - is cstack's rear hex (if cstack is a 2-hex creature)
-    // right/left is astack's side during combat (left=attacker/right=defender)
+    // attacker/defender is astack's perspective (attacker=left/defender=right)
     //
     // Hexes outside the map are not returned.
     // If cstack is 1-hex stack, a maximum of 6 hexes are returned.
     // If cstack is a 2-hex stack, a maximum of 8 hexes are returned.
     //
-    // Each of the "X" has a EDir associated with it, this is relevant only
-    // for the "special" cases where the X is not a direct neighbour (EDir::NONE).
+    // Each of the "@" has a EDir associated with it, this is relevant only
+    // for the "special" cases where the @ is not a direct neighbour (EDir::NONE).
     //
     DirHex Battlefield::NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack) {
         // The 6 basic directions
@@ -286,49 +294,56 @@ namespace MMAI {
         nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
         if (nbh.isAvailable()) res.emplace_back(D::TOP_RIGHT, nbh);
 
-        nbh = bh.cloneInDirection(D::RIGHT, false);
-        if (nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
-
         nbh = bh.cloneInDirection(D::BOTTOM_RIGHT, false);
         if (nbh.isAvailable()) res.emplace_back(D::BOTTOM_RIGHT, nbh);
 
         nbh = bh.cloneInDirection(D::BOTTOM_LEFT, false);
         if (nbh.isAvailable()) res.emplace_back(D::BOTTOM_LEFT, nbh);
 
-        nbh = bh.cloneInDirection(D::LEFT, false);
-        if (nbh.isAvailable()) res.emplace_back(D::LEFT, nbh);
-
         nbh = bh.cloneInDirection(D::TOP_LEFT, false);
         if (nbh.isAvailable()) res.emplace_back(D::TOP_LEFT, nbh);
 
-        if (!cstack->doubleWide())
+        if (!cstack->doubleWide()) {
+            nbh = bh.cloneInDirection(D::LEFT, false);
+            if(nbh.isAvailable()) res.emplace_back(D::LEFT, nbh);
+
+            nbh = bh.cloneInDirection(D::RIGHT, false);
+            if(nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
+
             return res;
+        }
 
         // The 6 "special" directions (3 for each side)
         if (cstack->unitSide() == BattleSide::ATTACKER) {
             // enemy's rear hex is to-the-right
-            auto base = bh.cloneInDirection(D::RIGHT, false);
+            nbh = bh.cloneInDirection(D::LEFT, false);
+            if (nbh.isAvailable()) res.emplace_back(D::LEFT, nbh);
 
-            nbh = base.cloneInDirection(D::TOP_RIGHT, false);
+            auto offset = bh.cloneInDirection(D::RIGHT, false);
+
+            nbh = offset.cloneInDirection(D::TOP_RIGHT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
 
-            nbh = base.cloneInDirection(D::RIGHT, false);
+            nbh = offset.cloneInDirection(D::RIGHT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
 
-            nbh = base.cloneInDirection(D::BOTTOM_RIGHT, false);
+            nbh = offset.cloneInDirection(D::BOTTOM_RIGHT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
 
         } else {
             // enemy's rear hex is to-the-left
-            auto base = bh.cloneInDirection(D::LEFT, false);
+            nbh = bh.cloneInDirection(D::RIGHT, false);
+            if (nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
 
-            nbh = base.cloneInDirection(D::BOTTOM_LEFT, false);
+            auto offset = bh.cloneInDirection(D::LEFT, false);
+
+            nbh = offset.cloneInDirection(D::BOTTOM_LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
 
-            nbh = base.cloneInDirection(D::LEFT, false);
+            nbh = offset.cloneInDirection(D::LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
 
-            nbh = base.cloneInDirection(D::TOP_LEFT, false);
+            nbh = offset.cloneInDirection(D::TOP_LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
         }
 
@@ -411,8 +426,10 @@ namespace MMAI {
                 hex.setShootableByStack(isActive, isFriendly, slot, mod);
             }
 
-            if (IsReachable(bh, cstack, rinfos) or cstack->coversPos(bh))
+            if (IsReachable(bh, cstack, rinfos) or cstack->coversPos(bh)) {
                 hex.setReachableByStack(isActive, isFriendly, slot, true);
+                if (isActive) hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+            }
 
             ProcessNeighbouringHexes(hex, astack, allstacks, rinfos, hexstacks);
 
@@ -468,8 +485,6 @@ namespace MMAI {
 
         auto queue = GetQueue(cb);
 
-        // state: set OBSTACLE/OCCUPIED/FREE_*
-        // hexactmask: set MOVE
         for (int i=0; i<BF_SIZE; i++) {
             auto hex = InitHex(i, allstacks, astack, queue, ainfo, rinfos, sinfos, hexstacks);
             expect(hex.getX() + hex.getY()*BF_XMAX == i, "hex.x + hex.y*BF_XMAX != i: %d + %d*%d != %d", hex.getX(), hex.getY(), BF_XMAX, i);

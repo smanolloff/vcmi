@@ -78,74 +78,147 @@ namespace MMAI {
                 throw std::runtime_error("Unexpected v: " + std::to_string(v));
         };
 
+        // Two functions for neughbouring hexes:
+        //
+        // getHexesForFixedAttacker():
+        // Attacks are evaluated relative to a FIXED ATTACKER "@":
+        //
+        //  1-hex:        2-hex (attacker):     2-hex (defender):
+        //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+        // . . X X . . . . . . . X X X . . . . . . . . X X X . . .
+        //  . X @ X . . . . . . X - @ X . . . . . . . X @ - X . . .
+        // . . X X . . . . . . . X X X . . . . . . . . X X X . . .
+        //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+        //
+        // getHexActionsFixedAttacker():
+        // Attacks are evaluated relative to a FIXED TARGET "X":
+        //
+        //  1-hex:        2-hex (attacker):     2-hex (defender):
+        //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+        // . . @ @ . . . . . . - @ @ @ . . . . . . . . @ @ @ - . .
+        //  . @ X @ . . . . . - @ X - @ . . . . . . . @ - X @ - . .
+        // . . @ @ . . . . . . - @ @ @ . . . . . . . . @ @ @ - . .
+        //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-        // Hex offsets for attacking at direction 0..12
-        // Depends if the row is odd or even
-        // XXX: order MUST correspond to the directions in hexaction.h
-        // FIXME: this is incorrect - should only return attack hexes
-        //        attack dirs makes no sense
-        //        can't set hexactmask here, since hexactmask is for ASTACK (not cstack)
-        auto getAttackDirs = [rinfos](BattleHex bh, const CStack* stack){
-            // XXX: usually, the 6 (12) attack dirs are relative
-            //      to the SOURCE hex (see hexaction.h):
-            //       . . . . . . . . . 5 0 6 . . .
-            //      . 2-hex (R):  . . 4 * # 7 . .
-            //       . . . . . . . . . 3 2 8 . . .
-            //
-            // However, here we are evaluating attack dirs relative to
-            // the TARGET hex. This means that the numbers above
-            // represent the ATTACKER position, and the star is their
-            // attack direction -- if the attacker is at "0", the
-            // real attack direction (0->*) is becomes "3".
-            //
-            // This means the directions must be amended:
-            //
-            //       . . . . . . . . 8 2 3 . . . .
-            //      . 2-hex (L):  . 7 # * 4 . . .
-            //       . . . . . . . . 6 0 5 . . . .
-            //
+        auto getHexActionsFixedAttacker = [enemyCStacks](BattleHex bh, const CStack* astack){
+            auto res = std::vector<HexAction>{};
 
             auto nbhs = std::vector<BattleHex>{
                 bh.cloneInDirection(BattleHex::BOTTOM_LEFT, false),
-                bh.cloneInDirection(BattleHex::LEFT, false),
                 bh.cloneInDirection(BattleHex::TOP_LEFT, false),
                 bh.cloneInDirection(BattleHex::TOP_RIGHT, false),
-                bh.cloneInDirection(BattleHex::RIGHT, false),
+                bh.cloneInDirection(BattleHex::BOTTOM_RIGHT, false),
+            };
+
+            if (astack->doubleWide()) {
+                if (astack->unitSide() == BattleSide::ATTACKER) {
+                    // attacker's "back" hex is to-the-left
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false));
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false).cloneInDirection(BattleHex::BOTTOM_LEFT, false));
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false).cloneInDirection(BattleHex::LEFT, false));
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false).cloneInDirection(BattleHex::TOP_LEFT, false));
+                } else {
+                    // attacker's "back" hex is to-the-right
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false));
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false).cloneInDirection(BattleHex::TOP_RIGHT, false));
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false).cloneInDirection(BattleHex::RIGHT, false));
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false).cloneInDirection(BattleHex::BOTTOM_RIGHT, false));
+                }
+            } else {
+                nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false));
+                nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false));
+            }
+
+            for (auto &nbh : nbhs) {
+                for (auto &cstack : enemyCStacks) {
+                    if (!(cstack && cstack->coversPos(nbh)))
+                        continue;
+
+                    HexAction ha;
+
+                    switch(bh.mutualPosition(bh, nbh)) {;
+                    break; case BattleHex::TOP_LEFT: ha = HexAction::AMOVE_TL;
+                    break; case BattleHex::TOP_RIGHT: ha = HexAction::AMOVE_TR;
+                    break; case BattleHex::RIGHT:  ha = HexAction::AMOVE_R;
+                    break; case BattleHex::BOTTOM_RIGHT: ha = HexAction::AMOVE_BR;
+                    break; case BattleHex::BOTTOM_LEFT: ha = HexAction::AMOVE_BL;
+                    break; case BattleHex::LEFT: ha = HexAction::AMOVE_L;
+                    break; case BattleHex::NONE:
+                        // nbh is a special hex (remote) => we can attack
+                        // with our other hex (obh)
+                        expect(astack->doubleWide(), "special hex attack for single-hex astack???");
+
+                        if (astack->unitSide() == BattleSide::ATTACKER) {
+                            auto obh = bh.cloneInDirection(BattleHex::LEFT);
+                            switch(obh.mutualPosition(obh, nbh)) {
+                            break; case BattleHex::TOP_LEFT: ha = HexAction::AMOVE_TL;
+                            break; case BattleHex::BOTTOM_LEFT: ha = HexAction::AMOVE_BL;
+                            break; case BattleHex::LEFT: ha = HexAction::AMOVE_L;
+                            break; default:
+                                throw std::runtime_error("Unexpected mutualpos (ATTACKER): " + std::to_string(obh.mutualPosition(obh, nbh)));
+                            }
+                        } else {
+                            auto obh = bh.cloneInDirection(BattleHex::RIGHT);
+                            switch(obh.mutualPosition(obh, nbh)) {
+                            break; case BattleHex::TOP_RIGHT: ha = HexAction::AMOVE_TR;
+                            break; case BattleHex::BOTTOM_RIGHT: ha = HexAction::AMOVE_BR;
+                            break; case BattleHex::RIGHT:  ha = HexAction::AMOVE_R;
+                            break; default:
+                                throw std::runtime_error("Unexpected mutualpos (DEFENDER): " + std::to_string(obh.mutualPosition(obh, nbh)));
+                            }
+                        }
+                    break; default:
+                        throw std::runtime_error("Unexpected mutualpos" + std::to_string(bh.mutualPosition(bh, nbh)));
+                    }
+
+                    res.push_back(ha);
+                    // no other stack can cover this hex
+                    // break // not breaking (sanity check)
+                }
+            }
+
+            return res;
+        };
+
+        auto getHexesForFixedTarget = [rinfos](BattleHex bh, const CStack* stack){
+            auto nbhs = std::vector<BattleHex>{
+                bh.cloneInDirection(BattleHex::BOTTOM_LEFT, false),
+                bh.cloneInDirection(BattleHex::TOP_LEFT, false),
+                bh.cloneInDirection(BattleHex::TOP_RIGHT, false),
                 bh.cloneInDirection(BattleHex::BOTTOM_RIGHT, false),
             };
 
             if (stack->doubleWide()) {
                 if (stack->unitSide() == BattleSide::ATTACKER) {
-                    // "back" hex is to-the-left
-                    // XXX: 6..8 are directions for attacking TO THE LEFT
-                    //      => assumed attacker position is TO THE RIGHT
+                    // attacker's "back" hex is to-the-left
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false));
                     nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false).cloneInDirection(BattleHex::TOP_RIGHT, false));
                     nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false).cloneInDirection(BattleHex::RIGHT, false));
                     nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false).cloneInDirection(BattleHex::BOTTOM_RIGHT, false));
                 } else {
-                    // "back" hex is to-the-right
-                    // XXX: 9..11 are directions for attacking TO THE RIGHT
-                    //      => assumed attacker position is TO THE LEFT
+                    // attacker's "back" hex is to-the-right
+                    nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false));
                     nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false).cloneInDirection(BattleHex::BOTTOM_LEFT, false));
                     nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false).cloneInDirection(BattleHex::LEFT, false));
                     nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false).cloneInDirection(BattleHex::TOP_LEFT, false));
                 }
+            } else {
+                nbhs.push_back(bh.cloneInDirection(BattleHex::LEFT, false));
+                nbhs.push_back(bh.cloneInDirection(BattleHex::RIGHT, false));
             }
 
             auto res = std::vector<int>{};
 
-            for (int dir=0; dir<nbhs.size(); dir++) {
-                auto nbh = nbhs.at(dir);
+            for (auto &nbh : nbhs)
                 if (nbh.isAvailable() && rinfos.at(stack).distances.at(nbh) <= stack->speed())
-                    res.push_back(dir);
-            }
+                    res.push_back(nbh);
 
             return res;
         };
 
         auto ensureMeleeableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
             if (isNA(v, stack, attrname)) return;
-            auto bhs = getAttackDirs(bh, stack);
+            auto bhs = getHexesForFixedTarget(bh, stack);
             if (v == 0)
                 expect(bhs.size() == 0, "%s: =0 but there are %d neighbouring hexes to attack from", attrname, bhs.size());
             else
@@ -154,7 +227,7 @@ namespace MMAI {
 
         auto ensureShootableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
             if (isNA(v, stack, attrname)) return;
-            auto canshoot = cb->battleCanShoot(enemyCStacks.at(0));
+            auto canshoot = cb->battleCanShoot(stack);
             auto distance = bh.getDistance(bh, stack->getPosition());
 
             if (v == 0) {
@@ -264,7 +337,14 @@ namespace MMAI {
                         "HEX_REACHABLE_BY_ACTIVE_STACK: =%d but different corresponding FRIENDLY v=%d",
                         v, hex.attrs.at(EI(A::HEX_REACHABLE_BY_FRIENDLY_STACK_0) + astack->unitSlot())
                     );
-                    hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+                    if (v > 0) {
+                        hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+
+                        // For each neighouring hex (incl. special if we are 2-stack)
+                        // if there's a creature we could attack => set hexactmask
+                        for (auto &hexaction : getHexActionsFixedAttacker(hex.bhex, astack))
+                            hex.hexactmask.at(EI(hexaction)) = true;
+                    }
                 break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_0:
                     ensureReachableOrNA(bh, v, friendlyCStacks.at(0), "HEX_REACHABLE_BY_FRIENDLY_STACK_0");
                 break; case A::HEX_REACHABLE_BY_FRIENDLY_STACK_1:
@@ -340,7 +420,7 @@ namespace MMAI {
                         v, hex.attrs.at(EI(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0) + astack->unitSlot())
                     );
 
-                    if (cstack && !isFriendly && cb->battleCanShoot(cstack))
+                    if (cstack && !isFriendly && v > 0)
                         hex.hexactmask.at(EI(HexAction::SHOOT)) = true;
                 break; case A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0:
                     ensureShootableOrNA(hex.bhex, v, friendlyCStacks.at(0), "HEX_SHOOTABLE_BY_FRIENDLY_STACK_0");
@@ -394,25 +474,18 @@ namespace MMAI {
                     ensureNextToOrNA(hex.bhex, v, friendlyCStacks.at(6), "HEX_NEXT_TO_FRIENDLY_STACK_6");
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_0:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(0), "HEX_NEXT_TO_ENEMY_STACK_0");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_1:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(1), "HEX_NEXT_TO_ENEMY_STACK_1");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_2:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(2), "HEX_NEXT_TO_ENEMY_STACK_2");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_3:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(3), "HEX_NEXT_TO_ENEMY_STACK_3");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_4:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(4), "HEX_NEXT_TO_ENEMY_STACK_4");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_5:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(5), "HEX_NEXT_TO_ENEMY_STACK_5");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::HEX_NEXT_TO_ENEMY_STACK_6:
                     ensureNextToOrNA(hex.bhex, v, enemyCStacks.at(6), "HEX_NEXT_TO_ENEMY_STACK_6");
-                    // TODO: mask for hexactmask for attacks if astack can reach hex
                 break; case A::STACK_QUANTITY:
                     // need separate N/A check (cstack may be nullptr)
                     if (isNA(v, cstack, "STACK_QUANTITY")) break;
@@ -514,6 +587,9 @@ namespace MMAI {
 
                 for (int i=0; i < EI(A::_count); i++)
                     expect(hex0.attrs.at(i) == hex.attrs.at(i), "mismatch: hex.attrs.at(%d)", i);
+
+                for (int i=0; i < EI(HexAction::count); i++)
+                    expect(hex0.hexactmask.at(i) == hex.hexactmask.at(i), "mismatch: hex.hexactmask.at(%d)", i);
             }
         }
 
