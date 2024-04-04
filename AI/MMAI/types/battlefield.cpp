@@ -70,13 +70,12 @@ namespace MMAI {
     // static
     bool Battlefield::IsReachable(
         const BattleHex &bh,
-        const CStack* cstack,
-        const ReachabilityInfos &rinfos
+        const StackInfo &stackinfo
     ) {
         // isReachable may return true even if speed is insufficient
         // distances is 0 for the stack's main hex, 1 for its "back" hex
         // (100000 if it can't fit there)
-        return rinfos.at(cstack)->distances.at(bh) <= cstack->speed();
+        return stackinfo.rinfo->distances.at(bh) <= stackinfo.speed;
     }
 
     // static
@@ -118,11 +117,10 @@ namespace MMAI {
     void Battlefield::ProcessNeighbouringHexes(
         Hex &hex,
         const CStack* astack,
-        const std::vector<const CStack*> &allstacks,
-        const ReachabilityInfos &rinfos,
+        const StackInfos &stackinfos,
         const HexStacks &hexstacks
     ) {
-        for (const auto &cstack : allstacks) {
+        for (const auto& [cstack, stackinfo] : stackinfos) {
             auto isActive = (cstack == astack);
             auto isFriendly = (cstack->getOwner() == astack->getOwner());
             auto slot = cstack->unitSlot();
@@ -136,18 +134,14 @@ namespace MMAI {
             //                              a (direct OR special) nbhex
             //
             for (const auto& [dir, nbh] : NearbyHexesForAttributes(hex.bhex, cstack)) {
-                auto mod = cstack->isShooter() && !cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY)
-                    ? Export::DmgMod::HALF
-                    : Export::DmgMod::FULL;
-
                 if (cstack->coversPos(nbh)) {
                     if (dir != D::NONE) // direct neighbour
                         hex.setNextToStack(isActive, isFriendly, cstack->unitSlot(), true);
 
-                    hex.setMeleeableByStack(isActive, isFriendly, slot, mod);
+                    hex.setMeleeableByStack(isActive, isFriendly, slot, stackinfo.meleemod);
                     break; // no other stack can cover this hex (nor move here)
-                } else if (IsReachable(nbh, cstack, rinfos)) {
-                    hex.setMeleeableByStack(isActive, isFriendly, slot, mod);
+                } else if (IsReachable(nbh, stackinfo)) {
+                    hex.setMeleeableByStack(isActive, isFriendly, slot, stackinfo.meleemod);
                 }
             }
         }
@@ -167,12 +161,13 @@ namespace MMAI {
             if (cstack->getOwner() == astack->getOwner())
                 continue; // friendly unit on nbh
 
-            if (!IsReachable(hex.bhex, astack, rinfos))
+            if (!IsReachable(hex.bhex, stackinfos.at(astack)))
                 continue; // can't reach the hex to attack from
 
             ASSERT(astack->isMeleeAttackPossible(astack, cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
             hex.hexactmask.at(EI(hexaction)) = true;
         }
+        return;
     }
 
     // static
@@ -201,6 +196,7 @@ namespace MMAI {
     HexActionHex Battlefield::NearbyHexesForActmask(BattleHex &bh, const CStack* astack) {
         // The 6 basic directions
         auto res = HexActionHex{};
+        res.reserve(8);
         BattleHex nbh;
 
         nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
@@ -289,6 +285,7 @@ namespace MMAI {
     DirHex Battlefield::NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack) {
         // The 6 basic directions
         auto res = DirHex{};
+        res.reserve(8);
         BattleHex nbh;
 
         nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
@@ -354,12 +351,10 @@ namespace MMAI {
     // XXX: queue is a flattened battleGetTurnOrder, with *prepended* astack
     Hex Battlefield::InitHex(
         const int id,
-        const std::vector<const CStack*> &allstacks,
         const CStack* astack,
         const Queue &queue,
         const AccessibilityInfo &ainfo, // accessibility info for active stack
-        const ReachabilityInfos &rinfos,
-        const ShooterInfos &sinfos,
+        const StackInfos &stackinfos,
         const HexStacks &hexstacks
     ) {
         int x = id % BF_XMAX;
@@ -389,7 +384,7 @@ namespace MMAI {
           );
         }
 
-        for (const auto &cstack : allstacks) {
+        for (const auto& [cstack, stackinfo] : stackinfos) {
             auto isActive = cstack == astack;
             auto isFriendly = cstack->getOwner() == astack->getOwner();
             auto slot = cstack->unitSlot();
@@ -401,7 +396,7 @@ namespace MMAI {
             hex.setShootableByStack(isActive, isFriendly, slot, Export::DmgMod::ZERO);
             hex.setNextToStack(isActive, isFriendly, slot, false);
 
-            if (sinfos.at(cstack)) {
+            if (stackinfo.canshoot) {
                 // stack can shoot (not blocked & has ammo)
                 // => calculate the dmg mod if the stack were to shoot at Hex
                 //
@@ -419,19 +414,24 @@ namespace MMAI {
                 //      would do FULL dmg. But that's also an edge case.
                 //      => when calculating, pretend that the shooter is 1-hex.
                 //
-                auto mod = (cstack->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY) || BattleHex::getDistance(cstack->getPosition(), bh) <= 10)
+                auto mod = (stackinfo.noDistancePenalty || BattleHex::getDistance(cstack->getPosition(), bh) <= 10)
                     ? Export::DmgMod::FULL
                     : Export::DmgMod::HALF;
 
                 hex.setShootableByStack(isActive, isFriendly, slot, mod);
             }
 
-            if (IsReachable(bh, cstack, rinfos) or cstack->coversPos(bh)) {
+            auto isReachable = IsReachable(bh, stackinfo);
+
+            if (isReachable || cstack->coversPos(bh)) {
                 hex.setReachableByStack(isActive, isFriendly, slot, true);
-                if (isActive) hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+
+                // although hex may already stand on hex, it be unable to
+                // move on it (e.g. that is its rear hex and there's no space)
+                if (isActive && isReachable) hex.hexactmask.at(EI(HexAction::MOVE)) = true;
             }
 
-            ProcessNeighbouringHexes(hex, astack, allstacks, rinfos, hexstacks);
+            ProcessNeighbouringHexes(hex, astack, stackinfos, hexstacks);
 
             if (!cstack->coversPos(bh)) continue;
 
@@ -470,14 +470,18 @@ namespace MMAI {
     Hexes Battlefield::InitHexes(CBattleCallback* cb, const CStack* astack) {
         auto res = Hexes{};
         auto ainfo = cb->getAccesibility();
-        auto rinfos = ReachabilityInfos{};
-        auto allstacks = cb->battleGetStacks();
-        auto sinfos = ShooterInfos{};  // expensive check for blocked shooters => eager load once
         auto hexstacks = HexStacks{};  // expensive check for blocked shooters => eager load once
+        auto stackinfos = StackInfos{}; // expensive check for stack->speed, isblocked and getReachability
 
-        for (const auto& cstack : allstacks) {
-            rinfos.insert({cstack, std::make_shared<ReachabilityInfo>(cb->getReachability(cstack))});
-            sinfos.insert({cstack, cb->battleCanShoot(cstack)});
+        for (const auto& cstack : cb->battleGetStacks()) {
+            stackinfos.insert({cstack, StackInfo(
+                cstack->speed(),
+                // cstack->canShoot() && (cstack->hasBonusOfType(BonusType::FREE_SHOOTING) || !cb->battleIsUnitBlocked(cstack))
+                cb->battleCanShoot(cstack),
+                (cstack->isShooter() && !cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY) ? Export::DmgMod::HALF : Export::DmgMod::FULL),
+                cstack->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY),
+                std::make_shared<ReachabilityInfo>(cb->getReachability(cstack))
+            )});
 
             for (auto bh : cstack->getHexes())
                 hexstacks.insert({bh, cstack});
@@ -486,7 +490,7 @@ namespace MMAI {
         auto queue = GetQueue(cb);
 
         for (int i=0; i<BF_SIZE; i++) {
-            auto hex = InitHex(i, allstacks, astack, queue, ainfo, rinfos, sinfos, hexstacks);
+            auto hex = InitHex(i, astack, queue, ainfo, stackinfos, hexstacks);
             expect(hex.getX() + hex.getY()*BF_XMAX == i, "hex.x + hex.y*BF_XMAX != i: %d + %d*%d != %d", hex.getX(), hex.getY(), BF_XMAX, i);
             res.at(hex.getY()).at(hex.getX()) = hex;
         }

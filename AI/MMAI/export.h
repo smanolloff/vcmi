@@ -236,36 +236,36 @@ namespace MMAI::Export {
         E3{A::HEX_REACHABLE_BY_ENEMY_STACK_4,    E::CATEGORICAL,  2},      //
         E3{A::HEX_REACHABLE_BY_ENEMY_STACK_5,    E::CATEGORICAL,  2},      //
         E3{A::HEX_REACHABLE_BY_ENEMY_STACK_6,    E::CATEGORICAL,  2},      //
-        E3{A::HEX_MELEEABLE_BY_ACTIVE_STACK,     E::NUMERIC,      3},      // can active stack melee at this hex? (0=no, 1=half, 2=full dmg)
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_0, E::NUMERIC,      3},      // can friendly stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_1, E::NUMERIC,      3},      // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_2, E::NUMERIC,      3},      //      It's all about whether the stack can reach a NEARBY hex
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_3, E::NUMERIC,      3},      //      Should it be false for obstacles?
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_4, E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_5, E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_6, E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_0,    E::NUMERIC,      3},      // can enemy stack0 melee attack hex? XXX: see note above
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_1,    E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_2,    E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_3,    E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_4,    E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_5,    E::NUMERIC,      3},      //
-        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_6,    E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ACTIVE_STACK,     E::NUMERIC,      3},      // can active stack shoot at this hex? (0=no, 1=half, 2=full dmg)
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0, E::NUMERIC,      3},      // can friendly stack0 shoot at this hex? (0=no, 1=half, 2=full dmg)
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_1, E::NUMERIC,      3},      // XXX: SHOOTABLE hex does mean there's a stack there (could even be an obstacle)
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_2, E::NUMERIC,      3},      //      It's all about the distance between the shooter and this
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_3, E::NUMERIC,      3},      //      Should it be false for obstacles?
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_4, E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_5, E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_6, E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_0,    E::NUMERIC,      3},      // can enemy stack0 shoot at this hex? XXX: see note above
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_1,    E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_2,    E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_3,    E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_4,    E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_5,    E::NUMERIC,      3},      //
-        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_6,    E::NUMERIC,      3},      //
+        E3{A::HEX_MELEEABLE_BY_ACTIVE_STACK,     E::CATEGORICAL,  3},      // can active stack melee at this hex? (0=no, 1=half, 2=full dmg)
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_0, E::CATEGORICAL,  3},      // can friendly stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_1, E::CATEGORICAL,  3},      // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_2, E::CATEGORICAL,  3},      //      It's all about whether the stack can reach a NEARBY hex
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_3, E::CATEGORICAL,  3},      //      Should it be false for obstacles?
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_4, E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_5, E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_FRIENDLY_STACK_6, E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_0,    E::CATEGORICAL,  3},      // can enemy stack0 melee attack hex? XXX: see note above
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_1,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_2,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_3,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_4,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_5,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_MELEEABLE_BY_ENEMY_STACK_6,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ACTIVE_STACK,     E::CATEGORICAL,  3},      // can active stack shoot at this hex? (0=no, 1=half, 2=full dmg)
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0, E::CATEGORICAL,  3},      // can friendly stack0 shoot at this hex? (0=no, 1=half, 2=full dmg)
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_1, E::CATEGORICAL,  3},      // XXX: SHOOTABLE hex does mean there's a stack there (could even be an obstacle)
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_2, E::CATEGORICAL,  3},      //      It's all about the distance between the shooter and this
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_3, E::CATEGORICAL,  3},      //      Should it be false for obstacles?
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_4, E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_5, E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_6, E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_0,    E::CATEGORICAL,  3},      // can enemy stack0 shoot at this hex? XXX: see note above
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_1,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_2,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_3,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_4,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_5,    E::CATEGORICAL,  3},      //
+        E3{A::HEX_SHOOTABLE_BY_ENEMY_STACK_6,    E::CATEGORICAL,  3},      //
         E3{A::HEX_NEXT_TO_ACTIVE_STACK,          E::CATEGORICAL,  2},      // is active stack0 on a nearby hex?
         E3{A::HEX_NEXT_TO_FRIENDLY_STACK_0,      E::CATEGORICAL,  2},      // is friendly stack0 on a nearby hex?
         E3{A::HEX_NEXT_TO_FRIENDLY_STACK_1,      E::CATEGORICAL,  2},      //
@@ -281,34 +281,30 @@ namespace MMAI::Export {
         E3{A::HEX_NEXT_TO_ENEMY_STACK_4,         E::CATEGORICAL,  2},      //
         E3{A::HEX_NEXT_TO_ENEMY_STACK_5,         E::CATEGORICAL,  2},      //
         E3{A::HEX_NEXT_TO_ENEMY_STACK_6,         E::CATEGORICAL,  2},      //
-        E3{A::STACK_QUANTITY,                    E::NUMERIC_SQRT, 32},     // sqrt(1024)
-        E3{A::STACK_ATTACK,                      E::NUMERIC_SQRT, 8},      // sqrt(64)
-        E3{A::STACK_DEFENSE,                     E::NUMERIC_SQRT, 8},      // sqrt(64)
-        E3{A::STACK_SHOTS,                       E::NUMERIC_SQRT, 5},      // sqrt(25)
-        E3{A::STACK_DMG_MIN,                     E::NUMERIC_SQRT, 8},      // sqrt(64)
-        E3{A::STACK_DMG_MAX,                     E::NUMERIC_SQRT, 8},      // sqrt(64)
-        E3{A::STACK_HP,                          E::NUMERIC_SQRT, 32},     // sqrt(1024)
-        E3{A::STACK_HP_LEFT,                     E::NUMERIC_SQRT, 32},     // sqrt(1024)
-        E3{A::STACK_SPEED,                       E::NUMERIC,      20},     //
+        E3{A::STACK_QUANTITY,                    E::NUMERIC_SQRT, 31},     // sqrt(961), max=1023 (truncated to 1023)
+        E3{A::STACK_ATTACK,                      E::NUMERIC_SQRT, 7},      // sqrt(49), max=64 (crystal dragon is 40)
+        E3{A::STACK_DEFENSE,                     E::NUMERIC_SQRT, 7},      // sqrt(49), max=64 (crystal dragon is 48 (w/ defend))
+        E3{A::STACK_SHOTS,                       E::NUMERIC_SQRT, 5},      // sqrt(25), max=36 (sharpshooter is 32)
+        E3{A::STACK_DMG_MIN,                     E::NUMERIC_SQRT, 8},      // sqrt(64), max=81
+        E3{A::STACK_DMG_MAX,                     E::NUMERIC_SQRT, 8},      // sqrt(64), max=81 (crystal dragon is 75)
+        E3{A::STACK_HP,                          E::NUMERIC_SQRT, 28},     // sqrt(784), max=841 (crystal dragon is 800)
+        E3{A::STACK_HP_LEFT,                     E::NUMERIC_SQRT, 28},     // sqrt(784), max=841 (crystal dragon is 800)
+        E3{A::STACK_SPEED,                       E::NUMERIC,      23},     // phoenix is 22
         E3{A::STACK_WAITED,                      E::CATEGORICAL,  2},      //
-        E3{A::STACK_QUEUE_POS,                   E::NUMERIC,      14},     // 0=active stack
-        E3{A::STACK_RETALIATIONS_LEFT,           E::NUMERIC,      3},      //
+        E3{A::STACK_QUEUE_POS,                   E::NUMERIC,      15},     // 0..14, 0=active stack
+        E3{A::STACK_RETALIATIONS_LEFT,           E::NUMERIC,      3},      // inf is truncated to 2 (royal griffin)
         E3{A::STACK_SIDE,                        E::CATEGORICAL,  2},      // 0=attacker, 1=defender
-        E3{A::STACK_SLOT,                        E::CATEGORICAL,  6},      // 0..6
-        E3{A::STACK_CREATURE_TYPE,               E::CATEGORICAL,  150},    // 0..144
-        E3{A::STACK_AI_VALUE_TENTH,              E::NUMERIC_SQRT, 63},     // sqrt(3969), real value is x10
+        E3{A::STACK_SLOT,                        E::CATEGORICAL,  7},      // 0..6
+        E3{A::STACK_CREATURE_TYPE,               E::CATEGORICAL,  145},    // 0..144 (incl.)
+        E3{A::STACK_AI_VALUE_TENTH,              E::NUMERIC_SQRT, 62},     // sqrt(3844), max=3969 (crystal dragon is 3933)
         E3{A::STACK_IS_ACTIVE,                   E::CATEGORICAL,  2},      //
         E3{A::STACK_IS_WIDE,                     E::CATEGORICAL,  2},      // is this a two-hex stack?
         E3{A::STACK_FLYING,                      E::CATEGORICAL,  2},      //
-        E3{A::STACK_NO_MELEE_PENALTY,            E::CATEGORICAL,  2},      // TODO
-        E3{A::STACK_TWO_HEX_ATTACK_BREATH,       E::CATEGORICAL,  2},      // TODO
-        E3{A::STACK_BLOCKS_RETALIATION,          E::CATEGORICAL,  2},      // TODO
-        E3{A::STACK_DEFENSIVE_STANCE,            E::CATEGORICAL,  2}       // TODO? means temp def bonus
+        E3{A::STACK_NO_MELEE_PENALTY,            E::CATEGORICAL,  2},      //
+        E3{A::STACK_TWO_HEX_ATTACK_BREATH,       E::CATEGORICAL,  2},      //
+        E3{A::STACK_BLOCKS_RETALIATION,          E::CATEGORICAL,  2},      //
+        E3{A::STACK_DEFENSIVE_STANCE,            E::CATEGORICAL,  2}       //
     };
-
-    // ENCODED_STATE_SIZE_ONE_HEX value is hard-coded for readability.
-    // It's safeguarded by compile-time checks below.
-    constexpr int ENCODED_STATE_SIZE_ONE_HEX = 586;
 
     /*
      * Begin compile-time magic
@@ -338,23 +334,23 @@ namespace MMAI::Export {
     }
     static_assert(disarrayedHexEncodingAttributes() == -1, "Attribute out of order at this index in HEX_ENCODING");
 
-    // 3. Ensure ENCODED_STATE_SIZE_ONE_HEX literal is correct
+    // 3. Calculate proper ENCODED_STATE_SIZE_ONE_HEX literal
     constexpr int encodedStateSizeOneHex() {
         int ret = 0;
         for (int i = 0; i < EI(Attribute::_count); i++)
             ret += std::get<2>(HEX_ENCODING[i]);
         return ret;
     }
-    static_assert(encodedStateSizeOneHex() == ENCODED_STATE_SIZE_ONE_HEX);
 
     /*
      * End of compile-time magic
      */
 
-    constexpr int ENCODED_STATE_SIZE = 165 * ENCODED_STATE_SIZE_ONE_HEX;
-
     constexpr int STATE_SIZE_ONE_HEX = EI(A::_count);
     constexpr int STATE_SIZE = 165 * STATE_SIZE_ONE_HEX;
+
+    constexpr int ENCODED_STATE_SIZE_ONE_HEX = encodedStateSizeOneHex();
+    constexpr int ENCODED_STATE_SIZE = 165 * ENCODED_STATE_SIZE_ONE_HEX;
 
     constexpr int N_UNSET = -1;
     constexpr int VALUE_NA = -1;
@@ -402,7 +398,7 @@ namespace MMAI::Export {
             int n_ones = v;
 
             if (n_ones >= n)
-                throw std::runtime_error("Categorical encoding failed: v=" + std::to_string(v) + ", n=" + std::to_string(n));
+                throw std::runtime_error("Categorical encoding failed: a=" + std::to_string(EI(a)) + ", v=" + std::to_string(v) + ", n=" + std::to_string(n));
 
             // Throwing error instead
             // n_ones = std::min(n_ones, n);
@@ -418,7 +414,7 @@ namespace MMAI::Export {
             int n_ones = int(sqrt(v));
 
             if (n_ones > n)
-                throw std::runtime_error("ExpNumeric encoding failed: v=" + std::to_string(v) + ", n=" + std::to_string(n));
+                throw std::runtime_error("NumericSqrt encoding failed: a=" + std::to_string(EI(a)) + ", v=" + std::to_string(v) + ", n=" + std::to_string(n));
 
             // Throwing error instead
             // n_ones = std::min(n_ones, n);
@@ -438,14 +434,14 @@ namespace MMAI::Export {
             }
 
             if (vtmp > 0)
-                throw std::runtime_error("Binary encoding failed: v=" + std::to_string(v) + ", n=" + std::to_string(n));
+                throw std::runtime_error("Binary encoding failed: a=" + std::to_string(EI(a)) + ", v=" + std::to_string(v) + ", n=" + std::to_string(n));
         }
 
         // Example: v=1, n=5
         //  => add [0,1,0,0,0]
         void encodeCategorical(std::vector<int> vec) {
             if (v >= n)
-                throw std::runtime_error("Categorical encoding failed: v=" + std::to_string(v) + ", n=" + std::to_string(n));
+                throw std::runtime_error("Categorical encoding failed: a=" + std::to_string(EI(a)) + ", v=" + std::to_string(v) + ", n=" + std::to_string(n));
 
             for (int i=0; i < n; i++)
                 vec.push_back(i == v);

@@ -27,12 +27,35 @@ namespace MMAI {
 
     constexpr int QSIZE = 15;
     using Queue = std::vector<uint32_t>;
-    using ReachabilityInfos = std::map<const CStack*, std::shared_ptr<ReachabilityInfo>>;
-    using ShooterInfos = std::map<const CStack*, bool>;
+    // using ReachabilityInfos = std::map<const CStack*, std::shared_ptr<ReachabilityInfo>>;
+    // using ShooterInfos = std::map<const CStack*, bool>;
+
     using HexStacks = std::map<BattleHex, const CStack*>;
     using XY = std::pair<int, int>;
     using HexActionHex = std::vector<std::pair<HexAction, BattleHex>>;
     using DirHex = std::vector<std::pair<BattleHex::EDir, BattleHex>>;
+
+    struct StackInfo {
+        int speed;
+        bool canshoot;
+        Export::DmgMod meleemod;
+        bool noDistancePenalty;
+        std::shared_ptr<ReachabilityInfo> rinfo;
+
+        StackInfo(
+            int speed_,
+            bool canshoot_,
+            Export::DmgMod meleemod_,
+            bool noDistancePenalty_,
+            std::shared_ptr<ReachabilityInfo> rinfo_
+        ) : speed(speed_),
+            canshoot(canshoot_),
+            meleemod(meleemod_),
+            noDistancePenalty(noDistancePenalty_),
+            rinfo(rinfo_) {};
+    };
+
+    using StackInfos = std::map<const CStack*, StackInfo>;
 
     /**
      * A container for all 165 Hex tiles.
@@ -42,8 +65,7 @@ namespace MMAI {
 
         static bool IsReachable(
             const BattleHex &bh,
-            const CStack* cstack,
-            const ReachabilityInfos &rinfos
+            const StackInfo &stackinfo
         );
 
         static HexAction HexActionFromHexes(
@@ -55,8 +77,7 @@ namespace MMAI {
         static void ProcessNeighbouringHexes(
             Hex &hex,
             const CStack* astack,
-            const std::vector<const CStack*> &allstacks,
-            const ReachabilityInfos &rinfos,
+            const StackInfos &stackinfos,
             const HexStacks &hexstacks
         );
 
@@ -65,12 +86,10 @@ namespace MMAI {
 
         static Hex InitHex(
             const int id,
-            const std::vector<const CStack*> &allstacks,
             const CStack* astack,
             const Queue &queue,
             const AccessibilityInfo &ainfo,
-            const ReachabilityInfos &rinfos,
-            const ShooterInfos &sinfos,
+            const StackInfos &stackinfos,
             const HexStacks &hexstacks
         );
 

@@ -166,7 +166,7 @@ namespace MMAI {
     void Hex::setCStackAndAttrs(const CStack* cstack_, int qpos) {
         cstack = cstack_;
 
-        setattr(A::STACK_QUANTITY,  cstack->getCount());
+        setattr(A::STACK_QUANTITY,  std::min(cstack->getCount(), 1023));
         setattr(A::STACK_ATTACK,    cstack->getAttack(false));
         setattr(A::STACK_DEFENSE,   cstack->getDefense(false));
         setattr(A::STACK_SHOTS,     cstack->shots.available());
@@ -179,8 +179,8 @@ namespace MMAI {
         setattr(A::STACK_QUEUE_POS, qpos);
 
         auto inf = cstack->hasBonusOfType(BonusType::UNLIMITED_RETALIATIONS);
+        setattr(A::STACK_RETALIATIONS_LEFT,     inf ? 2 : cstack->counterAttacks.available());
 
-        setattr(A::STACK_RETALIATIONS_LEFT,     inf ? 3 : cstack->counterAttacks.available());
         setattr(A::STACK_SIDE,                  cstack->unitSide());
         setattr(A::STACK_SLOT,                  cstack->unitSlot());
         setattr(A::STACK_CREATURE_TYPE,         cstack->creatureId());
@@ -193,5 +193,4 @@ namespace MMAI {
         setattr(A::STACK_BLOCKS_RETALIATION,    cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION));
         setattr(A::STACK_DEFENSIVE_STANCE,      cstack->hasBonusOfType(BonusType::DEFENSIVE_STANCE));
     }
-
 }
