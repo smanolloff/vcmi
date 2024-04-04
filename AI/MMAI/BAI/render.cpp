@@ -492,7 +492,7 @@ namespace MMAI {
                 break; case A::STACK_QUANTITY:
                     // need separate N/A check (cstack may be nullptr)
                     if (isNA(v, cstack, "STACK_QUANTITY")) break;
-                    ensureValueMatch(cstack, v, cstack->getCount(), "STACK_QUANTITY");
+                    ensureValueMatch(cstack, v, std::min(cstack->getCount(), 1023), "STACK_QUANTITY");
                 break; case A::STACK_ATTACK:
                     if (isNA(v, cstack, "STACK_ATTACK")) break;
                     ensureValueMatch(cstack, v, cstack->getAttack(false), "STACK_ATTACK");

@@ -164,32 +164,34 @@ namespace MMAI {
 
         // Only winner increments => no race cond
         // TODO: a better metric would may be net_casualties (winner - loser)
-        if (baggage->printBattleResults && side == br->winner) {
+        if (baggage->evalFor && side == br->winner) {
             (baggage->battleResults.find(armyID) != baggage->battleResults.end())
                 ? baggage->battleResults.at(armyID)++
                 : baggage->battleResults[armyID] = 1;
 
-            if (nbattles % 1000 == 0) {
+            if (nbattles >= baggage->evalFor) {
                 std::vector<std::pair<int, int>> valueIndexPairs;
                 auto winstream = std::stringstream();
 
-                printf("\n\nResults (%d battles):\n", nbattles);
 
                 for (const auto pair : baggage->battleResults) {
                     valueIndexPairs.push_back(std::make_pair(pair.second, pair.first));
                     winstream << "\"hero_" << pair.first << "\":" << pair.second << ",";
                 }
 
-                std::sort(valueIndexPairs.begin(), valueIndexPairs.end());
-
-                printf("Wins | Hero ID\n");
-                printf("-----+--------\n");
-                for (const auto& pair : valueIndexPairs)
-                    printf("%-4d | Hero %d\n", pair.first, pair.second);
+                // Human-readable table - disabled
+                // printf("\n\nResults (%d battles):\n", nbattles);
+                // std::sort(valueIndexPairs.begin(), valueIndexPairs.end());
+                // printf("Wins | Hero ID\n");
+                // printf("-----+--------\n");
+                // for (const auto& pair : valueIndexPairs)
+                //     printf("%-4d | Hero %d\n", pair.first, pair.second);
+                // printf("\n\n");
 
                 auto wins = winstream.str();
                 wins.pop_back();
-                printf("\nRaw:\n{\"map\":\"%s\",\"battles\":%d,\"wins\":{%s}}\n", baggage->map.c_str(), nbattles, wins.c_str());
+                printf("{\"map\":\"%s\",\"battles\":%d,\"wins\":{%s}}\n", baggage->map.c_str(), nbattles, wins.c_str());
+                exit(0);
             }
         }
 

@@ -582,6 +582,6 @@ namespace MMAI::Export {
         // XXX: this assumes heroes have `id` between 0 and 63
         std::map<int, int> battleResults;
         std::string map;
-        bool printBattleResults;
+        int evalFor;
     };
 }

@@ -103,7 +103,7 @@ Args parse_args(int argc, char * argv[])
     };
 
     static auto randomCombat = 0;
-    static auto mapeval = false;
+    static auto mapeval = 0;
     static auto benchmark = false;
     static auto interactive = false;
     static auto prerecorded = false;
@@ -140,8 +140,8 @@ Args parse_args(int argc, char * argv[])
             ("Replay actions from local file named actions.txt"))
         ("benchmark", po::bool_switch(&benchmark),
             ("Measure performance"))
-        ("map-eval", po::bool_switch(&mapeval),
-            ("Evaluate map balance (assuming same AIs)"));
+        ("map-eval", po::value<int>()->value_name("<N>"),
+            ("Eval map for N battles (disabled if 0*)"));
 
     po::variables_map vm;
 
@@ -166,6 +166,9 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("random-combat"))
         randomCombat = vm.at("random-combat").as<int>();
+
+    if (vm.count("map-eval"))
+        mapeval = vm.at("map-eval").as<int>();
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)

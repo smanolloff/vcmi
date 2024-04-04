@@ -365,12 +365,12 @@ void init_vcmi(
     std::string defenderAI,
     std::string attackerModel,
     std::string defenderModel,
-    bool printBattleResults,
+    int evalFor,
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
     baggage = baggage_;
-    baggage->printBattleResults = printBattleResults;
+    baggage->evalFor = evalFor;
     baggage->map = map;
 
     // this is used in start_vcmi()
