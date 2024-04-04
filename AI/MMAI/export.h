@@ -346,15 +346,15 @@ namespace MMAI::Export {
      * End of compile-time magic
      */
 
-    constexpr int STATE_SIZE_ONE_HEX = EI(A::_count);
-    constexpr int STATE_SIZE = 165 * STATE_SIZE_ONE_HEX;
+    constexpr int STATE_SIZE_ONE_HEX_UNENCODED = EI(A::_count);
+    constexpr int STATE_SIZE_UNENCODED = 165 * STATE_SIZE_ONE_HEX_UNENCODED;
 
-    constexpr int ENCODED_STATE_SIZE_ONE_HEX = encodedStateSizeOneHex();
-    constexpr int ENCODED_STATE_SIZE = 165 * ENCODED_STATE_SIZE_ONE_HEX;
+    constexpr int STATE_SIZE_ONE_HEX = encodedStateSizeOneHex();
+    constexpr int STATE_SIZE = 165 * STATE_SIZE_ONE_HEX;
+    constexpr int STATE_VALUE_NA = -1;
 
     constexpr int N_UNSET = -1;
-    constexpr int VALUE_NA = -1;
-    constexpr int VALUE_OH_NA = -1e9;
+    constexpr int VALUE_NA_UNENCODED = -1;
 
     // Arbitary int value that can be one-hot encoded
     extern "C" struct DLL_EXPORT OneHot {
@@ -363,12 +363,12 @@ namespace MMAI::Export {
         int n;
         int v;
 
-        // v=VALUE_NA means NULL (valid case, e.g. no such stack in the battle)
+        // v=VALUE_NA_UNENCODED means NULL (valid case, e.g. no such stack in the battle)
         OneHot(Attribute a_)
         : a(a_),
           e(std::get<1>(HEX_ENCODING.at(EI(a_)))),
           n(std::get<2>(HEX_ENCODING.at(EI(a_)))),
-          v(VALUE_NA) {};
+          v(VALUE_NA_UNENCODED) {};
 
         OneHot(Attribute a_, int v_)
         : a(a_),
@@ -376,9 +376,9 @@ namespace MMAI::Export {
           n(std::get<2>(HEX_ENCODING.at(EI(a_)))),
           v(v_) {};
 
-        void encode(std::vector<int> vec) {
-            if (v == VALUE_NA) {
-                vec.insert(vec.end(), n, VALUE_OH_NA);
+        void encode(std::vector<int> &vec) {
+            if (v == VALUE_NA_UNENCODED) {
+                vec.insert(vec.end(), n, STATE_VALUE_NA);
                 return;
             }
 
@@ -394,7 +394,7 @@ namespace MMAI::Export {
 
         // Example: v=2, n=3
         //  Add v=2 ones and 3-2=1 zero
-        void encodeNumeric(std::vector<int> vec) {
+        void encodeNumeric(std::vector<int> &vec) {
             int n_ones = v;
 
             if (n_ones >= n)
@@ -404,13 +404,13 @@ namespace MMAI::Export {
             // n_ones = std::min(n_ones, n);
 
             vec.insert(vec.end(), n_ones, 1);
-            vec.insert(vec.end(), n_ones - v, 0);
+            vec.insert(vec.end(), n - n_ones, 0);
         }
 
         // Example: v=10, n=4
         //  Add int(sqrt(10))=3 ones and 4-3=1 zero
         //  => add [1,1,1,0]
-        void encodeNumericSqrt(std::vector<int> vec) {
+        void encodeNumericSqrt(std::vector<int> &vec) {
             int n_ones = int(sqrt(v));
 
             if (n_ones > n)
@@ -426,7 +426,7 @@ namespace MMAI::Export {
         // Example: v=5, n=4
         //  Represent 5 as a 4-bit binary (LSB first)
         //  => add [1,0,1,0]
-        void encodeBinary(std::vector<int> vec) {
+        void encodeBinary(std::vector<int> &vec) {
             int vtmp = v;
             for (int i=0; i < n; i++) {
                 vec.push_back(vtmp % 2);
@@ -439,7 +439,7 @@ namespace MMAI::Export {
 
         // Example: v=1, n=5
         //  => add [0,1,0,0,0]
-        void encodeCategorical(std::vector<int> vec) {
+        void encodeCategorical(std::vector<int> &vec) {
             if (v >= n)
                 throw std::runtime_error("Categorical encoding failed: a=" + std::to_string(EI(a)) + ", v=" + std::to_string(v) + ", n=" + std::to_string(n));
 
@@ -448,8 +448,8 @@ namespace MMAI::Export {
         }
     };
 
-    using EncodedState = std::vector<int>;
-    using State = std::vector<OneHot>;
+    using State = std::vector<int>;
+    using StateUnencoded = std::vector<OneHot>;
     using Action = int16_t;
 
     /**
@@ -487,14 +487,14 @@ namespace MMAI::Export {
 
         // Constructor 1: regular result
         Result(
-            State state_, EncodedState encstate_, ActMask actmask_, Side side_,
+            StateUnencoded stateUnencoded_, State state_, ActMask actmask_, Side side_,
             int dmgDealt_, int dmgReceived_,
             int unitsLost_, int unitsKilled_,
             int valueLost_, int valueKilled_,
             int side0ArmyValue_, int side1ArmyValue_
         ) : type(ResultType::REGULAR),
+            stateUnencoded(stateUnencoded_),
             state(state_),
-            encodedState(encstate_),
             actmask(actmask_),
             side(side_),
             dmgDealt(dmgDealt_),
@@ -509,8 +509,8 @@ namespace MMAI::Export {
         // Constructor 2 (move constructor): regular result (battle ended)
         Result(Result &&other, bool victory_)
         : type(ResultType::REGULAR),
+          stateUnencoded(other.stateUnencoded),
           state(other.state),
-          encodedState(other.encodedState),
           actmask(other.actmask),
           side(other.side),
           dmgDealt(other.dmgDealt),
@@ -526,8 +526,8 @@ namespace MMAI::Export {
 
 
         const ResultType type = ResultType::UNSET;
+        const StateUnencoded stateUnencoded = {};
         const State state = {};
-        const EncodedState encodedState = {};
         const ActMask actmask = {};
         const Side side = Side::ATTACKER;
         const int dmgDealt = 0;

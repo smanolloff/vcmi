@@ -82,7 +82,7 @@ namespace MMAI {
         );
 
         static HexActionHex NearbyHexesForActmask(BattleHex &bh, const CStack* astack);
-        static DirHex NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack);
+        static std::pair<DirHex, BattleHex> NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack);
 
         static Hex InitHex(
             const int id,
@@ -104,7 +104,7 @@ namespace MMAI {
 
         Hexes hexes; // not const due to offTurnUpdate
         const CStack* const astack;
-        const std::pair<Export::State, Export::EncodedState> exportState();
+        const std::pair<Export::StateUnencoded, Export::State> exportState();
         const Export::ActMask exportActMask();
 
         // needed only for getting stack by slot

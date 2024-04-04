@@ -37,7 +37,7 @@ namespace MMAI {
         const Export::Result &r,
         const std::shared_ptr<CBattleCallback> cb
     ) {
-        auto state = r.state;
+        auto stateu = r.stateUnencoded;
         auto hexes = Hexes();
         const CStack* astack; // XXX: can remain nullptr (for terminal obs)
 
@@ -58,7 +58,7 @@ namespace MMAI {
 
         // Return (attr == N/A), but after performing some checks
         auto isNA = [](int v, const CStack* stack, const char* attrname) {
-            if (v == Export::VALUE_NA) {
+            if (v == Export::STATE_VALUE_NA) {
                 expect(!stack, "%s: N/A but stack != nullptr", attrname);
                 return true;
             }
@@ -69,7 +69,7 @@ namespace MMAI {
         auto ensureReachableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
             if (isNA(v, stack, attrname)) return;
             auto distance = rinfos.at(stack).distances.at(bh);
-            auto canreach = (stack->speed() >= distance) || stack->coversPos(bh);
+            auto canreach = (stack->speed() >= distance);
             if (v == 0)
                 expect(!canreach, "%s: =0 but actually reachable (speed=%d, distance=%d, coversPos=%d)", attrname, stack->speed(), distance, stack->coversPos(bh));
             else if (v == 1)
@@ -151,18 +151,18 @@ namespace MMAI {
                         if (astack->unitSide() == BattleSide::ATTACKER) {
                             auto obh = bh.cloneInDirection(BattleHex::LEFT);
                             switch(obh.mutualPosition(obh, nbh)) {
-                            break; case BattleHex::TOP_LEFT: ha = HexAction::AMOVE_TL;
-                            break; case BattleHex::BOTTOM_LEFT: ha = HexAction::AMOVE_BL;
-                            break; case BattleHex::LEFT: ha = HexAction::AMOVE_L;
+                            break; case BattleHex::TOP_LEFT: ha = HexAction::AMOVE_2TL;
+                            break; case BattleHex::BOTTOM_LEFT: ha = HexAction::AMOVE_2BL;
+                            break; case BattleHex::LEFT: ha = HexAction::AMOVE_2L;
                             break; default:
                                 throw std::runtime_error("Unexpected mutualpos (ATTACKER): " + std::to_string(obh.mutualPosition(obh, nbh)));
                             }
                         } else {
                             auto obh = bh.cloneInDirection(BattleHex::RIGHT);
                             switch(obh.mutualPosition(obh, nbh)) {
-                            break; case BattleHex::TOP_RIGHT: ha = HexAction::AMOVE_TR;
-                            break; case BattleHex::BOTTOM_RIGHT: ha = HexAction::AMOVE_BR;
-                            break; case BattleHex::RIGHT:  ha = HexAction::AMOVE_R;
+                            break; case BattleHex::TOP_RIGHT: ha = HexAction::AMOVE_2TR;
+                            break; case BattleHex::BOTTOM_RIGHT: ha = HexAction::AMOVE_2BR;
+                            break; case BattleHex::RIGHT:  ha = HexAction::AMOVE_2R;
                             break; default:
                                 throw std::runtime_error("Unexpected mutualpos (DEFENDER): " + std::to_string(obh.mutualPosition(obh, nbh)));
                             }
@@ -229,16 +229,19 @@ namespace MMAI {
             if (isNA(v, stack, attrname)) return;
             auto canshoot = cb->battleCanShoot(stack);
             auto distance = bh.getDistance(bh, stack->getPosition());
+            auto norangepen = stack->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY);
 
             if (v == 0) {
                 static_assert(Export::DmgMod(0) == Export::DmgMod::ZERO);
                 expect(!canshoot, "%s: =0 but the stack is able to shoot", attrname);
             } else if (v == 1) {
                 static_assert(Export::DmgMod(1) == Export::DmgMod::HALF);
-                expect(distance > 10, "%s: =1, but the distance > 10 (%d)", attrname, distance);
+                expect(canshoot, "%s: =1, but the stack is unable to shoot", attrname);
+                expect(distance > 10, "%s: =1, but the distance <= 10 (%d)", attrname, distance);
             } else if (v == 2) {
                 static_assert(Export::DmgMod(2) == Export::DmgMod::FULL);
-                expect(distance <= 10, "%s: =2, but the distance <= 10 (%d)", attrname, distance);
+                expect(canshoot, "%s: =2, but the stack is unable to shoot", attrname);
+                expect(norangepen || distance <= 10, "%s: =2, but the distance > 10 (%d)", attrname, distance);
             } else {
                 throw std::runtime_error("Unexpected v: " + std::to_string(v));
             }
@@ -275,21 +278,21 @@ namespace MMAI {
             int x = ihex%15;
             int y = ihex/15;
 
-            ASSERT(y == state.at(ibase).v, "hex.y mismatch");
-            ASSERT(x == state.at(ibase+1).v, "hex.x mismatch");
+            ASSERT(y == stateu.at(ibase).v, "hex.y mismatch");
+            ASSERT(x == stateu.at(ibase+1).v, "hex.x mismatch");
             auto bh = BattleHex(x+1, y);
             hex.bhex = bh;
             hex.hexactmask.fill(false);
 
             for (int i=0; i < EI(A::_count); i++) {
-                hex.attrs.at(i) = state.at(ibase + i).v;
+                hex.attrs.at(i) = stateu.at(ibase + i).v;
             }
 
             const CStack *cstack = nullptr;
             bool isActive = false;
             bool isFriendly = false;
 
-            if (hex.attr(A::STACK_QUANTITY) != Export::VALUE_NA) {
+            if (hex.attr(A::STACK_QUANTITY) != Export::STATE_VALUE_NA) {
                 // there's a stack on this hex
                 isFriendly = hex.attr(A::STACK_SIDE) == cb->battleGetMySide();
                 cstack = isFriendly ? friendlyCStacks.at(hex.attr(A::STACK_SLOT)) : enemyCStacks.at(hex.attr(A::STACK_SLOT));
@@ -603,13 +606,13 @@ namespace MMAI {
         const Action *action,  // for displaying "last action"
         const std::vector<AttackLog> attackLogs // for displaying log
     ) {
-        expect(r.state.size() == 165*EI(A::_count), "r.state.size %d != 165*%d", r.state.size(), EI(A::_count));
+        expect(r.stateUnencoded.size() == 165*EI(A::_count), "r.stateu.size %d != 165*%d", r.stateUnencoded.size(), EI(A::_count));
 
         int encsize = 0;
-        for (auto &oh : r.state)
+        for (auto &oh : r.stateUnencoded)
             encsize += oh.n;
 
-        expect(encsize == Export::ENCODED_STATE_SIZE, "encsize: %d != %d", encsize, Export::ENCODED_STATE_SIZE);
+        expect(encsize == Export::STATE_SIZE, "encsize: %d != %d", encsize, Export::STATE_SIZE);
 
         auto reconstructed = Reconstruct(r, cb);
         auto hexes = std::get<0>(reconstructed);
@@ -617,7 +620,7 @@ namespace MMAI {
 
         Verify(bf, hexes, astack);
 
-        auto state = r.state;
+        auto stateu = r.stateUnencoded;
 
         std::string nocol = "\033[0m";
         std::string redcol = "\033[31m"; // red
@@ -729,8 +732,8 @@ namespace MMAI {
                 // // * (7) potentialEnemyAttackers
                 // // Expect to be available for FREE_REACHABLE hexes only:
                 // auto anycontext_free_reachable = std::any_of(
-                //     state.begin()+ibase+3+EI(StackAttr::count)+14,
-                //     state.begin()+ibase+3+EI(StackAttr::count)+14 + 21,
+                //     stateu.begin()+ibase+3+EI(StackAttr::count)+14,
+                //     stateu.begin()+ibase+3+EI(StackAttr::count)+14 + 21,
                 //     [](Export::NValue nv) { return nv.orig != 0; }
                 // );
 
@@ -762,7 +765,7 @@ namespace MMAI {
                     sym = col + std::to_string(slot+1) + nocol;
                 }
                 break; default:
-                    throw std::runtime_error("unexpected hex.state: " + std::to_string(EI(hex.getState())));
+                    throw std::runtime_error("unexpected hex.stateu: " + std::to_string(EI(hex.getState())));
                 }
 
                 row << sym;
@@ -911,7 +914,7 @@ namespace MMAI {
 
                 if (hex) {
                     color = (hex->attr(A::STACK_SIDE) == BattleSide::ATTACKER) ? redcol : bluecol;
-                    value = std::to_string(hex->attr(a));
+                    value = std::to_string(a == A::STACK_SLOT ? 1 + hex->attr(a) : hex->attr(a));
                     if (hex->attr(A::STACK_IS_ACTIVE) > 0) color += activemod;
                 }
 

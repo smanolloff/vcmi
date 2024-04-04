@@ -133,15 +133,19 @@ namespace MMAI {
             // (2) HEX_MELEEABLE_BY_*     if stack (stands on OR can reach)
             //                              a (direct OR special) nbhex
             //
-            for (const auto& [dir, nbh] : NearbyHexesForAttributes(hex.bhex, cstack)) {
+
+            const auto& [dirhexes, nextToOnly] = NearbyHexesForAttributes(hex.bhex, cstack);
+
+            if (nextToOnly != BattleHex{})
+                hex.setNextToStack(isActive, isFriendly, slot, true);
+
+            for (const auto& [dir, nbh] : dirhexes) {
+                if (IsReachable(nbh, stackinfo))
+                    hex.setMeleeableByStack(isActive, isFriendly, slot, stackinfo.meleemod);
+
                 if (cstack->coversPos(nbh)) {
                     if (dir != D::NONE) // direct neighbour
-                        hex.setNextToStack(isActive, isFriendly, cstack->unitSlot(), true);
-
-                    hex.setMeleeableByStack(isActive, isFriendly, slot, stackinfo.meleemod);
-                    break; // no other stack can cover this hex (nor move here)
-                } else if (IsReachable(nbh, stackinfo)) {
-                    hex.setMeleeableByStack(isActive, isFriendly, slot, stackinfo.meleemod);
+                        hex.setNextToStack(isActive, isFriendly, slot, true);
                 }
             }
         }
@@ -282,11 +286,17 @@ namespace MMAI {
     // Each of the "@" has a EDir associated with it, this is relevant only
     // for the "special" cases where the @ is not a direct neighbour (EDir::NONE).
     //
-    DirHex Battlefield::NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack) {
+    // An additional hex (the "-" in the center) is returned in order to set
+    // HEX_NEXT_TO* attribute (which is, however, not reachable by cstack)
+    //
+    std::pair<DirHex, BattleHex> Battlefield::NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack) {
         // The 6 basic directions
         auto res = DirHex{};
         res.reserve(8);
         BattleHex nbh;
+
+        // the additional returned hex in case of 2-hex attackers
+        auto nextToOnly = BattleHex{};
 
         nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
         if (nbh.isAvailable()) res.emplace_back(D::TOP_RIGHT, nbh);
@@ -307,7 +317,7 @@ namespace MMAI {
             nbh = bh.cloneInDirection(D::RIGHT, false);
             if(nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
 
-            return res;
+            return {res, nextToOnly};
         }
 
         // The 6 "special" directions (3 for each side)
@@ -317,6 +327,7 @@ namespace MMAI {
             if (nbh.isAvailable()) res.emplace_back(D::LEFT, nbh);
 
             auto offset = bh.cloneInDirection(D::RIGHT, false);
+            nextToOnly = offset;
 
             nbh = offset.cloneInDirection(D::TOP_RIGHT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
@@ -333,6 +344,7 @@ namespace MMAI {
             if (nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
 
             auto offset = bh.cloneInDirection(D::LEFT, false);
+            nextToOnly = offset;
 
             nbh = offset.cloneInDirection(D::BOTTOM_LEFT, false);
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
@@ -344,7 +356,7 @@ namespace MMAI {
             if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
         }
 
-        return res;
+        return {res, nextToOnly};
     }
 
     // static
@@ -422,8 +434,9 @@ namespace MMAI {
             }
 
             auto isReachable = IsReachable(bh, stackinfo);
+            auto onPosition = cstack->coversPos(bh);
 
-            if (isReachable || cstack->coversPos(bh)) {
+            if (isReachable) {
                 hex.setReachableByStack(isActive, isFriendly, slot, true);
 
                 // although hex may already stand on hex, it be unable to
@@ -433,12 +446,16 @@ namespace MMAI {
 
             ProcessNeighbouringHexes(hex, astack, stackinfos, hexstacks);
 
-            if (!cstack->coversPos(bh)) continue;
+            if (!onPosition) continue;
+
+            // active stack can shoot at this enemy
+            if (!isFriendly && stackinfos.at(astack).canshoot)
+                hex.hexactmask.at(EI(HexAction::SHOOT)) = true;
 
             auto it = std::find(queue.begin(), queue.end(), cstack->unitId());
             auto qpos = (it == queue.end()) ? QSIZE-1 : it - queue.begin();
-            if (isActive) ASSERT(qpos == 0, "expected qpos=0 for active stack");
             hex.setCStackAndAttrs(cstack, qpos);
+
         }
 
 
@@ -500,11 +517,11 @@ namespace MMAI {
         return res;
     };
 
-    const std::pair<Export::State, Export::EncodedState> Battlefield::exportState() {
+    const std::pair<Export::StateUnencoded, Export::State> Battlefield::exportState() {
+        auto stateUnencoded = Export::StateUnencoded{};
         auto state = Export::State{};
-        auto encstate = Export::EncodedState{};
+        stateUnencoded.reserve(Export::STATE_SIZE_UNENCODED);
         state.reserve(Export::STATE_SIZE);
-        encstate.reserve(Export::ENCODED_STATE_SIZE);
 
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {
@@ -512,14 +529,13 @@ namespace MMAI {
                     auto a = Export::Attribute(i);
                     auto v = hex.attrs.at(EI(a));
                     auto onehot = Export::OneHot(a, v);
-
-                    onehot.encode(encstate);
-                    state.push_back(std::move(onehot));
+                    onehot.encode(state);
+                    stateUnencoded.push_back(std::move(onehot));
                 }
             }
         }
 
-        return {state, encstate};
+        return {stateUnencoded, state};
     }
 
     const Export::ActMask Battlefield::exportActMask() {
