@@ -450,7 +450,7 @@ namespace MMAI::Export {
 
     using State = std::vector<int>;
     using StateUnencoded = std::vector<OneHot>;
-    using Action = int16_t;
+    using Action = int;
 
     /**
      * 2 non-hex actions:

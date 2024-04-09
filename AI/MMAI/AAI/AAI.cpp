@@ -24,6 +24,7 @@
 #include "mapObjects/CArmedInstance.h"
 #include "mapObjects/CGHeroInstance.h"
 
+#include <cstdio>
 #include <boost/thread.hpp>
 
 namespace MMAI {
@@ -191,6 +192,7 @@ namespace MMAI {
                 auto wins = winstream.str();
                 wins.pop_back();
                 printf("{\"map\":\"%s\",\"battles\":%d,\"wins\":{%s}}\n", baggage->map.c_str(), nbattles, wins.c_str());
+                fflush(stdout);
                 exit(0);
             }
         }
