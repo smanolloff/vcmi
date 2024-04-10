@@ -522,7 +522,6 @@ namespace MMAI {
         auto state = Export::State{};
         stateUnencoded.reserve(Export::STATE_SIZE_UNENCODED);
         state.reserve(Export::STATE_SIZE);
-
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {
                 for (int i=0; i<EI(Export::Attribute::_count); i++) {
@@ -535,6 +534,7 @@ namespace MMAI {
             }
         }
 
+        expect(state.size() == Export::STATE_SIZE, "state.size() = %zu != %d", state.size(), Export::STATE_SIZE);
         return {stateUnencoded, state};
     }
 
