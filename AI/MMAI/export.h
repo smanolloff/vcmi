@@ -21,6 +21,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <functional>
+#include <cmath>
 
 /*****
 ****** THIS FILE LIVES IN:
@@ -411,7 +412,7 @@ namespace MMAI::Export {
         //  Add int(sqrt(10))=3 ones and 4-3=1 zero
         //  => add [1,1,1,0]
         void encodeNumericSqrt(std::vector<int> &vec) {
-            int n_ones = int(sqrt(v));
+            int n_ones = int(std::sqrt(v));
 
             if (n_ones > n)
                 throw std::runtime_error("NumericSqrt encoding failed: a=" + std::to_string(EI(a)) + ", v=" + std::to_string(v) + ", n=" + std::to_string(n));
