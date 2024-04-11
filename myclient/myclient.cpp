@@ -92,7 +92,7 @@ bool headless;
 // XXX:
 // This will not work unless the current dir is vcmi-gym's root dir
 // (the python module resolution gets messed up otherwise)
-MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, std::string gymdir) {
+MMAI::Export::F_GetAction loadModel(std::string encoding, MMAI::Export::Side side, std::string model, std::string gymdir) {
     auto old = boost::filesystem::current_path();
     auto gympath = boost::filesystem::canonical(boost::filesystem::path(gymdir));
 
@@ -111,7 +111,7 @@ MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, 
         auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getActionAttacker)>(dlsym(handle, "ConnectorLoader_getActionAttacker"));
         if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
 
-        init(gymdir, model);
+        init(encoding, gymdir, model);
         boost::filesystem::current_path(old);
         return getAction;
     }
@@ -123,7 +123,7 @@ MMAI::Export::F_GetAction loadModel(MMAI::Export::Side side, std::string model, 
     auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getActionDefender)>(dlsym(handle, "ConnectorLoader_getActionDefender"));
     if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
 
-    init(gymdir, model);
+    init(encoding, gymdir, model);
     boost::filesystem::current_path(old);
     return getAction;
 };
@@ -155,15 +155,21 @@ void validateFile(std::string name, std::string path, boost::filesystem::path wd
 }
 
 void validateArguments(
+    std::string &stateEncoding,
     std::string &gymdir,
     std::string &map,
+    int &randomCombat,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
     std::string &attackerAI,
     std::string &defenderAI,
     std::string &attackerModel,
-    std::string &defenderModel
+    std::string &defenderModel,
+    int &mapEval
 ) {
+    if (stateEncoding != MMAI::Export::STATE_ENCODING_DEFAULT && stateEncoding != MMAI::Export::STATE_ENCODING_FLOAT)
+        throw std::runtime_error("Invalid state encoding: " + stateEncoding);
+
     auto wd = boost::filesystem::current_path();
 
     validateValue("attackerAI", attackerAI, AIS);
@@ -177,6 +183,12 @@ void validateArguments(
 
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
+
+    if (randomCombat < 0)
+        std::cerr << "Bad value for randomCombat: expected a positive integer, got: " << randomCombat << "\n";
+
+    if (mapEval < 0)
+        std::cerr << "Bad value for mapEval: expected a positive integer, got: " << randomCombat << "\n";
 
     if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
         if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI." LIBEXT)) {
@@ -221,6 +233,7 @@ void validateArguments(
 }
 
 void processArguments(
+    std::string stateEncoding,
     std::string &gymdir,
     std::string &map,
     std::string &loglevelGlobal,
@@ -275,7 +288,7 @@ void processArguments(
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->attackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        baggage->f_getActionAttacker = loadModel(MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
+        baggage->f_getActionAttacker = loadModel(stateEncoding, MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
     } else if (attackerAI == AI_STUPIDAI) {
         baggage->attackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
@@ -297,7 +310,7 @@ void processArguments(
     } else if (defenderAI == AI_MMAI_MODEL) {
         baggage->defenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        baggage->f_getActionDefender = loadModel(MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
+        baggage->f_getActionDefender = loadModel(stateEncoding, MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
     } else if (defenderAI == AI_STUPIDAI) {
         baggage->defenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {
@@ -356,6 +369,7 @@ void processArguments(
 
 void init_vcmi(
     MMAI::Export::Baggage* baggage_,
+    std::string stateEncoding,
     std::string gymdir,
     std::string map,
     int randomCombat,
@@ -365,34 +379,36 @@ void init_vcmi(
     std::string defenderAI,
     std::string attackerModel,
     std::string defenderModel,
-    int evalFor,
+    int mapEval,
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
     baggage = baggage_;
-    baggage->evalFor = evalFor;
+    baggage->mapEval = mapEval;
     baggage->map = map;
 
     // this is used in start_vcmi()
     headless = headless_;
 
     validateArguments(
+        stateEncoding,
         gymdir,
         map,
+        randomCombat,
         loglevelGlobal,
         loglevelAI,
         attackerAI,
         defenderAI,
         attackerModel,
-        defenderModel
+        defenderModel,
+        mapEval
     );
 
     boost::filesystem::current_path(boost::filesystem::path(VCMI_BIN_DIR));
     std::cout.flags(std::ios::unitbuf);
     console = new CConsoleHandler();
 
-    auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole)
-    {
+    auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole) {
         ClientCommandManager commandController;
         commandController.processCommand(buffer, calledFromIngameConsole);
     };
@@ -408,6 +424,7 @@ void init_vcmi(
     preinitDLL(::console);
 
     processArguments(
+        stateEncoding,
         gymdir,
         map,
         loglevelGlobal,

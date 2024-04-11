@@ -165,12 +165,12 @@ namespace MMAI {
 
         // Only winner increments => no race cond
         // TODO: a better metric would may be net_casualties (winner - loser)
-        if (baggage->evalFor && side == br->winner) {
+        if (baggage->mapEval && side == br->winner) {
             (baggage->battleResults.find(armyID) != baggage->battleResults.end())
                 ? baggage->battleResults.at(armyID)++
                 : baggage->battleResults[armyID] = 1;
 
-            if (nbattles >= baggage->evalFor) {
+            if (nbattles >= baggage->mapEval) {
                 std::vector<std::pair<int, int>> valueIndexPairs;
                 auto winstream = std::stringstream();
 

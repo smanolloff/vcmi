@@ -32,9 +32,11 @@ const std::vector<std::string> AIS = {
 };
 
 const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};
+const std::vector<std::string> ENCODINGS = {"default", "float"};
 
 void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,
+    std::string stateEncoding,
     std::string gymdir,
     std::string mapname,
     int randomCombat,
@@ -44,7 +46,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     std::string defenderAI,
     std::string attackerModel,
     std::string defenderModel,
-    int evalFor,
+    int mapEval,
     bool headless
 );
 

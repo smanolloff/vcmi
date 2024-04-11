@@ -129,11 +129,10 @@ namespace MMAI {
                 : side1ArmyValue += value;
         }
 
-        auto [state, encstate] = bf.exportState();
+        auto state = bf.exportState();
 
         return Export::Result(
             state,
-            encstate,
             bf.exportActMask(),
             Export::Side(cb->battleGetMySide()),
             dmgDealt,

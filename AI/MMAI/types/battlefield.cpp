@@ -517,25 +517,21 @@ namespace MMAI {
         return res;
     };
 
-    const std::pair<Export::StateUnencoded, Export::State> Battlefield::exportState() {
-        auto stateUnencoded = Export::StateUnencoded{};
-        auto state = Export::State{};
-        stateUnencoded.reserve(Export::STATE_SIZE_UNENCODED);
-        state.reserve(Export::STATE_SIZE);
+    const Export::StateUnencoded Battlefield::exportState() {
+        auto state = Export::StateUnencoded{};
+        state.reserve(Export::STATE_SIZE_UNENCODED);
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {
                 for (int i=0; i<EI(Export::Attribute::_count); i++) {
                     auto a = Export::Attribute(i);
                     auto v = hex.attrs.at(EI(a));
                     auto onehot = Export::OneHot(a, v);
-                    onehot.encode(state);
-                    stateUnencoded.push_back(std::move(onehot));
+                    state.push_back(std::move(onehot));
                 }
             }
         }
 
-        expect(state.size() == Export::STATE_SIZE, "state.size() = %zu != %d", state.size(), Export::STATE_SIZE);
-        return {stateUnencoded, state};
+        return state;
     }
 
     const Export::ActMask Battlefield::exportActMask() {

@@ -21,16 +21,17 @@
 
 using Args = std::tuple<
     MMAI::Export::Baggage*,
-    std::string,
-    std::string,
-    bool,
-    std::string,
-    std::string,
-    std::string,
-    std::string,
-    std::string,
-    std::string,
-    int
+    std::string, // stateEncoding
+    std::string, // gymdir
+    std::string, // mapname
+    bool,        // randomCombat
+    std::string, // loglevelGlobal
+    std::string, // loglevelAI
+    std::string, // attackerAI
+    std::string, // defenderAI
+    std::string, // attackerModel
+    std::string, // defenderModel
+    int          // mapEval
 >;
 
 Args parse_args(int argc, char * argv[]);

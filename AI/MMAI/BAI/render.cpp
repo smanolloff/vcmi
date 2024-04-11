@@ -608,12 +608,6 @@ namespace MMAI {
     ) {
         expect(r.stateUnencoded.size() == 165*EI(A::_count), "r.stateu.size %d != 165*%d", r.stateUnencoded.size(), EI(A::_count));
 
-        int encsize = 0;
-        for (auto &oh : r.stateUnencoded)
-            encsize += oh.n;
-
-        expect(encsize == Export::STATE_SIZE, "encsize: %d != %d", encsize, Export::STATE_SIZE);
-
         auto reconstructed = Reconstruct(r, cb);
         auto hexes = std::get<0>(reconstructed);
         auto astack = std::get<1>(reconstructed);

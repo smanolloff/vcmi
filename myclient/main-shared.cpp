@@ -92,6 +92,7 @@ Args parse_args(int argc, char * argv[])
 {
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
     auto omap = std::map<std::string, std::string> {
+        {"state-encoding", "default"},
         {"map", "gym/A1.vmap"},
         {"loglevel-global", "error"},
         {"loglevel-ai", "debug"},
@@ -120,8 +121,10 @@ Args parse_args(int argc, char * argv[])
             ("Full path to vcmi-gym directory (" + omap.at("gymdir") + "*)").c_str())
         ("map", po::value<std::string>()->value_name("<MAP>"),
             ("Path to map (" + omap.at("map") + "*)").c_str())
+        ("state-encoding", po::value<std::string>()->value_name("<ENC>"),
+            values(ENCODINGS, omap.at("state-encoding")).c_str())
         ("random-combat", po::value<int>()->value_name("<N>"),
-            ("Pick heroes at random each Nth combat (disabled if 0*)"))
+            "Pick heroes at random each Nth combat (disabled if 0*)")
         ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
             values(AIS, omap.at("attacker-ai")).c_str())
         ("defender-ai", po::value<std::string>()->value_name("<AI>"),
@@ -135,13 +138,13 @@ Args parse_args(int argc, char * argv[])
         ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
             values(LOGLEVELS, omap.at("loglevel-ai")).c_str())
         ("interactive", po::bool_switch(&interactive),
-            ("Ask for each action"))
+            "Ask for each action")
         ("prerecorded", po::bool_switch(&prerecorded),
-            ("Replay actions from local file named actions.txt"))
+            "Replay actions from local file named actions.txt")
         ("benchmark", po::bool_switch(&benchmark),
-            ("Measure performance"))
+            "Measure performance")
         ("map-eval", po::value<int>()->value_name("<N>"),
-            ("Eval map for N battles (disabled if 0*)"));
+            "Eval map for N battles (disabled if 0*)");
 
     po::variables_map vm;
 
@@ -283,6 +286,9 @@ Args parse_args(int argc, char * argv[])
 
     return {
         new MMAI::Export::Baggage(getaction),
+        omap.at("state-encoding") == "default"
+            ? MMAI::Export::STATE_ENCODING_DEFAULT
+            : MMAI::Export::STATE_ENCODING_FLOAT,
         omap.at("gymdir"),
         omap.at("map"),
         randomCombat,

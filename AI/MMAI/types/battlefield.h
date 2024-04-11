@@ -104,7 +104,7 @@ namespace MMAI {
 
         Hexes hexes; // not const due to offTurnUpdate
         const CStack* const astack;
-        const std::pair<Export::StateUnencoded, Export::State> exportState();
+        const Export::StateUnencoded exportState();
         const Export::ActMask exportActMask();
 
         // needed only for getting stack by slot

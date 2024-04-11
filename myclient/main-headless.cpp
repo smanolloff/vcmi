@@ -19,6 +19,7 @@
 int main(int argc, char * argv[]) {
     auto [
         baggage_,
+        stateEncoding,
         gymdir,
         map,
         randomCombat,
@@ -28,11 +29,12 @@ int main(int argc, char * argv[]) {
         defenderAI,
         attackerModel,
         defenderModel,
-        evalFor
+        mapEval
     ] = parse_args(argc, argv);
 
     init_vcmi(
         baggage_,
+        stateEncoding,
         gymdir,
         map,
         randomCombat,
@@ -42,7 +44,7 @@ int main(int argc, char * argv[]) {
         defenderAI,
         attackerModel,
         defenderModel,
-        evalFor,
+        mapEval,
         true
     );
 
