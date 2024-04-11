@@ -511,6 +511,9 @@ namespace MMAI::Export {
         // explicitly encode as a float regardless of actual encoding
         // (in which case it makes no sense to accept a vector)
         float encode2Floating() const {
+            if (v == VALUE_NA_UNENCODED)
+                return STATE_VALUE_NA;
+
             // XXX: this is a simplified version for 0..1, vmin=0, vmax=n-1
             return static_cast<float>(v) / static_cast<float>(n-1);
         }

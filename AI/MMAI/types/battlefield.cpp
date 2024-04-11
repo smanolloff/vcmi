@@ -525,7 +525,7 @@ namespace MMAI {
                 for (int i=0; i<EI(Export::Attribute::_count); i++) {
                     auto a = Export::Attribute(i);
                     auto v = hex.attrs.at(EI(a));
-                    auto onehot = Export::OneHot(a, v);
+                    auto onehot = v == ATTR_UNSET ? Export::OneHot(a) : Export::OneHot(a, v);
                     state.push_back(std::move(onehot));
                 }
             }
