@@ -394,8 +394,7 @@ namespace MMAI::Export {
 
     constexpr int STATE_SIZE_FLOAT_ONE_HEX = EI(A::_count); // 1 float per attribute
     constexpr int STATE_SIZE_FLOAT = 165 * STATE_SIZE_FLOAT_ONE_HEX;
-
-    constexpr float STATE_VALUE_NA = -1e9;
+    constexpr float STATE_VALUE_NA = -1;
 
     constexpr int N_UNSET = -1;
     constexpr int VALUE_NA_UNENCODED = -1;
