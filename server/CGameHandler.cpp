@@ -2618,10 +2618,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 
 		if (gs->herocounter == gs->allheroes.size()) {
 			gs->herocounter = 0;
-
-		    std::random_device rd;
-		    std::mt19937 g(rd());
-		    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), g);
+		    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), std::random_device());
 		}
 
 		hero1 = gs->allheroes.at(gs->herocounter);
