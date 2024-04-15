@@ -2616,7 +2616,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 		if (gs->allheroes.size() % 2 != 0)
 			throw std::runtime_error("Heroes size must be even");
 
-		if (gs->herocounter == gs->allheroes.size()) {
+		if (gs->herocounter % gs->allheroes.size() == 0) {
 			gs->herocounter = 0;
 		    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), std::random_device());
 		}
