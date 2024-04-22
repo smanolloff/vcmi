@@ -193,6 +193,9 @@ namespace MMAI {
                 wins.pop_back();
                 printf("{\"map\":\"%s\",\"battles\":%d,\"wins\":{%s}}\n", baggage->map.c_str(), nbattles, wins.c_str());
                 fflush(stdout);
+                // sleep needed as a desparate workaround to output not being
+                // written due to the abrupt program exit
+                boost::this_thread::sleep(boost::posix_time::seconds(1));
                 exit(0);
             }
         }
