@@ -514,8 +514,8 @@ namespace MMAI::Export {
             if (v == VALUE_NA_UNENCODED)
                 return STATE_VALUE_NA;
 
-            // XXX: this is a simplified version for 0..1, vmin=0, vmax=n-1
-            return static_cast<float>(v) / static_cast<float>(n-1);
+            // XXX: this is a simplified version for 0..1 norm
+            return static_cast<float>(v) / static_cast<float>(vmax);
         }
     };
 

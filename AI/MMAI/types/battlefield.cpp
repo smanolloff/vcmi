@@ -72,7 +72,10 @@ namespace MMAI {
         const BattleHex &bh,
         const StackInfo &stackinfo
     ) {
-        // isReachable may return true even if speed is insufficient
+        //
+        // XXX: don't rely on ReachabilityInfo's `isReachable` as it
+        //      returns true even if speed is insufficient
+        //
         // distances is 0 for the stack's main hex, 1 for its "back" hex
         // (100000 if it can't fit there)
         return stackinfo.rinfo->distances.at(bh) <= stackinfo.speed;
