@@ -27,6 +27,8 @@
 #include "export.h"
 #include "types/hexaction.h"
 #include "types/hexactmask.h"
+#include <__tuple_dir/tuple_size.h>
+#include <bitset>
 #include <memory>
 #include <stdexcept>
 
@@ -81,285 +83,57 @@ namespace MMAI {
         return stackinfo.rinfo->distances.at(bh) <= stackinfo.speed;
     }
 
-    // static
-    HexAction Battlefield::HexActionFromHexes(
-        const BattleHex &nbh, // hex to attack
-        const BattleHex &bh,  // hex attacking from (pos)
-        const BattleHex &bh2  // 2nd hex attacking from (2-hex stacks only)
-    ) {
-        auto dir = BattleHex::mutualPosition(bh, nbh);
-
-        if (dir != BattleHex::EDir::NONE)
-            return EDIR_TO_AMOVE.at(dir);
-
-        // "indirect" neighbouring hex (astack is double-wide)
-        ASSERT(bh2 != BattleHex::INVALID, "bh2 is INVALID");
-        dir = BattleHex::mutualPosition(bh2, nbh);
-        return EDIR_TO_AMOVE_2.at(dir);
-    }
-
-    // static
-    // If we were to move to this hex, check each neighbouring hex for:
-    //  - occupying stack (friendly or enemy)
-    //  - potential attackers (enemy stacks that can reach and attack from those hexes)
     //
-    // NOTE: If the active stack is a 2-hex stack, if it were to move to "hex",
-    //       then 8 (insted of 6) hexes should be considered "neighbouring".
-    //       HOWEVER, we do the calculations as if the active stack is 1-hex as
-    //       (6 neuighbouring hexes) or there would be too much confusion:
-    //       E.g. if astack is wide, the back hex could turn out onto an
-    //       obstacle unless we call ProcessNeighbouringHexes only on hexes
-    //       which are reachable - this leads to two other problems:
-    //          1/ incomplete/wrong information for the rest of the battlefield
-    //          2/ wrong information for hexes where it could only stand
-    //             onto with its "back" hex (e.g. right next to obstacles), as
-    //             those are considered unreachable, hence with no potential
-    //             attackers.
+    // Return bh's neighbouring hexes for setting HEX_RELPOS_TO_* attrs
     //
-    // => just pretend the active stack is a 1-hex stack here
-    void Battlefield::ProcessNeighbouringHexes(
-        Hex &hex,
-        const CStack* astack,
-        const StackInfos &stackinfos,
-        const HexStacks &hexstacks
-    ) {
-        for (const auto& [cstack, stackinfo] : stackinfos) {
-            auto isActive = (cstack == astack);
-            auto isFriendly = (cstack->getOwner() == astack->getOwner());
-            auto slot = cstack->unitSlot();
-
-            // For each stack, set hex attributes:
-            //
-            // (1) HEX_NEXT_TO_*          if stack stands on a directly
-            //                              neighbouring hex
-            //
-            // (2) HEX_MELEEABLE_BY_*     if stack (stands on OR can reach)
-            //                              a (direct OR special) nbhex
-            //
-
-            const auto& [dirhexes, nextToOnly] = NearbyHexesForAttributes(hex.bhex, cstack);
-
-            if (nextToOnly != BattleHex{})
-                hex.setNextToStack(isActive, isFriendly, slot, true);
-
-            for (const auto& [dir, nbh] : dirhexes) {
-                if (IsReachable(nbh, stackinfo))
-                    hex.setMeleeableByStack(isActive, isFriendly, slot, stackinfo.meleemod);
-
-                if (cstack->coversPos(nbh)) {
-                    if (dir != D::NONE) // direct neighbour
-                        hex.setNextToStack(isActive, isFriendly, slot, true);
-                }
-            }
-        }
-
-        // For active stack, set actmask:
-        //
-        // (1) hexactmask for attack  if stack stands on `hex`'s nearby hex (nbh)
-        //                              AND stack is enemy
-        //                              AND astack (stands on OR can reach) `hex`
-        //
-        for (const auto& [hexaction, nbh] : NearbyHexesForActmask(hex.bhex, astack)) {
-            auto it = hexstacks.find(nbh);
-            if (it == hexstacks.end())
-                continue; // no unit on nbh
-
-            auto cstack = it->second;
-            if (cstack->getOwner() == astack->getOwner())
-                continue; // friendly unit on nbh
-
-            if (!IsReachable(hex.bhex, stackinfos.at(astack)))
-                continue; // can't reach the hex to attack from
-
-            ASSERT(astack->isMeleeAttackPossible(astack, cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
-            hex.hexactmask.at(EI(hexaction)) = true;
-        }
-        return;
-    }
-
-    // static
+    // return nearby hexes for "X":
     //
-    // Return bh's neighbouring hexes for setting the AMOVE_* heaxctmasks
-    // i.e. assume astack's position is fixed at "@", return nearby hexes "X"
-    // at which astack could perform a melee attack:
+    //  . . . . . . . . . .
+    // . . .11 5 0 6 . . .
+    //  . .10 4 X 1 7 . . .
+    // . . . 9 3 2 8 . . .
+    //  . . . . . . . . . .
     //
-    //  1-hex:        2-hex (attacker):     2-hex (defender):
-    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-    // . . X X . . . . . . . X X X . . . . . . . . X X X . . .
-    //  . X @ X . . . . . . X - @ X . . . . . . . X @ - X . . .
-    // . . X X . . . . . . . X X X . . . . . . . . X X X . . .
-    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-    // Legend:
-    // @ is astack's front hex
-    // - is astack's rear hex (if astack is a 2-hex creature)
-    // * are the nearby hexes to return
-    // attacker/defender is astack's perspective (attacker=left/defender=right)
+    // NOTE:
+    // The index of each hex in the returned array corresponds to a
+    // the respective AMOVE_* HexAction w.r.t. "X" (see hexaction.h)
     //
-    // Available "X" hexes are returned according to the unit size.
-    //
-    // Each of the "X" has a HexAction associated with it (see hexaction.h),
-    // which is returned along with the corresponding hex.
-    //
-    HexActionHex Battlefield::NearbyHexesForActmask(BattleHex &bh, const CStack* astack) {
-        // The 6 basic directions
-        auto res = HexActionHex{};
-        res.reserve(8);
-        BattleHex nbh;
+    HexActionHex Battlefield::NearbyHexes(BattleHex &bh) {
+        static_assert(EI(HexAction::AMOVE_TR) == 0);
+        static_assert(EI(HexAction::AMOVE_R) == 1);
+        static_assert(EI(HexAction::AMOVE_BR) == 2);
+        static_assert(EI(HexAction::AMOVE_BL) == 3);
+        static_assert(EI(HexAction::AMOVE_L) == 4);
+        static_assert(EI(HexAction::AMOVE_TL) == 5);
+        static_assert(EI(HexAction::AMOVE_2TR) == 6);
+        static_assert(EI(HexAction::AMOVE_2R) == 7);
+        static_assert(EI(HexAction::AMOVE_2BR) == 8);
+        static_assert(EI(HexAction::AMOVE_2BL) == 9);
+        static_assert(EI(HexAction::AMOVE_2L) == 10);
+        static_assert(EI(HexAction::AMOVE_2TL) == 11);
 
-        nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
-        if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_TR, nbh);
+        auto nbhR = bh.cloneInDirection(D::RIGHT, false);
+        auto nbhL = bh.cloneInDirection(D::LEFT, false);
 
-        nbh = bh.cloneInDirection(D::BOTTOM_RIGHT, false);
-        if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_BR, nbh);
+        return HexActionHex{
+            // The 6 basic directions
+            bh.cloneInDirection(D::TOP_RIGHT, false),
+            nbhR,
+            bh.cloneInDirection(D::BOTTOM_RIGHT, false),
+            bh.cloneInDirection(D::BOTTOM_LEFT, false),
+            nbhL,
+            bh.cloneInDirection(D::TOP_LEFT, false),
 
-        nbh = bh.cloneInDirection(D::BOTTOM_LEFT, false);
-        if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_BL, nbh);
+            // Extended directions for R-side wide creatures
+            nbhR.cloneInDirection(D::TOP_RIGHT, false),
+            nbhR.cloneInDirection(D::RIGHT, false),
+            nbhR.cloneInDirection(D::BOTTOM_RIGHT, false),
 
-        nbh = bh.cloneInDirection(D::TOP_LEFT, false);
-        if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_TL, nbh);
-
-        if (!astack->doubleWide()) {
-            nbh = bh.cloneInDirection(D::LEFT, false);
-            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_L, nbh);
-
-            nbh = bh.cloneInDirection(D::RIGHT, false);
-            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_R, nbh);
-
-            return res;
-        }
-
-        // The 6 "special" directions (3 for each side)
-        if (astack->unitSide() == BattleSide::ATTACKER) {
-            // astack's rear hex is to-the-left
-            nbh = bh.cloneInDirection(D::RIGHT, false);
-            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_R, nbh);
-
-            auto offset = bh.cloneInDirection(D::LEFT, false);
-
-            nbh = offset.cloneInDirection(D::BOTTOM_LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2BL, nbh);
-
-            nbh = offset.cloneInDirection(D::LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2L, nbh);
-
-            nbh = offset.cloneInDirection(D::TOP_LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2TL, nbh);
-        } else {
-            // astack's rear hex is to-the-right
-            nbh = bh.cloneInDirection(D::LEFT, false);
-            if(nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_L, nbh);
-
-            auto offset = bh.cloneInDirection(D::RIGHT, false);
-
-            nbh = offset.cloneInDirection(D::TOP_RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2TR, nbh);
-
-            nbh = offset.cloneInDirection(D::RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2R, nbh);
-
-            nbh = offset.cloneInDirection(D::BOTTOM_RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(HexAction::AMOVE_2BR, nbh);
-        }
-
-        return res;
-    }
-
-    // static
-    //
-    // Return bh's neighbouring hexes for setting HEX_ATTACKABLE_BY_* attrs
-    // i.e. assume the target hex is fixed at "X", return nearby hexes "@"
-    // from which cstack could perform a melee attack:
-    //
-    //  1-hex:        2-hex (attacker):     2-hex (defender):
-    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-    // . . @ @ . . . . . . - @ @ @ . . . . . . . . @ @ @ - . .
-    //  . @ X @ . . . . . - @ X - @ . . . . . . . @ - X @ - . .
-    // . . @ @ . . . . . . - @ @ @ . . . . . . . . @ @ @ - . .
-    //  . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-    // Legend:
-    // X is the target hex
-    // @ is cstack's front hex
-    // - is cstack's rear hex (if cstack is a 2-hex creature)
-    // attacker/defender is astack's perspective (attacker=left/defender=right)
-    //
-    // Hexes outside the map are not returned.
-    // If cstack is 1-hex stack, a maximum of 6 hexes are returned.
-    // If cstack is a 2-hex stack, a maximum of 8 hexes are returned.
-    //
-    // Each of the "@" has a EDir associated with it, this is relevant only
-    // for the "special" cases where the @ is not a direct neighbour (EDir::NONE).
-    //
-    // An additional hex (the "-" in the center) is returned in order to set
-    // HEX_NEXT_TO* attribute (which is, however, not reachable by cstack)
-    //
-    std::pair<DirHex, BattleHex> Battlefield::NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack) {
-        // The 6 basic directions
-        auto res = DirHex{};
-        res.reserve(8);
-        BattleHex nbh;
-
-        // the additional returned hex in case of 2-hex attackers
-        auto nextToOnly = BattleHex{};
-
-        nbh = bh.cloneInDirection(D::TOP_RIGHT, false);
-        if (nbh.isAvailable()) res.emplace_back(D::TOP_RIGHT, nbh);
-
-        nbh = bh.cloneInDirection(D::BOTTOM_RIGHT, false);
-        if (nbh.isAvailable()) res.emplace_back(D::BOTTOM_RIGHT, nbh);
-
-        nbh = bh.cloneInDirection(D::BOTTOM_LEFT, false);
-        if (nbh.isAvailable()) res.emplace_back(D::BOTTOM_LEFT, nbh);
-
-        nbh = bh.cloneInDirection(D::TOP_LEFT, false);
-        if (nbh.isAvailable()) res.emplace_back(D::TOP_LEFT, nbh);
-
-        if (!cstack->doubleWide()) {
-            nbh = bh.cloneInDirection(D::LEFT, false);
-            if(nbh.isAvailable()) res.emplace_back(D::LEFT, nbh);
-
-            nbh = bh.cloneInDirection(D::RIGHT, false);
-            if(nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
-
-            return {res, nextToOnly};
-        }
-
-        // The 6 "special" directions (3 for each side)
-        if (cstack->unitSide() == BattleSide::ATTACKER) {
-            // enemy's rear hex is to-the-right
-            nbh = bh.cloneInDirection(D::LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::LEFT, nbh);
-
-            auto offset = bh.cloneInDirection(D::RIGHT, false);
-            nextToOnly = offset;
-
-            nbh = offset.cloneInDirection(D::TOP_RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
-
-            nbh = offset.cloneInDirection(D::RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
-
-            nbh = offset.cloneInDirection(D::BOTTOM_RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
-
-        } else {
-            // enemy's rear hex is to-the-left
-            nbh = bh.cloneInDirection(D::RIGHT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::RIGHT, nbh);
-
-            auto offset = bh.cloneInDirection(D::LEFT, false);
-            nextToOnly = offset;
-
-            nbh = offset.cloneInDirection(D::BOTTOM_LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
-
-            nbh = offset.cloneInDirection(D::LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
-
-            nbh = offset.cloneInDirection(D::TOP_LEFT, false);
-            if (nbh.isAvailable()) res.emplace_back(D::NONE, nbh);
-        }
-
-        return {res, nextToOnly};
+            // Extended directions for L-side wide creatures
+            nbhL.cloneInDirection(D::BOTTOM_LEFT, false),
+            nbhL.cloneInDirection(D::LEFT, false),
+            nbhL.cloneInDirection(D::TOP_LEFT, false)
+        };
     }
 
     // static
@@ -384,9 +158,9 @@ namespace MMAI {
         hex.setY(y);
 
         switch(ainfo.at(bh.hex)) {
-        break; case EAccessibility::ACCESSIBLE: hex.setState(HexState::FREE);
-        break; case EAccessibility::OBSTACLE: hex.setState(HexState::OBSTACLE);
-        break; case EAccessibility::ALIVE_STACK: hex.setState(HexState::OCCUPIED);
+        break; case EAccessibility::ACCESSIBLE: hex.setState(Export::HexState::FREE);
+        break; case EAccessibility::OBSTACLE: hex.setState(Export::HexState::OBSTACLE);
+        break; case EAccessibility::ALIVE_STACK: hex.setState(Export::HexState::OCCUPIED);
         // XXX: unhandled hex states
         // case EAccessibility::DESTRUCTIBLE_WALL:
         // case EAccessibility::GATE:
@@ -399,17 +173,41 @@ namespace MMAI {
           );
         }
 
+        //
+        //
+        //
+
+        const CStack* h_cstack = nullptr;
+        auto it = hexstacks.find(hex.bhex);
+        if (it != hexstacks.end()) {
+            h_cstack = it->second;
+            auto qit = std::find(queue.begin(), queue.end(), h_cstack->unitId());
+            auto qpos = (qit == queue.end()) ? QSIZE-1 : qit - queue.begin();
+            hex.setCStackAndAttrs(h_cstack, qpos);
+        }
+
+        auto meleeDistanceFromStackResets = std::array<std::bitset<7>, 2> {};
+        auto maybeResetDistanceFromStack = [&hex, &meleeDistanceFromStackResets](bool isActive, bool isRight, int slot) {
+            if (meleeDistanceFromStackResets.at(isRight).test(slot))
+                return;
+
+            hex.setMeleeDistanceFromStack(isActive, isRight, slot, Export::MeleeDistance::NA);
+            meleeDistanceFromStackResets.at(isRight).set(slot);
+        };
+
         for (const auto& [cstack, stackinfo] : stackinfos) {
             auto isActive = cstack == astack;
-            auto isFriendly = cstack->getOwner() == astack->getOwner();
+            auto isRight = bool(cstack->unitSide());  // 1 = right = true
             auto slot = cstack->unitSlot();
 
             // Stack exists => set default values to 0 instead of N/A
             // Some of those values them will be updated to true later
-            hex.setReachableByStack(isActive, isFriendly, slot, false);
-            hex.setMeleeableByStack(isActive, isFriendly, slot, Export::DmgMod::ZERO);
-            hex.setShootableByStack(isActive, isFriendly, slot, Export::DmgMod::ZERO);
-            hex.setNextToStack(isActive, isFriendly, slot, false);
+            hex.setMeleeableByStack(isActive, isRight, slot, Export::DmgMod::ZERO);
+            hex.setShootDistanceFromStack(isActive, isRight, slot, Export::ShootDistance::NA);
+
+            // XXX: MELEE_DISTANCE_FROM for THIS cstack may have been set in
+            //      a previous iteration (previous cstack) for an n_cstack
+            maybeResetDistanceFromStack(isActive, isRight, slot);
 
             if (stackinfo.canshoot) {
                 // stack can shoot (not blocked & has ammo)
@@ -429,38 +227,99 @@ namespace MMAI {
                 //      would do FULL dmg. But that's also an edge case.
                 //      => when calculating, pretend that the shooter is 1-hex.
                 //
-                auto mod = (stackinfo.noDistancePenalty || BattleHex::getDistance(cstack->getPosition(), bh) <= 10)
-                    ? Export::DmgMod::FULL
-                    : Export::DmgMod::HALF;
+                auto dist = (stackinfo.noDistancePenalty || BattleHex::getDistance(cstack->getPosition(), bh) <= 10)
+                    ? Export::ShootDistance::NEAR
+                    : Export::ShootDistance::FAR;
 
-                hex.setShootableByStack(isActive, isFriendly, slot, mod);
+                hex.setShootDistanceFromStack(isActive, isRight, slot, dist);
+
+                if (h_cstack && h_cstack->unitSide() != cstack->unitSide())
+                    hex.setActionForStack(isActive, isRight, slot, HexAction::SHOOT);
             }
 
-            auto isReachable = IsReachable(bh, stackinfo);
-            auto onPosition = cstack->coversPos(bh);
+            auto isReachable = IsReachable(hex.bhex, stackinfo);
+            if (isReachable)
+                hex.setActionForStack(isActive, isRight, slot, HexAction::MOVE);
 
-            if (isReachable) {
-                hex.setReachableByStack(isActive, isFriendly, slot, true);
+            const auto& nbhexes = NearbyHexes(hex.bhex);
 
-                // although hex may already stand on hex, it be unable to
-                // move on it (e.g. that is its rear hex and there's no space)
-                if (isActive && isReachable) hex.hexactmask.at(EI(HexAction::MOVE)) = true;
+            // once we've identified that cstack can attack hex from n_bhex,
+            // there's no need to check the remaining n_bhexes
+            bool meleeableAlreadySetForStack = false;
+
+            // Special case: a stack is covering both hexes at "2" and "1"
+            // We must set "2" here (NEAR):
+            // . . 2 1 . .
+            //  . X ~ . .
+            // => iterate hexactions in reverse, so "FAR" are processed first
+
+            for (int i=nbhexes.size()-1; i>=0; i--) {
+                auto &n_bhex = nbhexes.at(i);
+                if (!n_bhex.isAvailable())
+                    continue;
+
+                auto hexaction = HexAction(i);
+
+                if (!meleeableAlreadySetForStack && IsReachable(n_bhex, stackinfo)) {
+                    if (hexaction <= HexAction::AMOVE_TL) {
+                        hex.setMeleeableByStack(isActive, isRight, slot, stackinfo.meleemod);
+                        meleeableAlreadySetForStack = true;
+                    } else if (hexaction <= HexAction::AMOVE_2BR) { // hexaction is 2TR/2R/2BR
+                        // XXX: don't combine the nested ifs
+                        // Perspective is mirrored: attack is n_bhex->bhex
+                        // => actual attack action is 2BL/2L/2TL
+                        // only wide L stacks can perform such an action
+                        if (!isRight && cstack->doubleWide()) {
+                            hex.setMeleeableByStack(isActive, false, slot, stackinfo.meleemod);
+                            meleeableAlreadySetForStack = true;
+                        }
+                    } else { // hexaction is 2BL/2L/2TL
+                        // actual attack action is mirrored: 2TR/2R/2BR
+                        // only wide R stacks can perform such an action
+                        if (isRight && cstack->doubleWide()) {
+                            hex.setMeleeableByStack(isActive, true, slot, stackinfo.meleemod);
+                            meleeableAlreadySetForStack = true;
+                        }
+                    }
+                }
+
+                auto it = hexstacks.find(n_bhex);
+                if (it == hexstacks.end())
+                    continue;
+
+                auto &n_cstack = it->second;
+                auto n_isActive = n_cstack == astack;
+                auto n_isRight = bool(n_cstack->unitSide());  // 1 = right = true
+                auto n_slot = n_cstack->unitSlot();
+
+                if (isReachable && cstack->unitSide() != n_cstack->unitSide()) {
+                    maybeResetDistanceFromStack(n_isActive, n_isRight, n_slot);
+
+                    if (hexaction <= HexAction::AMOVE_TL) {
+                        hex.setMeleeDistanceFromStack(n_isActive, n_isRight, n_slot, Export::MeleeDistance::NEAR);
+                        ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
+                        hex.setActionForStack(isActive, isRight, slot, hexaction);
+                    } else if (hexaction <= HexAction::AMOVE_2BR) {
+                        // only wide R stacks can perform 2TR/2R/2BR attacks
+                        if (isRight && cstack->doubleWide()) {
+                            hex.setMeleeDistanceFromStack(n_isActive, false, n_slot, Export::MeleeDistance::FAR);
+                            ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
+                            hex.setActionForStack(isActive, isRight, slot, hexaction);
+                        }
+                    } else {
+                        // only wide L stacks can perform 2TL/2L/2BL attacks
+                        if (!isRight && cstack->doubleWide()) {
+                            hex.setMeleeDistanceFromStack(n_isActive, true, n_slot, Export::MeleeDistance::FAR);
+                            ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
+                            hex.setActionForStack(isActive, isRight, slot, hexaction);
+                        }
+                    }
+                }
             }
 
-            ProcessNeighbouringHexes(hex, astack, stackinfos, hexstacks);
-
-            if (!onPosition) continue;
-
-            // active stack can shoot at this enemy
-            if (!isFriendly && stackinfos.at(astack).canshoot)
-                hex.hexactmask.at(EI(HexAction::SHOOT)) = true;
-
-            auto it = std::find(queue.begin(), queue.end(), cstack->unitId());
-            auto qpos = (it == queue.end()) ? QSIZE-1 : it - queue.begin();
-            hex.setCStackAndAttrs(cstack, qpos);
-
+            expect(meleeDistanceFromStackResets.at(isRight).test(slot), "uninitialized MELEE_DISTANCE_FROM_* attributes");
+            hex.finalizeActionMaskForStack(isActive, isRight, slot);
         }
-
 
         return hex;
     }
@@ -552,8 +411,8 @@ namespace MMAI {
 
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {
-                for (auto &m : hex.hexactmask) {
-                    res.at(i++) = m;
+                for (int m=0; m<hex.hexactmask.size(); m++) {
+                    res.at(i++) = hex.hexactmask.test(m);
                 }
             }
         }
@@ -577,11 +436,11 @@ namespace MMAI {
             for (auto &hex : hexrow) {
                 switch(ainfo.at(hex.bhex.hex)) {
                 break; case EAccessibility::ACCESSIBLE:
-                    hex.setState(HexState::FREE);
+                    hex.setState(Export::HexState::FREE);
                 break; case EAccessibility::OBSTACLE:
-                    hex.setState(HexState::OBSTACLE);
+                    hex.setState(Export::HexState::OBSTACLE);
                 break; case EAccessibility::ALIVE_STACK: {
-                    hex.setState(HexState::OCCUPIED);
+                    hex.setState(Export::HexState::OCCUPIED);
 
                     // nothing else needed here: no active stack
                     // => no special move case

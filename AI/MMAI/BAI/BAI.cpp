@@ -178,7 +178,8 @@ namespace MMAI {
         // => return errmask and raise in Gym env if errmask != 0
         auto &bhex = action.hex->bhex;
         auto &cstack = action.hex->cstack;
-        if (action.hex->hexactmask.at(EI(action.hexaction))) {
+        auto mask = HexActMask(action.hex->attr(Export::Attribute::HEX_ACTION_MASK_FOR_ACT_STACK));
+        if (mask.test(EI(action.hexaction))) {
             // Action is VALID
             // XXX: Do minimal asserts to prevent bugs with nullptr deref
             //      Server will log any attempted invalid actions otherwise
@@ -260,7 +261,7 @@ namespace MMAI {
                 auto a = ainfo.at(action.hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
                     auto hs = hex.getState();
-                    ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
+                    ASSERT(hs == Export::HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_BLOCKED);
                     break;
                 } else if (a == EAccessibility::ALIVE_STACK) {
@@ -282,13 +283,6 @@ namespace MMAI {
 
                 // only remaining is ACCESSIBLE
                 expect(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: %d", a);
-
-                if (action.hexaction == HexAction::MOVE) {
-                    auto reachable = hex.attr(Export::Attribute::HEX_REACHABLE_BY_ACTIVE_STACK);
-                    ASSERT(reachable == 0, "mask prevented MOVE to a reachable bhex" + debugInfo(action, bf.astack, nullptr));
-                    res.addError(ErrType::HEX_UNREACHABLE);
-                    break;
-                }
 
                 auto nbh = BattleHex{};
 
@@ -358,10 +352,9 @@ namespace MMAI {
         for (int i=0; i < action.hex->attrs.size(); i++)
             info << "action.hex->attrs[" << i << "] = " << EI(action.hex->attrs[i]) << "\n";
 
-        info << "action.hex->hexactmask = [";
-        for (const auto& b : action.hex->hexactmask)
-            info << int(b) << ",";
-        info << "]\n";
+        info << "action.hex->hexactmask = ";
+        info << HexActMask(action.hex->attr(Export::Attribute::HEX_ACTION_MASK_FOR_ACT_STACK)).to_string();
+        info << "\n";
 
         auto cstack = action.hex->cstack;
         if (cstack) {

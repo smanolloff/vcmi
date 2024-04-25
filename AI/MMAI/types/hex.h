@@ -20,7 +20,7 @@
 #include "battle/BattleHex.h"
 #include "export.h"
 #include "hexactmask.h"
-#include "hexstate.h"
+#include "types/hexaction.h"
 
 namespace MMAI {
     using HexAttrs = std::array<int, EI(Export::Attribute::_count)>;
@@ -41,7 +41,8 @@ namespace MMAI {
         BattleHex bhex;
         const CStack * cstack = nullptr;
         HexAttrs attrs;
-        HexActMask hexactmask;
+        HexActMask hexactmask; // for active stack only
+        std::array<std::array<HexActMask, 7>, 2> hexactmasks{}; // 7 for left, 7 for right stacks
 
         std::string name() const;
 
@@ -54,31 +55,29 @@ namespace MMAI {
 
         int getX() const;
         int getY() const;
-        HexState getState() const;
+        Export::HexState getState() const;
 
         void setX(int x);
         void setY(int x);
-        void setState(HexState state);
+        void setState(Export::HexState state);
 
-        void setReachableByStack(bool isActive, bool isFriendly, int slot, bool value);
-        void setReachableByActiveStack(bool value);
-        void setReachableByFriendlyStack(int slot, bool value);
-        void setReachableByEnemyStack(int slot, bool value);
+        void finalizeActionMaskForStack(bool isActive, bool isRight, int slot);
+        void setActionForStack(bool isActive, bool isRight, int slot, HexAction action);
 
-        void setMeleeableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod value);
-        void setMeleeableByActiveStack(Export::DmgMod value);
-        void setMeleeableByFriendlyStack(int slot, Export::DmgMod value);
-        void setMeleeableByEnemyStack(int slot, Export::DmgMod value);
+        void setMeleeableByStack(bool isActive, bool isRight, int slot, Export::DmgMod mod);
+        void setMeleeableByRStack(int slot, Export::DmgMod mod);
+        void setMeleeableByLStack(int slot, Export::DmgMod mod);
+        void setMeleeableByAStack(Export::DmgMod mod);
 
-        void setShootableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod value);
-        void setShootableByActiveStack(Export::DmgMod value);
-        void setShootableByFriendlyStack(int slot, Export::DmgMod value);
-        void setShootableByEnemyStack(int slot, Export::DmgMod value);
+        void setShootDistanceFromStack(bool isActive, bool isRight, int slot, Export::ShootDistance distance);
+        void setShootDistanceFromRStack(int slot, Export::ShootDistance distance);
+        void setShootDistanceFromLStack(int slot, Export::ShootDistance distance);
+        void setShootDistanceFromAStack(Export::ShootDistance distance);
 
-        void setNextToStack(bool isActive, bool isFriendly, int slot, bool value);
-        void setNextToActiveStack(bool value);
-        void setNextToFriendlyStack(int slot, bool value);
-        void setNextToEnemyStack(int slot, bool value);
+        void setMeleeDistanceFromStack(bool isActive, bool isRight, int slot, Export::MeleeDistance distance);
+        void setMeleeDistanceFromRStack(int slot, Export::MeleeDistance distance);
+        void setMeleeDistanceFromLStack(int slot, Export::MeleeDistance distance);
+        void setMeleeDistanceFromAStack(Export::MeleeDistance distance);
 
         void setCStackAndAttrs(const CStack* cstack_, int qpos);
     };

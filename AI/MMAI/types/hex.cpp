@@ -16,6 +16,7 @@
 
 #include "types/hex.h"
 #include "export.h"
+#include "types/hexactmask.h"
 
 namespace MMAI {
     using A = Export::Attribute;
@@ -34,22 +35,21 @@ namespace MMAI {
 
     Hex::Hex() {
         attrs.fill(ATTR_UNSET);
-        hexactmask.fill(false);
     }
 
     int Hex::attr(Export::Attribute a) const { return attrs.at(EI(a)); };
     void Hex::setattr(Export::Attribute a, int value) { attrs.at(EI(a)) = value; };
 
-    bool Hex::isFree() const { return getState() == HexState::FREE; }
-    bool Hex::isObstacle() const { return getState() == HexState::OBSTACLE; }
-    bool Hex::isOccupied() const { return getState() == HexState::OCCUPIED; }
+    bool Hex::isFree() const { return getState() == Export::HexState::FREE; }
+    bool Hex::isObstacle() const { return getState() == Export::HexState::OBSTACLE; }
+    bool Hex::isOccupied() const { return getState() == Export::HexState::OCCUPIED; }
 
     int Hex::getX() const { return attrs.at(EI(Export::Attribute::HEX_X_COORD)); }
     int Hex::getY() const { return attrs.at(EI(Export::Attribute::HEX_Y_COORD)); }
-    HexState Hex::getState() const { return HexState(attrs.at(EI(A::HEX_STATE))); }
+    Export::HexState Hex::getState() const { return Export::HexState(attrs.at(EI(A::HEX_STATE))); }
 
     std::string Hex::name() const {
-        return "(" + std::to_string(1 + getX()) + "," + std::to_string(1 + getY()) + ")";
+        return "(" + std::to_string(getY()) + "," + std::to_string(getX()) + ")";
     }
 
     //
@@ -59,108 +59,100 @@ namespace MMAI {
     void Hex::setX(int x) { attrs.at(EI(Export::Attribute::HEX_X_COORD)) = x; }
     void Hex::setY(int y) { attrs.at(EI(Export::Attribute::HEX_Y_COORD)) = y; }
 
-    void Hex::setState(HexState state) {
+    void Hex::setState(Export::HexState state) {
         attrs.at(EI(A::HEX_STATE)) = EI(state);
     }
 
     //
-    // REACHABLE_BY_*
+    // actmasks
+    // XXX: those must be manually copied to HEX_ACTION_MASK_FOR_ attribute
+    //      prior to serialization
     //
 
-    void Hex::setReachableByStack(bool isActive, bool isFriendly, int slot, bool value) {
-        if (isFriendly) {
-            setReachableByFriendlyStack(slot, value);
-            if (isActive) setReachableByActiveStack(value);
-        } else {
-            setReachableByEnemyStack(slot, value);
-        }
+    void Hex::finalizeActionMaskForStack(bool isActive, bool isRight, int slot) {
+        if (isActive)
+            attrs.at(EI(A::HEX_ACTION_MASK_FOR_ACT_STACK)) = hexactmask.to_ulong();
+
+        if (isRight)
+            attrs.at(slot + EI(A::HEX_ACTION_MASK_FOR_R_STACK_0)) = hexactmasks.at(1).at(slot).to_ulong();
+        else
+            attrs.at(slot + EI(A::HEX_ACTION_MASK_FOR_L_STACK_0)) = hexactmasks.at(0).at(slot).to_ulong();
     }
 
-    void Hex::setReachableByActiveStack(bool value) {
-        attrs.at(EI(A::HEX_REACHABLE_BY_ACTIVE_STACK)) = value;
-    }
+    void Hex::setActionForStack(bool isActive, bool isRight, int slot, HexAction action) {
+        if (isActive)
+            hexactmask.set(EI(action));
 
-    void Hex::setReachableByFriendlyStack(int slot, bool value) {
-        attrs.at(slot + EI(A::HEX_REACHABLE_BY_FRIENDLY_STACK_0)) = value;
-    }
-
-    void Hex::setReachableByEnemyStack(int slot, bool value) {
-        attrs.at(slot + EI(A::HEX_REACHABLE_BY_ENEMY_STACK_0)) = value;
+        hexactmasks.at(isRight).at(slot).set(EI(action));
     }
 
     //
     // MELEEABLE_BY_*
     //
 
-    void Hex::setMeleeableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod mod) {
-        if (isFriendly) {
-            setMeleeableByFriendlyStack(slot, mod);
-            if (isActive) setMeleeableByActiveStack(mod);
-        } else {
-            setMeleeableByEnemyStack(slot, mod);
-        }
+    void Hex::setMeleeableByStack(bool isActive, bool isRight, int slot, Export::DmgMod mod) {
+        if (isActive) setMeleeableByAStack(mod);
+        isRight
+            ? setMeleeableByRStack(slot, mod)
+            : setMeleeableByLStack(slot, mod);
     }
 
-    void Hex::setMeleeableByActiveStack(Export::DmgMod value) {
-        attrs.at(EI(A::HEX_MELEEABLE_BY_ACTIVE_STACK)) = EI(value);
+    void Hex::setMeleeableByAStack(Export::DmgMod mod) {
+        attrs.at(EI(A::HEX_MELEEABLE_BY_ACT_STACK)) = EI(mod);
     }
 
-    void Hex::setMeleeableByFriendlyStack(int slot, Export::DmgMod value) {
-        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_0)) = EI(value);
+    void Hex::setMeleeableByRStack(int slot, Export::DmgMod mod) {
+        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_R_STACK_0)) = EI(mod);
     }
 
-    void Hex::setMeleeableByEnemyStack(int slot, Export::DmgMod value) {
-        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_ENEMY_STACK_0)) = EI(value);
+    void Hex::setMeleeableByLStack(int slot, Export::DmgMod mod) {
+        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_L_STACK_0)) = EI(mod);
     }
 
     //
     // SHOOTABLE_BY_*
     //
 
-    void Hex::setShootableByStack(bool isActive, bool isFriendly, int slot, Export::DmgMod mod) {
-        if (isFriendly) {
-            setShootableByFriendlyStack(slot, mod);
-            if (isActive) setShootableByActiveStack(mod);
-        } else {
-            setShootableByEnemyStack(slot, mod);
-        }
+    void Hex::setShootDistanceFromStack(bool isActive, bool isRight, int slot, Export::ShootDistance distance) {
+        if (isActive) setShootDistanceFromAStack(distance);
+        isRight
+            ? setShootDistanceFromRStack(slot, distance)
+            : setShootDistanceFromLStack(slot, distance);
     }
 
-    void Hex::setShootableByActiveStack(Export::DmgMod value) {
-        attrs.at(EI(A::HEX_SHOOTABLE_BY_ACTIVE_STACK)) = EI(value);
+    void Hex::setShootDistanceFromAStack(Export::ShootDistance distance) {
+        attrs.at(EI(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK)) = EI(distance);
     }
 
-    void Hex::setShootableByFriendlyStack(int slot, Export::DmgMod value) {
-        attrs.at(slot + EI(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0)) = EI(value);
+    void Hex::setShootDistanceFromRStack(int slot, Export::ShootDistance distance) {
+        attrs.at(slot + EI(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0)) = EI(distance);
     }
 
-    void Hex::setShootableByEnemyStack(int slot, Export::DmgMod value) {
-        attrs.at(slot + EI(A::HEX_SHOOTABLE_BY_ENEMY_STACK_0)) = EI(value);
+    void Hex::setShootDistanceFromLStack(int slot, Export::ShootDistance distance) {
+        attrs.at(slot + EI(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0)) = EI(distance);
     }
 
     //
     // NEXT_TO_*
     //
 
-    void Hex::setNextToStack(bool isActive, bool isFriendly, int slot, bool value) {
-        if (isFriendly) {
-            setNextToFriendlyStack(slot, value);
-            if (isActive) setNextToActiveStack(value);
-        } else {
-            setNextToEnemyStack(slot, value);
-        }
+    void Hex::setMeleeDistanceFromStack(bool isActive, bool isRight, int slot, Export::MeleeDistance distance) {
+        if (isActive) setMeleeDistanceFromAStack(distance);
+        isRight
+            ? setMeleeDistanceFromRStack(slot, distance)
+            : setMeleeDistanceFromLStack(slot, distance);
     }
 
-    void Hex::setNextToActiveStack(bool value) {
-        attrs.at(EI(A::HEX_NEXT_TO_ACTIVE_STACK)) = value;
+    void Hex::setMeleeDistanceFromAStack(Export::MeleeDistance distance) {
+        attrs.at(EI(A::HEX_MELEE_DISTANCE_FROM_ACT_STACK)) = EI(distance);
     }
 
-    void Hex::setNextToFriendlyStack(int slot, bool value) {
-        attrs.at(slot + EI(A::HEX_NEXT_TO_FRIENDLY_STACK_0)) = value;
+    void Hex::setMeleeDistanceFromRStack(int slot, Export::MeleeDistance distance) {
+        attrs.at(slot + EI(A::HEX_MELEE_DISTANCE_FROM_R_STACK_0)) = EI(distance);
     }
 
-    void Hex::setNextToEnemyStack(int slot, bool value) {
-        attrs.at(slot + EI(A::HEX_NEXT_TO_ENEMY_STACK_0)) = value;
+    void Hex::setMeleeDistanceFromLStack(int slot, Export::MeleeDistance distance) {
+        attrs.at(slot + EI(A::HEX_MELEE_DISTANCE_FROM_L_STACK_0)) = EI(distance);
     }
 
     void Hex::setCStackAndAttrs(const CStack* cstack_, int qpos) {

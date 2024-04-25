@@ -1,0 +1,89 @@
+@startuml "vcmi-1.32-obs-update-flow"
+title "VCMI-1.3.2 flow for observation update WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+
+start
+
+skinparam DefaultFontName monospaced
+
+
+if (h_cstack = hexstacks.at(bhex)) then
+  : //set// hex.HEX_STACK_*(h_cstack);
+  note
+    * HEX_REACHABLE_BY
+    * HEX_MELEEABLE_BY
+    * HEX_SHOOT_DISTANCE_FROM
+    * HEX_MELEE_DISTANCE_FROM
+    * --STACK--
+    * HEX_ACTION_MASK (MOVE)
+    * HEX_ACTION_MASK (AMOVE)
+    * HEX_ACTION_MASK (SHOOT)
+  end note
+endif
+
+while (for (cstack : allstacks))
+  if (if (cstack.canshoot)) then
+    : //set// hex.HEX_SHOOT_DISTANCE_FROM_cstack;
+
+    note
+      * HEX_MELEEABLE_BY
+      * --HEX_SHOOT_DISTANCE_FROM--
+      * HEX_MELEE_DISTANCE_FROM
+      * HEX_ACTION_MASK (MOVE)
+      * HEX_ACTION_MASK (AMOVE)
+      * HEX_ACTION_MASK (SHOOT)
+    end note
+
+    if (if (h_cstack && h_cstack.side != cstack.side)) then
+      : //set// hex.HEX_ACTION_MASK_FOR_cstack(SHOOT);
+
+      note
+        * HEX_MELEEABLE_BY
+        * HEX_MELEE_DISTANCE_FROM
+        * HEX_ACTION_MASK (MOVE)
+        * HEX_ACTION_MASK (AMOVE)
+        * --HEX_ACTION_MASK (SHOOT)--
+      end note
+    endif
+  endif
+  note left #yellow: 15 loops
+
+  if (if (IsReachable(bhex, cstack))) then
+    : //set// hex.HEX_ACTION_MASK_FOR_cstack(MOVE);
+
+    note
+      * HEX_MELEEABLE_BY
+      * HEX_MELEE_DISTANCE_FROM
+      * --HEX_ACTION_MASK (MOVE)--
+      * HEX_ACTION_MASK (AMOVE)
+    end note
+  endif
+
+  while (for (n_bhex : NearbyHexes(hex)))
+    if (IsReachable(n_bhex, cstack)) then
+      : //set// hex.HEX_MELEEABLE_BY_ncstack;
+
+      note
+        //XXX: take into account if n_bhex is special//
+        * --HEX_MELEEABLE_BY--
+        * HEX_MELEE_DISTANCE_FROM
+        * HEX_ACTION_MASK (AMOVE)
+      end note
+    endif
+    note left #yellow: 12 loops
+
+    if (n_cstack = hexstacks.at(n_bhex)) then
+      if (if (IsReachable(n_bhex, cstack) && cstack.side != n_cstack.side)) then
+        : //set// hex.HEX_MELEE_DISTANCE_FROM_n_cstack;
+        : //set// hex.HEX_ACTION_MASK_FOR_cstack(AMOVE);
+
+        note
+          * --HEX_MELEE_DISTANCE_FROM--
+          * --HEX_ACTION_MASK (AMOVE)--
+        end note
+      endif
+    endif
+
+  endwhile
+endwhile
+: next hex;
+@enduml

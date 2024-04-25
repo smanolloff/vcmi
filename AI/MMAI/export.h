@@ -74,6 +74,35 @@ namespace MMAI::Export {
         _count
     };
 
+    // Possible values for HEX_SHOOT_DISTANCE_FROM_STACK_* attributes
+    enum class ShootDistance {
+        NA,         // can't shoot
+        FAR,        // >10 hexes
+        NEAR,       // <= 10 hexes (or has NO_RANGE_PENALTY bonus)
+        _count
+    };
+
+    // Possible values for HEX_MELEE_DISTANCE_FROM_STACK_* attributes
+    enum class MeleeDistance {
+        NA,         //         FAR:        |    NEAR:
+        FAR,        // . . . 1 . . 1 . . . | . . 2 2 . . . .
+        NEAR,       //  . X ~ 1 . 1 ~ X .  |  . 2 X 2 . . .
+                    // . . . 1 . . 1 . . . | . . 2 2 . . . .
+
+        // XXX: in case both are possible, NEAR is set
+        // e.g.     . . 2 1 . .
+        //           . X ~ . .
+        //          . . . . . .
+        //
+        // DRAGON_BREATH:   // too hard to calculate
+        // . . . 3 . 3 . . . . (requires a friendly stack on the * hexes)
+        //  . . . * * . . . .
+        // . 3 * ~ X * 3 . . .
+        //  . . . * * . . . .
+        // . . . 3   3 . . . .
+        _count
+    };
+
     enum class Encoding : int {
         NUMERIC,            // see encodeNumeric
         NUMERIC_SQRT,       // see encodeNumericSqrt
@@ -82,93 +111,94 @@ namespace MMAI::Export {
         FLOATING            // see encodeCategorical
     };
 
+    // For description on each attribute, see the comments for HEX_ENCODING
     enum class Attribute : int {
-        HEX_Y_COORD,                            // 0..10
-        HEX_X_COORD,                            // 0..14
-        HEX_STATE,                              // see HexState
-        HEX_REACHABLE_BY_ACTIVE_STACK,          // can active stack reach it?
-        HEX_REACHABLE_BY_FRIENDLY_STACK_0,      // can friendly stack0 reach it?
-        HEX_REACHABLE_BY_FRIENDLY_STACK_1,      //
-        HEX_REACHABLE_BY_FRIENDLY_STACK_2,      //
-        HEX_REACHABLE_BY_FRIENDLY_STACK_3,      //
-        HEX_REACHABLE_BY_FRIENDLY_STACK_4,      //
-        HEX_REACHABLE_BY_FRIENDLY_STACK_5,      //
-        HEX_REACHABLE_BY_FRIENDLY_STACK_6,      //
-        HEX_REACHABLE_BY_ENEMY_STACK_0,         // can enemy stack0 reach it?
-        HEX_REACHABLE_BY_ENEMY_STACK_1,         //
-        HEX_REACHABLE_BY_ENEMY_STACK_2,         //
-        HEX_REACHABLE_BY_ENEMY_STACK_3,         //
-        HEX_REACHABLE_BY_ENEMY_STACK_4,         //
-        HEX_REACHABLE_BY_ENEMY_STACK_5,         //
-        HEX_REACHABLE_BY_ENEMY_STACK_6,         //
-        HEX_MELEEABLE_BY_ACTIVE_STACK,          // can active stack melee attack hex? (0=no, 1=half, 2=full dmg)
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_0,      // can friendly stack0 shoot at this hex? (0=no, 1=half, 2=full dmg)
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_1,      //
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_2,      //
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_3,      //
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_4,      //
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_5,      //
-        HEX_MELEEABLE_BY_FRIENDLY_STACK_6,      //
-        HEX_MELEEABLE_BY_ENEMY_STACK_0,         // can enemy stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
-        HEX_MELEEABLE_BY_ENEMY_STACK_1,         //
-        HEX_MELEEABLE_BY_ENEMY_STACK_2,         //
-        HEX_MELEEABLE_BY_ENEMY_STACK_3,         //
-        HEX_MELEEABLE_BY_ENEMY_STACK_4,         //
-        HEX_MELEEABLE_BY_ENEMY_STACK_5,         //
-        HEX_MELEEABLE_BY_ENEMY_STACK_6,         //
-        HEX_SHOOTABLE_BY_ACTIVE_STACK,          // can active stack shoot at this hex? (0=no, 1=half, 2=full dmg)
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_0,      // can friendly stack0 shoot at this hex? (0=no, 1=half, 2=full dmg)
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_1,      //
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_2,      //
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_3,      //
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_4,      //
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_5,      //
-        HEX_SHOOTABLE_BY_FRIENDLY_STACK_6,      //
-        HEX_SHOOTABLE_BY_ENEMY_STACK_0,         // can enemy stack0 shoot at this hex? (0=no, 1=half, 2=full dmg)
-        HEX_SHOOTABLE_BY_ENEMY_STACK_1,         //
-        HEX_SHOOTABLE_BY_ENEMY_STACK_2,         //
-        HEX_SHOOTABLE_BY_ENEMY_STACK_3,         //
-        HEX_SHOOTABLE_BY_ENEMY_STACK_4,         //
-        HEX_SHOOTABLE_BY_ENEMY_STACK_5,         //
-        HEX_SHOOTABLE_BY_ENEMY_STACK_6,         //
-        HEX_NEXT_TO_ACTIVE_STACK,               // is active stack on a nearby hex?
-        HEX_NEXT_TO_FRIENDLY_STACK_0,           // is friendly stack0 on a nearby hex?
-        HEX_NEXT_TO_FRIENDLY_STACK_1,           //
-        HEX_NEXT_TO_FRIENDLY_STACK_2,           //
-        HEX_NEXT_TO_FRIENDLY_STACK_3,           //
-        HEX_NEXT_TO_FRIENDLY_STACK_4,           //
-        HEX_NEXT_TO_FRIENDLY_STACK_5,           //
-        HEX_NEXT_TO_FRIENDLY_STACK_6,           //
-        HEX_NEXT_TO_ENEMY_STACK_0,              // is enemy stack0 on a nearby hex?
-        HEX_NEXT_TO_ENEMY_STACK_1,              //
-        HEX_NEXT_TO_ENEMY_STACK_2,              //
-        HEX_NEXT_TO_ENEMY_STACK_3,              //
-        HEX_NEXT_TO_ENEMY_STACK_4,              //
-        HEX_NEXT_TO_ENEMY_STACK_5,              //
-        HEX_NEXT_TO_ENEMY_STACK_6,              //
-        STACK_QUANTITY,                         //
-        STACK_ATTACK,                           //
-        STACK_DEFENSE,                          //
-        STACK_SHOTS,                            //
-        STACK_DMG_MIN,                          //
-        STACK_DMG_MAX,                          //
-        STACK_HP,                               //
-        STACK_HP_LEFT,                          //
-        STACK_SPEED,                            //
-        STACK_WAITED,                           //
-        STACK_QUEUE_POS,                        // 0=active stack
-        STACK_RETALIATIONS_LEFT,                //
-        STACK_SIDE,                             // 0=attacker, 1=defender
-        STACK_SLOT,                             // 0..6
-        STACK_CREATURE_TYPE,                    // 0..144
-        STACK_AI_VALUE_TENTH,                   // divided by 10 (ie. imp=5, not 50)
-        STACK_IS_ACTIVE,                        //
-        STACK_IS_WIDE,                          // 1=2-hex
-        STACK_FLYING,                           // TODO
-        STACK_NO_MELEE_PENALTY,                 // TODO
-        STACK_TWO_HEX_ATTACK_BREATH,            // TODO
-        STACK_BLOCKS_RETALIATION,               // TODO
-        STACK_DEFENSIVE_STANCE,                 // TODO? means temp def bonus
+        HEX_Y_COORD,
+        HEX_X_COORD,
+        HEX_STATE,
+        HEX_ACTION_MASK_FOR_ACT_STACK,
+        HEX_ACTION_MASK_FOR_L_STACK_0,
+        HEX_ACTION_MASK_FOR_L_STACK_1,
+        HEX_ACTION_MASK_FOR_L_STACK_2,
+        HEX_ACTION_MASK_FOR_L_STACK_3,
+        HEX_ACTION_MASK_FOR_L_STACK_4,
+        HEX_ACTION_MASK_FOR_L_STACK_5,
+        HEX_ACTION_MASK_FOR_L_STACK_6,
+        HEX_ACTION_MASK_FOR_R_STACK_0,
+        HEX_ACTION_MASK_FOR_R_STACK_1,
+        HEX_ACTION_MASK_FOR_R_STACK_2,
+        HEX_ACTION_MASK_FOR_R_STACK_3,
+        HEX_ACTION_MASK_FOR_R_STACK_4,
+        HEX_ACTION_MASK_FOR_R_STACK_5,
+        HEX_ACTION_MASK_FOR_R_STACK_6,
+        HEX_MELEEABLE_BY_ACT_STACK,
+        HEX_MELEEABLE_BY_L_STACK_0,
+        HEX_MELEEABLE_BY_L_STACK_1,
+        HEX_MELEEABLE_BY_L_STACK_2,
+        HEX_MELEEABLE_BY_L_STACK_3,
+        HEX_MELEEABLE_BY_L_STACK_4,
+        HEX_MELEEABLE_BY_L_STACK_5,
+        HEX_MELEEABLE_BY_L_STACK_6,
+        HEX_MELEEABLE_BY_R_STACK_0,
+        HEX_MELEEABLE_BY_R_STACK_1,
+        HEX_MELEEABLE_BY_R_STACK_2,
+        HEX_MELEEABLE_BY_R_STACK_3,
+        HEX_MELEEABLE_BY_R_STACK_4,
+        HEX_MELEEABLE_BY_R_STACK_5,
+        HEX_MELEEABLE_BY_R_STACK_6,
+        HEX_SHOOT_DISTANCE_FROM_ACT_STACK,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_0,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_1,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_2,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_3,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_4,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_5,
+        HEX_SHOOT_DISTANCE_FROM_L_STACK_6,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_0,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_1,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_2,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_3,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_4,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_5,
+        HEX_SHOOT_DISTANCE_FROM_R_STACK_6,
+        HEX_MELEE_DISTANCE_FROM_ACT_STACK,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_0,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_1,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_2,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_3,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_4,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_5,
+        HEX_MELEE_DISTANCE_FROM_L_STACK_6,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_0,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_1,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_2,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_3,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_4,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_5,
+        HEX_MELEE_DISTANCE_FROM_R_STACK_6,
+        STACK_QUANTITY,
+        STACK_ATTACK,
+        STACK_DEFENSE,
+        STACK_SHOTS,
+        STACK_DMG_MIN,
+        STACK_DMG_MAX,
+        STACK_HP,
+        STACK_HP_LEFT,
+        STACK_SPEED,
+        STACK_WAITED,
+        STACK_QUEUE_POS,
+        STACK_RETALIATIONS_LEFT,
+        STACK_SIDE,
+        STACK_SLOT,
+        STACK_CREATURE_TYPE,
+        STACK_AI_VALUE_TENTH,
+        STACK_IS_ACTIVE,
+        STACK_IS_WIDE,
+        STACK_FLYING,
+        STACK_NO_MELEE_PENALTY,
+        STACK_TWO_HEX_ATTACK_BREATH,
+        STACK_BLOCKS_RETALIATION,
+        STACK_DEFENSIVE_STANCE,
         // STACK_MORALE,                           // not used
         // STACK_LUCK,                             // not used
         // STACK_FREE_SHOOTING,                    // not used
@@ -258,92 +288,92 @@ namespace MMAI::Export {
     // XXX: It contains tuple primitives instead of OneHot objects, because
     //      this enables compile-time checks for preventing human errors.
     constexpr HexEncoding HEX_ENCODING {
-        ToE4(A::HEX_Y_COORD,                       E::CATEGORICAL,  11),    //
-        ToE4(A::HEX_X_COORD,                       E::CATEGORICAL,  15),    //
-        ToE4(A::HEX_STATE,                         E::CATEGORICAL,  3),     // see hexstate.h
-        ToE4(A::HEX_REACHABLE_BY_ACTIVE_STACK,     E::CATEGORICAL,  2),     // can active stack reach it?
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_0, E::CATEGORICAL,  2),     // can friendly stack0 reach it?
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_1, E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_2, E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_3, E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_4, E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_5, E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_FRIENDLY_STACK_6, E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_0,    E::CATEGORICAL,  2),     // can enemy stack0 reach it?
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_1,    E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_2,    E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_3,    E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_4,    E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_5,    E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_REACHABLE_BY_ENEMY_STACK_6,    E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_MELEEABLE_BY_ACTIVE_STACK,     E::CATEGORICAL,  3),     // can active stack melee at this hex? (0=no, 1=half, 2=full dmg)
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_0, E::CATEGORICAL,  3),     // can friendly stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_1, E::CATEGORICAL,  3),     // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_2, E::CATEGORICAL,  3),     //      It's all about whether the stack can reach a NEARBY hex
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_3, E::CATEGORICAL,  3),     //      Should it be false for obstacles?
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_4, E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_5, E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_FRIENDLY_STACK_6, E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_0,    E::CATEGORICAL,  3),     // can enemy stack0 melee attack hex? XXX: see note above
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_1,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_2,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_3,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_4,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_5,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_MELEEABLE_BY_ENEMY_STACK_6,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ACTIVE_STACK,     E::CATEGORICAL,  3),     // can active stack shoot at this hex? (0=no, 1=half, 2=full dmg)
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_0, E::CATEGORICAL,  3),     // can friendly stack0 shoot at this hex? (0=no, 1=half, 2=full dmg)
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_1, E::CATEGORICAL,  3),     // XXX: SHOOTABLE hex does mean there's a stack there (could even be an obstacle)
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_2, E::CATEGORICAL,  3),     //      It's all about the distance between the shooter and this
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_3, E::CATEGORICAL,  3),     //      Should it be false for obstacles?
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_4, E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_5, E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_FRIENDLY_STACK_6, E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_0,    E::CATEGORICAL,  3),     // can enemy stack0 shoot at this hex? XXX: see note above
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_1,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_2,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_3,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_4,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_5,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_SHOOTABLE_BY_ENEMY_STACK_6,    E::CATEGORICAL,  3),     //
-        ToE4(A::HEX_NEXT_TO_ACTIVE_STACK,          E::CATEGORICAL,  2),     // is active stack0 on a nearby hex?
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_0,      E::CATEGORICAL,  2),     // is friendly stack0 on a nearby hex?
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_1,      E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_2,      E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_3,      E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_4,      E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_5,      E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_FRIENDLY_STACK_6,      E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_0,         E::CATEGORICAL,  2),     // is enemy stack0 on a nearby hex?
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_1,         E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_2,         E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_3,         E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_4,         E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_5,         E::CATEGORICAL,  2),     //
-        ToE4(A::HEX_NEXT_TO_ENEMY_STACK_6,         E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_QUANTITY,                    E::NUMERIC_SQRT, 1023),  // max for n=31 (32^2=1024)
-        ToE4(A::STACK_ATTACK,                      E::NUMERIC_SQRT, 63),    // max for n=7 (8^2=64)
-        ToE4(A::STACK_DEFENSE,                     E::NUMERIC_SQRT, 63),    // max for n=7 (8^2=64) - crystal dragon is 48 when defending
-        ToE4(A::STACK_SHOTS,                       E::NUMERIC_SQRT, 35),    // max for n=5 (6^2=36) - sharpshooter is 32
-        ToE4(A::STACK_DMG_MIN,                     E::NUMERIC_SQRT, 80),    // max for n=8 (9^2=81)
-        ToE4(A::STACK_DMG_MAX,                     E::NUMERIC_SQRT, 80),    // max for n=8 (9^2=81)
-        ToE4(A::STACK_HP,                          E::NUMERIC_SQRT, 840),   // max for n=28 (29^2=841) - crystal dragon is 800
-        ToE4(A::STACK_HP_LEFT,                     E::NUMERIC_SQRT, 840),   // max for n=28 (29^2=841) - crystal dragon is 800
-        ToE4(A::STACK_SPEED,                       E::NUMERIC,      23),    // phoenix is 22
-        ToE4(A::STACK_WAITED,                      E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_QUEUE_POS,                   E::NUMERIC,      15),    // 0..14, 0=active stack
-        ToE4(A::STACK_RETALIATIONS_LEFT,           E::NUMERIC,      3),     // inf is truncated to 2 (royal griffin)
-        ToE4(A::STACK_SIDE,                        E::CATEGORICAL,  2),     // 0=attacker, 1=defender
-        ToE4(A::STACK_SLOT,                        E::CATEGORICAL,  7),     // 0..6
-        ToE4(A::STACK_CREATURE_TYPE,               E::CATEGORICAL,  145),   // 0..144 (incl.)
-        ToE4(A::STACK_AI_VALUE_TENTH,              E::NUMERIC_SQRT, 3968),  // max for n=62 (63^2=3969) - crystal dragon is 3933
-        ToE4(A::STACK_IS_ACTIVE,                   E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_IS_WIDE,                     E::CATEGORICAL,  2),     // is this a two-hex stack?
-        ToE4(A::STACK_FLYING,                      E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_NO_MELEE_PENALTY,            E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_TWO_HEX_ATTACK_BREATH,       E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_BLOCKS_RETALIATION,          E::CATEGORICAL,  2),     //
-        ToE4(A::STACK_DEFENSIVE_STANCE,            E::CATEGORICAL,  2),     //
+        ToE4(A::HEX_Y_COORD,                        E::CATEGORICAL,     11),      //
+        ToE4(A::HEX_X_COORD,                        E::CATEGORICAL,     15),      //
+        ToE4(A::HEX_STATE,                          E::CATEGORICAL,     3),       // see HexState
+        ToE4(A::HEX_ACTION_MASK_FOR_ACT_STACK,      E::BINARY,          16384),   // see HexAction
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_0,      E::BINARY,          16384),   // 16384=14 bits
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_1,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_2,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_3,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_4,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_5,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_6,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_0,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_1,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_2,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_3,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_4,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_5,      E::BINARY,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_6,      E::BINARY,          16384),   //
+        ToE4(A::HEX_MELEEABLE_BY_ACT_STACK,         E::CATEGORICAL,     3),       // can active stack melee attack hex? (0=no, 1=half, 2=full dmg)
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_0,         E::CATEGORICAL,     3),       // can left-side stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_1,         E::CATEGORICAL,     3),       // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_2,         E::CATEGORICAL,     3),       //      It's all about whether the stack can reach a NEARBY hex
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_3,         E::CATEGORICAL,     3),       //      Should it be false for obstacles?
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_4,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_5,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_L_STACK_6,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_0,         E::CATEGORICAL,     3),       // can right-side stack0 melee attack hex? XXX: see note above
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_1,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_2,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_3,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_4,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_5,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEEABLE_BY_R_STACK_6,         E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK,  E::CATEGORICAL,     3),       // 0=n/a, 1=half_dmg (far), 2=full_dmg (near, or no range penalty)
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_1,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_2,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_3,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_4,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_5,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_6,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0,  E::CATEGORICAL,     3),       // Same as above, but for right-side shooters
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_1,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_2,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_3,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_4,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_5,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_6,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_ACT_STACK,  E::CATEGORICAL,     3),       // see MeleeDistance
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_0,  E::CATEGORICAL,     3),       // 0=n/a, 1=FAR, 2=NEAR (wide R attackers only; "~" marks their tail hex)
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_1,  E::CATEGORICAL,     3),       // . . . . . . . . . . . . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_2,  E::CATEGORICAL,     3),       //  . . 2 2 . . . . . 1 . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_3,  E::CATEGORICAL,     3),       // . . 2 X 2 . . . X ~ 1 . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_4,  E::CATEGORICAL,     3),       //  . . 2 2 . . . . . 1 . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_5,  E::CATEGORICAL,     3),       // . . . . . . . . . . . . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_6,  E::CATEGORICAL,     3),       //
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_0,  E::CATEGORICAL,     3),       // Same as above, but for right-side stacks (i.e. 2 is for wide L attackers only)
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_1,  E::CATEGORICAL,     3),       // . . . . . . . . . . . . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_2,  E::CATEGORICAL,     3),       //  . . 2 2 . . . . 1 . . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_3,  E::CATEGORICAL,     3),       // . . 2 X 2 . . . 1 ~ X . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_4,  E::CATEGORICAL,     3),       //  . . 2 2 . . . . 1 . . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_5,  E::CATEGORICAL,     3),       // . . . . . . . . . . . . .
+        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_6,  E::CATEGORICAL,     3),       //
+        ToE4(A::STACK_QUANTITY,                     E::FLOATING,        1023),    // (NUMERIC_SQRT) max for with n=31 (32^2=1024)
+        ToE4(A::STACK_ATTACK,                       E::FLOATING,        63),      // (NUMERIC_SQRT) max for with n=7 (8^2=64)
+        ToE4(A::STACK_DEFENSE,                      E::FLOATING,        63),      // (NUMERIC_SQRT) max for with n=7 (8^2=64) - crystal dragon is 48 when defending
+        ToE4(A::STACK_SHOTS,                        E::FLOATING,        35),      // (NUMERIC_SQRT) max for with n=5 (6^2=36) - sharpshooter is 32
+        ToE4(A::STACK_DMG_MIN,                      E::FLOATING,        80),      // (NUMERIC_SQRT) max for with n=8 (9^2=81)
+        ToE4(A::STACK_DMG_MAX,                      E::FLOATING,        80),      // (NUMERIC_SQRT) max for with n=8 (9^2=81)
+        ToE4(A::STACK_HP,                           E::FLOATING,        840),     // (NUMERIC_SQRT) max for with n=28 (29^2=841) - crystal dragon is 800
+        ToE4(A::STACK_HP_LEFT,                      E::FLOATING,        840),     // (NUMERIC_SQRT) max for with n=28 (29^2=841) - crystal dragon is 800
+        ToE4(A::STACK_SPEED,                        E::FLOATING,        23),      // phoenix is 22
+        ToE4(A::STACK_WAITED,                       E::FLOATING,        2),       //
+        ToE4(A::STACK_QUEUE_POS,                    E::FLOATING,        15),      // 0..14, 0=active stack
+        ToE4(A::STACK_RETALIATIONS_LEFT,            E::FLOATING,        3),       // inf is truncated to 2 (royal griffin)
+        ToE4(A::STACK_SIDE,                         E::FLOATING,        2),       // 0=attacker, 1=defender
+        ToE4(A::STACK_SLOT,                         E::CATEGORICAL,     7),       // 0..6
+        ToE4(A::STACK_CREATURE_TYPE,                E::CATEGORICAL,     145),     // 0..144 (incl.)
+        ToE4(A::STACK_AI_VALUE_TENTH,               E::FLOATING,        3968),    // max for n=62 (63^2=3969) - crystal dragon is 3933
+        ToE4(A::STACK_IS_ACTIVE,                    E::FLOATING,        2),       //
+        ToE4(A::STACK_IS_WIDE,                      E::FLOATING,        2),       // is this a two-hex stack?
+        ToE4(A::STACK_FLYING,                       E::FLOATING,        2),       //
+        ToE4(A::STACK_NO_MELEE_PENALTY,             E::FLOATING,        2),       //
+        ToE4(A::STACK_TWO_HEX_ATTACK_BREATH,        E::FLOATING,        2),       //
+        ToE4(A::STACK_BLOCKS_RETALIATION,           E::FLOATING,        2),       //
+        ToE4(A::STACK_DEFENSIVE_STANCE,             E::FLOATING,        2),       //
     };
 
     /*
@@ -401,6 +431,32 @@ namespace MMAI::Export {
 
     using State = std::vector<float>;
     using Action = int;
+
+    enum class HexAction : int {
+        AMOVE_TR,   // = Move to (*) + attack:
+        AMOVE_R,    //  . . . . . . . . . 5 0 . . . .
+        AMOVE_BR,   // . 1-hex:  . . . . 4 * 1 . . .
+        AMOVE_BL,   //  . . . . . . . . . 3 2 . . . .
+        AMOVE_L,    // . . . . . . . . . . . . . . .
+        AMOVE_TL,   //  . . . . . . . . . 5 0 6 . . .
+        AMOVE_2TR,  // . 2-hex (R):  . . 4 * # 7 . .
+        AMOVE_2R,   //  . . . . . . . . . 3 2 8 . . .
+        AMOVE_2BR,  // . . . . . . . . . . . . . . .
+        AMOVE_2BL,  //  . . . . . . . .11 5 0 . . . .
+        AMOVE_2L,   // . 2-hex (L):  .10 # * 1 . . .
+        AMOVE_2TL,  //  . . . . . . . . 9 3 2 . . . .
+        MOVE,       // = Move to (defend if current hex)
+        SHOOT,      // = shoot at
+        _count
+    };
+
+    enum class HexState : int {
+        INVALID = -1,  // no hex
+        OBSTACLE,
+        OCCUPIED, // alive stack
+        FREE,
+        _count
+    };
 
     // Indicates how state will be encoded:
     // * DEFAULT means use the encodings as specified in HexEncoding

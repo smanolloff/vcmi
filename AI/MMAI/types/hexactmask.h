@@ -22,7 +22,7 @@ namespace MMAI {
     /**
      * A list of booleans for a single hex (see HexAction)
      */
-    using HexActMask = std::array<bool, EI(HexAction::count)>;
+    using HexActMask = std::bitset<EI(HexAction::_count)>;
 
     struct ActMask {
         bool retreat = false;

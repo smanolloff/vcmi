@@ -30,7 +30,7 @@ namespace MMAI {
 
         if (i < 0) return nullptr;
 
-        i = i / EI(HexAction::count);
+        i = i / EI(HexAction::_count);
         auto y = i / BF_XMAX;
         auto x = i % BF_XMAX;
         return std::make_unique<Hex>(bf->hexes.at(y).at(x));
@@ -55,7 +55,7 @@ namespace MMAI {
     // static
     HexAction Action::initHexAction(const Export::Action &a, const Battlefield * bf) {
         if(a < EI(NonHexAction::count)) return HexAction(-1); // a is about a hex
-        return HexAction((a-EI(NonHexAction::count)) % EI(HexAction::count));
+        return HexAction((a-EI(NonHexAction::count)) % EI(HexAction::_count));
     }
 
     Action::Action(const Export::Action action_, const Battlefield * bf)
@@ -72,7 +72,7 @@ namespace MMAI {
 
         ASSERT(hex, "hex is null");
 
-        auto ha = HexAction((action - EI(NonHexAction::count)) % EI(HexAction::count));
+        auto ha = HexAction((action - EI(NonHexAction::count)) % EI(HexAction::_count));
         auto res = std::string{};
         const CStack* cstack = nullptr;
         std::string stackstr;
@@ -87,7 +87,7 @@ namespace MMAI {
             auto slot = cstack->unitSlot();
             std::string color = cstack->unitSide() == BattlePerspective::LEFT_SIDE
                 ? "\033[31m" : "\033[34m";
-            stackstr = color + "#" + std::to_string(slot+1) + "\033[0m";
+            stackstr = color + "#" + std::to_string(slot) + "\033[0m";
         } else {
             stackstr =  "?";
         }

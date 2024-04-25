@@ -21,6 +21,7 @@
 #include "common.h"
 #include "export.h"
 #include "hex.h"
+#include "types/hexaction.h"
 
 namespace MMAI {
     using Hexes = std::array<std::array<Hex, BF_XMAX>, BF_YMAX>;
@@ -32,8 +33,8 @@ namespace MMAI {
 
     using HexStacks = std::map<BattleHex, const CStack*>;
     using XY = std::pair<int, int>;
-    using HexActionHex = std::vector<std::pair<HexAction, BattleHex>>;
     using DirHex = std::vector<std::pair<BattleHex::EDir, BattleHex>>;
+    using HexActionHex = std::array<BattleHex, 12>;
 
     struct StackInfo {
         int speed;
@@ -68,6 +69,12 @@ namespace MMAI {
             const StackInfo &stackinfo
         );
 
+        // static bool IsReachableOrOccupied(
+        //     const BattleHex &bh,
+        //     const StackInfo &stackinfo,
+        //     const CStack* const &cstack
+        // );
+
         static HexAction HexActionFromHexes(
             const BattleHex &nbh,
             const BattleHex &bh,
@@ -81,8 +88,8 @@ namespace MMAI {
             const HexStacks &hexstacks
         );
 
-        static HexActionHex NearbyHexesForActmask(BattleHex &bh, const CStack* astack);
-        static std::pair<DirHex, BattleHex> NearbyHexesForAttributes(BattleHex &bh, const CStack* cstack);
+        static HexActionHex NearbyHexes(BattleHex &bh);
+        static std::pair<DirHex, BattleHex> NearbyHexesForHexAttackableBy(BattleHex &bh, const CStack* cstack);
 
         static Hex InitHex(
             const int id,
