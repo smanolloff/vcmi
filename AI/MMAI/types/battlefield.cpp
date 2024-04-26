@@ -27,7 +27,6 @@
 #include "export.h"
 #include "types/hexaction.h"
 #include "types/hexactmask.h"
-#include <__tuple_dir/tuple_size.h>
 #include <bitset>
 #include <memory>
 #include <stdexcept>
