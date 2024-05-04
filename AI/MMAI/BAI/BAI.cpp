@@ -61,8 +61,8 @@ namespace MMAI {
 
         std::shared_ptr<BattleAction> ba;
 
-        static_assert(EI(BattleSide::ATTACKER) == EI(Export::Side::ATTACKER));
-        static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::DEFENDER));
+        static_assert(EI(BattleSide::ATTACKER) == EI(Export::Side::LEFT));
+        static_assert(EI(BattleSide::DEFENDER) == EI(Export::Side::RIGHT));
 
         // printf("%s\n", renderANSI().c_str());
         // std::cout << "Press Enter to continue...";

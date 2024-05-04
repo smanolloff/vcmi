@@ -103,7 +103,7 @@ MMAI::Export::F_GetAction loadModel(std::string encoding, MMAI::Export::Side sid
     void* handle = dlopen(libfile.c_str(), RTLD_GLOBAL | RTLD_NOW);
     if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
 
-    if (side == MMAI::Export::Side::ATTACKER) {
+    if (side == MMAI::Export::Side::LEFT) {
         // can't be shared var - func pointers are too complex for me
         auto init = reinterpret_cast<decltype(&ConnectorLoader_initAttacker)>(dlsym(handle, "ConnectorLoader_initAttacker"));
         if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
@@ -288,7 +288,7 @@ void processArguments(
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->attackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        baggage->f_getActionAttacker = loadModel(stateEncoding, MMAI::Export::Side::ATTACKER, attackerModel, gymdir);
+        baggage->f_getActionAttacker = loadModel(stateEncoding, MMAI::Export::Side::LEFT, attackerModel, gymdir);
     } else if (attackerAI == AI_STUPIDAI) {
         baggage->attackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
@@ -310,7 +310,7 @@ void processArguments(
     } else if (defenderAI == AI_MMAI_MODEL) {
         baggage->defenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        baggage->f_getActionDefender = loadModel(stateEncoding, MMAI::Export::Side::DEFENDER, defenderModel, gymdir);
+        baggage->f_getActionDefender = loadModel(stateEncoding, MMAI::Export::Side::RIGHT, defenderModel, gymdir);
     } else if (defenderAI == AI_STUPIDAI) {
         baggage->defenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {

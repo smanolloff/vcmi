@@ -601,7 +601,7 @@ namespace MMAI::Export {
 
     enum ResultType {REGULAR, ANSI_RENDER, UNSET};
 
-    enum class Side : int {ATTACKER, DEFENDER};
+    enum class Side : int {LEFT, RIGHT};
 
     struct Result {
         Result() {};
@@ -651,7 +651,7 @@ namespace MMAI::Export {
         const ResultType type = ResultType::UNSET;
         const StateUnencoded stateUnencoded = {};
         const ActMask actmask = {};
-        const Side side = Side::ATTACKER;
+        const Side side = Side::LEFT;
         const int dmgDealt = 0;
         const int dmgReceived = 0;
         const int unitsLost = 0;
