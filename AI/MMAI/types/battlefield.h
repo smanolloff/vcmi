@@ -113,6 +113,7 @@ namespace MMAI {
         const CStack* const astack;
         const Export::StateUnencoded exportState();
         const Export::ActMask exportActMask();
+        const Export::AttnMasks exportAttnMasks();
 
         // needed only for getting stack by slot
         std::array<const CStack*, 7> enemystacks;

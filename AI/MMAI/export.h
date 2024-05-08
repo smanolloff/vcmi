@@ -576,6 +576,7 @@ namespace MMAI::Export {
     };
 
     using StateUnencoded = std::vector<OneHot>;
+    using AttnMasks = std::array<float, 165*165>;
 
     /**
      * 2 non-hex actions:
@@ -612,7 +613,7 @@ namespace MMAI::Export {
 
         // Constructor 1: regular result
         Result(
-            StateUnencoded state_, ActMask actmask_, Side side_,
+            StateUnencoded state_, ActMask actmask_, AttnMasks attnmasks_, Side side_,
             int dmgDealt_, int dmgReceived_,
             int unitsLost_, int unitsKilled_,
             int valueLost_, int valueKilled_,
@@ -620,6 +621,7 @@ namespace MMAI::Export {
         ) : type(ResultType::REGULAR),
             stateUnencoded(state_),
             actmask(actmask_),
+            attnmasks(attnmasks_),
             side(side_),
             dmgDealt(dmgDealt_),
             dmgReceived(dmgReceived_),
@@ -651,6 +653,7 @@ namespace MMAI::Export {
         const ResultType type = ResultType::UNSET;
         const StateUnencoded stateUnencoded = {};
         const ActMask actmask = {};
+        const AttnMasks attnmasks = {};
         const Side side = Side::LEFT;
         const int dmgDealt = 0;
         const int dmgReceived = 0;

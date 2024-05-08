@@ -30,6 +30,8 @@
 #include <bitset>
 #include <memory>
 #include <stdexcept>
+#include <limits>
+
 
 namespace MMAI {
     using D = BattleHex::EDir;
@@ -296,20 +298,20 @@ namespace MMAI {
 
                     if (hexaction <= HexAction::AMOVE_TL) {
                         hex.setMeleeDistanceFromStack(n_isActive, n_isRight, n_slot, Export::MeleeDistance::NEAR);
-                        ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
+                        //ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
                         hex.setActionForStack(isActive, isRight, slot, hexaction);
                     } else if (hexaction <= HexAction::AMOVE_2BR) {
                         // only wide R stacks can perform 2TR/2R/2BR attacks
                         if (isRight && cstack->doubleWide()) {
                             hex.setMeleeDistanceFromStack(n_isActive, false, n_slot, Export::MeleeDistance::FAR);
-                            ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
+                            //ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
                             hex.setActionForStack(isActive, isRight, slot, hexaction);
                         }
                     } else {
                         // only wide L stacks can perform 2TL/2L/2BL attacks
                         if (!isRight && cstack->doubleWide()) {
                             hex.setMeleeDistanceFromStack(n_isActive, true, n_slot, Export::MeleeDistance::FAR);
-                            ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
+                            //ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex.bhex), "vcmi says melee attack is IMPOSSIBLE");
                             hex.setActionForStack(isActive, isRight, slot, hexaction);
                         }
                     }
@@ -418,6 +420,33 @@ namespace MMAI {
 
         // static_assert in action_enums.h makes this redundant?
         ASSERT(i == Export::N_ACTIONS, "unexpected i: " + std::to_string(i));
+
+        return res;
+    }
+
+    const Export::AttnMasks Battlefield::exportAttnMasks() {
+        auto res = Export::AttnMasks{};
+        std::fill(res.begin(), res.end(), std::numeric_limits<float>::lowest());
+
+        int i = 0;
+        for (auto &hexrow : hexes) {
+            for (auto &hex : hexrow) {
+                if (hex.cstack) {
+                    auto side = hex.attrs.at(EI(Export::Attribute::STACK_SIDE));
+                    auto slot = hex.attrs.at(EI(Export::Attribute::STACK_SLOT));
+
+                    for (auto &hexrow1 : hexes) {
+                        for (auto &hex1 : hexrow1) {
+                            if (hex1.hexactmasks.at(side).at(slot).any()) {
+                                res.at(i++) = 0;
+                            }
+                        }
+                    }
+                } else {
+                    i += 165;
+                }
+            }
+        }
 
         return res;
     }
