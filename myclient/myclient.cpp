@@ -159,6 +159,7 @@ void validateArguments(
     std::string &gymdir,
     std::string &map,
     int &randomCombat,
+    int &swapSides,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
     std::string &attackerAI,
@@ -187,8 +188,11 @@ void validateArguments(
     if (randomCombat < 0)
         std::cerr << "Bad value for randomCombat: expected a positive integer, got: " << randomCombat << "\n";
 
+    if (swapSides < 0)
+        std::cerr << "Bad value for swapSides: expected a positive integer, got: " << swapSides << "\n";
+
     if (mapEval < 0)
-        std::cerr << "Bad value for mapEval: expected a positive integer, got: " << randomCombat << "\n";
+        std::cerr << "Bad value for mapEval: expected a positive integer, got: " << mapEval << "\n";
 
     if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
         if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI." LIBEXT)) {
@@ -242,7 +246,8 @@ void processArguments(
     std::string &defenderAI,
     std::string &attackerModel,
     std::string &defenderModel,
-    int randomCombat
+    int randomCombat,
+    int swapSides
 ) {
     // Notes on AI creation
     //
@@ -327,6 +332,7 @@ void processArguments(
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
     Settings(settings.write({"server", "randomCombat"}))->Integer() = randomCombat;
+    Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
 
     // CPI needs this setting in case the attacker is human (headless==false)
     Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->attackerBattleAIName;
@@ -373,6 +379,7 @@ void init_vcmi(
     std::string gymdir,
     std::string map,
     int randomCombat,
+    int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
     std::string attackerAI,
@@ -395,6 +402,7 @@ void init_vcmi(
         gymdir,
         map,
         randomCombat,
+        swapSides,
         loglevelGlobal,
         loglevelAI,
         attackerAI,
@@ -433,7 +441,8 @@ void init_vcmi(
         defenderAI,
         attackerModel,
         defenderModel,
-        randomCombat
+        randomCombat,
+        swapSides
     );
 
     // printf("gymdir: %s\n", gymdir.c_str());

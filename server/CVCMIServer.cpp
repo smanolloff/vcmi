@@ -335,6 +335,10 @@ bool CVCMIServer::prepareToStartGame()
 		gh->gs->randomCombat = cmdLineOptions["random-combat"].as<ui16>();
 	}
 
+	if (cmdLineOptions.count("swap-sides")) {
+		gh->gs->swapSides = cmdLineOptions["swap-sides"].as<ui16>();
+	}
+
 	state = EServerState::GAMEPLAY_STARTING;
 	return true;
 }
@@ -1017,6 +1021,7 @@ static void handleCommandOptions(int argc, const char * argv[], boost::program_o
 	("lobby-port", po::value<ui16>(), "port at which server connect to remote lobby")
 	("lobby-uuid", po::value<std::string>(), "")
 	("random-combat", po::value<ui16>(), "pick heroes at random every Nth combat")
+	("swap-sides", po::value<ui16>(), "swap sides every Nth combat")
 	("connections", po::value<ui16>(), "amount of connections to remote lobby");
 
 	if(argc > 1)

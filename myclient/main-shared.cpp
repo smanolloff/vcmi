@@ -104,6 +104,7 @@ Args parse_args(int argc, char * argv[])
     };
 
     static auto randomCombat = 0;
+    static auto swapSides = 0;
     static auto mapeval = 0;
     static auto benchmark = false;
     static auto interactive = false;
@@ -125,6 +126,8 @@ Args parse_args(int argc, char * argv[])
             values(ENCODINGS, omap.at("state-encoding")).c_str())
         ("random-combat", po::value<int>()->value_name("<N>"),
             "Pick heroes at random each Nth combat (disabled if 0*)")
+        ("swap-sides", po::value<int>()->value_name("<N>"),
+            "Swap combat sides each Nth combat (disabled if 0*)")
         ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
             values(AIS, omap.at("attacker-ai")).c_str())
         ("defender-ai", po::value<std::string>()->value_name("<AI>"),
@@ -169,6 +172,9 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("random-combat"))
         randomCombat = vm.at("random-combat").as<int>();
+
+    if (vm.count("swap-sides"))
+        swapSides = vm.at("swap-sides").as<int>();
 
     if (vm.count("map-eval"))
         mapeval = vm.at("map-eval").as<int>();
@@ -292,6 +298,7 @@ Args parse_args(int argc, char * argv[])
         omap.at("gymdir"),
         omap.at("map"),
         randomCombat,
+        swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),
         omap.at("attacker-ai"),

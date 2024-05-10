@@ -127,11 +127,12 @@ namespace MMAI {
         //      The gym maps use the hero's experience as a unique ref
         const CGHeroInstance* hero;
 
+        // XXX: with swapSides feature, the assert below becomes redundant
         if (colorstr == "red") {
-            ASSERT(side_ == BattleSide::ATTACKER, "Red is not attacker");
+            // ASSERT(side_ == BattleSide::ATTACKER, "Red is not attacker");
             hero = dynamic_cast<const CGHeroInstance*>(army1);
         } else {
-            ASSERT(side_ == BattleSide::DEFENDER, "Non-red is not defender");
+            // ASSERT(side_ == BattleSide::DEFENDER, "Non-red is not defender");
             hero = dynamic_cast<const CGHeroInstance*>(army2);
         }
 

@@ -2612,6 +2612,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	if(gs->curB)
 		gs->curB.dellNull();
 
+	gs->battlecounter++;
 	if (gs->randomCombat > 0) {
 		if (gs->allheroes.size() % 2 != 0)
 			throw std::runtime_error("Heroes size must be even");
@@ -2624,7 +2625,6 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 		hero1 = gs->allheroes.at(gs->herocounter);
 		hero2 = gs->allheroes.at(gs->herocounter+1);
 
-		gs->battlecounter++;
 		if (gs->battlecounter % gs->randomCombat == 0)
 			gs->herocounter += 2;
 
@@ -2639,11 +2639,20 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	}
 
 	static const CArmedInstance *armies[2];
-	armies[0] = army1;
-	armies[1] = army2;
-	static const CGHeroInstance*heroes[2];
-	heroes[0] = hero1;
-	heroes[1] = hero2;
+	static const CGHeroInstance *heroes[2];
+
+	if (gs->swapSides && (gs->battlecounter % gs->swapSides) == 0) {
+		armies[0] = army2;
+		heroes[0] = hero2;
+		armies[1] = army1;
+		heroes[1] = hero1;
+	} else {
+		armies[0] = army1;
+		heroes[0] = hero1;
+		armies[1] = army2;
+		heroes[1] = hero2;
+	}
+
 
 	setupBattle(tile, armies, heroes, creatureBank, town); //initializes stacks, places creatures on battlefield, blocks and informs player interfaces
 

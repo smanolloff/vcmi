@@ -86,6 +86,7 @@ public:
 	int herocounter = 0;
 	int battlecounter = 0;
 	int randomCombat = 0;
+	int swapSides = 0;
 
 	//we have here all heroes available on this map that are not hired
 	std::unique_ptr<TavernHeroesPool> heroesPool;

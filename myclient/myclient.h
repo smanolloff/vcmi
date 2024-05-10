@@ -40,6 +40,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     std::string gymdir,
     std::string mapname,
     int randomCombat,
+    int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
     std::string attackerAI,

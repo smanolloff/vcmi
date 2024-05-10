@@ -25,6 +25,7 @@ using Args = std::tuple<
     std::string, // gymdir
     std::string, // mapname
     bool,        // randomCombat
+    bool,        // swapSides
     std::string, // loglevelGlobal
     std::string, // loglevelAI
     std::string, // attackerAI
