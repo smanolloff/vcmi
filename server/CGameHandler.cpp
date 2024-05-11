@@ -2641,18 +2641,35 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	static const CArmedInstance *armies[2];
 	static const CGHeroInstance *heroes[2];
 
-	if (gs->swapSides && (gs->battlecounter % gs->swapSides) == 0) {
-		armies[0] = army2;
-		heroes[0] = hero2;
-		armies[1] = army1;
-		heroes[1] = hero1;
-	} else {
-		armies[0] = army1;
-		heroes[0] = hero1;
-		armies[1] = army2;
-		heroes[1] = hero2;
-	}
+	armies[0] = army1;
+	heroes[0] = hero1;
+	armies[1] = army2;
+	heroes[1] = hero2;
 
+	if (gs->swapSides > 0) {
+		if (gs->randomCombat > 0) {
+			// with randomCombat, the hero1 and hero2 func arguments are overwritten
+			// such that hero1 is left and hero2 - right side
+			if ((gs->battlecounter / gs->swapSides) % 2 == 1) {
+				// swap sides (hero1 => right, hero2 => left)
+				armies[0] = army2;
+				heroes[0] = hero2;
+				armies[1] = army1;
+				heroes[1] = hero1;
+			}
+		} else {
+			// without randomCombat, the hero1 and hero2 func arguments correspond
+			// to indexes 0 and 1 in the "heroes" array from the previous battle
+			// (meaning they hero1 may be left or right depending on prev battle)
+			if ((gs->battlecounter % gs->swapSides) == 0) {
+				// swap sides
+				armies[0] = army2;
+				heroes[0] = hero2;
+				armies[1] = army1;
+				heroes[1] = hero1;
+			}
+		}
+	}
 
 	setupBattle(tile, armies, heroes, creatureBank, town); //initializes stacks, places creatures on battlefield, blocks and informs player interfaces
 
