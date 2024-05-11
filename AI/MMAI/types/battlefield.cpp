@@ -263,8 +263,12 @@ namespace MMAI {
 
                 if (!meleeableAlreadySetForStack && IsReachable(n_bhex, stackinfo)) {
                     if (hexaction <= HexAction::AMOVE_TL) {
-                        hex.setMeleeableByStack(isActive, isRight, slot, stackinfo.meleemod);
-                        meleeableAlreadySetForStack = true;
+                        if (cstack->doubleWide() && ((hexaction == HexAction::AMOVE_L && isRight) || (hexaction == HexAction::AMOVE_R && !isRight))) {
+                            continue;
+                        } else {
+                            hex.setMeleeableByStack(isActive, isRight, slot, stackinfo.meleemod);
+                            meleeableAlreadySetForStack = true;
+                        }
                     } else if (hexaction <= HexAction::AMOVE_2BR) { // hexaction is 2TR/2R/2BR
                         // XXX: don't combine the nested ifs
                         // Perspective is mirrored: attack is n_bhex->bhex
