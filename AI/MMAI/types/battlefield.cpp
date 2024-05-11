@@ -196,6 +196,8 @@ namespace MMAI {
             meleeDistanceFromStackResets.at(isRight).set(slot);
         };
 
+        const auto& nbhexes = NearbyHexes(hex.bhex);
+
         for (const auto& [cstack, stackinfo] : stackinfos) {
             auto isActive = cstack == astack;
             auto isRight = bool(cstack->unitSide());  // 1 = right = true
@@ -241,8 +243,6 @@ namespace MMAI {
             auto isReachable = IsReachable(hex.bhex, stackinfo);
             if (isReachable)
                 hex.setActionForStack(isActive, isRight, slot, HexAction::MOVE);
-
-            const auto& nbhexes = NearbyHexes(hex.bhex);
 
             // once we've identified that cstack can attack hex from n_bhex,
             // there's no need to check the remaining n_bhexes
