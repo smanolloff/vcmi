@@ -26,6 +26,7 @@ Here is a list of features I would like to have implemented:
 | Map hot-swap | ❌ | Changing the map without restarting VCMI is one way change the army compositions during training, which would improve training performance |
 | Battlefield hot-swap | ❌ | Changing the battlefield terrain without changing the entire map (hence re-starting VCMI) would improve performance|
 | Army hot-swap | ✅ | Changing the army compositions without changing the entire map (hence re-starting VCMI) would improve performance |
+| Battle side hot-swap | ✅ | Changing battle side (attacker/defender) without changing the entire map (hence re-starting VCMI) would improve performance |
 
 Currently, I am mostly focused on the training process itself (as part of
 [vcmi-gym](https://github.com/smanolloff/vcmi-gym)), but the fact there are
