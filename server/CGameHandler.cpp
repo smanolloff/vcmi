@@ -2138,9 +2138,14 @@ void CGameHandler::setupBattle(int3 tile, const CArmedInstance *armies[2], const
 	if (heroes[0] && heroes[0]->boat && heroes[1] && heroes[1]->boat)
 		terType = BattleField(*VLC->modh->identifiers.getIdentifier("core", "battlefield.ship_to_ship"));
 
+
+	if (gs->randomObstacles > 0 && (gs->battlecounter % gs->randomObstacles == 0)) {
+		gs->lastSeed = gs->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+	}
+
 	//send info about battles
 	BattleStart bs;
-	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, creatureBank, town);
+	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, creatureBank, town, gs->lastSeed);
 
 	engageIntoBattle(bs.info->sides[0].color);
 	engageIntoBattle(bs.info->sides[1].color);
@@ -2613,7 +2618,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 		gs->curB.dellNull();
 
 	gs->battlecounter++;
-	if (gs->randomCombat > 0) {
+	if (gs->randomHeroes > 0) {
 		if (gs->allheroes.size() % 2 != 0)
 			throw std::runtime_error("Heroes size must be even");
 
@@ -2625,7 +2630,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 		hero1 = gs->allheroes.at(gs->herocounter);
 		hero2 = gs->allheroes.at(gs->herocounter+1);
 
-		if (gs->battlecounter % gs->randomCombat == 0)
+		if (gs->battlecounter % gs->randomHeroes == 0)
 			gs->herocounter += 2;
 
 		// Set temp owner of both heroes to player0 and player1
@@ -2647,8 +2652,8 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	heroes[1] = hero2;
 
 	if (gs->swapSides > 0) {
-		if (gs->randomCombat > 0) {
-			// with randomCombat, the hero1 and hero2 func arguments are overwritten
+		if (gs->randomHeroes > 0) {
+			// with randomHeroes, the hero1 and hero2 func arguments are overwritten
 			// such that hero1 is left and hero2 - right side
 			if ((gs->battlecounter / gs->swapSides) % 2 == 1) {
 				// swap sides (hero1 => right, hero2 => left)
@@ -2658,7 +2663,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 				heroes[1] = hero1;
 			}
 		} else {
-			// without randomCombat, the hero1 and hero2 func arguments correspond
+			// without randomHeroes, the hero1 and hero2 func arguments correspond
 			// to indexes 0 and 1 in the "heroes" array from the previous battle
 			// (meaning they hero1 may be left or right depending on prev battle)
 			if ((gs->battlecounter % gs->swapSides) == 0) {

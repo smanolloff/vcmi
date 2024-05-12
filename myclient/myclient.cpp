@@ -158,7 +158,8 @@ void validateArguments(
     std::string &stateEncoding,
     std::string &gymdir,
     std::string &map,
-    int &randomCombat,
+    int &randomHeroes,
+    int &randomObstacles,
     int &swapSides,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
@@ -185,8 +186,8 @@ void validateArguments(
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
 
-    if (randomCombat < 0)
-        std::cerr << "Bad value for randomCombat: expected a positive integer, got: " << randomCombat << "\n";
+    if (randomHeroes < 0)
+        std::cerr << "Bad value for randomHeroes: expected a positive integer, got: " << randomHeroes << "\n";
 
     if (swapSides < 0)
         std::cerr << "Bad value for swapSides: expected a positive integer, got: " << swapSides << "\n";
@@ -246,7 +247,8 @@ void processArguments(
     std::string &defenderAI,
     std::string &attackerModel,
     std::string &defenderModel,
-    int randomCombat,
+    int randomHeroes,
+    int randomObstacles,
     int swapSides
 ) {
     // Notes on AI creation
@@ -331,7 +333,8 @@ void processArguments(
     Settings(settings.write({"session", "headless"}))->Bool() = headless;
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
-    Settings(settings.write({"server", "randomCombat"}))->Integer() = randomCombat;
+    Settings(settings.write({"server", "randomHeroes"}))->Integer() = randomHeroes;
+    Settings(settings.write({"server", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
 
     // CPI needs this setting in case the attacker is human (headless==false)
@@ -378,7 +381,8 @@ void init_vcmi(
     std::string stateEncoding,
     std::string gymdir,
     std::string map,
-    int randomCombat,
+    int randomHeroes,
+    int randomObstacles,
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
@@ -401,7 +405,8 @@ void init_vcmi(
         stateEncoding,
         gymdir,
         map,
-        randomCombat,
+        randomHeroes,
+        randomObstacles,
         swapSides,
         loglevelGlobal,
         loglevelAI,
@@ -441,7 +446,8 @@ void init_vcmi(
         defenderAI,
         attackerModel,
         defenderModel,
-        randomCombat,
+        randomHeroes,
+        randomObstacles,
         swapSides
     );
 

@@ -103,7 +103,8 @@ Args parse_args(int argc, char * argv[])
         {"gymdir", "./vcmi-gym"},
     };
 
-    static auto randomCombat = 0;
+    static auto randomHeroes = 0;
+    static auto randomObstacles = 0;
     static auto swapSides = 0;
     static auto mapeval = 0;
     static auto benchmark = false;
@@ -124,8 +125,10 @@ Args parse_args(int argc, char * argv[])
             ("Path to map (" + omap.at("map") + "*)").c_str())
         ("state-encoding", po::value<std::string>()->value_name("<ENC>"),
             values(ENCODINGS, omap.at("state-encoding")).c_str())
-        ("random-combat", po::value<int>()->value_name("<N>"),
+        ("random-heroes", po::value<int>()->value_name("<N>"),
             "Pick heroes at random each Nth combat (disabled if 0*)")
+        ("random-obstacles", po::value<int>()->value_name("<N>"),
+            "Place obstacles at random each Nth combat (disabled if 0*)")
         ("swap-sides", po::value<int>()->value_name("<N>"),
             "Swap combat sides each Nth combat (disabled if 0*)")
         ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
@@ -170,8 +173,11 @@ Args parse_args(int argc, char * argv[])
             omap[opt] = vm.at(opt).as<std::string>();
     }
 
-    if (vm.count("random-combat"))
-        randomCombat = vm.at("random-combat").as<int>();
+    if (vm.count("random-heroes"))
+        randomHeroes = vm.at("random-heroes").as<int>();
+
+    if (vm.count("random-obstacles"))
+        randomObstacles = vm.at("random-obstacles").as<int>();
 
     if (vm.count("swap-sides"))
         swapSides = vm.at("swap-sides").as<int>();
@@ -297,7 +303,8 @@ Args parse_args(int argc, char * argv[])
             : MMAI::Export::STATE_ENCODING_FLOAT,
         omap.at("gymdir"),
         omap.at("map"),
-        randomCombat,
+        randomHeroes,
+        randomObstacles,
         swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),
