@@ -407,17 +407,9 @@ void init_vcmi(
     auto wd = boost::filesystem::current_path();
 
     // chdir needed for VCMI init
-    boost::filesystem::current_path(boost::filesystem::path(VCMI_ROOT_DIR));
+    boost::filesystem::current_path(boost::filesystem::path(VCMI_BIN_DIR));
     std::cout.flags(std::ios::unitbuf);
     console = new CConsoleHandler();
-
-    auto callbackFunction = [](std::string buffer, bool calledFromIngameConsole) {
-        ClientCommandManager commandController;
-        commandController.processCommand(buffer, calledFromIngameConsole);
-    };
-
-    *console->cb = callbackFunction;
-    console->start();
 
     const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
     logConfig = new CBasicLogConfigurator(logPath, console);
@@ -442,7 +434,7 @@ void init_vcmi(
     );
 
     // chdir needed for VCMI init
-    boost::filesystem::current_path(boost::filesystem::path(VCMI_ROOT_DIR));
+    boost::filesystem::current_path(boost::filesystem::path(VCMI_BIN_DIR));
 
     // printf("map: %s\n", map.c_str());
     // printf("loglevelGlobal: %s\n", loglevelGlobal.c_str());
