@@ -20,7 +20,6 @@ int main(int argc, char * argv[]) {
     auto [
         baggage_,
         stateEncoding,
-        gymdir,
         map,
         randomHeroes,
         randomObstacles,
@@ -37,7 +36,6 @@ int main(int argc, char * argv[]) {
     init_vcmi(
         baggage_,
         stateEncoding,
-        gymdir,
         map,
         randomHeroes,
         randomObstacles,

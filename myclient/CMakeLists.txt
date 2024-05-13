@@ -1,4 +1,7 @@
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
+
 add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
+add_definitions(-DVCMI_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 add_library(myclient SHARED myclient.cpp myclient.h)
 
@@ -8,6 +11,12 @@ add_executable(myclient-headless main-shared.cpp main-headless.cpp main.h)
 add_dependencies(myclient vcmiclient)
 add_dependencies(myclient-gui myclient)
 add_dependencies(myclient-headless myclient)
+
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch")
+
+find_package(Torch REQUIRED)
+find_package(OpenMP REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 target_link_libraries(myclient PRIVATE vcmiclient)
 target_link_libraries(myclient-gui PRIVATE myclient)
@@ -19,6 +28,7 @@ target_include_directories(myclient-headless PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(myclient PRIVATE ${VCMI_LIB_TARGET} SDL2::SDL2 SDL2::Image SDL2::Mixer SDL2::TTF)
 target_link_libraries(myclient-gui PRIVATE ${VCMI_LIB_TARGET})
 target_link_libraries(myclient-headless PRIVATE ${VCMI_LIB_TARGET})
+target_link_libraries(myclient PRIVATE "${TORCH_LIBRARIES}" OpenMP::OpenMP_CXX)
 
 vcmi_set_output_dir(myclient "")
 vcmi_set_output_dir(myclient-gui "")

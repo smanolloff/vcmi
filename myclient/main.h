@@ -22,7 +22,6 @@
 using Args = std::tuple<
     MMAI::Export::Baggage*,
     std::string, // stateEncoding
-    std::string, // gymdir
     std::string, // mapname
     int,         // randomHeroes
     int,         // randomObstacles

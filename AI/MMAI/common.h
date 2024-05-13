@@ -16,9 +16,6 @@
 
 #pragma once
 
-// used when including loader.h
-#define __LOADED_FROM_MMAI 1
-
 #include "StdInc.h"
 #include <cstdarg>
 #include <filesystem>

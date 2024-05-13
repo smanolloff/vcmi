@@ -27,7 +27,6 @@
 #include "AI/MMAI/export.h"
 #include "myclient.h"
 #include "mmai_export.h"
-#include "loader.h"
 
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/CGeneralTextHandler.h"
@@ -64,6 +63,10 @@
 #include "../lib/CConfigHandler.h"
 #include "vstd/CLoggerBase.h"
 
+#include <c10/core/ScalarType.h>
+#include <torch/torch.h>
+#include <torch/script.h>
+
 extern boost::thread_specific_ptr<bool> inGuiThread;
 
 static CBasicLogConfigurator *logConfig;
@@ -76,6 +79,10 @@ bool headless;
 #error "VCMI_BIN_DIR compile definition needs to be set"
 #endif
 
+#ifndef VCMI_ROOT_DIR
+#error "VCMI_ROOT_DIR compile definition needs to be set"
+#endif
+
 #if defined(VCMI_MAC)
 #define LIBEXT "dylib"
 #elif defined(VCMI_UNIX)
@@ -84,49 +91,43 @@ bool headless;
 #error "Unsupported OS"
 #endif
 
-//
-// NOTE:
-// This requires 2-player maps where player 1 is HUMAN
-// The player hero moves 1 tile to the right and engages into a battle
-//
-// XXX:
-// This will not work unless the current dir is vcmi-gym's root dir
-// (the python module resolution gets messed up otherwise)
-MMAI::Export::F_GetAction loadModel(std::string encoding, MMAI::Export::Side side, std::string model, std::string gymdir) {
-    auto old = boost::filesystem::current_path();
-    auto gympath = boost::filesystem::canonical(boost::filesystem::path(gymdir));
+MMAI::Export::F_GetAction loadModel(std::string modelPath) {
+    c10::InferenceMode guard;
+    torch::jit::script::Module model = torch::jit::load(modelPath);
+    model.eval();
 
-    //
-    // XXX: this makes it impossible to use lldb (invalid instruction error...)
-    //
-    auto libfile = gympath / "vcmi_gym/envs/v0/connector/build/libloader." LIBEXT;
-    void* handle = dlopen(libfile.c_str(), RTLD_GLOBAL | RTLD_NOW);
-    if(!handle) throw std::runtime_error("Error loading the library: " + std::string(dlerror()));
+    std::cout << "Loaded " << modelPath << "\n";
 
-    if (side == MMAI::Export::Side::LEFT) {
-        // can't be shared var - func pointers are too complex for me
-        auto init = reinterpret_cast<decltype(&ConnectorLoader_initAttacker)>(dlsym(handle, "ConnectorLoader_initAttacker"));
-        if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+    return [guard, model](const MMAI::Export::Result * r) {
+        if (r->ended)
+            return MMAI::Export::ACTION_RESET;
 
-        auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getActionAttacker)>(dlsym(handle, "ConnectorLoader_getActionAttacker"));
-        if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
+        auto state = MMAI::Export::State{};
+        state.reserve(MMAI::Export::STATE_SIZE_DEFAULT);
 
-        init(encoding, gymdir, model);
-        boost::filesystem::current_path(old);
-        return getAction;
-    }
+        for (auto &u : r->stateUnencoded)
+            u.encode(state);
 
-    // defender
-    auto init = reinterpret_cast<decltype(&ConnectorLoader_initDefender)>(dlsym(handle, "ConnectorLoader_initDefender"));
-    if(!init) throw std::runtime_error("Error getting init fn: " + std::string(dlerror()));
+        // TODO: see if from_blob can directly accept the correct shape
+        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, MMAI::Export::STATE_SIZE_DEFAULT_ONE_HEX});
 
-    auto getAction = reinterpret_cast<decltype(&ConnectorLoader_getActionDefender)>(dlsym(handle, "ConnectorLoader_getActionDefender"));
-    if(!getAction) throw std::runtime_error("Error getting getAction fn: " + std::string(dlerror()));
+        auto intmask = std::array<int, MMAI::Export::N_ACTIONS - 1>{};
+        for (int i=0; i < intmask.size(); i++)
+            intmask.at(i) = static_cast<int>(r->actmask.at(i+1));
 
-    init(encoding, gymdir, model);
-    boost::filesystem::current_path(old);
-    return getAction;
-};
+        auto mask = torch::from_blob(intmask.data(), {static_cast<long>(intmask.size())}, torch::kInt).to(torch::kBool);
+
+        // auto mask_accessor = mask.accessor<bool,1>();
+        // for (int i = 0; i < mask_accessor.size(0); ++i)
+        //     printf("mask[%d]=%d\n", i, mask_accessor[i]);
+
+        auto method = model.get_method("predict");
+        auto inputs = std::vector<torch::IValue>{obs, mask};
+        auto res = method(inputs).toInt() + 1; // 1 is action offset
+        // printf("JIT predict: %lld\n", res);
+        return MMAI::Export::Action(res);
+    };
+}
 
 void validateValue(std::string name, std::string value, std::vector<std::string> values) {
     if (std::find(values.begin(), values.end(), value) != values.end())
@@ -156,7 +157,6 @@ void validateFile(std::string name, std::string path, boost::filesystem::path wd
 
 void validateArguments(
     std::string &stateEncoding,
-    std::string &gymdir,
     std::string &map,
     int &randomHeroes,
     int &randomObstacles,
@@ -205,16 +205,6 @@ void validateArguments(
             exit(1);
     }
 
-    if (boost::filesystem::is_directory(gymdir)) {
-        if (!boost::filesystem::is_regular_file(boost::filesystem::path(gymdir) / "vcmi_gym" / "__init__.py")) {
-            std::cerr << "Bad value for gymdir: exists, but vcmi_gym/__init__.py was not found: " << gymdir << "\n";
-            exit(1);
-        }
-    } else {
-        std::cerr << "Bad value for gymdir: not a directory: " << gymdir << "\n(check --gymdir option)\n";
-        exit(1);
-    }
-
     // if (headless && attackerAI != AI_MMAI_MODEL && attackerAI != AI_MMAI_USER) {
     //     std::cerr << "headless mode requires an MMAI-type attackerAI\n";
     //     exit(1);
@@ -239,7 +229,6 @@ void validateArguments(
 
 void processArguments(
     std::string stateEncoding,
-    std::string &gymdir,
     std::string &map,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
@@ -295,7 +284,7 @@ void processArguments(
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->attackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        baggage->f_getActionAttacker = loadModel(stateEncoding, MMAI::Export::Side::LEFT, attackerModel, gymdir);
+        baggage->f_getActionAttacker = loadModel(attackerModel);
     } else if (attackerAI == AI_STUPIDAI) {
         baggage->attackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
@@ -317,7 +306,7 @@ void processArguments(
     } else if (defenderAI == AI_MMAI_MODEL) {
         baggage->defenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        baggage->f_getActionDefender = loadModel(stateEncoding, MMAI::Export::Side::RIGHT, defenderModel, gymdir);
+        baggage->f_getActionDefender = loadModel(defenderModel);
     } else if (defenderAI == AI_STUPIDAI) {
         baggage->defenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {
@@ -379,7 +368,6 @@ void processArguments(
 void init_vcmi(
     MMAI::Export::Baggage* baggage_,
     std::string stateEncoding,
-    std::string gymdir,
     std::string map,
     int randomHeroes,
     int randomObstacles,
@@ -403,7 +391,6 @@ void init_vcmi(
 
     validateArguments(
         stateEncoding,
-        gymdir,
         map,
         randomHeroes,
         randomObstacles,
@@ -417,7 +404,10 @@ void init_vcmi(
         mapEval
     );
 
-    boost::filesystem::current_path(boost::filesystem::path(VCMI_BIN_DIR));
+    auto wd = boost::filesystem::current_path();
+
+    // chdir needed for VCMI init
+    boost::filesystem::current_path(boost::filesystem::path(VCMI_ROOT_DIR));
     std::cout.flags(std::ios::unitbuf);
     console = new CConsoleHandler();
 
@@ -436,9 +426,9 @@ void init_vcmi(
     // XXX: apparently this needs to be invoked before Settings() stuff
     preinitDLL(::console);
 
+    boost::filesystem::current_path(wd);
     processArguments(
         stateEncoding,
-        gymdir,
         map,
         loglevelGlobal,
         loglevelAI,
@@ -451,7 +441,9 @@ void init_vcmi(
         swapSides
     );
 
-    // printf("gymdir: %s\n", gymdir.c_str());
+    // chdir needed for VCMI init
+    boost::filesystem::current_path(boost::filesystem::path(VCMI_ROOT_DIR));
+
     // printf("map: %s\n", map.c_str());
     // printf("loglevelGlobal: %s\n", loglevelGlobal.c_str());
     // printf("loglevelAI: %s\n", loglevelAI.c_str());

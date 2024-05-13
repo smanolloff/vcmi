@@ -20,7 +20,6 @@
 #include "battle/BattleHex.h"
 #include "battle/CBattleInfoEssentials.h"
 #include "export.h"
-#include "include/loader.h"
 
 // Contains initialization-related code
 

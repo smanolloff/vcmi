@@ -16,7 +16,7 @@ All commands in this tutorial must be executed from the VCMI root folder
 $ brew install --cask cmake
 $ pip3 install conan~=1.6
 $ conan profile new default --detect
-$ conan profile update settings.compiler.cppstd=11 default
+$ conan profile update settings.compiler.cppstd=17 default
 ```
 
 NOTE: the command the below *might fail*, in which case follow the special

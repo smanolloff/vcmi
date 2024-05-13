@@ -37,7 +37,6 @@ const std::vector<std::string> ENCODINGS = {"default", "float"};
 void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,
     std::string stateEncoding,
-    std::string gymdir,
     std::string mapname,
     int randomHeroes,
     int randomObstacles,

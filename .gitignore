@@ -71,3 +71,4 @@ h3.zip
 h3/
 rel
 .cmake
+myclient/libtorch

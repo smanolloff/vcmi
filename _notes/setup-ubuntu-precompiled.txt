@@ -79,7 +79,7 @@
         # Start a new game on the specified map (with GUI)
         #
 
-        $ build/bin/myclient-gui --gymdir "VCMI_GYM_DIR" --map ai/P1.vmap
+        $ build/bin/myclient-gui --map ai/P1.vmap
 
         #
         # Benchmark performance (no GUI)
@@ -96,7 +96,7 @@
         #       -  steps/s: 17     resets/s: 0.74
         #       -  ...etc.
 
-        $ build/bin/myclient-headless --gymdir ~/Projects/vcmi-gym --map ai/generated/B001.vmap --loglevel-ai error --benchmark
+        $ build/bin/myclient-headless --map ai/generated/B001.vmap --loglevel-ai error --benchmark
 
         #
         # NOTE: the same command can be used with the the "release" binary (if compiled) to compare the performance

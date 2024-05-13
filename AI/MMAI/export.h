@@ -518,10 +518,6 @@ namespace MMAI::Export {
             }
         }
 
-        void validate(std::string ident) {
-
-        }
-
         // Example: v=2, n=3
         //  Add v=2 ones and 3-2=1 zero
         void encodeNumeric(State &vec) const {

@@ -49,6 +49,7 @@ namespace MMAI {
     void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage_) {
         info("*** initGameInterface ***");
 
+        // XXX: this will not correspond to the real color if --swap-sides option is used
         colorstr = CB->getMyColor()->getStr();
         colorprint = (colorstr == "red")
             ? "\033[0m\033[97m\033[41mRED\033[0m"  // white on red
@@ -122,6 +123,12 @@ namespace MMAI {
         info("*** battleStart ***");
 
         side = side_;
+
+        // XXX: fix wrong color if --swap-sides option is used
+        colorstr = (side == BattleSide::ATTACKER) ? "red" : "blue";
+        colorprint = (colorstr == "red")
+            ? "\033[0m\033[97m\033[41mRED\033[0m"  // white on red
+            : "\033[0m\033[97m\033[44mBLUE\033[0m"; // white on blue
 
         // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON
         //      The gym maps use the hero's experience as a unique ref

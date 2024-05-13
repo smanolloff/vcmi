@@ -59,8 +59,32 @@ MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
 
 MMAI::Export::Action promptAction(const MMAI::Export::ActMask &mask) {
     int num;
-    std::cout << "Enter an integer (0 for random valid action): ";
-    std::cin >> num;
+
+    while (true) {
+        std::cout << "Enter an integer (blank or 0 for a random valid action): ";
+
+        // Read the user input as a string
+        std::string input;
+        std::getline(std::cin, input);
+
+        // If the input is empty, treat it as if 0 was entered
+        if (input.empty()) {
+            num = 0;
+            break;
+        } else {
+            try {
+                num = std::stoi(input);
+                if (num >= 0)
+                    break;
+                else
+                    std::cerr << "Invalid input!\n";
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "Invalid input!\n";
+            } catch (const std::out_of_range& e) {
+                std::cerr << "Invalid input!\n";
+            }
+        }
+    }
 
     return num == 0 ? randomValidAction(mask) : MMAI::Export::Action(num);
 }
@@ -99,8 +123,7 @@ Args parse_args(int argc, char * argv[])
         {"attacker-ai", AI_MMAI_USER},
         {"defender-ai", AI_STUPIDAI},
         {"attacker-model", "AI/MMAI/models/model.zip"},
-        {"defender-model", "AI/MMAI/models/model.zip"},
-        {"gymdir", "./vcmi-gym"},
+        {"defender-model", "AI/MMAI/models/model.zip"}
     };
 
     static auto randomHeroes = 0;
@@ -119,8 +142,6 @@ Args parse_args(int argc, char * argv[])
 
     opts.add_options()
         ("help,h", "Show this help")
-        ("gymdir", po::value<std::string>()->value_name("<PATH>"),
-            ("Full path to vcmi-gym directory (" + omap.at("gymdir") + "*)").c_str())
         ("map", po::value<std::string>()->value_name("<MAP>"),
             ("Path to map (" + omap.at("map") + "*)").c_str())
         ("state-encoding", po::value<std::string>()->value_name("<ENC>"),
@@ -301,7 +322,6 @@ Args parse_args(int argc, char * argv[])
         omap.at("state-encoding") == "default"
             ? MMAI::Export::STATE_ENCODING_DEFAULT
             : MMAI::Export::STATE_ENCODING_FLOAT,
-        omap.at("gymdir"),
         omap.at("map"),
         randomHeroes,
         randomObstacles,

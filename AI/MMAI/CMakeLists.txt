@@ -21,7 +21,6 @@ set(MMAI_FILES
   types/hexaction.h
   types/hexactmask.h
 
-  include/loader.h
   common.h
   MMAI.h
   export.h
