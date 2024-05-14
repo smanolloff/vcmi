@@ -113,7 +113,7 @@ $ rel/bin/myclient-gui --map ai/P1.vmap
 ### Benchmark
 
 ```
-$ rel/bin/myclient-headless --map ai/generated/B001.vmap --loglevel-ai error --benchmark
+$ rel/bin/myclient-headless --map ai/A1.vmap --loglevel-ai error --benchmark
 ```
 
 This will run the game in headless mode and directly engage in a battle
@@ -126,7 +126,7 @@ the process is interrupted. The output looks something like this:
 
 ```
 Benchmark:
-* Map: ai/generated/B001.vmap
+* Map: ai/generated/A1.vmap
 * Attacker AI: MMAI_USER
 * Defender AI: StupidAI
 
@@ -146,10 +146,10 @@ Benchmark:
 Launch the game and replace the default VCMI scripted AI with a pre-trained *real* AI:
 
 ```bash
-rel/bin/myclient-gui --map ai/P1.vmap --attacker-ai MMAI_MODEL --attacker-model /path/to/model.zip
+rel/bin/myclient-gui --map gym/A1.vmap --defender-ai MMAI_MODEL --defender-model /path/to/model.pt
 ```
 
-where `/path/to/model` is your pre-trained AI model. If you don't have such a
-model, you will need to train it first 🤓 That's what the
+where `/path/to/model.pt` is a pre-trained Torch JIT model. If you don't have
+such a model, you will need to train it first 🤓 That's what the
 [vcmi-gym](https://github.com/smanolloff/vcmi-gym)
 project is for, so make sure to check it out.
