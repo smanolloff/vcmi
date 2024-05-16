@@ -29,17 +29,20 @@
 
 namespace MMAI {
     AAI::AAI() {
-        info("*** (constructor) ***");
+        std::ostringstream oss;
+        oss << this; // Store this memory address
+        addrstr = oss.str();
+        info("+++ constructor +++");
     }
 
     AAI::~AAI() {
         info("--- (destructor) ---");
     }
 
-    void AAI::error(const std::string &text) const { logAi->error("AAI [%s] %s", colorprint, text); }
-    void AAI::warn(const std::string &text) const { logAi->warn("AAI [%s] %s", colorprint, text); }
-    void AAI::info(const std::string &text) const { logAi->info("AAI [%s] %s", colorprint, text); }
-    void AAI::debug(const std::string &text) const { logAi->debug("AAI [%s] %s", colorprint, text); }
+    void AAI::error(const std::string &text) const { logAi->error("AAI-%s [%s] %s", addrstr, colorprint, text); }
+    void AAI::warn(const std::string &text) const { logAi->warn("AAI-%s [%s] %s", addrstr, colorprint, text); }
+    void AAI::info(const std::string &text) const { logAi->info("AAI-%s [%s] %s", addrstr, colorprint, text); }
+    void AAI::debug(const std::string &text) const { logAi->debug("AAI-%s [%s] %s", addrstr, colorprint, text); }
 
     void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
         error("*** initGameInterface -- BUT NO BAGGAGE ***");
@@ -50,25 +53,47 @@ namespace MMAI {
         info("*** initGameInterface ***");
 
         // XXX: this will not correspond to the real color if --swap-sides option is used
+        //      a "temporary" BLUE or RED color is printed instead during battle
         colorstr = CB->getMyColor()->getStr();
-        colorprint = (colorstr == "red")
-            ? "\033[0m\033[97m\033[41mRED\033[0m"  // white on red
-            : "\033[0m\033[97m\033[44mBLUE\033[0m"; // white on blue
+        colorprint = colorstr;
+
+        // colorprint = (colorstr == "red")
+        //     ? "\033[0m\033[97m\033[41mRED\033[0m"  // white on red
+        //     : "\033[0m\033[97m\033[44mBLUE\033[0m"; // white on blue
         ASSERT(baggage_.has_value(), "baggage has no value");
         ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
 
         baggage = std::any_cast<Export::Baggage*>(baggage_);
 
         // Attackers are red, defenders are blue
+        // XXX: this logic must be duplicated in BAI::initBattleInterface()
         if (colorstr == "red") {
             battleAiName = baggage->attackerBattleAIName;
-            getActionOrig = baggage->f_getActionAttacker;
-        } else {
+            getActionOrig = baggage->f_getActionRed;
+            getValue = baggage->f_getValueRed;
+            debug("(initGameInterface) using f_getActionRed");
+        } else if (colorstr == "blue") {
             battleAiName = baggage->defenderBattleAIName;
-            getActionOrig = baggage->f_getActionDefender;
+            getActionOrig = baggage->f_getActionBlue;
+            getValue = baggage->f_getValueBlue;
+            debug("(initGameInterface) using f_getActionBlue");
+        } else {
+            // Maps and everything basically assumes red human player attacking blue human player
+            // Swapping armies and sides still uses only RED and BLUE as players
+            // All other players should never be asked to lead a battle
+            getActionOrig = [](const Export::Result* result) {
+                throw std::runtime_error("Tried to call getAction on a non-RED non-BLUE player");
+                return 0;
+            };
+            getValue = getActionOrig;
+            battleAiName = "BUG_IF_REQUESTED";
+            debug("(initGameInterface) n/a getAction");
         }
 
-        // A wrapper around baggage->idGetAction
+
+        debug("(init) battleAiName: " + battleAiName);
+
+        // A wrapper around baggage->getAction
         // It ensures special handling for non-game actions (eg. render, reset)
         getActionWrapper = [this](const Export::Result* result) {
             debug("getActionWrapper called with result type: " + std::to_string(result->type));
@@ -124,26 +149,42 @@ namespace MMAI {
 
         side = side_;
 
+        const CGHeroInstance* hero;
+
+        // Battles are ALWAYS between a RED hero and a BLUE hero
+        // If --random-heroes is provided, side_, hero1 and hero2 will be different
+        // Regardless hero1 and hero2's real owner, RED and BLUE AAIs will
+        // receive them as battleStart arguments as if they were the owners.
+        // (hero1->tempOwner is set to 0 (RED) or 1 (BLUE) for that purpose)
+
         // XXX: fix wrong color if --swap-sides option is used
-        colorstr = (side == BattleSide::ATTACKER) ? "red" : "blue";
-        colorprint = (colorstr == "red")
-            ? "\033[0m\033[97m\033[41mRED\033[0m"  // white on red
-            : "\033[0m\033[97m\033[44mBLUE\033[0m"; // white on blue
+        if (side == BattleSide::ATTACKER) {
+            auto newcolor = std::string("\033[0m\033[97m\033[41mRED\033[0m");  // white on red;
+            info("Using color " + newcolor + " for this battle");
+            colorprint = newcolor;
+            hero = dynamic_cast<const CGHeroInstance*>(army1);
+            debug("(battleStart) side=ATTACKER => hero=(army1)");
+        } else {
+            auto newcolor = std::string("\033[0m\033[97m\033[44mBLUE\033[0m"); // white on blue
+            info("Using color " + newcolor + " for this battle");
+            colorprint = newcolor;
+            hero = dynamic_cast<const CGHeroInstance*>(army2);
+            debug("(battleStart) side=DEFENDER => hero=(army2)");
+        }
 
         // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON
         //      The gym maps use the hero's experience as a unique ref
-        const CGHeroInstance* hero;
 
-        // XXX: with swapSides feature, the assert below becomes redundant
-        if (colorstr == "red") {
-            // ASSERT(side_ == BattleSide::ATTACKER, "Red is not attacker");
-            hero = dynamic_cast<const CGHeroInstance*>(army1);
-        } else {
-            // ASSERT(side_ == BattleSide::DEFENDER, "Non-red is not defender");
-            hero = dynamic_cast<const CGHeroInstance*>(army2);
-        }
+        debug("(battleStart) hero1->tempOwner: " + std::to_string(hero1->tempOwner));
+        debug("(battleStart) hero2->tempOwner: " + std::to_string(hero2->tempOwner));
+        debug("(battleStart) hero(army)->tempOwner: " + std::to_string(hero->tempOwner));
+        debug("(battleStart) hero1->getOwner(): " + std::to_string(hero1->getOwner()));
+        debug("(battleStart) hero2->getOwner(): " + std::to_string(hero2->getOwner()));
+        debug("(battleStart) hero(army)->getOwner(): " + std::to_string(hero->getOwner()));
+
 
         armyID = int(hero->exp);
+        debug("(battleStart) armyID: " + std::to_string(armyID));
         // debug("Our hero: " + std::to_string(armyID));
 
         // just copied code from CAdventureAI::battleStart
@@ -158,7 +199,7 @@ namespace MMAI {
 
         if (ainame == "MMAI") {
             bai = std::static_pointer_cast<BAI>(battleAI);
-            bai->myInitBattleInterface(env, cbc, getActionWrapper);
+            bai->myInitBattleInterface(env, cbc, getActionWrapper, getValue);
         } else {
             battleAI->initBattleInterface(env, cbc);
         }
@@ -255,6 +296,7 @@ namespace MMAI {
         }
 
         battleAI.reset();
+        colorprint = colorstr;  // reset RED/BLUE to original colorstr (green/orange/etc.)
         bai = nullptr;  // XXX: call this last, it changes cb->waitTillRealize
     }
 
@@ -262,8 +304,11 @@ namespace MMAI {
         debug("*** getBattleAIName ***");
 
         // Attackers are red, defenders are blue
-        return (colorstr == "red")
+        auto ainame = (colorstr == "red")
             ? baggage->attackerBattleAIName
             : baggage->defenderBattleAIName;
+
+        debug("(getBattleAIName) battleAiName: " + ainame);
+        return ainame;
     }
 }

@@ -13,6 +13,9 @@ All commands in this tutorial must be executed from the VCMI root folder
 ### Set up dependencies
 
 ```bash
+$ curl -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.2.2.zip
+$ unzip -d myclient libtorch.zip
+$ rm libtorch.zip
 $ brew install --cask cmake
 $ pip3 install conan~=1.6
 $ conan profile new default --detect
@@ -35,6 +38,8 @@ In case the above command fails with a qt-related error, apply
 [this](https://codereview.qt-project.org/c/qt/qtbase/+/503172/1/mkspecs/features/toolchain.prf#295)
 patch to `~/.conan/data/qt/5.15.11/_/_/source/qt5/qtbase/mkspecs/features/mac/toolchain.prf`
 (exact qt version may vary), then repeat the `conan install` command.
+
+
 
 ### Compile VCMI
 

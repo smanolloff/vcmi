@@ -25,6 +25,9 @@
 
 namespace MMAI {
     BAI::BAI() : side(BattleSide::ATTACKER), wasWaitingForRealize(false), wasUnlockingGs(false) {
+        std::ostringstream oss;
+        oss << this; // Store this memory address
+        addrstr = oss.str();
         info("+++ constructor +++");
     }
 
@@ -53,7 +56,8 @@ namespace MMAI {
     void BAI::initBattleInterface(
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB,
-        std::any baggage_
+        std::any baggage_,
+        std::string colorstr
     ) {
         info("*** initBattleInterface -- WITH baggage ***");
 
@@ -61,10 +65,20 @@ namespace MMAI {
         ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
 
         auto baggage = std::any_cast<Export::Baggage*>(baggage_);
+        Export::F_GetValue f_getValue;
 
-        getActionOrig = (CB->battleGetMySide() == BattlePerspective::LEFT_SIDE)
-            ? baggage->f_getActionAttacker
-            : baggage->f_getActionDefender;
+        // XXX: battle side may have been swapped, in which case we must
+        if (colorstr == "red") {
+            getActionOrig = baggage->f_getActionRed;
+            f_getValue = baggage->f_getValueRed;
+            debug("(initBattleInterface) using f_getActionRed");
+        } else if (colorstr == "blue") {
+            getActionOrig = baggage->f_getActionBlue;
+            f_getValue = baggage->f_getValueBlue;
+            debug("(initBattleInterface) using f_getActionBlue");
+        } else {
+            throw std::runtime_error("Tried to call initBattleInterface on a non-RED non-BLUE player");
+        }
 
         Export::F_GetAction f_getAction = [this](const Export::Result* result) {
             auto act = getActionOrig(result);
@@ -82,7 +96,7 @@ namespace MMAI {
             return act;
         };
 
-        myInitBattleInterface(ENV, CB, f_getAction);
+        myInitBattleInterface(ENV, CB, f_getAction, f_getValue);
     }
 
     void BAI::initBattleInterface(
@@ -90,7 +104,7 @@ namespace MMAI {
         std::shared_ptr<CBattleCallback> CB
     ) {
         info("*** initBattleInterface -- BUT NO BAGGAGE ***");
-        myInitBattleInterface(ENV, CB, nullptr);
+        myInitBattleInterface(ENV, CB, nullptr, nullptr);
     }
 
     void BAI::initBattleInterface(
@@ -104,12 +118,14 @@ namespace MMAI {
     void BAI::myInitBattleInterface(
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB,
-        Export::F_GetAction f_getAction
+        Export::F_GetAction f_getAction,
+        Export::F_GetValue f_getValue
     ) {
         info("*** myInitBattleInterface ***");
         sidestr = (CB->battleGetMySide() == BattlePerspective::LEFT_SIDE) ? "A" : "D";
         ASSERT(f_getAction, "f_getAction is null");
         getAction = f_getAction;
+        getValue = f_getValue;
         env = ENV;
         cb = CB;
         wasWaitingForRealize = CB->waitTillRealize;

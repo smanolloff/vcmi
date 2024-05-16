@@ -661,7 +661,7 @@ void CPlayerInterface::prepareAutoFightingAI(const CCreatureSet *army1, const CC
 	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
 
 	if (aiBaggage.has_value()) {
-		autofightingAI->initBattleInterface(env, cb, aiBaggage);
+		autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getMyColor()->getStr());
 	} else {
 		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
 	}

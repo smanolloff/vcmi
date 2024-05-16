@@ -120,10 +120,10 @@ Args parse_args(int argc, char * argv[])
         {"map", "gym/A1.vmap"},
         {"loglevel-global", "error"},
         {"loglevel-ai", "debug"},
-        {"attacker-ai", AI_MMAI_USER},
-        {"defender-ai", AI_STUPIDAI},
-        {"attacker-model", "AI/MMAI/models/model.zip"},
-        {"defender-model", "AI/MMAI/models/model.zip"}
+        {"red-ai", AI_MMAI_USER},
+        {"blue-ai", AI_STUPIDAI},
+        {"red-model", "AI/MMAI/models/model.zip"},
+        {"blue-model", "AI/MMAI/models/model.zip"}
     };
 
     static auto randomHeroes = 0;
@@ -152,14 +152,14 @@ Args parse_args(int argc, char * argv[])
             "Place obstacles at random each Nth combat (disabled if 0*)")
         ("swap-sides", po::value<int>()->value_name("<N>"),
             "Swap combat sides each Nth combat (disabled if 0*)")
-        ("attacker-ai", po::value<std::string>()->value_name("<AI>"),
-            values(AIS, omap.at("attacker-ai")).c_str())
-        ("defender-ai", po::value<std::string>()->value_name("<AI>"),
-            values(AIS, omap.at("defender-ai")).c_str())
-        ("attacker-model", po::value<std::string>()->value_name("<FILE>"),
-            ("Path to model.zip (" + omap.at("attacker-model") + "*)").c_str())
-        ("defender-model", po::value<std::string>()->value_name("<FILE>"),
-            ("Path to model.zip (" + omap.at("defender-model") + "*)").c_str())
+        ("red-ai", po::value<std::string>()->value_name("<AI>"),
+            values(AIS, omap.at("red-ai")).c_str())
+        ("blue-ai", po::value<std::string>()->value_name("<AI>"),
+            values(AIS, omap.at("blue-ai")).c_str())
+        ("red-model", po::value<std::string>()->value_name("<FILE>"),
+            ("Path to model.zip (" + omap.at("red-model") + "*)").c_str())
+        ("blue-model", po::value<std::string>()->value_name("<FILE>"),
+            ("Path to model.zip (" + omap.at("blue-model") + "*)").c_str())
         ("loglevel-global", po::value<std::string>()->value_name("<LVL>"),
             values(LOGLEVELS, omap.at("loglevel-global")).c_str())
         ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
@@ -288,10 +288,10 @@ Args parse_args(int argc, char * argv[])
 
     if (benchmark) {
         if (
-            (omap.at("attacker-ai") == "StupidAI" && omap.at("defender-ai") == "StupidAI") ||
-            (omap.at("attacker-ai") == "StupidAI" && omap.at("defender-ai") == "BattleAI") ||
-            (omap.at("attacker-ai") == "BattleAI" && omap.at("defender-ai") == "StupidAI") ||
-            (omap.at("attacker-ai") == "BattleAI" && omap.at("defender-ai") == "BattleAI")
+            (omap.at("red-ai") == "StupidAI" && omap.at("blue-ai") == "StupidAI") ||
+            (omap.at("red-ai") == "StupidAI" && omap.at("blue-ai") == "BattleAI") ||
+            (omap.at("red-ai") == "BattleAI" && omap.at("blue-ai") == "StupidAI") ||
+            (omap.at("red-ai") == "BattleAI" && omap.at("blue-ai") == "BattleAI")
         ) {
             printf("--benchmark requires at least one AI of type MMAI_USER or MMAI_MODEL.\n");
             exit(1);
@@ -304,14 +304,14 @@ Args parse_args(int argc, char * argv[])
 
         printf("Benchmark:\n");
         printf("* Map: %s\n", omap.at("map").c_str());
-        printf("* Attacker AI: %s", omap.at("attacker-ai").c_str());
-        omap.at("attacker-ai") == "MMAI_MODEL"
-            ? printf(" %s\n", omap.at("attacker-model").c_str())
+        printf("* Attacker AI: %s", omap.at("red-ai").c_str());
+        omap.at("red-ai") == "MMAI_MODEL"
+            ? printf(" %s\n", omap.at("red-model").c_str())
             : printf("\n");
 
-        printf("* Defender AI: %s", omap.at("defender-ai").c_str());
-        omap.at("defender-ai") == "MMAI_MODEL"
-            ? printf(" %s\n", omap.at("defender-model").c_str())
+        printf("* Defender AI: %s", omap.at("blue-ai").c_str());
+        omap.at("blue-ai") == "MMAI_MODEL"
+            ? printf(" %s\n", omap.at("blue-model").c_str())
             : printf("\n");
 
         printf("\n");
@@ -328,10 +328,10 @@ Args parse_args(int argc, char * argv[])
         swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),
-        omap.at("attacker-ai"),
-        omap.at("defender-ai"),
-        omap.at("attacker-model"),
-        omap.at("defender-model"),
+        omap.at("red-ai"),
+        omap.at("blue-ai"),
+        omap.at("red-model"),
+        omap.at("blue-model"),
         mapeval,
     };
 }

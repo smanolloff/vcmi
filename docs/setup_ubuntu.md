@@ -19,6 +19,12 @@ $ sudo apt-get install cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
     libboost-locale-dev qtbase5-dev libtbb-dev libluajit-5.1-dev qttools5-dev pybind11-dev python3.10-dev
 ```
 
+```
+$ curl -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-static-with-deps-2.1.2%2Bcpu.zip
+$ unzip -d myclient libtorch.zip
+$ rm libtorch.zip
+```
+
 ### Compile VCMI
 
 ```bash

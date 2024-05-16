@@ -28,10 +28,10 @@
 namespace MMAI {
     using ErrType = Export::ErrType;
 
-    void BAI::error(const std::string &text) const { logAi->error("BAI [%s] %s", sidestr, text); }
-    void BAI::warn(const std::string &text) const { logAi->warn("BAI [%s] %s", sidestr, text); }
-    void BAI::info(const std::string &text) const { logAi->info("BAI [%s] %s", sidestr, text); }
-    void BAI::debug(const std::string &text) const { logAi->debug("BAI [%s] %s", sidestr, text); }
+    void BAI::error(const std::string &text) const { logAi->error("BAI-%s [%s] %s", addrstr, sidestr, text); }
+    void BAI::warn(const std::string &text) const { logAi->warn("BAI-%s [%s] %s", addrstr, sidestr, text); }
+    void BAI::info(const std::string &text) const { logAi->info("BAI-%s [%s] %s", addrstr, sidestr, text); }
+    void BAI::debug(const std::string &text) const { logAi->debug("BAI-%s [%s] %s", addrstr, sidestr, text); }
 
     // For debugging
     MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
@@ -67,6 +67,8 @@ namespace MMAI {
         // printf("%s\n", renderANSI().c_str());
         // std::cout << "Press Enter to continue...";
         // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        // auto value = getValue(result.get());
 
         while(true) {
             auto _action = getAction(result.get());

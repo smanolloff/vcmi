@@ -53,6 +53,7 @@ namespace MMAI {
     {
         friend class AAI;
 
+        std::string addrstr = "?";
         std::string sidestr = "?";
         BattleSide::Type side;
         std::shared_ptr<CBattleCallback> cb;
@@ -68,6 +69,7 @@ namespace MMAI {
         std::unique_ptr<Action> action;
         std::unique_ptr<Export::Result> result;
         Export::F_GetAction getAction;
+        Export::F_GetValue getValue;
 
         // used only if when initialized with baggage (ie. via CPI)
         Export::F_GetAction getActionOrig;
@@ -106,14 +108,14 @@ namespace MMAI {
         void debug(const std::string &text) const;
 
         void setInitBattleInterfaceVars(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB);
-        void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, Export::F_GetAction f_getAction);
+        void myInitBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, Export::F_GetAction f_getAction, Export::F_GetValue f_getValue);
     public:
         BAI();
         ~BAI();
 
 
         void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-        void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage) override;
+        void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage, std::string colorstr) override;
         void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
         void activeStack(const CStack * stack) override; //called when it's turn of that stack
         void yourTacticPhase(int distance) override;

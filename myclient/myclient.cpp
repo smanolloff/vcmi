@@ -14,7 +14,10 @@
 // limitations under the License.
 // =============================================================================
 
+#include <ATen/core/enum_tag.h>
+#include <ATen/core/ivalue.h>
 #include <boost/filesystem/operations.hpp>
+#include <c10/core/SymFloat.h>
 #include <cstdio>
 #include <iostream>
 #include <dlfcn.h>
@@ -79,10 +82,6 @@ bool headless;
 #error "VCMI_BIN_DIR compile definition needs to be set"
 #endif
 
-#ifndef VCMI_ROOT_DIR
-#error "VCMI_ROOT_DIR compile definition needs to be set"
-#endif
-
 #if defined(VCMI_MAC)
 #define LIBEXT "dylib"
 #elif defined(VCMI_UNIX)
@@ -91,14 +90,30 @@ bool headless;
 #error "Unsupported OS"
 #endif
 
-MMAI::Export::F_GetAction loadModel(std::string modelPath) {
+std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath) {
     c10::InferenceMode guard;
     torch::jit::script::Module model = torch::jit::load(modelPath);
     model.eval();
 
     std::cout << "Loaded " << modelPath << "\n";
 
-    return [guard, model](const MMAI::Export::Result * r) {
+    auto getvalue = [guard, model](const MMAI::Export::Result * r) {
+        auto state = MMAI::Export::State{};
+        state.reserve(MMAI::Export::STATE_SIZE_DEFAULT);
+
+        for (auto &u : r->stateUnencoded)
+            u.encode(state);
+
+        // TODO: see if from_blob can directly accept the correct shape
+        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, MMAI::Export::STATE_SIZE_DEFAULT_ONE_HEX});
+        auto method = model.get_method("get_value");
+        auto inputs = std::vector<torch::IValue>{obs};
+        auto res = method(inputs).toDouble();
+        printf("AI value estimation: %f\n", res);
+        return res;
+    };
+
+    auto getaction = [guard, getvalue, model](const MMAI::Export::Result * r) {
         if (r->ended)
             return MMAI::Export::ACTION_RESET;
 
@@ -109,6 +124,7 @@ MMAI::Export::F_GetAction loadModel(std::string modelPath) {
             u.encode(state);
 
         // TODO: see if from_blob can directly accept the correct shape
+        // XXX: handle FLOAT encoding
         auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, MMAI::Export::STATE_SIZE_DEFAULT_ONE_HEX});
 
         auto intmask = std::array<int, MMAI::Export::N_ACTIONS - 1>{};
@@ -124,9 +140,18 @@ MMAI::Export::F_GetAction loadModel(std::string modelPath) {
         auto method = model.get_method("predict");
         auto inputs = std::vector<torch::IValue>{obs, mask};
         auto res = method(inputs).toInt() + 1; // 1 is action offset
-        // printf("JIT predict: %lld\n", res);
+        printf("AI action prediction: %lld\n", res);
+
+        // Also esitmate value
+        auto vmethod = model.get_method("get_value");
+        auto vinputs = std::vector<torch::IValue>{obs};
+        auto vres = vmethod(vinputs).toDouble();
+        printf("AI value estimation: %f\n", vres);
+
         return MMAI::Export::Action(res);
     };
+
+    return {getaction, getvalue};
 }
 
 void validateValue(std::string name, std::string value, std::vector<std::string> values) {
@@ -186,14 +211,20 @@ void validateArguments(
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
 
-    if (randomHeroes < 0)
+    if (randomHeroes < 0) {
         std::cerr << "Bad value for randomHeroes: expected a positive integer, got: " << randomHeroes << "\n";
+        exit(1);
+    }
 
-    if (swapSides < 0)
+    if (swapSides < 0) {
         std::cerr << "Bad value for swapSides: expected a positive integer, got: " << swapSides << "\n";
+        exit(1);
+    }
 
-    if (mapEval < 0)
+    if (mapEval < 0) {
         std::cerr << "Bad value for mapEval: expected a positive integer, got: " << mapEval << "\n";
+        exit(1);
+    }
 
     if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
         if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI." LIBEXT)) {
@@ -212,9 +243,6 @@ void validateArguments(
 
     if (!baggage)
         throw std::runtime_error("baggage is required");
-
-    if (!baggage->f_getAction)
-        throw std::runtime_error("baggage->f_getAction is required");
 
     if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), loglevelAI) == LOGLEVELS.end()) {
         std::cerr << "Bad value for loglevelAI: " << loglevelAI << "\n";
@@ -284,7 +312,10 @@ void processArguments(
     } else if (attackerAI == AI_MMAI_MODEL) {
         baggage->attackerBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        baggage->f_getActionAttacker = loadModel(attackerModel);
+        // baggage->f_getActionRed = loadModel(attackerModel);
+        auto [getaction, getvalue] = loadModel(attackerModel);
+        baggage->f_getActionRed = getaction;
+        baggage->f_getValueRed = getvalue;
     } else if (attackerAI == AI_STUPIDAI) {
         baggage->attackerBattleAIName = "StupidAI";
     } else if (attackerAI == AI_BATTLEAI) {
@@ -306,7 +337,10 @@ void processArguments(
     } else if (defenderAI == AI_MMAI_MODEL) {
         baggage->defenderBattleAIName = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        baggage->f_getActionDefender = loadModel(defenderModel);
+        // baggage->f_getActionBlue = loadModel(defenderModel);
+        auto [getaction, getvalue] = loadModel(defenderModel);
+        baggage->f_getActionBlue = getaction;
+        baggage->f_getValueBlue = getvalue;
     } else if (defenderAI == AI_STUPIDAI) {
         baggage->defenderBattleAIName = "StupidAI";
     } else if (defenderAI == AI_BATTLEAI) {

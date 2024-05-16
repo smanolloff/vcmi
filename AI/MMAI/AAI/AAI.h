@@ -24,6 +24,7 @@ namespace MMAI {
         Export::Baggage * baggage = new Export::Baggage(nullptr);
         std::shared_ptr<BAI> bai;
 
+        std::string addrstr = "?";
         std::string colorstr = "?";
         std::string colorprint = "\033[0m\033[30m\033[107m?\033[0m"; // black on white
         std::string battleAiName;
@@ -31,6 +32,7 @@ namespace MMAI {
         int armyID;
         int nbattles;
 
+        Export::F_GetValue getValue;
         Export::F_GetAction getActionOrig;
         Export::F_GetAction getActionWrapper;
         Export::Action getNonRenderAction(const Export::Result* result);

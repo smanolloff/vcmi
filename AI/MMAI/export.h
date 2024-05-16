@@ -675,11 +675,15 @@ namespace MMAI::Export {
     using F_Sys = std::function<void(std::string cmd)>;
 
     // An F_GetAction type function is called by BAI on each "activeStack()" call.
-    // Such a function is usually be:
+    // Such a function is usually:
     // - libconnector's getAction (when VCMI is started as a Gym env)
     //   (VcmiEnv->PyConnector->Connector::initBaggage())
     // - a dummy getAction (when VCMI is started as a standalone program)
     using F_GetAction = std::function<Action(const Result * result)>;
+
+    // An F_GetValue type function is called only for assessing the
+    // current state (e.g. good or bad)
+    using F_GetValue = std::function<double(const Result * result)>;
 
     // The CB functions above are all bundled into Baggage struct
     // whose purpose is to be seamlessly transportable through VCMI code
@@ -687,16 +691,18 @@ namespace MMAI::Export {
     struct DLL_EXPORT Baggage {
         Baggage() = delete;
         Baggage(F_GetAction f)
-        : f_getAction(f), f_getActionAttacker(f), f_getActionDefender(f) {}
-        const F_GetAction f_getAction;
+        : f_getActionRed(f), f_getActionBlue(f) {}
 
         // Set during vcmi_init(...) to "MMAI", "BattleAI" or "StupidAI"
         std::string attackerBattleAIName;
         std::string defenderBattleAIName;
 
         // Optionally set during vcmi_init(...) to a pre-trained model func
-        F_GetAction f_getActionAttacker;
-        F_GetAction f_getActionDefender;
+        F_GetAction f_getActionRed;
+        F_GetAction f_getActionBlue;
+
+        F_GetValue f_getValueRed;
+        F_GetValue f_getValueBlue;
 
         // Cmd-line option for evaluating maps
         // Contains a result counter (win=1, lose=-1) for each possible hero
