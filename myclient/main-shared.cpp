@@ -285,7 +285,7 @@ Args parse_args(int argc, char * argv[])
                 : (prerecorded ? recordedAction(recordings) : randomValidAction(r->actmask));
         }
 
-        if (!benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
+        if (printModelPredictions && !benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
         return act;
     };
 

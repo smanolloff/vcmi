@@ -90,41 +90,48 @@ bool headless;
 #error "Unsupported OS"
 #endif
 
-std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath, bool printModelPredictions) {
+std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath, bool floatEncoding, bool printModelPredictions) {
     c10::InferenceMode guard;
     torch::jit::script::Module model = torch::jit::load(modelPath);
     model.eval();
 
     std::cout << "Loaded " << modelPath << "\n";
+    auto size = MMAI::Export::STATE_SIZE_DEFAULT;
+    auto sizeOneHex = MMAI::Export::STATE_SIZE_DEFAULT_ONE_HEX;
 
-    auto getvalue = [guard, model](const MMAI::Export::Result * r) {
+    if (floatEncoding) {
+        size = MMAI::Export::STATE_SIZE_FLOAT;
+        sizeOneHex = MMAI::Export::STATE_SIZE_FLOAT_ONE_HEX;
+    }
+
+    auto getvalue = [guard, model, size, sizeOneHex, floatEncoding](const MMAI::Export::Result * r) {
         auto state = MMAI::Export::State{};
-        state.reserve(MMAI::Export::STATE_SIZE_DEFAULT);
+        state.reserve(size);
 
         for (auto &u : r->stateUnencoded)
-            u.encode(state);
+            floatEncoding ? state.push_back(u.encode2Floating()) : u.encode(state);
 
         // TODO: see if from_blob can directly accept the correct shape
-        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, MMAI::Export::STATE_SIZE_DEFAULT_ONE_HEX});
+        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, sizeOneHex});
         auto method = model.get_method("get_value");
         auto inputs = std::vector<torch::IValue>{obs};
         auto res = method(inputs).toDouble();
         return res;
     };
 
-    auto getaction = [guard, model, printModelPredictions](const MMAI::Export::Result * r) {
+    auto getaction = [guard, model, size, floatEncoding, sizeOneHex, printModelPredictions](const MMAI::Export::Result * r) {
         if (r->ended)
             return MMAI::Export::ACTION_RESET;
 
         auto state = MMAI::Export::State{};
-        state.reserve(MMAI::Export::STATE_SIZE_DEFAULT);
+        state.reserve(size);
 
         for (auto &u : r->stateUnencoded)
-            u.encode(state);
+            floatEncoding ? state.push_back(u.encode2Floating()) : u.encode(state);
 
         // TODO: see if from_blob can directly accept the correct shape
         // XXX: handle FLOAT encoding
-        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, MMAI::Export::STATE_SIZE_DEFAULT_ONE_HEX});
+        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, sizeOneHex});
 
         auto intmask = std::array<int, MMAI::Export::N_ACTIONS - 1>{};
         for (int i=0; i < intmask.size(); i++)
@@ -316,7 +323,7 @@ void processArguments(
     } else if (redAI == AI_MMAI_MODEL) {
         baggage->battleAINameRed = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        auto [getaction, getvalue] = loadModel(redModel, printModelPredictions);
+        auto [getaction, getvalue] = loadModel(redModel, stateEncoding == "float", printModelPredictions);
         baggage->f_getActionRed = getaction;
         baggage->f_getValueRed = getvalue;
     } else if (redAI == AI_STUPIDAI) {
@@ -340,7 +347,7 @@ void processArguments(
     } else if (blueAI == AI_MMAI_MODEL) {
         baggage->battleAINameBlue = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        auto [getaction, getvalue] = loadModel(blueModel, printModelPredictions);
+        auto [getaction, getvalue] = loadModel(blueModel, stateEncoding == "float", printModelPredictions);
         baggage->f_getActionBlue = getaction;
         baggage->f_getValueBlue = getvalue;
     } else if (blueAI == AI_STUPIDAI) {
@@ -576,3 +583,4 @@ void start_vcmi() {
         }
     }
 }
+
