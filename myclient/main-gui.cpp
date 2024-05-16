@@ -26,11 +26,12 @@ int main(int argc, char * argv[]) {
         swapSides,
         loglevelGlobal,
         loglevelAI,
-        attackerAI,
-        defenderAI,
-        attackerModel,
-        defenderModel,
-        mapEval
+        redAI,
+        blueAI,
+        redModel,
+        blueModel,
+        mapEval,
+        printModelPredictions
     ] = parse_args(argc, argv);
 
     init_vcmi(
@@ -42,11 +43,12 @@ int main(int argc, char * argv[]) {
         swapSides,
         loglevelGlobal,
         loglevelAI,
-        attackerAI,
-        defenderAI,
-        attackerModel,
-        defenderModel,
+        redAI,
+        blueAI,
+        redModel,
+        blueModel,
         mapEval,
+        printModelPredictions,
         false
     );
 

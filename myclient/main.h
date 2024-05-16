@@ -28,11 +28,12 @@ using Args = std::tuple<
     int,         // swapSides
     std::string, // loglevelGlobal
     std::string, // loglevelAI
-    std::string, // attackerAI
-    std::string, // defenderAI
-    std::string, // attackerModel
-    std::string, // defenderModel
-    int          // mapEval
+    std::string, // redAI
+    std::string, // blueAI
+    std::string, // redModel
+    std::string, // blueModel
+    int,         // mapEval
+    bool         // printModelPredictions
 >;
 
 Args parse_args(int argc, char * argv[]);

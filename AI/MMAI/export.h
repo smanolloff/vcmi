@@ -694,8 +694,8 @@ namespace MMAI::Export {
         : f_getActionRed(f), f_getActionBlue(f) {}
 
         // Set during vcmi_init(...) to "MMAI", "BattleAI" or "StupidAI"
-        std::string attackerBattleAIName;
-        std::string defenderBattleAIName;
+        std::string battleAINameRed;
+        std::string battleAINameBlue;
 
         // Optionally set during vcmi_init(...) to a pre-trained model func
         F_GetAction f_getActionRed;

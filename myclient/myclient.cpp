@@ -90,7 +90,7 @@ bool headless;
 #error "Unsupported OS"
 #endif
 
-std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath) {
+std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath, bool printModelPredictions) {
     c10::InferenceMode guard;
     torch::jit::script::Module model = torch::jit::load(modelPath);
     model.eval();
@@ -109,11 +109,10 @@ std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::st
         auto method = model.get_method("get_value");
         auto inputs = std::vector<torch::IValue>{obs};
         auto res = method(inputs).toDouble();
-        printf("AI value estimation: %f\n", res);
         return res;
     };
 
-    auto getaction = [guard, getvalue, model](const MMAI::Export::Result * r) {
+    auto getaction = [guard, model, printModelPredictions](const MMAI::Export::Result * r) {
         if (r->ended)
             return MMAI::Export::ACTION_RESET;
 
@@ -140,13 +139,16 @@ std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::st
         auto method = model.get_method("predict");
         auto inputs = std::vector<torch::IValue>{obs, mask};
         auto res = method(inputs).toInt() + 1; // 1 is action offset
-        printf("AI action prediction: %lld\n", res);
 
-        // Also esitmate value
-        auto vmethod = model.get_method("get_value");
-        auto vinputs = std::vector<torch::IValue>{obs};
-        auto vres = vmethod(vinputs).toDouble();
-        printf("AI value estimation: %f\n", vres);
+        if (printModelPredictions) {
+            printf("AI action prediction: %d\n", int(res));
+
+            // Also esitmate value
+            auto vmethod = model.get_method("get_value");
+            auto vinputs = std::vector<torch::IValue>{obs};
+            auto vres = vmethod(vinputs).toDouble();
+            printf("AI value estimation: %f\n", vres);
+        }
 
         return MMAI::Export::Action(res);
     };
@@ -188,25 +190,26 @@ void validateArguments(
     int &swapSides,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
-    std::string &attackerAI,
-    std::string &defenderAI,
-    std::string &attackerModel,
-    std::string &defenderModel,
-    int &mapEval
+    std::string &redAI,
+    std::string &blueAI,
+    std::string &redModel,
+    std::string &blueModel,
+    int &mapEval,
+    bool &_printModelPredictions
 ) {
     if (stateEncoding != MMAI::Export::STATE_ENCODING_DEFAULT && stateEncoding != MMAI::Export::STATE_ENCODING_FLOAT)
         throw std::runtime_error("Invalid state encoding: " + stateEncoding);
 
     auto wd = boost::filesystem::current_path();
 
-    validateValue("attackerAI", attackerAI, AIS);
-    validateValue("defenderAI", defenderAI, AIS);
+    validateValue("redAI", redAI, AIS);
+    validateValue("blueAI", blueAI, AIS);
 
-    if (attackerAI == AI_MMAI_MODEL)
-        validateFile("attackerModel", attackerModel, wd);
+    if (redAI == AI_MMAI_MODEL)
+        validateFile("redModel", redModel, wd);
 
-    if (defenderAI == AI_MMAI_MODEL)
-        validateFile("defenderModel", defenderModel, wd);
+    if (blueAI == AI_MMAI_MODEL)
+        validateFile("blueModel", blueModel, wd);
 
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
@@ -236,8 +239,8 @@ void validateArguments(
             exit(1);
     }
 
-    // if (headless && attackerAI != AI_MMAI_MODEL && attackerAI != AI_MMAI_USER) {
-    //     std::cerr << "headless mode requires an MMAI-type attackerAI\n";
+    // if (headless && redAI != AI_MMAI_MODEL && redAI != AI_MMAI_USER) {
+    //     std::cerr << "headless mode requires an MMAI-type redAI\n";
     //     exit(1);
     // }
 
@@ -260,13 +263,14 @@ void processArguments(
     std::string &map,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
-    std::string &attackerAI,
-    std::string &defenderAI,
-    std::string &attackerModel,
-    std::string &defenderModel,
+    std::string &redAI,
+    std::string &blueAI,
+    std::string &redModel,
+    std::string &blueModel,
     int randomHeroes,
     int randomObstacles,
-    int swapSides
+    int swapSides,
+    bool printModelPredictions
 ) {
     // Notes on AI creation
     //
@@ -276,7 +280,7 @@ void processArguments(
     // * CPlayerInterface (CPI) for humans
     // * settings["playerAI"] for computers
     //   settings["playerAI"] is fixed to "MMAI" (ie. MMAI::AAI), which
-    //   can create battle interfaces as per `attackerAI` and `defenderAI`
+    //   can create battle interfaces as per `redAI` and `blueAI`
     //   script arguments (this info is passed to AAI via baggage).
     //
     // *** Battle start - battle interfaces ***
@@ -298,7 +302,7 @@ void processArguments(
     // * for MMAI, it's forwarded to the battle AI and THEN it gets destroyed
 
     //
-    // AI for attacker
+    // AI for attacker (red)
     // When attacker is "MMAI":
     //  * if headless=true, VCMI will create MMAI::AAI which inits BAI via myInitBattleInterface()
     //  * if headless=false, it will create CPI which inits BAI via the (default) initBattleInterface()
@@ -307,21 +311,20 @@ void processArguments(
     // => must set that setting also (see further down)
     // (Note: CPI had to be modded to pass the baggage)
     //
-    if (attackerAI == AI_MMAI_USER) {
-        baggage->attackerBattleAIName = "MMAI";
-    } else if (attackerAI == AI_MMAI_MODEL) {
-        baggage->attackerBattleAIName = "MMAI";
+    if (redAI == AI_MMAI_USER) {
+        baggage->battleAINameRed = "MMAI";
+    } else if (redAI == AI_MMAI_MODEL) {
+        baggage->battleAINameRed = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
-        // baggage->f_getActionRed = loadModel(attackerModel);
-        auto [getaction, getvalue] = loadModel(attackerModel);
+        auto [getaction, getvalue] = loadModel(redModel, printModelPredictions);
         baggage->f_getActionRed = getaction;
         baggage->f_getValueRed = getvalue;
-    } else if (attackerAI == AI_STUPIDAI) {
-        baggage->attackerBattleAIName = "StupidAI";
-    } else if (attackerAI == AI_BATTLEAI) {
-        baggage->attackerBattleAIName = "BattleAI";
+    } else if (redAI == AI_STUPIDAI) {
+        baggage->battleAINameRed = "StupidAI";
+    } else if (redAI == AI_BATTLEAI) {
+        baggage->battleAINameRed = "BattleAI";
     } else {
-        throw std::runtime_error("Unexpected attackerAI: " + attackerAI);
+        throw std::runtime_error("Unexpected redAI: " + redAI);
     }
 
     //
@@ -332,21 +335,20 @@ void processArguments(
     // * "MMAI", which will create BAI/StupidAI/BattleAI battle interfaces
     //   based on info provided via baggage.
     //
-    if (defenderAI == AI_MMAI_USER) {
-        baggage->defenderBattleAIName = "MMAI";
-    } else if (defenderAI == AI_MMAI_MODEL) {
-        baggage->defenderBattleAIName = "MMAI";
+    if (blueAI == AI_MMAI_USER) {
+        baggage->battleAINameBlue = "MMAI";
+    } else if (blueAI == AI_MMAI_MODEL) {
+        baggage->battleAINameBlue = "MMAI";
         // Same as above, but with replaced "getAction" for defender
-        // baggage->f_getActionBlue = loadModel(defenderModel);
-        auto [getaction, getvalue] = loadModel(defenderModel);
+        auto [getaction, getvalue] = loadModel(blueModel, printModelPredictions);
         baggage->f_getActionBlue = getaction;
         baggage->f_getValueBlue = getvalue;
-    } else if (defenderAI == AI_STUPIDAI) {
-        baggage->defenderBattleAIName = "StupidAI";
-    } else if (defenderAI == AI_BATTLEAI) {
-        baggage->defenderBattleAIName = "BattleAI";
+    } else if (blueAI == AI_STUPIDAI) {
+        baggage->battleAINameBlue = "StupidAI";
+    } else if (blueAI == AI_BATTLEAI) {
+        baggage->battleAINameBlue = "BattleAI";
     } else {
-        throw std::runtime_error("Unexpected defenderAI: " + defenderAI);
+        throw std::runtime_error("Unexpected blueAI: " + blueAI);
     }
 
     // All adventure AIs must be MMAI to properly init the battle AIs
@@ -361,7 +363,7 @@ void processArguments(
     Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
 
     // CPI needs this setting in case the attacker is human (headless==false)
-    Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->attackerBattleAIName;
+    Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->battleAINameRed;
 
     // convert to "ai/simotest.vmap" to "maps/ai/simotest.vmap"
     auto mappath = std::filesystem::path("Maps") / std::filesystem::path(map);
@@ -408,11 +410,12 @@ void init_vcmi(
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
-    std::string attackerAI,
-    std::string defenderAI,
-    std::string attackerModel,
-    std::string defenderModel,
+    std::string redAI,
+    std::string blueAI,
+    std::string redModel,
+    std::string blueModel,
     int mapEval,
+    bool printModelPredictions,
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
@@ -431,11 +434,12 @@ void init_vcmi(
         swapSides,
         loglevelGlobal,
         loglevelAI,
-        attackerAI,
-        defenderAI,
-        attackerModel,
-        defenderModel,
-        mapEval
+        redAI,
+        blueAI,
+        redModel,
+        blueModel,
+        mapEval,
+        printModelPredictions
     );
 
     auto wd = boost::filesystem::current_path();
@@ -458,13 +462,14 @@ void init_vcmi(
         map,
         loglevelGlobal,
         loglevelAI,
-        attackerAI,
-        defenderAI,
-        attackerModel,
-        defenderModel,
+        redAI,
+        blueAI,
+        redModel,
+        blueModel,
         randomHeroes,
         randomObstacles,
-        swapSides
+        swapSides,
+        printModelPredictions
     );
 
     // chdir needed for VCMI init
@@ -473,10 +478,10 @@ void init_vcmi(
     // printf("map: %s\n", map.c_str());
     // printf("loglevelGlobal: %s\n", loglevelGlobal.c_str());
     // printf("loglevelAI: %s\n", loglevelAI.c_str());
-    // printf("attackerAI: %s\n", attackerAI.c_str());
-    // printf("defenderAI: %s\n", defenderAI.c_str());
-    // printf("attackerModel: %s\n", attackerModel.c_str());
-    // printf("defenderModel: %s\n", defenderModel.c_str());
+    // printf("redAI: %s\n", redAI.c_str());
+    // printf("blueAI: %s\n", blueAI.c_str());
+    // printf("redModel: %s\n", redModel.c_str());
+    // printf("blueModel: %s\n", blueModel.c_str());
     // printf("headless: %d\n", headless);
 
     Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;

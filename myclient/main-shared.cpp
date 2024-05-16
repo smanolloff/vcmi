@@ -133,6 +133,7 @@ Args parse_args(int argc, char * argv[])
     static auto benchmark = false;
     static auto interactive = false;
     static auto prerecorded = false;
+    static auto printModelPredictions = false;
 
     auto usage = std::stringstream();
     usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
@@ -170,6 +171,8 @@ Args parse_args(int argc, char * argv[])
             "Replay actions from local file named actions.txt")
         ("benchmark", po::bool_switch(&benchmark),
             "Measure performance")
+        ("print-predictions", po::bool_switch(&printModelPredictions),
+            "Print MMAI model predictions (no effect for other AIs)")
         ("map-eval", po::value<int>()->value_name("<N>"),
             "Eval map for N battles (disabled if 0*)");
 
@@ -333,5 +336,6 @@ Args parse_args(int argc, char * argv[])
         omap.at("red-model"),
         omap.at("blue-model"),
         mapeval,
+        printModelPredictions,
     };
 }

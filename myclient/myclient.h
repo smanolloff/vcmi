@@ -43,11 +43,12 @@ void __attribute__((visibility("default"))) init_vcmi(
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
-    std::string attackerAI,
-    std::string defenderAI,
-    std::string attackerModel,
-    std::string defenderModel,
+    std::string redAI,
+    std::string blueAI,
+    std::string redModel,
+    std::string blueModel,
     int mapEval,
+    bool printModelPredictions,
     bool headless
 );
 

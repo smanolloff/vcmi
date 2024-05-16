@@ -61,13 +61,13 @@ namespace MMAI {
 
         if (color == "red") {
             // ansicolor = "\033[41m";  // red background
-            battleAiName = baggage->attackerBattleAIName;
+            battleAiName = baggage->battleAINameRed;
             getActionOrig = baggage->f_getActionRed;
             getValue = baggage->f_getValueRed;
             debug("(initGameInterface) using f_getActionRed");
         } else if (color == "blue") {
             // ansicolor = "\033[44m";  // blue background
-            battleAiName = baggage->defenderBattleAIName;
+            battleAiName = baggage->battleAINameBlue;
             getActionOrig = baggage->f_getActionBlue;
             getValue = baggage->f_getValueBlue;
             debug("(initGameInterface) using f_getActionBlue");
@@ -295,8 +295,8 @@ namespace MMAI {
 
         // Attackers are red, defenders are blue
         auto ainame = (color == "red")
-            ? baggage->attackerBattleAIName
-            : baggage->defenderBattleAIName;
+            ? baggage->battleAINameRed
+            : baggage->battleAINameBlue;
 
         debug("(getBattleAIName) battleAiName: " + ainame);
         return ainame;
