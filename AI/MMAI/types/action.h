@@ -29,8 +29,9 @@ namespace MMAI {
         static std::unique_ptr<Hex> initAMoveTargetHex(const Export::Action &a, const Battlefield * bf);
         static HexAction initHexAction(const Export::Action &a, const Battlefield * bf);
 
-        Action(const Export::Action action_, const Battlefield * bf);
+        Action(const Export::Action action_, const Battlefield * bf, const std::string color);
 
+        const std::string color;
         const Export::Action action;
         const std::unique_ptr<Hex> hex;
         const std::unique_ptr<Hex> aMoveTargetHex;

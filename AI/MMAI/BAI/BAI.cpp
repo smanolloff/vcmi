@@ -28,10 +28,10 @@
 namespace MMAI {
     using ErrType = Export::ErrType;
 
-    void BAI::error(const std::string &text) const { logAi->error("BAI-%s [%s] %s", addrstr, sidestr, text); }
-    void BAI::warn(const std::string &text) const { logAi->warn("BAI-%s [%s] %s", addrstr, sidestr, text); }
-    void BAI::info(const std::string &text) const { logAi->info("BAI-%s [%s] %s", addrstr, sidestr, text); }
-    void BAI::debug(const std::string &text) const { logAi->debug("BAI-%s [%s] %s", addrstr, sidestr, text); }
+    void BAI::error(const std::string &text) const { logAi->error("BAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
+    void BAI::warn(const std::string &text) const { logAi->warn("BAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
+    void BAI::info(const std::string &text) const { logAi->info("BAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
+    void BAI::debug(const std::string &text) const { logAi->debug("BAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
 
     // For debugging
     MMAI::Export::Action randomValidAction(const MMAI::Export::ActMask &mask) {
@@ -73,7 +73,7 @@ namespace MMAI {
         while(true) {
             auto _action = getAction(result.get());
             allactions.push_back(_action);
-            action = std::make_unique<Action>(_action, battlefield.get());
+            action = std::make_unique<Action>(_action, battlefield.get(), color);
             info("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
             auto actres = buildAction(*battlefield, *action);
 

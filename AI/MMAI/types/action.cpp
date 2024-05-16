@@ -58,11 +58,12 @@ namespace MMAI {
         return HexAction((a-EI(NonHexAction::count)) % EI(HexAction::_count));
     }
 
-    Action::Action(const Export::Action action_, const Battlefield * bf)
+    Action::Action(const Export::Action action_, const Battlefield * bf, const std::string color_)
         : action(action_)
         , hex(initHex(action_, bf))
         , aMoveTargetHex(initAMoveTargetHex(action_, bf))
-        , hexaction(initHexAction(action_, bf)) {};
+        , hexaction(initHexAction(action_, bf))
+        , color(color_) {}
 
     std::string Action::name() const {
         if (action == Export::ACTION_RETREAT)
@@ -85,9 +86,9 @@ namespace MMAI {
 
         if (cstack) {
             auto slot = cstack->unitSlot();
-            std::string color = cstack->unitSide() == BattlePerspective::LEFT_SIDE
-                ? "\033[31m" : "\033[34m";
-            stackstr = color + "#" + std::to_string(slot) + "\033[0m";
+            std::string targetcolor = "\033[31m";  // red
+            if (color == "red") targetcolor = "\033[34m"; // blue
+            stackstr = targetcolor + "#" + std::to_string(slot) + "\033[0m";
         } else {
             stackstr =  "?";
         }

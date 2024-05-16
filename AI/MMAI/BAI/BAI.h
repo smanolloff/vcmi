@@ -53,8 +53,12 @@ namespace MMAI {
     {
         friend class AAI;
 
+        // XXX: those mess up the regular log colors => leave blank
+        std::string ansicolor = "";
+        std::string ansireset = "";
+
         std::string addrstr = "?";
-        std::string sidestr = "?";
+        std::string color = "?";
         BattleSide::Type side;
         std::shared_ptr<CBattleCallback> cb;
         std::shared_ptr<Environment> env;
@@ -93,6 +97,7 @@ namespace MMAI {
             const Export::Result &r,
             const std::shared_ptr<CBattleCallback> cb,
             const Battlefield &bf,
+            const std::string color,
             const Action *action,
             const std::vector<AttackLog> attackLogs
         );

@@ -57,7 +57,7 @@ namespace MMAI {
         std::shared_ptr<Environment> ENV,
         std::shared_ptr<CBattleCallback> CB,
         std::any baggage_,
-        std::string colorstr
+        std::string color_
     ) {
         info("*** initBattleInterface -- WITH baggage ***");
 
@@ -67,17 +67,21 @@ namespace MMAI {
         auto baggage = std::any_cast<Export::Baggage*>(baggage_);
         Export::F_GetValue f_getValue;
 
+        color = color_;
+
         // XXX: battle side may have been swapped, in which case we must
-        if (colorstr == "red") {
+        if (color == "red") {
+            // ansicolor = "\033[41m";  // red background
             getActionOrig = baggage->f_getActionRed;
             f_getValue = baggage->f_getValueRed;
             debug("(initBattleInterface) using f_getActionRed");
-        } else if (colorstr == "blue") {
+        } else if (color == "blue") {
+            // ansicolor = "\033[44m";  // blue background
             getActionOrig = baggage->f_getActionBlue;
             f_getValue = baggage->f_getValueBlue;
             debug("(initBattleInterface) using f_getActionBlue");
         } else {
-            throw std::runtime_error("Tried to call initBattleInterface on a non-RED non-BLUE player");
+            throw std::runtime_error("Tried to call initBattleInterface on a non-RED, non-BLUE player");
         }
 
         Export::F_GetAction f_getAction = [this](const Export::Result* result) {
@@ -122,7 +126,6 @@ namespace MMAI {
         Export::F_GetValue f_getValue
     ) {
         info("*** myInitBattleInterface ***");
-        sidestr = (CB->battleGetMySide() == BattlePerspective::LEFT_SIDE) ? "A" : "D";
         ASSERT(f_getAction, "f_getAction is null");
         getAction = f_getAction;
         getValue = f_getValue;

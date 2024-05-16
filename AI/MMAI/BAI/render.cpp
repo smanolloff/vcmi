@@ -628,6 +628,7 @@ namespace MMAI {
         const Export::Result &r,
         const std::shared_ptr<CBattleCallback> cb,
         const Battlefield &bf,  // verification only
+        const std::string color,
         const Action *action,  // for displaying "last action"
         const std::vector<AttackLog> attackLogs // for displaying log
     ) {
@@ -650,11 +651,11 @@ namespace MMAI {
 
         auto ourcol = redcol;
         auto enemycol = bluecol;
-        if (astack->unitSide() == LIB_CLIENT::BattleSide::DEFENDER) {
+
+        if (color != "red") {
             ourcol = bluecol;
             enemycol = redcol;
         }
-
 
         //
         // 1. Add logs table:
@@ -796,7 +797,7 @@ namespace MMAI {
                     if (hex.attr(A::STACK_IS_ACTIVE) > 0)
                         col += activemod;
 
-                    stackhexes.at(friendly ? slot : 7+slot) = std::make_shared<Hex>(hex);
+                    stackhexes.at(hex.attr(A::STACK_SIDE) ? 7+slot : slot) = std::make_shared<Hex>(hex);
                     sym = col + std::to_string(slot) + nocol;
                 }
                 break; default:
@@ -948,7 +949,7 @@ namespace MMAI {
                 std::string value = "";
 
                 if (hex) {
-                    color = (hex->attr(A::STACK_SIDE) == BattleSide::ATTACKER) ? redcol : bluecol;
+                    color = (hex->attr(A::STACK_SIDE) == astack->unitSide()) ? ourcol : enemycol;
                     value = std::to_string(hex->attr(a));
                     if (hex->attr(A::STACK_IS_ACTIVE) > 0) color += activemod;
                 }

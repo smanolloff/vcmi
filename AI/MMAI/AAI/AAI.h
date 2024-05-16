@@ -24,9 +24,12 @@ namespace MMAI {
         Export::Baggage * baggage = new Export::Baggage(nullptr);
         std::shared_ptr<BAI> bai;
 
+        // XXX: those mess up the regular log colors => leave blank
+        std::string ansicolor = "";
+        std::string ansireset = "";
+
+        std::string color = "?";
         std::string addrstr = "?";
-        std::string colorstr = "?";
-        std::string colorprint = "\033[0m\033[30m\033[107m?\033[0m"; // black on white
         std::string battleAiName;
         bool side;
         int armyID;
