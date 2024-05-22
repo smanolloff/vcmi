@@ -703,5 +703,7 @@ namespace MMAI::Export {
 
         F_GetValue f_getValueRed;
         F_GetValue f_getValueBlue;
+
+        std::string map;
     };
 }

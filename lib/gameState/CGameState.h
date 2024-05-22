@@ -90,6 +90,7 @@ public:
 	int swapSides = 0;
 	ui32 lastSeed = 0;
 	int statsSampling = 0;
+  int statsPersistFreq = 0;
 	std::string statsStorage = "-";
 	std::string statsMode = "red";
 	float statsScoreVar = 0.4;
