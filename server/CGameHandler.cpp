@@ -598,7 +598,8 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 	// 	logGlobal->error("DEFENDER tmpOwner was: " + std::to_string(heroDefender->tempOwner));
 	// logGlobal->error("redside was: " + std::to_string(redside));
 
-	if (stats) {
+	// don't record stats for retreats (i.e. env resets)
+	if (stats && battleResult.get()->result == BattleResult::NORMAL) {
 		stats->dataadd(
 			redside,
 			battleResult.data->winner == BattleSide::ATTACKER,

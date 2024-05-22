@@ -16,7 +16,8 @@ All commands in this tutorial must be executed from the VCMI root folder
 $ sudo apt-get install cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
     libsdl2-mixer-dev zlib1g-dev libavformat-dev libswscale-dev libboost-dev \
     libboost-filesystem-dev libboost-system-dev libboost-thread-dev libboost-program-options-dev \
-    libboost-locale-dev qtbase5-dev libtbb-dev libluajit-5.1-dev qttools5-dev pybind11-dev python3.10-dev
+    libboost-locale-dev qtbase5-dev libtbb-dev libluajit-5.1-dev qttools5-dev \
+    libsqlite3-dev pybind11-dev python3.10-dev
 ```
 
 ```

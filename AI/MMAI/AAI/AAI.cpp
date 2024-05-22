@@ -153,11 +153,11 @@ namespace MMAI {
 
         // XXX: fix wrong color if --swap-sides option is used
         if (side == BattleSide::ATTACKER) {
-            info("Will play DEFENDER in this battle");
+            info("Will play ATTACKER in this battle");
             hero = dynamic_cast<const CGHeroInstance*>(army1);
             debug("(battleStart) side=ATTACKER => hero=(army1)");
         } else {
-            info("Will play ATTACKER in this battle");
+            info("Will play DEFENDER in this battle");
             hero = dynamic_cast<const CGHeroInstance*>(army2);
             debug("(battleStart) side=DEFENDER => hero=(army2)");
         }
