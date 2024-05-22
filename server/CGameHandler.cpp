@@ -61,6 +61,7 @@
 #include "../lib/serializer/Cast.h"
 #include "../lib/serializer/JsonSerializer.h"
 #include "../lib/ScriptHandler.h"
+#include "stats.h"
 #include "vstd/CLoggerBase.h"
 #include <memory>
 #include <stdexcept>
@@ -582,12 +583,28 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 	//Fill BattleResult structure with exp info
 	giveExp(*battleResult.data);
 
-	if (battleResult.get()->result == BattleResult::NORMAL) // give 500 exp for defeating hero, unless he escaped
-	{
-		if(heroAttacker)
-			battleResult.data->exp[1] += 500;
-		if(heroDefender)
-			battleResult.data->exp[0] += 500;
+	// if (battleResult.get()->result == BattleResult::NORMAL) // give 500 exp for defeating hero, unless he escaped
+	// {
+	// 	if(heroAttacker) {
+	// 		battleResult.data->exp[1] += 500;
+	// 	}
+	// 	if(heroDefender) {
+	// 		battleResult.data->exp[0] += 500;
+	// 	}
+	// }
+	// if(heroAttacker)
+	// 	logGlobal->error("ATTACKER tmpOwner was: " + std::to_string(heroAttacker->tempOwner));
+	// if(heroDefender)
+	// 	logGlobal->error("DEFENDER tmpOwner was: " + std::to_string(heroDefender->tempOwner));
+	// logGlobal->error("redside was: " + std::to_string(redside));
+
+	if (stats) {
+		stats->dataadd(
+			redside,
+			battleResult.data->winner == BattleSide::ATTACKER,
+			heroAttacker->exp,  // training map is designed such that exp = hero ID
+			heroDefender->exp
+		);
 	}
 
 	// Give 500 exp to winner if a town was conquered during the battle
@@ -595,10 +612,10 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 	if (defendedTown && battleResult.data->winner == BattleSide::ATTACKER)
 		battleResult.data->exp[BattleSide::ATTACKER] += 500;
 
-	if(heroAttacker)
-		battleResult.data->exp[0] = heroAttacker->calculateXp(battleResult.data->exp[0]);//scholar skill
-	if(heroDefender)
-		battleResult.data->exp[1] = heroDefender->calculateXp(battleResult.data->exp[1]);
+	// if(heroAttacker)
+	// 	battleResult.data->exp[0] = heroAttacker->calculateXp(battleResult.data->exp[0]);//scholar skill
+	// if(heroDefender)
+	// 	battleResult.data->exp[1] = heroDefender->calculateXp(battleResult.data->exp[1]);
 
 	auto battleQuery = std::dynamic_pointer_cast<CBattleQuery>(queries.topQuery(gs->curB->sides[0].color));
 	if (!battleQuery)
@@ -828,9 +845,9 @@ void CGameHandler::endBattleConfirm(const BattleInfo * battleInfo)
 	{
 		swapGarrisonOnSiege(finishingBattle->winnerHero->visitedTown->id); //return defending visitor from garrison to its rightful place
 	}
-	//give exp
-	if(!finishingBattle->isDraw() && battleResult.data->exp[finishingBattle->winnerSide] && finishingBattle->winnerHero)
-		changePrimSkill(finishingBattle->winnerHero, PrimarySkill::EXPERIENCE, battleResult.data->exp[finishingBattle->winnerSide]);
+	// //give exp
+	// if(!finishingBattle->isDraw() && battleResult.data->exp[finishingBattle->winnerSide] && finishingBattle->winnerHero)
+	// 	changePrimSkill(finishingBattle->winnerHero, PrimarySkill::EXPERIENCE, battleResult.data->exp[finishingBattle->winnerSide]);
 	
 	BattleResultAccepted raccepted;
 	raccepted.heroResult[0].army = const_cast<CArmedInstance*>(battleInfo->sides.at(0).armyObject);
@@ -2617,64 +2634,69 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	if(gs->curB)
 		gs->curB.dellNull();
 
+	bool swappingSides = (gs->swapSides > 0 && (gs->battlecounter % gs->swapSides) == 0);
+	// printf("battlecounter: %d, swapSides: %d, rem: %d\n", gs->battlecounter, gs->swapSides, gs->battlecounter % gs->swapSides);
+
 	gs->battlecounter++;
-	if (gs->randomHeroes > 0) {
-		if (gs->allheroes.size() % 2 != 0)
-			throw std::runtime_error("Heroes size must be even");
 
-		if (gs->herocounter % gs->allheroes.size() == 0) {
-			gs->herocounter = 0;
-		    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), std::random_device());
-		}
-
-		hero1 = gs->allheroes.at(gs->herocounter);
-		hero2 = gs->allheroes.at(gs->herocounter+1);
-
-		if (gs->battlecounter % gs->randomHeroes == 0)
-			gs->herocounter += 2;
-
-		// Set temp owner of both heroes to player0 and player1
-		// XXX: causes UB after battle, unless it is replayed (ok for training)
-		const_cast<CGHeroInstance*>(hero1)->tempOwner = 0;
-		const_cast<CGHeroInstance*>(hero2)->tempOwner = 1;
-
-		army1 = static_cast<const CArmedInstance*>(hero1);
-		army2 = static_cast<const CArmedInstance*>(hero2);
-
+	if (!stats && gs->statsMode != "disabled") {
+		stats = std::make_unique<Stats>(
+			gs->allheroes.size(),
+			gs->statsStorage,
+			gs->statsPersistFreq,
+			gs->statsSampling,
+			gs->statsScoreVar
+		);
 	}
+
+	if (swappingSides)
+		redside = !redside;
+
+	// redside = swappingSides ? !redside : redside;
 
 	static const CArmedInstance *armies[2];
 	static const CGHeroInstance *heroes[2];
+
+	if (gs->randomHeroes > 0) {
+		if (stats && gs->statsSampling) {
+			auto [id1, id2] = stats->sample2(gs->statsMode == "red" ? redside : !redside);
+			hero1 = gs->allheroes.at(id1);
+			hero2 = gs->allheroes.at(id2);
+			// printf("sampled: hero1: %d, hero2: %d (perspective: %s)\n", id1, id2, gs->statsMode.c_str());
+		} else {
+			if (gs->allheroes.size() % 2 != 0)
+				throw std::runtime_error("Heroes size must be even");
+
+			if (gs->herocounter % gs->allheroes.size() == 0) {
+				gs->herocounter = 0;
+			    std::shuffle(gs->allheroes.begin(), gs->allheroes.end(), std::random_device());
+			}
+
+			// XXX: heroes must be different (objects must have different tempOwner)
+			hero1 = gs->allheroes.at(gs->herocounter);
+			hero2 = gs->allheroes.at(gs->herocounter+1);
+
+			if (gs->battlecounter % gs->randomHeroes == 0)
+				gs->herocounter += 2;
+		}
+	}
+
+	// Set temp owner of both heroes to player0 and player1
+	// XXX: causes UB after battle, unless it is replayed (ok for training)
+	// XXX: if redside=1 (right), hero2 should have owner=0 (red)
+	//      if redside=0 (left), hero1 should have owner=0 (red)
+	const_cast<CGHeroInstance*>(hero1)->tempOwner = redside;
+	const_cast<CGHeroInstance*>(hero2)->tempOwner = !redside;
+
+	// printf("swappingSides: %d, redside: %d, hero1->tmpOwner: %d, hero2->tmpOwner: %d\n", swappingSides, redside, hero1->tempOwner.getNum(), hero2->tempOwner.getNum());
+
+	army1 = static_cast<const CArmedInstance*>(hero1);
+	army2 = static_cast<const CArmedInstance*>(hero2);
 
 	armies[0] = army1;
 	heroes[0] = hero1;
 	armies[1] = army2;
 	heroes[1] = hero2;
-
-	if (gs->swapSides > 0) {
-		if (gs->randomHeroes > 0) {
-			// with randomHeroes, the hero1 and hero2 func arguments are overwritten
-			// such that hero1 is left and hero2 - right side
-			if ((gs->battlecounter / gs->swapSides) % 2 == 1) {
-				// swap sides (hero1 => right, hero2 => left)
-				armies[0] = army2;
-				heroes[0] = hero2;
-				armies[1] = army1;
-				heroes[1] = hero1;
-			}
-		} else {
-			// without randomHeroes, the hero1 and hero2 func arguments correspond
-			// to indexes 0 and 1 in the "heroes" array from the previous battle
-			// (meaning they hero1 may be left or right depending on prev battle)
-			if ((gs->battlecounter % gs->swapSides) == 0) {
-				// swap sides
-				armies[0] = army2;
-				heroes[0] = hero2;
-				armies[1] = army1;
-				heroes[1] = hero1;
-			}
-		}
-	}
 
 	setupBattle(tile, armies, heroes, creatureBank, town); //initializes stacks, places creatures on battlefield, blocks and informs player interfaces
 

@@ -703,12 +703,5 @@ namespace MMAI::Export {
 
         F_GetValue f_getValueRed;
         F_GetValue f_getValueBlue;
-
-        // Cmd-line option for evaluating maps
-        // Contains a result counter (win=1, lose=-1) for each possible hero
-        // XXX: this assumes heroes have `id` between 0 and 63
-        std::map<int, int> battleResults;
-        std::string map;
-        int mapEval;
     };
 }

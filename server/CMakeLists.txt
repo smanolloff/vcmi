@@ -9,6 +9,8 @@ set(server_SRCS
 		CVCMIServer.cpp
 		NetPacksServer.cpp
 		NetPacksLobbyServer.cpp
+
+		stats.cpp
 )
 
 set(server_HEADERS
@@ -22,7 +24,11 @@ set(server_HEADERS
 		CVCMIServer.h
 		LobbyNetPackVisitors.h
 		ServerNetPackVisitors.h
+
+		stats.h
 )
+
+find_package(SQLite3 REQUIRED)
 
 assign_source_group(${server_SRCS} ${server_HEADERS})
 
@@ -43,7 +49,7 @@ endif()
 if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	set(server_LIBS execinfo ${server_LIBS})
 endif()
-target_link_libraries(vcmiserver PRIVATE ${server_LIBS} minizip::minizip)
+target_link_libraries(vcmiserver PRIVATE ${server_LIBS} minizip::minizip SQLite::SQLite3)
 
 target_include_directories(vcmiserver
 	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}

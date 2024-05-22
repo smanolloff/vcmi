@@ -89,6 +89,10 @@ public:
 	int randomObstacles = 0;
 	int swapSides = 0;
 	ui32 lastSeed = 0;
+	int statsSampling = 0;
+	std::string statsStorage = "-";
+	std::string statsMode = "red";
+	float statsScoreVar = 0.4;
 
 	//we have here all heroes available on this map that are not hired
 	std::unique_ptr<TavernHeroesPool> heroesPool;

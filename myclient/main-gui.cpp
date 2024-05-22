@@ -26,11 +26,16 @@ int main(int argc, char * argv[]) {
         swapSides,
         loglevelGlobal,
         loglevelAI,
+        loglevelStats,
         redAI,
         blueAI,
         redModel,
         blueModel,
-        mapEval,
+        statsMode,
+        statsStorage,
+        statsPersistFreq,
+        statsScoreVar,
+        statsSampling,
         printModelPredictions
     ] = parse_args(argc, argv);
 
@@ -43,11 +48,16 @@ int main(int argc, char * argv[]) {
         swapSides,
         loglevelGlobal,
         loglevelAI,
+        loglevelStats,
         redAI,
         blueAI,
         redModel,
         blueModel,
-        mapEval,
+        statsMode,
+        statsStorage,
+        statsPersistFreq,
+        statsScoreVar,
+        statsSampling,
         printModelPredictions,
         false
     );

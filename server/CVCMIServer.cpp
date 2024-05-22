@@ -343,6 +343,26 @@ bool CVCMIServer::prepareToStartGame()
 		gh->gs->swapSides = cmdLineOptions["swap-sides"].as<ui16>();
 	}
 
+	if (cmdLineOptions.count("stats-mode")) {
+		gh->gs->statsMode = cmdLineOptions["stats-mode"].as<std::string>();
+	}
+
+	if (cmdLineOptions.count("stats-storage")) {
+		gh->gs->statsStorage = cmdLineOptions["stats-storage"].as<std::string>();
+	}
+
+	if (cmdLineOptions.count("stats-persist-freq")) {
+		gh->gs->statsPersistFreq = cmdLineOptions["stats-persist-freq"].as<ui16>();
+	}
+
+	if (cmdLineOptions.count("stats-sampling")) {
+		gh->gs->statsSampling = cmdLineOptions["stats-sampling"].as<ui16>();;
+	}
+
+	if (cmdLineOptions.count("stats-score-var")) {
+		gh->gs->statsScoreVar = cmdLineOptions["stats-score-var"].as<float>();
+	}
+
 	state = EServerState::GAMEPLAY_STARTING;
 	return true;
 }
@@ -1027,6 +1047,12 @@ static void handleCommandOptions(int argc, const char * argv[], boost::program_o
 	("random-heroes", po::value<ui16>(), "pick heroes at random every Nth combat")
 	("random-obstacles", po::value<ui16>(), "place obstacles at random every Nth combat")
 	("swap-sides", po::value<ui16>(), "swap sides every Nth combat")
+	("stats-mode", po::value<std::string>(), "Collect battle result stats.")
+	("stats-storage", po::value<std::string>(), "Stats storage file path (or -* for in-memory)")
+	("stats-loglevel", po::value<std::string>(), "")
+	("stats-sampling", po::value<ui16>(), "Replace random hero sampling with stats-based sampling")
+	("stats-persist-freq", po::value<ui16>(), "Persist stats to storage file every N battles")
+	("stats-score-var", po::value<float>(), "Limit score variance to a float between 0.1 and 0.4")
 	("connections", po::value<ui16>(), "amount of connections to remote lobby");
 
 	if(argc > 1)
@@ -1098,6 +1124,19 @@ int main(int argc, const char * argv[])
 	boost::program_options::variables_map opts;
 	handleCommandOptions(argc, argv, opts);
 	preinitDLL(console);
+
+	// XXX: STATS LOGLEVEL
+	Settings loggers_ = settings.write["logging"]["loggers"];
+	auto &loggers = loggers_->Vector();
+	auto it = std::remove_if(loggers.begin(), loggers.end(), [](JsonNode &jn) { return jn["domain"].String() == "stats"; });
+	loggers.erase(it, loggers.end());
+	JsonNode jlog, jlvl, jdomain;
+	jdomain.String() = "stats";
+	jlvl.String() = opts.count("stats-loglevel") ? opts["stats-loglevel"].as<std::string>() : "error";
+	jlog.Struct() = std::map<std::string, JsonNode>{{"level", jlvl}, {"domain", jdomain}};
+	loggers.push_back(jlog);
+	// XXX: END STATS LOGLEVEL
+
 	logConfig.configure();
 
 	loadDLLClasses();

@@ -197,11 +197,16 @@ void validateArguments(
     int &swapSides,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
+    std::string &loglevelStats,
     std::string &redAI,
     std::string &blueAI,
     std::string &redModel,
     std::string &blueModel,
-    int &mapEval,
+    std::string &statsMode,
+    std::string &statsStorage,
+    int &statsPersistFreq,
+    int &statsSampling,
+    float &statsScoreVar,
     bool &_printModelPredictions
 ) {
     if (stateEncoding != MMAI::Export::STATE_ENCODING_DEFAULT && stateEncoding != MMAI::Export::STATE_ENCODING_FLOAT)
@@ -221,18 +226,41 @@ void validateArguments(
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");
 
+    if (statsMode != "disabled" && statsMode != "red" && statsMode != "blue") {
+        std::cerr << "Bad value for statsMode: expected disabled|red|blue, got: " << statsMode << "\n";
+        exit(1);
+    }
+
+    if (statsStorage != "-") {
+        auto dir = std::filesystem::path(statsStorage).parent_path();
+        if (!std::filesystem::is_directory(dir)) {
+            std::cerr << "Bad value for statsStorage: parent is not a directory: " << dir << "\n";
+            exit(1);
+        }
+    }
+
     if (randomHeroes < 0) {
-        std::cerr << "Bad value for randomHeroes: expected a positive integer, got: " << randomHeroes << "\n";
+        std::cerr << "Bad value for randomHeroes: expected a non-negative integer, got: " << randomHeroes << "\n";
         exit(1);
     }
 
     if (swapSides < 0) {
-        std::cerr << "Bad value for swapSides: expected a positive integer, got: " << swapSides << "\n";
+        std::cerr << "Bad value for swapSides: expected a non-negative integer, got: " << swapSides << "\n";
         exit(1);
     }
 
-    if (mapEval < 0) {
-        std::cerr << "Bad value for mapEval: expected a positive integer, got: " << mapEval << "\n";
+    if (statsPersistFreq < 0) {
+        std::cerr << "Bad value for statsPersistFreq: expected a non-negative integer, got: " << statsPersistFreq << "\n";
+        exit(1);
+    }
+
+    if (statsSampling < 0) {
+        std::cerr << "Bad value for statsSampling: expected a non-negative integer, got: " << statsSampling << "\n";
+        exit(1);
+    }
+
+    if (statsScoreVar < 0.01 or statsScoreVar > 0.99) {
+        std::cerr << "Bad value for statsScoreVar: expected a float between 0.1 and 0.4, got: " << statsScoreVar << "\n";
         exit(1);
     }
 
@@ -263,6 +291,11 @@ void validateArguments(
         std::cerr << "Bad value for loglevelGlobal: " << loglevelGlobal << "\n";
         exit(1);
     }
+
+    if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), loglevelStats) == LOGLEVELS.end()) {
+        std::cerr << "Bad value for loglevelStats: " << loglevelStats << "\n";
+        exit(1);
+    }
 }
 
 void processArguments(
@@ -270,6 +303,7 @@ void processArguments(
     std::string &map,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
+    std::string &loglevelStats,
     std::string &redAI,
     std::string &blueAI,
     std::string &redModel,
@@ -277,6 +311,11 @@ void processArguments(
     int randomHeroes,
     int randomObstacles,
     int swapSides,
+    std::string statsMode,
+    std::string statsStorage,
+    int statsPersistFreq,
+    int statsSampling,
+    float statsScoreVar,
     bool printModelPredictions
 ) {
     // Notes on AI creation
@@ -368,6 +407,12 @@ void processArguments(
     Settings(settings.write({"server", "randomHeroes"}))->Integer() = randomHeroes;
     Settings(settings.write({"server", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
+    Settings(settings.write({"server", "statsMode"}))->String() = statsMode;
+    Settings(settings.write({"server", "statsStorage"}))->String() = statsStorage;
+    Settings(settings.write({"server", "statsPersistFreq"}))->Integer() = statsPersistFreq;
+    Settings(settings.write({"server", "statsSampling"}))->Integer() = statsSampling;
+    Settings(settings.write({"server", "statsScoreVar"}))->Float() = statsScoreVar;
+    Settings(settings.write({"server", "statsLoglevel"}))->String() = loglevelStats;
 
     // CPI needs this setting in case the attacker is human (headless==false)
     Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->battleAINameRed;
@@ -387,6 +432,7 @@ void processArguments(
     //
     // Configure logging
     //
+
     Settings loggers = settings.write["logging"]["loggers"];
     loggers->Vector().clear();
 
@@ -400,6 +446,10 @@ void processArguments(
 
     conflog("global", loglevelGlobal);
     conflog("ai", loglevelAI);
+
+    // XXX: stats logger can't be set here (client) as it runs on the server
+    //      where it's configured via Settings in CVCMIServer.cpp#create
+    // conflog("stats", "info");
 
     // conflog("global", "trace");
     // conflog("ai", "trace");
@@ -417,18 +467,25 @@ void init_vcmi(
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
+    std::string loglevelStats,
     std::string redAI,
     std::string blueAI,
     std::string redModel,
     std::string blueModel,
-    int mapEval,
+    std::string statsMode,
+    std::string statsStorage,
+    int statsPersistFreq,
+    int statsSampling,
+    float statsScoreVar,
     bool printModelPredictions,
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
     baggage = baggage_;
-    baggage->mapEval = mapEval;
     baggage->map = map;
+
+    if (statsStorage != "-")
+        statsStorage = std::filesystem::absolute(std::filesystem::path(statsStorage)).string();
 
     // this is used in start_vcmi()
     headless = headless_;
@@ -441,11 +498,16 @@ void init_vcmi(
         swapSides,
         loglevelGlobal,
         loglevelAI,
+        loglevelStats,
         redAI,
         blueAI,
         redModel,
         blueModel,
-        mapEval,
+        statsMode,
+        statsStorage,
+        statsPersistFreq,
+        statsSampling,
+        statsScoreVar,
         printModelPredictions
     );
 
@@ -469,6 +531,7 @@ void init_vcmi(
         map,
         loglevelGlobal,
         loglevelAI,
+        loglevelStats,
         redAI,
         blueAI,
         redModel,
@@ -476,6 +539,11 @@ void init_vcmi(
         randomHeroes,
         randomObstacles,
         swapSides,
+        statsMode,
+        statsStorage,
+        statsPersistFreq,
+        statsSampling,
+        statsScoreVar,
         printModelPredictions
     );
 
@@ -511,14 +579,19 @@ void init_vcmi(
 
     confcolor("global", "trace", "gray");
     confcolor("ai",     "trace", "gray");
+    confcolor("stats",  "trace", "gray");
     confcolor("global", "debug", "gray");
     confcolor("ai",     "debug", "gray");
+    confcolor("stats",  "debug", "gray");
     confcolor("global", "info", "white");
     confcolor("ai",     "info", "white");
+    confcolor("stats",  "info", "white");
     confcolor("global", "warn", "yellow");
     confcolor("ai",     "warn", "yellow");
+    confcolor("stats",  "warn", "yellow");
     confcolor("global", "error", "red");
     confcolor("ai",     "error", "red");
+    confcolor("stats",  "error", "red");
 
     logConfig->configure();
     // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());

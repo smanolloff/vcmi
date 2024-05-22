@@ -33,6 +33,8 @@ const std::vector<std::string> AIS = {
 
 const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};
 const std::vector<std::string> ENCODINGS = {"default", "float"};
+const std::vector<std::string> STATPERSPECTIVES = {"disabled", "red", "blue"};
+
 
 void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,
@@ -43,11 +45,16 @@ void __attribute__((visibility("default"))) init_vcmi(
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
+    std::string loglevelStats,
     std::string redAI,
     std::string blueAI,
     std::string redModel,
     std::string blueModel,
-    int mapEval,
+    std::string statsMode,
+    std::string statsStorage,
+    int statsPersistFreq,
+    int statsSampling,
+    float statsScoreVar,
     bool printModelPredictions,
     bool headless
 );

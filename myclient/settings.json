@@ -7,6 +7,7 @@
 	},
 	"logging" : {
 		"console" : {
+		"coloredOutputEnabled": true,
 			"colorMapping" : [
 				{
 					"color" : "gray",
@@ -20,6 +21,11 @@
 				},
 				{
 					"color" : "gray",
+					"domain" : "stats",
+					"level" : "trace"
+				},
+				{
+					"color" : "gray",
 					"domain" : "global",
 					"level" : "debug"
 				},
@@ -29,6 +35,11 @@
 					"level" : "debug"
 				},
 				{
+					"color" : "gray",
+					"domain" : "stats",
+					"level" : "debug"
+				},
+				{
 					"color" : "white",
 					"domain" : "global",
 					"level" : "info"
@@ -36,6 +47,11 @@
 				{
 					"color" : "white",
 					"domain" : "ai",
+					"level" : "info"
+				},
+				{
+					"color" : "white",
+					"domain" : "stats",
 					"level" : "info"
 				},
 				{
@@ -46,11 +62,21 @@
 				{
 					"color" : "yellow",
 					"domain" : "ai",
+					"level" : "warn"
+				},
+				{
+					"color" : "yellow",
+					"domain" : "stats",
 					"level" : "warn"
 				},
 				{
 					"color" : "red",
 					"domain" : "global",
+					"level" : "error"
+				},
+				{
+					"color" : "red",
+					"domain" : "stats",
 					"level" : "error"
 				},
 				{
@@ -65,6 +91,10 @@
 			{
 				"domain" : "global",
 				"level" : "error"
+			},
+			{
+				"domain" : "stats",
+				"level" : "trace"
 			},
 			{
 				"domain" : "ai",

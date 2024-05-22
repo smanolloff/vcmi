@@ -33,7 +33,6 @@ namespace MMAI {
         std::string battleAiName;
         bool side;
         int armyID;
-        int nbattles;
 
         Export::F_GetValue getValue;
         Export::F_GetAction getActionOrig;

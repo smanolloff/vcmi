@@ -28,11 +28,16 @@ using Args = std::tuple<
     int,         // swapSides
     std::string, // loglevelGlobal
     std::string, // loglevelAI
+    std::string, // loglevelStats
     std::string, // redAI
     std::string, // blueAI
     std::string, // redModel
     std::string, // blueModel
-    int,         // mapEval
+    std::string, // statsMode
+    std::string, // statsStorage
+    int,         // statsPersistFreq
+    int,         // statsSampling
+    float,       // statsScoreVar
     bool         // printModelPredictions
 >;
 

@@ -156,6 +156,10 @@ namespace MMAI {
         // auto myq = bf.getQueue(cb.get());
         auto [x, y] = Hex::CalcXY(apos);
         auto hex = bf.hexes.at(y).at(x);
+
+        // std::cout << renderANSI() << "\n";
+        // XXX: if the asserts below fail, it may be due to morale
+        //      (all battles must be fought on cursed ground with no morale)
         ASSERT(hex.attr(Export::Attribute::STACK_QUEUE_POS) == 0, "expected 0 queue pos");
         ASSERT(hex.attr(Export::Attribute::STACK_IS_ACTIVE) == 1, "expected active=1");
 
@@ -426,13 +430,15 @@ namespace MMAI {
         }
 
         if (shouldupdate) {
-            if (!battlefield) {
-                // Enemy was first and attacked us before our first turn
-                // => battlefield will be nullptr in this case
-                auto stack = cb->battleGetStacks(CBattleCallback::ONLY_MINE).at(0);
-                battlefield = std::make_unique<Battlefield>(cb.get(), stack);
-            }
-            battlefield->offTurnUpdate(cb.get());
+            // XXX: commented-out as it got broken after obs redesign
+            //      This feature was not really useful anyway
+            // if (!battlefield) {
+            //     // Enemy was first and attacked us before our first turn
+            //     // => battlefield will be nullptr in this case
+            //     auto stack = cb->battleGetStacks(CBattleCallback::ONLY_MINE).at(0);
+            //     battlefield = std::make_unique<Battlefield>(cb.get(), stack);
+            // }
+            // battlefield->offTurnUpdate(cb.get());
         }
     }
 

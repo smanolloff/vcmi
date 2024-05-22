@@ -172,8 +172,8 @@ namespace MMAI {
         debug("(battleStart) hero2->getOwner(): " + std::to_string(hero2->getOwner()));
         debug("(battleStart) hero(army)->getOwner(): " + std::to_string(hero->getOwner()));
 
-        armyID = int(hero->exp);
-        debug("(battleStart) armyID: " + std::to_string(armyID));
+        // armyID = int(hero->exp);
+        // debug("(battleStart) armyID: " + std::to_string(armyID));
         // debug("Our hero: " + std::to_string(armyID));
 
         // just copied code from CAdventureAI::battleStart
@@ -200,46 +200,6 @@ namespace MMAI {
 
     void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(static_cast<int>(queryID)) + ") ***");
-
-        nbattles++;
-
-        // Only winner increments => no race cond
-        // TODO: a better metric would may be net_casualties (winner - loser)
-        if (baggage->mapEval && side == br->winner) {
-            (baggage->battleResults.find(armyID) != baggage->battleResults.end())
-                ? baggage->battleResults.at(armyID)++
-                : baggage->battleResults[armyID] = 1;
-
-            if (nbattles >= baggage->mapEval) {
-                std::vector<std::pair<int, int>> valueIndexPairs;
-                auto winstream = std::stringstream();
-
-
-                for (const auto pair : baggage->battleResults) {
-                    valueIndexPairs.push_back(std::make_pair(pair.second, pair.first));
-                    winstream << "\"hero_" << pair.first << "\":" << pair.second << ",";
-                }
-
-                // Human-readable table - disabled
-                // printf("\n\nResults (%d battles):\n", nbattles);
-                // std::sort(valueIndexPairs.begin(), valueIndexPairs.end());
-                // printf("Wins | Hero ID\n");
-                // printf("-----+--------\n");
-                // for (const auto& pair : valueIndexPairs)
-                //     printf("%-4d | Hero %d\n", pair.first, pair.second);
-                // printf("\n\n");
-
-                auto wins = winstream.str();
-                wins.pop_back();
-                printf("{\"map\":\"%s\",\"battles\":%d,\"wins\":{%s}}\n", baggage->map.c_str(), nbattles, wins.c_str());
-                fflush(stdout);
-                // sleep needed as a desparate workaround to output not being
-                // written due to the abrupt program exit
-                boost::this_thread::sleep(boost::posix_time::seconds(1));
-                exit(0);
-            }
-        }
-
 
         if (!bai) {
             ASSERT(getBattleAIName() != "MMAI", "no bai, but battleAIName is MMAI");

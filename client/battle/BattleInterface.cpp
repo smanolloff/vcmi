@@ -318,13 +318,17 @@ void BattleInterface::battleFinished(const BattleResult& br, QueryID queryID)
 		return;
 	}
 
-	auto wnd = std::make_shared<BattleResultWindow>(br, *(this->curInt));
-	wnd->resultCallback = [=](ui32 selection)
+	// auto wnd = std::make_shared<BattleResultWindow>(br, *(this->curInt));
+	// wnd->resultCallback = [=](ui32 selection)
+	ui32 sel = 1;
+	auto wnd = std::make_shared<BattleResultWindow>(br, *(this->curInt), true);
+	wnd->resultCallback = [this, queryID, &sel](ui32 selection)
 	{
+		sel = selection;
 		curInt->cb->selectionMade(selection, queryID);
 	};
 	GH.windows().pushWindow(wnd);
-	
+
 	curInt->waitWhileDialog(); // Avoid freeze when AI end turn after battle. Check bug #1897
 	CPlayerInterface::battleInt = nullptr;
 }

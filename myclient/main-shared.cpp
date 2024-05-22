@@ -120,20 +120,25 @@ Args parse_args(int argc, char * argv[])
         {"map", "gym/A1.vmap"},
         {"loglevel-global", "error"},
         {"loglevel-ai", "debug"},
+        {"loglevel-stats", "error"},
         {"red-ai", AI_MMAI_USER},
         {"blue-ai", AI_STUPIDAI},
         {"red-model", "AI/MMAI/models/model.zip"},
-        {"blue-model", "AI/MMAI/models/model.zip"}
+        {"blue-model", "AI/MMAI/models/model.zip"},
+        {"stats-mode", "disabled"},
+        {"stats-storage", "-"}
     };
 
     static auto randomHeroes = 0;
     static auto randomObstacles = 0;
     static auto swapSides = 0;
-    static auto mapeval = 0;
     static auto benchmark = false;
     static auto interactive = false;
     static auto prerecorded = false;
+    static auto statsSampling = 0;
+    static auto statsPersistFreq = 0;
     static auto printModelPredictions = false;
+    static float statsScoreVar = 0.4;
 
     auto usage = std::stringstream();
     usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
@@ -165,6 +170,8 @@ Args parse_args(int argc, char * argv[])
             values(LOGLEVELS, omap.at("loglevel-global")).c_str())
         ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
             values(LOGLEVELS, omap.at("loglevel-ai")).c_str())
+        ("loglevel-stats", po::value<std::string>()->value_name("<LVL>"),
+            values(LOGLEVELS, omap.at("loglevel-stats")).c_str())
         ("interactive", po::bool_switch(&interactive),
             "Ask for each action")
         ("prerecorded", po::bool_switch(&prerecorded),
@@ -173,8 +180,16 @@ Args parse_args(int argc, char * argv[])
             "Measure performance")
         ("print-predictions", po::bool_switch(&printModelPredictions),
             "Print MMAI model predictions (no effect for other AIs)")
-        ("map-eval", po::value<int>()->value_name("<N>"),
-            "Eval map for N battles (disabled if 0*)");
+        ("stats-mode", po::value<std::string>()->value_name("<MODE>"),
+            ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
+        ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
+            "File path to read and persist stats to (use -* for in-memory)")
+        ("stats-persist-freq", po::value<int>()->value_name("<N>"),
+            "Persist stats to storage file every N battles (read only if 0*)")
+        ("stats-sampling", po::value<int>()->value_name("<N>"),
+            "Sample random heroes from stats, redistributing every Nth combat (disabled if 0*)")
+        ("stats-score-var", po::value<float>()->value_name("<F>"),
+            "Limit score variance to a float between 0.1 and 0.4*");
 
     po::variables_map vm;
 
@@ -206,8 +221,14 @@ Args parse_args(int argc, char * argv[])
     if (vm.count("swap-sides"))
         swapSides = vm.at("swap-sides").as<int>();
 
-    if (vm.count("map-eval"))
-        mapeval = vm.at("map-eval").as<int>();
+    if (vm.count("stats-persist-freq"))
+        statsPersistFreq = vm.at("stats-persist-freq").as<int>();
+
+    if (vm.count("stats-sampling"))
+        statsSampling = vm.at("stats-sampling").as<int>();
+
+    if (vm.count("stats-score-var"))
+        statsScoreVar = vm.at("stats-score-var").as<float>();
 
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
@@ -300,11 +321,6 @@ Args parse_args(int argc, char * argv[])
             exit(1);
         }
 
-        if (mapeval) {
-            printf("--benchmark and --map-eval are mutually exclusive.");
-            exit(1);
-        }
-
         printf("Benchmark:\n");
         printf("* Map: %s\n", omap.at("map").c_str());
         printf("* Attacker AI: %s", omap.at("red-ai").c_str());
@@ -331,11 +347,16 @@ Args parse_args(int argc, char * argv[])
         swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),
+        omap.at("loglevel-stats"),
         omap.at("red-ai"),
         omap.at("blue-ai"),
         omap.at("red-model"),
         omap.at("blue-model"),
-        mapeval,
+        omap.at("stats-mode"),
+        omap.at("stats-storage"),
+        statsPersistFreq,
+        statsSampling,
+        statsScoreVar,
         printModelPredictions,
     };
 }

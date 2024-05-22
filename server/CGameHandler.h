@@ -16,6 +16,7 @@
 #include "../lib/battle/CBattleInfoCallback.h"
 #include "../lib/battle/BattleAction.h"
 #include "../lib/ScriptHandler.h"
+#include "./stats.h"
 #include "CQuery.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -105,6 +106,8 @@ public:
 	boost::recursive_mutex battleActionMutex;
 
 	std::unique_ptr<HeroPoolProcessor> heroPool;
+	std::unique_ptr<Stats> stats;
+	int redside = 0;
 
 	using FireShieldInfo = std::vector<std::pair<const CStack *, int64_t>>;
 	//use enums as parameters, because doMove(sth, true, false, true) is not readable

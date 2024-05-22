@@ -95,6 +95,7 @@ DLL_LINKAGE vstd::CLoggerBase * logNetwork = CLogger::getLogger(CLoggerDomain("n
 DLL_LINKAGE vstd::CLoggerBase * logAi = CLogger::getLogger(CLoggerDomain("ai"));
 DLL_LINKAGE vstd::CLoggerBase * logAnim = CLogger::getLogger(CLoggerDomain("animation"));
 DLL_LINKAGE vstd::CLoggerBase * logMod = CLogger::getLogger(CLoggerDomain("mod"));
+DLL_LINKAGE vstd::CLoggerBase * logStats = CLogger::getLogger(CLoggerDomain("stats"));
 
 CLogger * CLogger::getLogger(const CLoggerDomain & domain)
 {

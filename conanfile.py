@@ -20,7 +20,8 @@ class VCMI(ConanFile):
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
         "pybind11/[~2.7.1]",
-        "llvm-openmp/17.0.6"
+        "llvm-openmp/17.0.6",
+        "sqlite3/[~3.45.3]"
     ]
     _nullkillerAIRequires = [
         "onetbb/[^2021.3]",
@@ -44,6 +45,7 @@ class VCMI(ConanFile):
         "minizip/*:shared": True,
         "onetbb/*:shared": True,
         "llvm-openmp/*:shared": True,
+        "sqlite/*:shared": True,
     }
 
     def configure(self):
