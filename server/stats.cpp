@@ -35,9 +35,13 @@ Stats::Stats(int nheroes_, std::string dbpath_, int persistfreq_, int redistfreq
     assert(scorevar > 0 && scorevar < 0.5);
 
     persistcounter = persistfreq;
-    redistcounters = {redistfreq_, redistfreq_};
+    redistcounters = {redistfreq, redistfreq};
     minscore = 0.5 - scorevar;
     maxscore = 0.5 + scorevar;
+
+    // redistfreq is *2 as there are separate redistcounters for each side
+    updatebuffers.at(0).reserve(std::max<int>(persistfreq, redistfreq));
+    updatebuffers.at(1).reserve(std::max<int>(persistfreq, redistfreq));
 
     // We are using permutation instead of combination as the data
     // for heroL&heroR is different than the data for heroR&heroL
@@ -145,6 +149,10 @@ void Stats::dbrestore() {
 }
 
 void Stats::dbpersist() {
+    // Flush vectors to in-memory db and update scores2
+    flushbuffers(0);
+    flushbuffers(1);
+
     if (dbpath == "-")
         return;  // in-memory only
 
@@ -259,49 +267,20 @@ float Stats::calcscore(int wins, int games) {
 }
 
 void Stats::dataadd(bool side, bool victory, int heroL, int heroR) {
+    logStats->debug("Adding data: side=%d victory=%d heroL=%d heroR=%d", side, victory, heroL, heroR);
     assert(heroL < nheroes && heroR < nheroes);
     auto windiff = static_cast<int>(victory);
+
+    updatebuffers.at(side).emplace_back(windiff, heroL, heroR);
 
     auto &hero = side ? heroR : heroL;
     auto &data1 = side ? data1R : data1L;
     auto &scores1 = side ? scores1R : scores1L;
-    auto &scores2 = side ? scores2R : scores2L;
-    auto &db_to_local_refs = side ? db_to_local_refs_R : db_to_local_refs_L;
     auto &[wins1, games1] = data1.at(hero);
 
     wins1 += windiff;
     games1 += 1;
-
     scores1.at(hero) = calcscore(wins1, games1);
-
-    const char* sql =
-        "UPDATE stats"
-        " SET wins = wins+?, games = games+1"
-        " WHERE side = ? AND lhero = ? AND rhero = ?"
-        " RETURNING id, wins, games";
-
-    with_stmt(sql, [this, &side, &heroL, &heroR, &windiff, &scores2, &db_to_local_refs](sqlite3_stmt* stmt) {
-        sqlite3_bind_int(stmt, 1, windiff);
-        sqlite3_bind_int(stmt, 2, side);
-        sqlite3_bind_int(stmt, 3, heroL);
-        sqlite3_bind_int(stmt, 4, heroR);
-
-        auto rc = sqlite3_step(stmt);
-        if (rc != SQLITE_ROW)
-            Error("dataload error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(memdb));
-
-        auto dbid = sqlite3_column_int(stmt, 0);
-        auto wins = sqlite3_column_int(stmt, 1);
-        auto games = sqlite3_column_int(stmt, 2);
-        auto score = calcscore(wins, games);
-        auto localid = db_to_local_refs.at(dbid);
-
-        scores2.at(localid) = score;
-
-        rc = sqlite3_step(stmt);
-        if (rc != SQLITE_DONE)
-            Error("dataload error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(memdb));
-    });
 
     auto &redistcounter = redistcounters.at(side);
     logStats->trace("redistcounter (side=%d): %d", side, redistcounter);
@@ -317,8 +296,52 @@ void Stats::dataadd(bool side, bool victory, int heroL, int heroR) {
     }
 }
 
+void Stats::flushbuffers(int side) {
+    auto &buffer = updatebuffers.at(side);
+    if (buffer.size() == 0) return;
+
+    logStats->info("Flushing %d updates in data buffer for side %s", buffer.size(), side ? "blue" : "red");
+
+    auto &scores2 = side ? scores2R : scores2L;
+    auto &db_to_local_refs = side ? db_to_local_refs_R : db_to_local_refs_L;
+    auto sql =
+        "UPDATE stats"
+        " SET wins = wins+?, games = games+1"
+        " WHERE side = ? AND lhero = ? AND rhero = ?"
+        " RETURNING id, wins, games";
+
+    dbexec("BEGIN");
+    with_stmt(sql, [this, &buffer, &side, &scores2, &db_to_local_refs](sqlite3_stmt* stmt) {
+        for (auto &[windiff, heroL, heroR] : buffer) {
+            sqlite3_bind_int(stmt, 1, windiff);
+            sqlite3_bind_int(stmt, 2, side);
+            sqlite3_bind_int(stmt, 3, heroL);
+            sqlite3_bind_int(stmt, 4, heroR);
+
+            auto rc = sqlite3_step(stmt);
+
+            if (rc != SQLITE_ROW)
+                Error("dataadd error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(memdb));
+
+            auto dbid = sqlite3_column_int(stmt, 0);
+            auto wins = sqlite3_column_int(stmt, 1);
+            auto games = sqlite3_column_int(stmt, 2);
+            auto localid = db_to_local_refs.at(dbid);
+            scores2.at(localid) = calcscore(wins, games);
+
+            rc = sqlite3_step(stmt);
+            if (rc != SQLITE_DONE)
+                Error("dataadd error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(memdb));
+        }
+    });
+    dbexec("COMMIT");
+    buffer.clear();
+}
+
 void Stats::redistribute(bool side) {
-    logStats->debug("Redistribute scores for side %d", side);
+    logStats->info("Redistributing scores for side %s", side ? "blue" : "red");
+    flushbuffers(side);
+
     if (side) {
         dist1R = std::discrete_distribution<>(scores1R.begin(), scores1R.end());
         dist2R = std::discrete_distribution<>(scores2R.begin(), scores2R.end());

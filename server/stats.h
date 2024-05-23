@@ -75,6 +75,10 @@ private:
     int redistfreq;
     std::array<int, 2> redistcounters;
 
+    // Keep data to update in-memory and do an actual SQL update in a single
+    // transaction only at dbpersist() or redistribute()
+    std::array<std::vector<std::tuple<int, int, int>>, 2> updatebuffers {};
+
     float scorevar;
     float minscore;
     float maxscore;
@@ -94,6 +98,7 @@ private:
     void dbexec(const char* sql);
     void with_filedb(std::function<void(sqlite3*)> callback);
     void with_stmt(const char *sql, std::function<void(sqlite3_stmt*)> callback);
+    void flushbuffers(int side);
 };
 
 VCMI_LIB_NAMESPACE_END
