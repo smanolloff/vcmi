@@ -85,15 +85,7 @@ public:
 	std::vector<const CGHeroInstance*> allheroes;
 	int herocounter = 0;
 	int battlecounter = 0;
-	int randomHeroes = 0;
-	int randomObstacles = 0;
-	int swapSides = 0;
 	ui32 lastSeed = 0;
-	int statsSampling = 0;
-  int statsPersistFreq = 0;
-	std::string statsStorage = "-";
-	std::string statsMode = "red";
-	float statsScoreVar = 0.4;
 
 	//we have here all heroes available on this map that are not hired
 	std::unique_ptr<TavernHeroesPool> heroesPool;

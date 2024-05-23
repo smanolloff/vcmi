@@ -18,6 +18,7 @@ public:
     Stats(int nheroes, std::string dbpath, int persistfreq, int redistfreq, float scorevar);
     ~Stats();
 
+    void dbpersist(); // memdb -> filedb
     void dataadd(bool side, bool victory, int heroL, int heroR);
     void dump(bool side, bool nonzero = false);
     int sample1(bool side);
@@ -93,7 +94,6 @@ private:
 
     void dbinit(int heroes);        // init memdb
     void dbrestore();               // filedb -> memdb
-    void dbpersist();               // memdb -> filedb
     void dataload(int nheroes);     // memdb -> vars
     void dbexec(const char* sql);
     void with_filedb(std::function<void(sqlite3*)> callback);

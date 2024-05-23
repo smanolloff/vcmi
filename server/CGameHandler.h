@@ -107,7 +107,17 @@ public:
 
 	std::unique_ptr<HeroPoolProcessor> heroPool;
 	std::unique_ptr<Stats> stats;
+
 	int redside = 0;
+	int maxBattles = 0;
+	int randomHeroes = 0;
+	int randomObstacles = 0;
+	int swapSides = 0;
+	int statsSampling = 0;
+	int statsPersistFreq = 0;
+	std::string statsStorage = "-";
+	std::string statsMode = "red";
+	float statsScoreVar = 0.4;
 
 	using FireShieldInfo = std::vector<std::pair<const CStack *, int64_t>>;
 	//use enums as parameters, because doMove(sth, true, false, true) is not readable

@@ -218,6 +218,7 @@ void CServerHandler::startLocalServerAndConnect()
 	}
 	ui16 srvport = 0;
 
+	args.push_back("--max-battles=" + std::to_string(settings["server"]["maxBattles"].Integer()));
 	args.push_back("--random-heroes=" + std::to_string(settings["server"]["randomHeroes"].Integer()));
 	args.push_back("--random-obstacles=" + std::to_string(settings["server"]["randomObstacles"].Integer()));
 	args.push_back("--swap-sides=" + std::to_string(settings["server"]["swapSides"].Integer()));

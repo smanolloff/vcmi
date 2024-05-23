@@ -192,6 +192,7 @@ void validateFile(std::string name, std::string path, boost::filesystem::path wd
 void validateArguments(
     std::string &stateEncoding,
     std::string &map,
+    int &maxBattles,
     int &randomHeroes,
     int &randomObstacles,
     int &swapSides,
@@ -237,6 +238,11 @@ void validateArguments(
             std::cerr << "Bad value for statsStorage: parent is not a directory: " << dir << "\n";
             exit(1);
         }
+    }
+
+    if (maxBattles < 0) {
+        std::cerr << "Bad value for maxBattles: expected a non-negative integer, got: " << maxBattles << "\n";
+        exit(1);
     }
 
     if (randomHeroes < 0) {
@@ -308,6 +314,7 @@ void processArguments(
     std::string &blueAI,
     std::string &redModel,
     std::string &blueModel,
+    int maxBattles,
     int randomHeroes,
     int randomObstacles,
     int swapSides,
@@ -404,6 +411,7 @@ void processArguments(
     Settings(settings.write({"session", "headless"}))->Bool() = headless;
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
+    Settings(settings.write({"server", "maxBattles"}))->Integer() = maxBattles;
     Settings(settings.write({"server", "randomHeroes"}))->Integer() = randomHeroes;
     Settings(settings.write({"server", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
@@ -462,6 +470,7 @@ void init_vcmi(
     MMAI::Export::Baggage* baggage_,
     std::string stateEncoding,
     std::string map,
+    int maxBattles,
     int randomHeroes,
     int randomObstacles,
     int swapSides,
@@ -493,6 +502,7 @@ void init_vcmi(
     validateArguments(
         stateEncoding,
         map,
+        maxBattles,
         randomHeroes,
         randomObstacles,
         swapSides,
@@ -536,6 +546,7 @@ void init_vcmi(
         blueAI,
         redModel,
         blueModel,
+        maxBattles,
         randomHeroes,
         randomObstacles,
         swapSides,

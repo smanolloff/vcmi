@@ -40,6 +40,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     MMAI::Export::Baggage* baggage,
     std::string stateEncoding,
     std::string mapname,
+    int maxbattles,
     int randomHeroes,
     int randomObstacles,
     int swapSides,

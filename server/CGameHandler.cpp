@@ -61,6 +61,7 @@
 #include "../lib/serializer/Cast.h"
 #include "../lib/serializer/JsonSerializer.h"
 #include "../lib/ScriptHandler.h"
+#include "client/CMT.h"
 #include "stats.h"
 #include "vstd/CLoggerBase.h"
 #include <memory>
@@ -606,6 +607,12 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 			heroAttacker->exp,  // training map is designed such that exp = hero ID
 			heroDefender->exp
 		);
+	}
+
+	if (maxBattles && gs->battlecounter >= maxBattles) {
+		std::cout << "Hit battle limit of " << maxBattles << ", will quit now...\n";
+		if (stats) stats->dbpersist();
+		handleQuit();
 	}
 
 	// Give 500 exp to winner if a town was conquered during the battle
@@ -2157,7 +2164,7 @@ void CGameHandler::setupBattle(int3 tile, const CArmedInstance *armies[2], const
 		terType = BattleField(*VLC->modh->identifiers.getIdentifier("core", "battlefield.ship_to_ship"));
 
 
-	if (gs->randomObstacles > 0 && (gs->battlecounter % gs->randomObstacles == 0)) {
+	if (randomObstacles > 0 && (gs->battlecounter % randomObstacles == 0)) {
 		gs->lastSeed = gs->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
 	}
 
@@ -2635,18 +2642,18 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	if(gs->curB)
 		gs->curB.dellNull();
 
-	bool swappingSides = (gs->swapSides > 0 && (gs->battlecounter % gs->swapSides) == 0);
-	// printf("battlecounter: %d, swapSides: %d, rem: %d\n", gs->battlecounter, gs->swapSides, gs->battlecounter % gs->swapSides);
+	bool swappingSides = (swapSides > 0 && (gs->battlecounter % swapSides) == 0);
+	// printf("battlecounter: %d, swapSides: %d, rem: %d\n", battlecounter, swapSides, battlecounter % swapSides);
 
 	gs->battlecounter++;
 
-	if (!stats && gs->statsMode != "disabled") {
+	if (!stats && statsMode != "disabled") {
 		stats = std::make_unique<Stats>(
 			gs->allheroes.size(),
-			gs->statsStorage,
-			gs->statsPersistFreq,
-			gs->statsSampling,
-			gs->statsScoreVar
+			statsStorage,
+			statsPersistFreq,
+			statsSampling,
+			statsScoreVar
 		);
 	}
 
@@ -2658,9 +2665,9 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 	static const CArmedInstance *armies[2];
 	static const CGHeroInstance *heroes[2];
 
-	if (gs->randomHeroes > 0) {
-		if (stats && gs->statsSampling) {
-			auto [id1, id2] = stats->sample2(gs->statsMode == "red" ? redside : !redside);
+	if (randomHeroes > 0) {
+		if (stats && statsSampling) {
+			auto [id1, id2] = stats->sample2(statsMode == "red" ? redside : !redside);
 			hero1 = gs->allheroes.at(id1);
 			hero2 = gs->allheroes.at(id2);
 			// printf("sampled: hero1: %d, hero2: %d (perspective: %s)\n", id1, id2, gs->statsMode.c_str());
@@ -2677,7 +2684,7 @@ void CGameHandler::startBattlePrimary(const CArmedInstance *army1, const CArmedI
 			hero1 = gs->allheroes.at(gs->herocounter);
 			hero2 = gs->allheroes.at(gs->herocounter+1);
 
-			if (gs->battlecounter % gs->randomHeroes == 0)
+			if (gs->battlecounter % randomHeroes == 0)
 				gs->herocounter += 2;
 		}
 	}

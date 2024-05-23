@@ -331,36 +331,40 @@ bool CVCMIServer::prepareToStartGame()
 		break;
 	}
 
+	if (cmdLineOptions.count("max-battles")) {
+		gh->maxBattles = cmdLineOptions["max-battles"].as<ui16>();
+	}
+
 	if (cmdLineOptions.count("random-heroes")) {
-		gh->gs->randomHeroes = cmdLineOptions["random-heroes"].as<ui16>();
+		gh->randomHeroes = cmdLineOptions["random-heroes"].as<ui16>();
 	}
 
 	if (cmdLineOptions.count("random-obstacles")) {
-		gh->gs->randomObstacles = cmdLineOptions["random-obstacles"].as<ui16>();
+		gh->randomObstacles = cmdLineOptions["random-obstacles"].as<ui16>();
 	}
 
 	if (cmdLineOptions.count("swap-sides")) {
-		gh->gs->swapSides = cmdLineOptions["swap-sides"].as<ui16>();
+		gh->swapSides = cmdLineOptions["swap-sides"].as<ui16>();
 	}
 
 	if (cmdLineOptions.count("stats-mode")) {
-		gh->gs->statsMode = cmdLineOptions["stats-mode"].as<std::string>();
+		gh->statsMode = cmdLineOptions["stats-mode"].as<std::string>();
 	}
 
 	if (cmdLineOptions.count("stats-storage")) {
-		gh->gs->statsStorage = cmdLineOptions["stats-storage"].as<std::string>();
+		gh->statsStorage = cmdLineOptions["stats-storage"].as<std::string>();
 	}
 
 	if (cmdLineOptions.count("stats-persist-freq")) {
-		gh->gs->statsPersistFreq = cmdLineOptions["stats-persist-freq"].as<ui16>();
+		gh->statsPersistFreq = cmdLineOptions["stats-persist-freq"].as<ui16>();
 	}
 
 	if (cmdLineOptions.count("stats-sampling")) {
-		gh->gs->statsSampling = cmdLineOptions["stats-sampling"].as<ui16>();;
+		gh->statsSampling = cmdLineOptions["stats-sampling"].as<ui16>();;
 	}
 
 	if (cmdLineOptions.count("stats-score-var")) {
-		gh->gs->statsScoreVar = cmdLineOptions["stats-score-var"].as<float>();
+		gh->statsScoreVar = cmdLineOptions["stats-score-var"].as<float>();
 	}
 
 	state = EServerState::GAMEPLAY_STARTING;
@@ -1044,6 +1048,7 @@ static void handleCommandOptions(int argc, const char * argv[], boost::program_o
 	("lobby", po::value<std::string>(), "address to remote lobby")
 	("lobby-port", po::value<ui16>(), "port at which server connect to remote lobby")
 	("lobby-uuid", po::value<std::string>(), "")
+	("max-battles", po::value<ui16>(), "Quit game after the Nth comat")
 	("random-heroes", po::value<ui16>(), "pick heroes at random every Nth combat")
 	("random-obstacles", po::value<ui16>(), "place obstacles at random every Nth combat")
 	("swap-sides", po::value<ui16>(), "swap sides every Nth combat")

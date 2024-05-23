@@ -129,6 +129,7 @@ Args parse_args(int argc, char * argv[])
         {"stats-storage", "-"}
     };
 
+    static auto maxBattles = 0;
     static auto randomHeroes = 0;
     static auto randomObstacles = 0;
     static auto swapSides = 0;
@@ -152,6 +153,8 @@ Args parse_args(int argc, char * argv[])
             ("Path to map (" + omap.at("map") + "*)").c_str())
         ("state-encoding", po::value<std::string>()->value_name("<ENC>"),
             values(ENCODINGS, omap.at("state-encoding")).c_str())
+        ("max-battles", po::value<int>()->value_name("<N>"),
+            "Quit game after the Nth comat (disabled if 0*)")
         ("random-heroes", po::value<int>()->value_name("<N>"),
             "Pick heroes at random each Nth combat (disabled if 0*)")
         ("random-obstacles", po::value<int>()->value_name("<N>"),
@@ -211,6 +214,9 @@ Args parse_args(int argc, char * argv[])
         if (vm.count(opt))
             omap[opt] = vm.at(opt).as<std::string>();
     }
+
+    if (vm.count("max-battles"))
+        maxBattles = vm.at("max-battles").as<int>();
 
     if (vm.count("random-heroes"))
         randomHeroes = vm.at("random-heroes").as<int>();
@@ -342,6 +348,7 @@ Args parse_args(int argc, char * argv[])
             ? MMAI::Export::STATE_ENCODING_DEFAULT
             : MMAI::Export::STATE_ENCODING_FLOAT,
         omap.at("map"),
+        maxBattles,
         randomHeroes,
         randomObstacles,
         swapSides,

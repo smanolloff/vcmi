@@ -23,6 +23,7 @@ using Args = std::tuple<
     MMAI::Export::Baggage*,
     std::string, // stateEncoding
     std::string, // mapname
+    int,         // maxBattles
     int,         // randomHeroes
     int,         // randomObstacles
     int,         // swapSides
