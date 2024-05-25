@@ -1,3 +1,5 @@
+!/.venv
+
 /client/vcmiclient
 /server/vcmiserver
 /launcher/.lupdate
@@ -71,3 +73,11 @@ fuzzylite.pc
 
 # CLion
 .idea/
+
+# simo
+h3.zip
+h3/
+rel
+.cmake
+myclient/libtorch
+*.sqlite3

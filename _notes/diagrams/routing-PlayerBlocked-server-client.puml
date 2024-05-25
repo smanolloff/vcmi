@@ -1,0 +1,231 @@
+@startuml "vcmi-1.32-routing-client-PlayerBlocked"
+
+!include <C4/C4_Container>
+!include <tupadr3/font-awesome/arrow_circle_right>
+
+title "VCMI-1.3.2 routing for PlayerBlocked packets (server → client)"
+
+skinparam DefaultFontName monospaced
+<style>
+note {  MaximumWidth 500 }
+</style>
+
+' Used in place of " " where line wrapping is undesired
+!$nbsp = "<U+00A0>"
+
+HIDE_STEREOTYPE()
+LAYOUT_LEFT_RIGHT()
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' COLORS
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' black > blue > fuchsia > green > lime > red > teal
+!$c1 = "#000000"
+!$c2 = "#0000FF"
+!$c3 = "#FF00FF"
+!$c4 = "#008000"
+!$c5 = "#00FF00"
+!$c6 = "#FF0000"
+!$c7 = "#008080"
+
+AddElementTag("start", $borderColor="yellow", $shape=EightSidedShape(), $sprite="arrow_circle_right")
+
+' Call track colors. Inserted dynamically with $ctag()
+AddRelTag("c1", $textColor=$c1, $lineColor=$c1)
+AddRelTag("c2", $textColor=$c2, $lineColor=$c2)
+AddRelTag("c3", $textColor=$c3, $lineColor=$c3)
+AddRelTag("c4", $textColor=$c4, $lineColor=$c4)
+AddRelTag("c5", $textColor=$c5, $lineColor=$c5)
+AddRelTag("c6", $textColor=$c6, $lineColor=$c6)
+AddRelTag("c7", $textColor=$c7, $lineColor=$c7)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' FUNCTIONS
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' Replace $search with $repl within $txt
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+' Allows to define a string in multiple lines, replacing "\n"
+' with actual newlines (note: all literal newlines must be escaped)
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+' Formats function declarations
+!function $fn($method, $args)
+  !return $method+"\n<font size=8 color=CCC>("+$replace($args, " ", $nbsp)+")</font>"
+!endfunction
+
+' Formats function declarations with a "comment" line on top
+!function $fn($method, $args, $comment)
+  !return "<font size=8 color=CCC>/* "+$comment+" */</font>\n" + $fn($method, $args)
+!endfunction
+
+' Formats function calls
+!function $call($args, $return)
+  !return $call($args)+"\n"+"↩"+$nbsp+$return
+!endfunction
+
+' Outputs "c1" on 1st call, "c2" on 2nd, etc., resets after "c6"
+' This is used to generate alternating color tags for the call tracks
+!function $ctag()
+  !if %not(%variable_exists("$c"))
+    !%set_variable_value("$c", 0)
+  !elseif (%get_variable_value("$c") >= 7)
+    !%set_variable_value("$c", 0)
+  !endif
+  !%set_variable_value("$c", %get_variable_value("$c") + 1)
+  !return "c"+%get_variable_value("$c")
+!endfunction
+
+' Outputs "1" on 1st call, "2" on 2nd, etc.
+' This is used to create the incrementing numbers used for the call tracks
+!function $inc()
+  !if %not(%variable_exists("$i"))
+    !%set_variable_value("$i", 0)
+  !endif
+  !%set_variable_value("$i", %get_variable_value("$i") + 1)
+  !return %get_variable_value("$i")
+!endfunction
+
+!function $call($args)
+  !return $replace($inc() + " →" + " (" + $args + ")", " ", $nbsp)
+!endfunction
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CLASSES
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Boundary(CServerHandler, "CServerHandler") {
+  Container(CServerHandler_threadHandleConnection, "<<INCOMING DATA>>\n\nthreadHandleConnection\n", $tags="start")
+  note bottom of CServerHandler_threadHandleConnection
+Client receives PlayerBlocked packet
+(the player's GUI should disallow all actions until unblocked)
+  end note
+}
+
+Boundary(PlayerBlocked, "PlayerBlocked < CPackForClient < CPack") {
+  Container(PlayerBlocked_visit, $fn("visit", "ICPackVisitor"))
+  Container(PlayerBlocked_visitBasic, $fn("visitBasic", "ICPackVisitor"))
+  Container(PlayerBlocked_visitTyped, $fn("visitTyped", "ICPackVisitor"))
+  Container(PlayerBlocked_applyGs, $fn("applyGs", "CGameState", "noop"))
+}
+
+Boundary(ServerHandlerCPackVisitor, "ServerHandlerCPackVisitor") {
+  Container(ServerHandlerCPackVisitor_visitForClient, $fn("visitForClient", "CPackForClient"))
+}
+
+Lay_Distance(CServerHandler, ServerHandlerCPackVisitor, 0)
+
+Boundary(CClient, "CClient") {
+  Container(CClient_handlePack, $fn("handlePack", "CPack"))
+}
+
+Boundary(CApplier, "CApplier") {
+  Container(CApplier_getApplier, $fn("getApplier", "uint16"))
+}
+
+Boundary(CApplyOnCL, "CApplyOnCL<PlayerBlocked>") {
+  Container(CApplyOnCL_applyOnClBefore, $fn("applyOnClBefore", "CClient, void*"))
+  Container(CApplyOnCL_applyOnClAfter, $fn("applyOnClAfter", "CClient, void*"))
+}
+
+Boundary(ApplyFirstClientNetPackVisitor, "ApplyFirstClientNetPackVisitor") {
+  Container(ApplyFirstClientNetPackVisitor_visitForClient, $fn("visitForClient", "CPackForClient", "noop"))
+  Container(ApplyFirstClientNetPackVisitor_visitPlayerBlocked, $fn("visitForClient", "CPackForClient", "noop"))
+}
+
+Boundary(CGameState, "CGameState") {
+  Container(CGameState_apply, $fn("apply", "CPack"))
+}
+
+Boundary(CApplyOnGS, "CApplyOnGS<PlayerBlocked>") {
+  Container(CApplyOnGS_applyOnGS, $fn("applyOnGS", "CGameState, void*"))
+}
+
+Boundary(ApplyClientNetPackVisitor, "ApplyClientNetPackVisitor") {
+  Container(ApplyClientNetPackVisitor_visitForClient, $fn("visitForClient", "CPackForClient", "noop"))
+
+  Container(ApplyClientNetPackVisitor_visitPlayerBlocked, $fn("visitPlayerBlocked", "PlayerBlocked"))
+  note top of ApplyClientNetPackVisitor_visitPlayerBlocked
+    core processing logic
+    (separate diagram for this)
+  end note
+}
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CALLS
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Rel(CServerHandler_threadHandleConnection, PlayerBlocked_visit, $call("ServerHandlerCPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visit, PlayerBlocked_visitBasic, $call("ServerHandlerCPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visitBasic, ServerHandlerCPackVisitor_visitForClient, $call("PlayerBlocked"), $tags="$ctag()")
+Rel(ServerHandlerCPackVisitor_visitForClient, CClient_handlePack, $call("PlayerBlocked"), $tags="$ctag()")
+Rel(CClient_handlePack, CApplier_getApplier, $call("uint16", "CApplyOnCL"), $tags="$ctag()")
+Rel(CClient_handlePack, CApplyOnCL_applyOnClBefore, $call("CClient, PlayerBlocked"), $tags="$ctag()")
+Rel(CApplyOnCL_applyOnClBefore, PlayerBlocked_visit, $call("ApplyFirstClientNetPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visit, PlayerBlocked_visitBasic, $call("ApplyFirstClientNetPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visitBasic, ApplyFirstClientNetPackVisitor_visitForClient, $call("PlayerBlocked"), $tags="$ctag()")
+Rel(PlayerBlocked_visit, PlayerBlocked_visitTyped, $call("ApplyFirstClientNetPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visitTyped, ApplyFirstClientNetPackVisitor_visitPlayerBlocked, $call("PlayerBlocked"), $tags="$ctag()")
+Rel(CClient_handlePack, CGameState_apply, $call("PlayerBlocked"), $tags="$ctag()")
+Rel(CGameState_apply, CApplier_getApplier, $call("uint16", "CApplyOnGS"), $tags="$ctag()")
+Rel(CGameState_apply, CApplyOnGS_applyOnGS, $call("CGameState, PlayerBlocked"), $tags="$ctag()")
+Rel(CApplyOnGS_applyOnGS, PlayerBlocked_applyGs, $call("CGameState"), $tags="$ctag()")
+Rel(CClient_handlePack, CApplyOnCL_applyOnClAfter, $call("CClient, PlayerBlocked"), $tags="$ctag()")
+Rel(CApplyOnCL_applyOnClAfter, PlayerBlocked_visit, $call("ApplyClientNetPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visit, PlayerBlocked_visitBasic, $call("ApplyClientNetPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visitBasic, ApplyClientNetPackVisitor_visitForClient, $call("PlayerBlocked"), $tags="$ctag()")
+Rel(PlayerBlocked_visit, PlayerBlocked_visitTyped, $call("ApplyClientNetPackVisitor"), $tags="$ctag()")
+Rel(PlayerBlocked_visitTyped, ApplyClientNetPackVisitor_visitPlayerBlocked, $call("PlayerBlocked"), $tags="$ctag()")
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' LEGEND
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+!function $ids_legend($denom)
+  !$res = $denom
+  !$denom = $denom + 7
+  !while $i > $denom
+    !$res=$res + "," + $nbsp + $denom
+    !$denom = $denom + 7
+  !endwhile
+  !return $res
+!endfunction
+
+skinparam legend {
+  FontColor Black
+  BackgroundColor White
+  ' does not work for some reason
+  BorderColor White
+  BorderThickness 0
+}
+
+legend bottom left
+  | Color | Track |
+  | <$c1> | $ids_legend(1) |
+  | <$c2> | $ids_legend(2) |
+  | <$c3> | $ids_legend(3) |
+  | <$c4> | $ids_legend(4) |
+  | <$c5> | $ids_legend(5) |
+  | <$c6> | $ids_legend(6) |
+  | <$c7> | $ids_legend(7) |
+endlegend
+
+@enduml

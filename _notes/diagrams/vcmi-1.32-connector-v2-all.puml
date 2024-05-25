@@ -1,0 +1,154 @@
+@startuml "vcmi-1.32-reset-endbattle"
+
+title "VCMI-1.3.2 connector-v2 init"
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $wait($set)
+  !if ($set == 0)
+    !return "<back:red>cond.wait</back>\n"+$lock(0)
+  !endif
+
+  !return "<color:yellow><back:blue>cond.wait</back></color>\n"+$lock(1,1)
+!endfunction
+
+!function $notify()
+  !return "<color:blue>cond.notify</color>"
+!endfunction
+
+!function $lock($obtain)
+  !if ($obtain == 1)
+    !return "<back:yellow>obtain lock</back>"
+  !else
+    !return "<color:yellow><back:black>release lock</back></color>"
+  !endif
+!endfunction
+
+!function $lock($obtain, $success)
+  !if ($obtain == 0 || $success == 1)
+    !return $lock($obtain)
+  !endif
+  ' failed to obtain
+  !return "<back:yellow><color:red>obtain lock</color></back>"
+!endfunction
+
+!function $sharevar($name)
+  !return "<color:gray>transform &</color>\n<color:gray>store "+$name+"</color>"
+!endfunction
+
+box T1
+participant "//Env//" as env
+participant "//pyconnector//" as py
+participant "//cppconnector//\n$desc(T1)" as cpp1
+participant "//VCMI//\n$desc('T1')" as vcmi1
+end box
+
+box T2
+participant "//cppconnector//\n$desc(T2)" as cpp2
+participant "//AAI//" as aai
+participant "//BAI//" as bai
+participant "//VCMI Client//" as vcmiclient
+end box
+
+box T3
+participant "//VCMI//\n$desc('T3')" as vcmi3
+end box
+
+== init start ==
+
+-> env ++ : <<new>>
+env -> py ++ : start
+py -> cpp1 ++ : start
+cpp1 -> cpp1 : $lock(1,1)
+cpp1 -> vcmi1 ++ : init
+vcmi1 -> vcmi1 : SDL init
+vcmi1 --> cpp1 -- : SysFn
+cpp1 --> vcmi3 ++ : start(cbprovider)
+cpp1 -> cpp1 : $wait(0)
+
+vcmi3 -> vcmiclient ++ : start(cbprovider)
+note over vcmiclient : unknown activity\ndeactivated for clarity
+deactivate vcmiclient
+vcmi3 -> vcmi3 -- : loop
+note over vcmi3 : active forever\ndeactivated for clarity
+
+vcmiclient o-> aai ** : <<new>>
+vcmiclient o-> aai ++ : initGameInterface
+
+aai -> cpp2 ++ : F_InitReset(F_Reset)\n$desc("from cbprovider")
+cpp2 <--> cpp1 : $sharevar(F_Reset)
+cpp2 --> aai -- :
+
+' aai -> cpp2 ++ : InitActFn(ActFn)
+' cpp2 <--> cpp1 : $sharevar(ActFn)
+' cpp2 --> aai -- :
+
+aai -> cpp2 ++ : F_InitRender(F_Render)\n$desc("from cbprovider")
+cpp2 <--> cpp1 : $sharevar(F_Render)
+cpp2 --> aai -- :
+
+
+aai --> vcmiclient -- :
+
+vcmiclient o-> aai ++ : battleStart
+|||
+aai -> bai ** : <<new>>
+
+aai -> bai ++ : battleStart
+bai --> aai -- :
+aai --> vcmiclient -- :
+vcmiclient o-> bai ++ : activeStack
+bai -> aai ++ : getAction(Result)
+aai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
+cpp2 -> cpp2 : $notify()
+cpp2 -> cpp2 : $lock(0)
+cpp1 -> cpp1 : $wait(1)
+cpp2 -> cpp2 : $lock(1,0)
+cpp1 --> py -- : $lock(0)\n<<P_result>>
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 -> cpp2 : $wait(0)
+py --> env -- : <<obs>>
+[<-- env -- : obs
+
+== init end ==
+== step start ==
+' ======================== STEP ========================
+
+[-> env ++ : step
+env -> py ++ : step
+py -> cpp1 ++ : act(P_Action)
+cpp1 -> cpp1 : $lock(1,1)
+cpp1 <--> cpp2 : $sharevar(Action)
+cpp1 -> cpp1 : $wait(0)
+cpp2 -> cpp2 : $wait(1)
+cpp2 --> bai -- : $lock(0)\n<<Action>>
+bai --> vcmiclient -- : makeAction(...)
+
+vcmiclient o-> bai ++ : activeStack
+bai -> cpp2 ++ : F_GetAction(Result)\n$desc("from cbprovider")
+cpp2 -> cpp2 : $lock(1,1)
+cpp2 <--[#gray]> cpp1 : $sharevar(P_Result)
+== etc ==
+
+@enduml

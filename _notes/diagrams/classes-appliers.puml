@@ -1,0 +1,40 @@
+@startuml "vcmi-1.32-classes"
+
+skinparam defaultTextAlignment center
+
+!procedure $desc($txt)
+<font:Arial><color:Gray><i>// $txt</i></color></font>
+!endprocedure
+
+title "VCMI-1.3.2 class diagram (appliers)"
+
+'''' Declarations to stylize the diagram ''''
+hide circle
+set namespaceSeparator none
+
+skinparam ClassFontStyle bold
+skinparam ClassFontName monospaced
+skinparam ClassAttributeFontName monospaced
+skinparam ClassAttributeIconSize 0
+skinparam DefaultTextAlignment left
+
+
+'''' Attributes and methods '''
+
+
+class CBaseForServerApply {
+    $desc("Used only for its getApplier() immediately after packet is received")
+    --
+    applyOnServerBefore(CVCMIServer*, any*)     bool                $desc("not implemented")
+    applyOnServerAfter(CVCMIServer*, any*)                          $desc("not implemented")
+    <T>getApplier(T*)                           <T>CApplyOnServer   $desc("T is a CPack subclass")
+}
+
+CBaseForServerApply -- "<T>CApplyOnServer"
+class "<T>CApplyOnServer" {
+    --
+    applyOnServerBefore(CVCMIServer*, pack*)     $desc("calls pack->visit() twice with with checks")
+    applyOnServerAfter(CVCMIServer*, pack*)      $desc("not implemented")
+}
+
+@enduml

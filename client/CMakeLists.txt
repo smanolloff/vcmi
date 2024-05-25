@@ -391,10 +391,15 @@ endif()
 
 assign_source_group(${client_SRCS} ${client_HEADERS} VCMI_client.rc)
 
-if(ANDROID)
-	add_library(vcmiclient SHARED ${client_SRCS} ${client_HEADERS})
+if(ENABLE_MYCLIENT_BUILD)
+	add_library(vcmiclient STATIC ${client_SRCS} ${client_HEADERS})
+	set_target_properties(vcmiclient PROPERTIES COMPILE_FLAGS "-fPIC")
 else()
-	add_executable(vcmiclient ${client_SRCS} ${client_HEADERS})
+	if(ANDROID)
+		add_library(vcmiclient SHARED ${client_SRCS} ${client_HEADERS})
+	else()
+		add_executable(vcmiclient ${client_SRCS} ${client_HEADERS})
+	endif()
 endif()
 
 if(NOT ENABLE_STATIC_LIBS)

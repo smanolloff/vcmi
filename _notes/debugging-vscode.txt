@@ -1,0 +1,28 @@
+https://stackoverflow.com/a/67693086
+
+# Install "C/C++ Extension pack" vscode extension
+# Install CodeLLDB - see https://stackoverflow.com/a/67693086
+# Configure user setting "lldb.showDisassembly": "never"
+# Create .vscode/launch.json
+
+    {
+      "version": "0.2.0",
+      "configurations": [
+        {
+          // codeLLDB options:
+          // https://github.com/vadimcn/codelldb/blob/master/MANUAL.md#starting-a-new-debug-session
+          "program": "${workspaceRoot}/BUILD_DIR/bin/vcmiclient",
+          "cwd": "${workspaceRoot}",
+          "name": "Debug vcmiclient",
+          "type": "lldb",
+          "request": "launch",
+          "stopOnEntry": false,
+        }
+      ]
+    }
+
+
+    NOTE: the debugger will auto-stop on weird places and on throws
+          unless "C++: on throw" and "C++: on catch" default breakpoints
+          are disabled from VScode debug view bottom left
+

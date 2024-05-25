@@ -1,0 +1,142 @@
+@startuml "vcmi-1.32-reset-endbattle"
+
+title "VCMI-1.3.2 connector reset (end-of-battle)"
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $wait($type, $set)
+  !if ($set == 0)
+    !return "<back:red>"+$type+".wait()</back>"
+  !endif
+
+  !return "<color:yellow><back:blue>"+$type+".wait()</back></color>"
+!endfunction
+
+!function $cond_notify()
+  !return "<color:blue>cond.notify()</color>"
+!endfunction
+
+!function $event_set()
+  !return "<color:blue>event.set()</color>"
+!endfunction
+
+participant "//Env//" as env
+participant "//AAI//" as AAI
+participant "//BAI//" as BAI
+participant "//BAI//" as BAI2
+participant "//VCMI//" as vcmi
+
+activate env
+env -> env : $wait(event,0)
+
+vcmi -> AAI : battleEnd(queryID)
+activate AAI
+note over AAI: assert(replayQID == -1)
+AAI -> AAI : <back:yellow>set replayQID=N</back>
+
+AAI -> AAI : <back:yellow>retreating?</back>\n$desc("=> false")
+note over AAI: not retreating\n => just get BAI result\nTHEN destroy it\nDON'T answer the query\nDON't call BAI.battleEnd()
+
+AAI -> BAI : getResult()
+activate BAI
+BAI -> AAI : $desc(result)
+deactivate BAI
+
+AAI -> env : resultcb()
+activate env
+env -> env : set result
+env -> env : $event_set()
+env --> AAI :
+deactivate env
+
+AAI -> BAI : battleAI.reset()\n$desc("EXPLICIT call")
+note over BAI #orange: TODO: confirm\ndestructor is called\n(dangling pointers?)
+destroy BAI
+
+AAI --> vcmi :
+deactivate AAI
+env -> env : $wait(event,1)
+
+[<- env : obs\n$desc("terminated")
+deactivate env
+
+[-> env : .reset()
+activate env
+
+env -> AAI : resetcb()
+activate AAI
+
+AAI -> AAI : <back:yellow>replayQID ?</back>\n$desc("=> N")
+note over AAI : end-of-battle\n => answer query now\n\nassert(retreating == false)
+
+AAI -> vcmi : selectionMade()\n$desc(replay)
+AAI -> AAI : <back:yellow>set replayQUID = -1
+
+note right of vcmi
+battle restart in progress
+battleStart packets are sent
+end note
+
+AAI --> env :
+deactivate AAI
+env -> env : $wait(event,0)
+
+vcmi -> AAI : battleStart()
+activate AAI
+create BAI2
+AAI -> BAI2 : <<create>>
+BAI2 -> env : $hspace(30) (set callbacks)
+activate env
+env -> env : (save callbacks)
+env --> BAI2 :
+deactivate env
+AAI -> BAI2 : battleStart()
+activate BAI2
+BAI2 --> AAI :
+deactivate BAI2
+AAI --> vcmi :
+deactivate AAI
+
+
+vcmi -> BAI2 : activeStack
+activate BAI2
+BAI2 -> AAI : resultcb()
+activate AAI
+note left #yellow: resultcb() is now\nproxied through AAI
+AAI -> AAI : <back:yellow>retreating?</back>\n$desc("=> false")
+note over AAI: not retreating\n => will proxy
+AAI -> env : resultcb()
+activate env
+env -> env : set result
+env -> env : $event_set()
+env --> AAI :
+deactivate env
+AAI --> BAI2 :
+deactivate AAI
+BAI2 -> BAI2 : $wait(cond,0)
+env -> env : $wait(event,1)
+[<- env : obs
+deactivate env
+
+note over BAI2 : continue with BAI2
+
+@enduml

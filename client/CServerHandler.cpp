@@ -55,6 +55,9 @@
 
 #include <vcmi/events/EventBus.h>
 
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <string>
+
 template<typename T> class CApplyOnLobby;
 
 class CBaseForLobbyApply
@@ -143,7 +146,7 @@ void CServerHandler::endNetwork()
 	}
 }
 
-CServerHandler::CServerHandler()
+CServerHandler::CServerHandler(std::any aiBaggage_)
 	: networkHandler(INetworkHandler::createHandler())
 	, lobbyClient(std::make_unique<GlobalLobbyClient>())
 	, gameChat(std::make_unique<GameChatHandler>())
@@ -156,6 +159,7 @@ CServerHandler::CServerHandler()
 	, serverMode(EServerMode::NONE)
 	, loadMode(ELoadMode::NONE)
 	, client(nullptr)
+	, aiBaggage(aiBaggage_)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());
 	registerTypesLobbyPacks(*applier);
@@ -648,6 +652,7 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 	if(CMM)
 		CMM->disable();
 
+	client = new CClient(aiBaggage);
 	campaignScoreCalculator = nullptr;
 
 	switch(si->mode)
@@ -866,10 +871,13 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		setMapInfo(mapInfo);
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 	}
-	// "Click" on color to remove us from it
-	setPlayer(myFirstColor());
-	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
+	if(settings["session"]["onlyai"].Bool())
+	{
+		// "Click" on color to remove us from it
+		setPlayer(myFirstColor());
+		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
+	}
 
 	while(true)
 	{

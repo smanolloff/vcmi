@@ -1,0 +1,69 @@
+{
+	"activeMods" : {
+		"vcmi" : {
+			"active" : true,
+			"checksum" : "d895d231",
+			"validated" : true
+		},
+		"vcmi-extras" : {
+			"active" : true,
+			"checksum" : "9c4bebf8",
+			"mods" : {
+				"adventuremap" : {
+					"active" : true,
+					"checksum" : "0d3aff7e",
+					"validated" : true
+				},
+				"arrowtowericons" : {
+					"active" : true,
+					"checksum" : "47ab7610",
+					"validated" : true
+				},
+				"battlefieldactions" : {
+					"active" : true,
+					"checksum" : "93d2957b",
+					"validated" : true
+				},
+				"bonusicons" : {
+					"active" : true,
+					"checksum" : "3c1150c1",
+					"mods" : {
+						"bonus icons" : {
+							"active" : true,
+							"checksum" : "91c5af75",
+							"validated" : true
+						},
+						"immunity icons" : {
+							"active" : true,
+							"checksum" : "f0829864",
+							"validated" : true
+						}
+					},
+					"validated" : true
+				},
+				"extendedlobby" : {
+					"active" : true,
+					"checksum" : "9cc63e6c",
+					"validated" : true
+				},
+				"quick-exchange" : {
+					"active" : true,
+					"checksum" : "89ab8b46",
+					"validated" : true
+				},
+				"truetypefonts" : {
+					"active" : false,
+					"checksum" : "00000000",
+					"validated" : false
+				}
+			},
+			"validated" : true
+		}
+	},
+	"core" : {
+		"active" : true,
+		"checksum" : "78a39671",
+		"name" : "Original game files",
+		"validated" : true
+	}
+}

@@ -1,0 +1,66 @@
+@startuml "python-to-cpp2"
+
+!include <C4/C4_Container>
+!include <tupadr3/devicons2/cplusplus>
+!include <tupadr3/devicons2/python>
+
+skinparam DefaultFontName monospaced
+<style>
+note {  MaximumWidth 500 }
+</style>
+
+' Used in place of " " where line wrapping is undesired
+!$nbsp = "<U+00A0>"
+
+HIDE_STEREOTYPE()
+LAYOUT_LEFT_RIGHT()
+
+AddRelTag("async", $textColor="#1400c9", $lineColor="#1400c9", $lineThickness="1", $lineStyle="dashed")
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' FUNCTIONS
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' Replace $search with $repl within $txt
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+' Allows to define a string in multiple lines, replacing "\n"
+' with actual newlines (note: all literal newlines must be escaped)
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CLASSES
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Container_Ext(GymEnv, "GymEnv", "Python", $sprite="python")
+
+Boundary(Connector, "Connector") {
+  Container(PyConnector, "PyConnector", "Python", $sprite="python")
+  Container(CppConnector, "CppConnector", "C++", $sprite="cplusplus")
+}
+
+Container_Ext(VCMI, "VCMI", "C++", $sprite="cplusplus")
+
+' GymEnv <-> PyConnector : Function calls
+Rel(GymEnv, PyConnector, "", "python interface")
+BiRel(PyConnector, CppConnector, "Asynchronous communication", "python c++ bindings", $tags="async")
+Rel(VCMI, CppConnector, "", "c++ interface")
+
+Lay_Distance(CppConnector, VCMI, 1)
+
+@enduml

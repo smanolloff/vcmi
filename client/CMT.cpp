@@ -106,7 +106,9 @@ static void prog_help(const po::options_description &opts)
 	std::cout << opts;
 }
 
-#if defined(VCMI_WINDOWS) && !defined(__GNUC__) && defined(VCMI_WITH_DEBUG_CONSOLE)
+#ifdef MYCLIENT_BUILD
+int nomain(int argc, char * argv[])
+#elif defined(VCMI_WINDOWS) && !defined(__GNUC__) && defined(VCMI_WITH_DEBUG_CONSOLE)
 int wmain(int argc, wchar_t* argv[])
 #elif defined(VCMI_MOBILE)
 int SDL_main(int argc, char *argv[])

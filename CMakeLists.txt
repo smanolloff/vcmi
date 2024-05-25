@@ -81,6 +81,8 @@ else()
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and launcher as single executable" OFF)
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
+	option(ENABLE_MYCLIENT_BUILD "my custom client" OFF)
+	option(ENABLE_DEV_BUILD "set to true in order to run binaries directly from build dir" OFF)
 endif()
 
 # ERM depends on LUA implicitly
@@ -258,6 +260,14 @@ endif()
 
 if(ENABLE_GOLDMASTER)
 	add_definitions(-DENABLE_GOLDMASTER)
+endif()
+
+if(ENABLE_MYCLIENT_BUILD)
+	add_definitions(-DMYCLIENT_BUILD=1)
+endif()
+
+if(ENABLE_DEV_BUILD)
+	add_definitions(-DDEV_BUILD=1)
 endif()
 
 if(APPLE_IOS)
@@ -461,6 +471,7 @@ endif()
 ############################################
 #        Finding packages                  #
 ############################################
+find_package(pybind11 REQUIRED)
 
 set(BOOST_COMPONENTS date_time filesystem locale program_options system thread)
 if(ENABLE_INNOEXTRACT)
@@ -677,6 +688,10 @@ if(ENABLE_TEST)
 	add_subdirectory(test)
 endif()
 
+if(ENABLE_MYCLIENT_BUILD)
+	add_subdirectory(myclient)
+endif()
+
 #######################################
 #        Installation section         #
 #######################################
@@ -803,6 +818,8 @@ else()
 	set(CPACK_PACKAGE_FILE_NAME "${PACKAGE_FILE_NAME}")
 endif()
 set(CPACK_PACKAGE_VENDOR "VCMI team")
+
+add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
 
 if(WIN32)
 	# Note: due to NSI script generation process all of the backward slashes here are useful

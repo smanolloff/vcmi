@@ -19,10 +19,14 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
+        "pybind11/[~2.7.1]",
+        "llvm-openmp/17.0.6",
+        "sqlite3/[~3.45.3]"
     ]
     _nullkillerAIRequires = [
         "onetbb/[^2021.3]",
     ]
+
     requires = _libRequires + _clientRequires + _nullkillerAIRequires
 
     options = {
@@ -40,6 +44,8 @@ class VCMI(ConanFile):
         "boost/*:shared": True,
         "minizip/*:shared": True,
         "onetbb/*:shared": True,
+        "llvm-openmp/*:shared": True,
+        "sqlite/*:shared": True,
     }
 
     def configure(self):
@@ -166,7 +172,7 @@ class VCMI(ConanFile):
         ]
         self.options["qt"].config = " ".join(_qtOptions)
         self.options["qt"].qttools = True
-        self.options["qt"].with_freetype = self.settings.os == "Android"
+        self.options["qt"].with_freetype = False # self.settings.os == "Android"
         self.options["qt"].with_libjpeg = False
         self.options["qt"].with_md4c = False
         self.options["qt"].with_mysql = False

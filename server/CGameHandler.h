@@ -14,6 +14,7 @@
 #include "../lib/IGameCallback.h"
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
+#include "./stats.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -63,6 +64,18 @@ public:
 	std::unique_ptr<QueriesProcessor> queries;
 	std::unique_ptr<TurnOrderProcessor> turnOrder;
 	std::unique_ptr<TurnTimerHandler> turnTimerHandler;
+
+	std::unique_ptr<Stats> stats;
+	int redside = 0;
+	int maxBattles = 0;
+	int randomHeroes = 0;
+	int randomObstacles = 0;
+	int swapSides = 0;
+	int statsSampling = 0;
+	int statsPersistFreq = 0;
+	std::string statsStorage = "-";
+	std::string statsMode = "red";
+	float statsScoreVar = 0.4;
 
 	//use enums as parameters, because doMove(sth, true, false, true) is not readable
 	enum EGuardLook {CHECK_FOR_GUARDS, IGNORE_GUARDS};

@@ -1,0 +1,148 @@
+@startuml "vcmi-1.32-connector-v2-render"
+
+title "VCMI dual-model training"
+title "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $lock_acq_fail_text()
+  !return "<back:yellow><color:red>acquire lock</color></back>"
+!endfunction
+
+!function $lock_rel_text()
+  !return "<color:yellow><back:black>release lock</back></color>"
+!endfunction
+
+!procedure $lock_acq_fail($node)
+  $node -> $node : $lock_acq_fail_text()
+  activate $node #red
+!endprocedure
+
+!procedure $lock_acq_direct($node)
+  $node -> $node : <back:yellow>acquire lock</back>
+!endprocedure
+
+!procedure $lock_acq_latent($node)
+  $lock_acq_direct($node)
+  deactivate $node
+!endprocedure
+
+!procedure $lock_rel($node)
+  $node -> $node : $lock_rel_text()
+!endprocedure
+
+!procedure $cond_wait($node)
+  $node -> $node : <back:red>cond.wait</back>\n$lock_rel_text()
+  activate $node #red
+!endprocedure
+
+!procedure $cond_notify($NodeA, $NodeB)
+  $NodeA --[#blue]> $NodeB : <color:blue>cond.notify</color>
+  $NodeB --[#red]> $NodeB : $lock_acq_fail_text()
+!endfunction
+
+!procedure $cond_switch($NodeA, $NodeB)
+  $cond_notify($NodeA, $NodeB)
+  $cond_wait($NodeA)
+  $lock_acq_latent($NodeB)
+!endfunction
+
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+!procedure $sharevar($node1, $node2, $txt)
+  $node1 <--[#gray]> $node2 : <color:gray>$replace($txt,"\n","</color>\n<color:gray>")</color>
+!endfunction
+
+!procedure $sharevar($txt)
+  $sharevar(C1, C2, $txt)
+!endfunction
+
+' avoids super long note lines in the diagram
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+box "T1"
+  participant "//DualEnv 1//\n$desc(T1)" as E1
+  participant "//Controller//\n$desc(T1)" as C1
+end box
+
+participant VcmiEnv as env
+
+box "T2"
+  participant "//Controller//\n$desc(T2)" as C2
+  participant "//DualEnv 2//\n$desc(T2)" as E2
+end box
+
+E2 <-] : reset / step
+activate E2
+E2 -> C2 ++ : reset / step
+$cond_wait(C2)
+
+== CASE A => END ==
+
+-> E1 ++ : step(action)
+E1 -> C1 ++ : step("A", action)
+
+$lock_acq_direct(C1)
+
+note over C1: assert(state == OBS_A)
+
+C1 -> env ++ : step(action)
+env -> C1 -- : obs, info
+
+$sharevar("self.obs = obs")
+
+note over C1
+terminated = true
+ => flow DEREG_INIT
+end note
+
+$sharevar("state = DEREG_INIT")
+
+$cond_notify(C1, C2)
+C1 --> E1 -- : obs
+[<-- E1 -- : obs
+
+$lock_acq_latent(C2)
+note over C2
+state == DEREG_INIT
+ => flow DEREG_FIN
+end note
+
+$sharevar("state = RESET")
+
+C2 --> E2 -- : obs
+E2 -->] -- : obs
+
+== INIT ==
+
+
+@enduml

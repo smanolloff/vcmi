@@ -1,0 +1,179 @@
+@startuml "vcmi-1.32-routing"
+
+skinparam defaultTextAlignment center
+
+title "VCMI-1.3.2 activity diagram for a server-side incoming LobbyClientConnected packet"
+
+!procedure $node($code, $file, $line, $fun)
+  :""$code""
+
+  <font color="gray">$file:$line ""($fun)""</font>;
+!endprocedure
+
+!function $src($loc, $fun) return "<font color=gray>"+$loc+" "+"<font:monospaced>("+$fun+")</font>"
+!function $ms($txt) return "<font:monospaced>"+$txt+"</font>"
+
+skinparam DefaultTextAlignment left
+
+start
+$node("pack = c->retrievePack()", "CVCMIServer.cpp", 424, "CVCMIServer::threadHandleClient")
+note right
+Server receives packet
+""pack"" is an instance of a ""CPack"" subclass, eg. ""LobbyClientConnected""
+end note
+
+$node("CVCMIServerPackVisitor visitor(*this, this->gh)", "CVCMIServer.cpp", 445, "CVCMIServer::threadHandleClient")
+note right
+Exists only while processing this packet, but is **not** specific to it
+This ""visitor"" is always an instance of ""CVCMIServerPackVisitor""
+end note
+
+partition $ms("pack.visit(visitor)") {
+  :""pack.visit(visitor)                       "" $src("CVCMIServer.cpp:446", "CVCMIServer::threadHandleClient")
+  ""this.visitBasic(visitor)                  "" $src("NetPacksLib.cpp:45", "CPack::visit")
+  ""visitor.visitForLobby(this)               "" $src("NetPacksLib.cpp:74", "CPackForLobby::visitBasic")
+  ""handler.handleReceivedPack(packForLobby)  "" $src("CVCMIServer.cpp:397", "CVCMIServerPackVisitor::visitForLobby");
+
+  note right
+  NOTE: here the visitor is a ""CVCMIServerPackVisitor""
+  It's the server's entrypoint for packets
+  end note
+
+  partition $ms("apply = applier->getApplier(...)") {
+    $node("CBaseForServerApply * apply = applier->getApplier(typeList.getTypeID(pack.get()))", "CVCMIServer.cpp", 465, "CVCMIServer::handleReceivedPack")
+    note right
+    ""pack"" is actually a ""std::unique_ptr"" (ie. smart pointer)
+    "pack.get()" returns the actual (raw) pointer to the object
+    end note
+
+    $node("getTypeID(getTypeInfo(ptr))", "CTypeList.h", 146, "template CTypeList::getTypeID")
+    note right
+    ""typeList"" is a //registry of unique types and their IDs//
+    (where ""type"" is the return value of ""typeid"" from the standard lib)
+
+    This function (""getTypeId"") calls itself recursively
+    However, another, non-templated function with the same name will match
+    end note
+
+    $node("ptr ? &typeid(*ptr) : &typeid(T)", "CTypeList.h", 188, "template <T> CTypeList::getTypeInfo")
+
+    $node("getTypeDescriptor(tinfo)->typeID", "CTypeList.cpp", 42, "CTypeList::getTypeID")
+    note right
+    This function (""getTypeInfo"") ends the recursion above
+    It is a non-template function that accepts a ""type_info"" argument
+    ie. matches with precedence
+    end note
+
+    $node("apps(ID).get()", "CTypeList.h", 221, "CApplier::getApplier")
+    note right
+    The method name ""getApplier"" is confusing - *this* is the applier. A better
+    name would be ""getPackDerivative"" as it returns a pointer to a `CPack`
+    derivative (eg. ""LobbyClientConnected"")
+
+    ""apps"" is a registry with a ""std::unique_ptr"" objects for each of the 22
+    lobby packs as registered by ""registerTypesLobbyPacks" in ""RegisterTypes.h""
+    end note
+  }
+
+  partition $ms("applyOnServerBefore") {
+    $node("apply->applyOnServerBefore", "CVCMIServer.cpp", 466, "CVCMIServer::handleReceivedPack")
+
+    $node("ClientPermissionsCheckerNetPackVisitor checker(*srv)", "CVCMIServer.cpp", 83, "CApplyOnServer::applyOnServerBefore")
+    note right
+    Compare to ""visitor"" at the top -- here the visitor is different
+    This will force different behaviour of ""pack->visit""
+    end note
+
+    partition $ms("pack.visit(checker)") {
+      :""pack->visit(checker)                      "" $src("CVCMIServer.cpp:84", "CVCMIServer::applyOnServerBefore")
+      ""this.visitBasic(visitor)                  "" $src("NetPacksLib.cpp:45", "CPack::visit")
+      ""visitor.visitForLobby(this)               "" $src("NetPacksLib.cpp:74", "CPackForLobby::visitBasic");
+
+      note right
+      NOTE: here the visitor is a ""ClientPermissionsCheckerNetPackVisitor""
+      It ensures that the receiver is indeed the server in case of a server packet.
+      end note
+
+      -[#gray,dotted]->
+
+      $node("if(pack.isForServer()) { result = srv.isClientHost(pack.c->connectionID)}", "NetPacksLobbyServer.cpp", 25, "ClientPermissionsCheckerNetPackVisitor::visitForLobby")
+
+      note right
+      ""result"" is checked later. However, I believe there's a bug here:
+      even if set to ""false"" here, later it may get set to true (before the check)
+
+      Also, the function name `isForServer` is confusing here, as it actually
+      checks if the packet is for a //game// server (as opposed to lobby server, for example).
+      A more appropriate name would be "isForGameServer" or "isForGH" (GameHandler)
+      end note
+
+      :""this.visitTyped(visitor)                  "" $src("NetPacksLib.cpp:50", "CPack::visit")
+      ""visitor.visitLobbyClientConnected(*this)  "" $src("NetPacksLib.cpp:679", "LobbyClientConnected::visitTyped");
+
+      note right
+      ""visitTyped"" is implemented by the **leaf** sub-classes like ""LobbyClientConnected""
+      ""visitBasic"" (called earlier) is implemented by **mid** sub-classes like ""CPackForLobby""
+
+      The ""visitTyped"" is not always called: depends on the ""callTyped"" attribute
+      end note
+
+      $node("result = ...", "NetPacksLobbyServer.cpp", "40:73", "ClientPermissionsCheckerNetPackVisitor::visitLobbyClientConnected")
+      note right
+      Various sanity checks here, again setting ""result""
+      end note
+    }
+
+    if (""checker.getResult()""\n$src("CVCMIServer.cpp:86", "")) then
+      :""return false"";
+      kill
+      else (true)
+    endif
+
+    $node("ApplyOnServerNetPackVisitor applier(*srv)", "CVCMIServer.cpp", 89, "CApplyOnServer::applyOnServerBefore")
+    note right
+    Compare this visitor (named ""applier"" this time) to the previous ""visitors"" above
+    Once again, ""pack->visit(...)"" will be called, but since it has different implementations
+    for the different visitor types, the behaviour will be different.
+    end note
+
+    partition $ms("pack.visit(applier)") {
+      :""pack->visit(applier)                      "" $src("CVCMIServer.cpp:91", "CVCMIServer::applyOnServerBefore")
+      ""this.visitBasic(visitor)                  "" $src("NetPacksLib.cpp:45", "CPack::visit")
+      ""visitor.visitForLobby(this)               "" $src("NetPacksLib.cpp:74", "CPackForLobby::visitBasic");
+
+      note right
+      NOTE: here the visitor is a ""ApplyOnServerNetPackVisitor""
+      It is the core processing unit for the server packet.
+
+      For some visitors, there's a only the dummy (empty) implementation of ""visitForLobby""
+      as defined by the base visitor class: ""ICPackVisitor"", defined in ""NetPackVisitor.h""
+      (this is the case for ""ApplyOnServerNetPackVisitor"" - its logic is in ""visitTyped"" instead)
+      end note
+
+      $node("{}", "NetPackVisitor.h", 22, "ICPackVisitor::visitForLobby")
+
+      :""this.visitTyped(visitor)                  "" $src("NetPacksLib.cpp:50", "CPack::visit")
+      ""visitor.visitLobbyClientConnected(*this)  "" $src("NetPacksLib.cpp:679", "LobbyClientConnected::visitTyped");
+
+      -[#gray,dotted]->
+
+      $node("...", "NetPacksLobbyServer.cpp", "75:110", "ApplyOnServerNetPackVisitor::visitLobbyClientConnected")
+      note right
+      Finally, the core processing logic for this packet
+      In this case, registers the new client, restores a previous
+      state if this is a re-connect after a lost connection, etc.
+      end note
+    }
+
+    $node("return applier.getResult()", "CVCMIServer.cpp", 93, "CApplyOnServer::applyOnServerBefore")
+  }
+
+  $node("if (result) addToAnnounceQueue(std::move(pack))", "CVCMIServer.cpp", 467, "CVCMIServer::handleReceivedPack")
+
+  note right
+  appended to a ""CVCMIServer->announceQueue"" (a list)
+  end note
+}
+:(repeat with next pack);
+stop
+@enduml

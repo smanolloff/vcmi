@@ -89,8 +89,9 @@ void SettingsStorage::invalidateNode(const std::vector<std::string> &changedPath
 	if(!schema.empty())
 		JsonUtils::minimize(savedConf, schema);
 
-	std::fstream file(CResourceHandler::get()->getResourceName(JsonPath::builtin(dataFilename))->c_str(), std::ofstream::out | std::ofstream::trunc);
-	file << savedConf.toString();
+	// prevent writing to disk
+	// FileStream file(*CResourceHandler::get()->getResourceName(ResourceID("config/settings.json")), std::ofstream::out | std::ofstream::trunc);
+	// file << savedConf.toJson();
 }
 
 JsonNode & SettingsStorage::getNode(const std::vector<std::string> & path)

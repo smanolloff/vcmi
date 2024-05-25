@@ -22,6 +22,7 @@
 # include "AI/BattleAI/BattleAI.h"
 # include "AI/StupidAI/StupidAI.h"
 # include "AI/EmptyAI/CEmptyAI.h"
+# include "AI/MMAI/MMAI.h"
 #else
 # ifdef VCMI_WINDOWS
 #  include <windows.h> //for .dll libs
@@ -73,7 +74,7 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 
 	if (!dll)
 	{
-		logGlobal->error("Cannot open dynamic library (%s). Throwing...", libpath.string());
+		logGlobal->error("Cannot open dynamic library (%s): %s. Throwing...", libpath.string(), dlerror());
 		throw std::runtime_error("Cannot open dynamic library");
 	}
 	else if(!getName || !getAI)
@@ -106,6 +107,8 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 {
 	if(libpath.stem() == "libNullkiller") {
 		return std::make_shared<NKAI::AIGateway>();
+	} else if(libpath.stem() == "libMMAI") {
+		return std::make_shared<MMAI::BAI>();
 	}
 	else{
 		return std::make_shared<VCAI>();
@@ -119,6 +122,8 @@ std::shared_ptr<CBattleGameInterface> createAny(const boost::filesystem::path & 
 		return std::make_shared<CBattleAI>();
 	else if(libpath.stem() == "libStupidAI")
 		return std::make_shared<CStupidAI>();
+	else if(libpath.stem() == "libMMAI")
+		return std::make_shared<MMAI::CMyBattleAI>();
 	return std::make_shared<CEmptyAI>();
 }
 

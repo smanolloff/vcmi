@@ -1,0 +1,143 @@
+
+@startuml "vcmi-1.32-communication-sequence-battle-replay"
+
+title "VCMI-1.3.2 communication sequence for battle replay WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+
+skinparam DefaultTextAlignment center
+skinparam DefaultFontName monospaced
+skinparam SequenceDividerFontName SansSerif
+skinparam NoteFontName SansSerif
+
+!function $src($loc, $fun)
+!return "<font color=gray>"+$loc+" "+"<font:monospaced>("+$fun+")</font>"
+!endfunction
+
+
+participant Server as server
+participant Client as client
+
+== << Adventure map >> ==
+
+client -> server: MoveHero
+server -> client: PlayerBlocked
+server -> client: HeroVisitCastle
+server -> client: TryMoveHero
+server -> client: HeroVisit
+server -> client: SetObjectProperty
+server -> client: RebalanceStacks *
+
+note right
+~* called many times
+neutral army is treated like a 7-slot hero army
+with all units in the first slot.
+Rebalancing splits them into more slots before battle
+Each call moves a number of units from slot 0 to slot X
+end note
+
+server -> client: PlayerBlocked **
+server -> client: PlayerBlocked **
+note right: ~** not sure which of those unblock
+server -> client: BattleStart
+server -> client: PackageApplied ***
+note right
+~*** not sure if battlefield is rendered here
+or on some of the previus packets
+end note
+
+== << Battle start >> ==
+
+group Actions (separate diagram)
+  server -> client: BattleNextRound
+  server -> client: BattleSetActiveStack
+  client -> server: MakeAction
+  server <-> client: ...
+end
+|||
+server -> client: BattleResult
+note left
+""addQuery"" of type ""BattleDialogQuery"" (ID=34)
+which causes the sending of ""BattleResult""
+end note
+note right
+client shows battle result dialog
+(pack contains a ""replayAllowed"" flag)
+
+$src("NetPacksClient.cpp:767", "visitBattleResult")
+$src("CPlayerInterface.cpp:843", "battleEnd")
+end note
+
+client <-? : //(replay battle clicked)//
+client -> server : QueryReply
+note left
+""popQuery(BattleDialogQuery)"" (ID=34)
+$src("CGameHandler.cpp:4340", "queryReply")
+> ""if(*answer == 1) gh->startBattlePrimary(...)""
+$src("CQuery.cpp:417", "CBattleDialogQuery::onRemoval")
+
+...(???)
+
+TODO: verify order below
+(re-)setup battle
+$src("BattleInfo.cpp:194", "setupBattle")
+""addQuery(BattleQuery)"" (ID=35)
+end note
+
+server -> client : PlayerBlocked
+note right: start, reason=UPCOMING_BATTLE, player=0
+server -> client : PlayerBlocked
+note right: start, reason=UPCOMING_BATTLE, player=255
+server -> client : BattleStart
+
+server -> client : SetMana
+server -> client : PackageApplied ***
+
+== << Battle start >> ==
+
+group Actions (separate diagram)
+  server -> client: BattleNextRound
+  server -> client: BattleSetActiveStack
+  client -> server: MakeAction
+  server <-> client: ...
+end
+
+server -> client: BattleResult
+client <-? : //(OK clicked - no replay option)//
+client -> server : QueryReply
+note left
+""popQuery(BattleDialogQuery)"" (ID=34)
+$src("CGameHandler.cpp:4340", "queryReply")
+> ""gh->endBattleConfirm();""
+$src("CQuery.cpp:421", "CBattleDialogQuery::onRemoval")
+
+apply results after battle:
+
+""cab1.updateArmy(this)""
+""cab2.updateArmy(this)""
+$src("CGameHandler.cpp:801", "endBattleConfirm")
+end note
+
+server -> client : EraseStack
+note right: army #502, slot #0 (hero army stack of skeletons)
+server -> client : EraseStack
+note right: army #502, slot #1 (hero army stack of walking dead)
+server -> client : RemoveObject
+note right: object id #502 (hero)
+server -> client : BattleResultAccepted
+server -> client : BattleResultsApplied
+server -> client : RebalanceStacks *
+server -> client : SetObjectProperty
+
+note right
+used for updating various stuff,
+eg. new monster power rating after the battle
+or new monster stack experience (if enabled)
+or new mine owner, etc.
+end note
+
+server -> client : HeroVisit
+note right: player #0, hero #502, obj #-1
+server -> client : PlayerBlocked
+note right: release, reason ONGOING_MOVEMENT
+server -> client : PackageApplied
+
+@enduml

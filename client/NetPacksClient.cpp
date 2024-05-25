@@ -162,8 +162,8 @@ void ApplyClientNetPackVisitor::visitSetMana(SetMana & pack)
 	if(settings["session"]["headless"].Bool())
 		return;
 
-	for (auto window : GH.windows().findWindows<BattleWindow>())
-		window->heroManaPointsChanged(h);
+	// for (auto window : GH.windows().findWindows<BattleWindow>())
+	// 	window->heroManaPointsChanged(h);
 }
 
 void ApplyClientNetPackVisitor::visitSetMovePoints(SetMovePoints & pack)

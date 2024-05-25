@@ -111,6 +111,8 @@ class CServerHandler final : public IServerAPI, public LobbyInfo, public INetwor
 
 	std::atomic<EClientState> state;
 
+	std::any aiBaggage; // arbitary payload for AI constructors
+
 	void threadRunNetwork();
 	void waitForServerShutdown();
 
@@ -147,7 +149,7 @@ public:
 	std::unique_ptr<CStopWatch> th;
 	std::unique_ptr<CClient> client;
 
-	CServerHandler();
+	CServerHandler(std::any aiBaggage = std::any{});
 	~CServerHandler();
 	
 	void resetStateForLobby(EStartMode mode, ESelectionScreen screen, EServerMode serverMode, const std::vector<std::string> & playerNames);

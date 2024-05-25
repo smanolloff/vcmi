@@ -475,7 +475,8 @@ void CBattleInfoCallback::battleGetTurnOrder(std::vector<battle::Units> & turns,
 	if(activeUnit)
 	{
 		//its first turn and active unit hasn't taken any action yet - must be placed at the beginning of queue, no matter what
-		if(turn == 0 && activeUnit->willMove() && !activeUnit->waited())
+		// if(turn == 0 && activeUnit->willMove() && !activeUnit->waited())
+		if(turn == 0 && activeUnit->willMove())
 		{
 			turns.back().push_back(activeUnit);
 			if(turnsIsFull())
@@ -1297,6 +1298,13 @@ AttackableTiles CBattleInfoCallback::getPotentiallyAttackableHexes(const battle:
 
 				// if targeted double-wide creature is attacked from above or below ( -> second hex is also adjacent to attack origin)
 				// then dragon breath should target tile on the opposite side of targeted creature
+				//
+				// o o o o o
+				//  o o 1 o o
+				// o o 2 2 o
+				//  o o * o o
+				//      ^ this hex is affected by 1's dragon breath!
+				//
 				if (BattleHex::mutualPosition(attackOriginHex, secondHex) != BattleHex::NONE)
 					nextHex = secondHex.cloneInDirection(direction, false);
 			}

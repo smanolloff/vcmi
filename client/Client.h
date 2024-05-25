@@ -119,8 +119,9 @@ public:
 	std::map<PlayerColor, std::vector<std::shared_ptr<IBattleEventsReceiver>>> additionalBattleInts;
 
 	std::unique_ptr<BattleAction> currentBattleAction;
+	std::any aiBaggage;
 
-	CClient();
+	CClient(std::any aiBaggage);
 	~CClient();
 
 	const Services * services() const override;

@@ -1,0 +1,47 @@
+@startuml "pov-gym"
+
+title "POV: VCMI"
+hide footbox
+
+<style>
+sequenceDiagram {
+  group {
+    LineThickness 1
+    LineColor gray
+  }
+  groupHeader {
+    LineThickness 1
+    FontColor gray
+    LineColor gray
+  }
+}
+</style>
+
+skinparam sequenceBoxBorderColor #FFF
+
+!function $packet($txt) return "//<color:gray>(packet)//\n" + $txt
+
+participant "VCMI\n//Client//" as client
+participant "VCMI\n//Battle Interface//" as iface
+participant "//CppConnector//" as ai
+
+[-> client ++ : $packet(BattleStart)
+client -> iface **: new
+deactivate client
+
+group Until battle ends
+  [-> client ++ : $packet(ActiveStack)
+  client -> iface ++ : activeStack(stack)
+  iface -> ai ++ : getAction(state)
+  ai -> iface -- : action
+  iface -> client -- : makeAction(action)
+  client -->[ -- : $packet(MakeAction)
+end
+
+[-> client ++ : $packet(BattleEnd)
+
+client -> iface !! : destroy
+deactivate client
+
+
+@enduml

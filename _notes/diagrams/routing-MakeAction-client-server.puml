@@ -1,0 +1,191 @@
+@startuml "vcmi-1.32-routing-server-battle-c4"
+
+!include <C4/C4_Container>
+!include <tupadr3/font-awesome/arrow_circle_right>
+
+HIDE_STEREOTYPE()
+LAYOUT_LEFT_RIGHT()
+skinparam DefaultFontName monospaced
+
+title "VCMI-1.3.2 routing for MakeAction packets (client → server)"
+
+<style>
+note {
+  MaximumWidth 500
+}
+</style>
+
+!$nbsp = "<U+00A0>"
+
+' black
+!$c1 = "#000000"
+' blue
+!$c2 = "#0000FF"
+' fuchsia
+!$c3 = "#FF00FF"
+' green
+!$c4 = "#008000"
+' lime
+!$c5 = "#00FF00"
+' red
+!$c6 = "#FF0000"
+' teal
+!$c7 = "#008080"
+
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+' avoids super long note lines in the diagram
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+
+!function $cm($class, $method) return "<font size=8 color=CCC>"+$class+"</font>"+"\n"+$method
+!function $fn($method, $args) return $method+"\n<font size=8 color=CCC>("+$replace($args, " ", $nbsp)+")</font>"
+
+!function $ctag()
+  !if %not(%variable_exists("$c"))
+    !%set_variable_value("$c", 0)
+  !elseif (%get_variable_value("$c") >= 7)
+    !%set_variable_value("$c", 0)
+  !endif
+
+  !%set_variable_value("$c", %get_variable_value("$c") + 1)
+
+  !return "c"+%get_variable_value("$c")
+!endfunction
+
+!function $inc()
+  !if %not(%variable_exists("$i"))
+    !%set_variable_value("$i", 0)
+  !endif
+
+  !%set_variable_value("$i", %get_variable_value("$i") + 1)
+
+  !return %get_variable_value("$i")
+!endfunction
+
+!function $call($args) return $replace($inc() + " (" + $args + ")", " ", $nbsp)
+
+AddElementTag("start", $borderColor="yellow", $shape=EightSidedShape(), $sprite="arrow_circle_right")
+
+AddRelTag("c1", $textColor=$c1, $lineColor=$c1)
+AddRelTag("c2", $textColor=$c2, $lineColor=$c2)
+AddRelTag("c3", $textColor=$c3, $lineColor=$c3)
+AddRelTag("c4", $textColor=$c4, $lineColor=$c4)
+AddRelTag("c5", $textColor=$c5, $lineColor=$c5)
+AddRelTag("c6", $textColor=$c6, $lineColor=$c6)
+AddRelTag("c7", $textColor=$c7, $lineColor=$c7)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CLASSES
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Boundary(CVCMIServer, "CVCMIServer") {
+  Container(CVCMIServer_threadHandleClient, "<<INCOMING DATA>>\n\nthreadHandleClient\n", $tags="start")
+  note bottom of CVCMIServer_threadHandleClient
+Server receives MakeAction packet
+(eg. a player moved a unit on the battlefield)
+  end note
+}
+
+Boundary(MakeAction, "MakeAction < CPackForServer < CPack") {
+  Container(MakeAction_visit, $fn("visit", "ICPackVisitor"))
+  Container(MakeAction_visitBasic, $fn("visitBasic", "ICPackVisitor"))
+  Container(MakeAction_visitTyped, $fn("visitTyped", "ICPackVisitor"))
+}
+
+Boundary(CVCMIServerPackVisitor, "CVCMIServerPackVisitor < ICPackVisitor") {
+  Container(CVCMIServerPackVisitor_visitForServer, $fn("visitForServer", "CPackForServer"))
+}
+
+Boundary(CGameHandler, "CGameHandler < [IGameCallback, CBattleInfoCallback, Environment]") {
+  Container(CGameHandler_handleReceivedPack, $fn("handleReceivedPack", "CPackForServer"))
+  Container(CGameHandler_makeBattleAction, $fn("makeBattleAction", "..."))
+
+  note top of CGameHandler_makeBattleAction
+    core processing logic
+    (separate diagram for this)
+  end note
+}
+
+Boundary(CApplier, "CApplier") {
+  Container(CApplier_getApplier, $fn("getApplier", "uint16"))
+}
+
+Boundary(CApplyOnGH, "CApplyOnGH<MakeAction> < CBaseForGHApply") {
+  Container(CApplyOnGH_applyOnGH, $fn("applyOnGH", "CGameHandler, CGameState, void*"))
+}
+
+Boundary(ApplyGhNetPackVisitor, "ApplyGhNetPackVisitor < ICPackVisitor") {
+  Container(ApplyGhNetPackVisitor_visitForServer, "visitForServer")
+  Container(ApplyGhNetPackVisitor_visitMakeAction, "visitMakeAction")
+}
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CALLS
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Rel(CVCMIServer_threadHandleClient, MakeAction_visit, $call("CVCMIServerPackVisitor"), $tags="$ctag()")
+Rel(MakeAction_visit, MakeAction_visitBasic, $call("CVCMIServerPackVisitor"), $tags="$ctag()")
+Rel(MakeAction_visitBasic, CVCMIServerPackVisitor_visitForServer, $call("MakeAction"), $tags="$ctag()")
+Rel(CVCMIServerPackVisitor_visitForServer, CGameHandler_handleReceivedPack, $call("MakeAction"), $tags="$ctag()")
+Rel(CGameHandler_handleReceivedPack, CApplier_getApplier, $call("uint16"), $tags="$ctag()")
+Rel(CGameHandler_handleReceivedPack, CApplyOnGH_applyOnGH, $call("CVCMIServer, CGameState, MakeAction"), $tags="$ctag()")
+Rel(CApplyOnGH_applyOnGH, MakeAction_visit, $call("ApplyGhNetPackVisitor"), $tags="$ctag()")
+Rel(MakeAction_visit, MakeAction_visitBasic, $call("ApplyGhNetPackVisitor"), $tags="$ctag()")
+Rel(MakeAction_visitBasic, CVCMIServerPackVisitor_visitForServer, $call("MakeAction"), $tags="$ctag()")
+Rel(MakeAction_visit, MakeAction_visitTyped, $call("ApplyGhNetPackVisitor"), $tags="$ctag()")
+Rel(MakeAction_visitTyped, ApplyGhNetPackVisitor_visitMakeAction, $call("MakeAction"), $tags="$ctag()")
+Rel(ApplyGhNetPackVisitor_visitMakeAction, CGameHandler_makeBattleAction, $call("..."), $tags="$ctag()")
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' LEGEND
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+!function $ids_legend($denom)
+  !$res = $denom
+  !$denom = $denom + 7
+  !while $i > $denom
+    !$res=$res + "," + $nbsp + $denom
+    !$denom = $denom + 7
+  !endwhile
+  !return $res
+!endfunction
+
+skinparam legend {
+  FontColor Black
+  BackgroundColor White
+  ' does not work for some reason
+  BorderColor White
+  BorderThickness 0
+}
+
+legend bottom left
+  | Color | Track |
+  | <$c1> | $ids_legend(1) |
+  | <$c2> | $ids_legend(2) |
+  | <$c3> | $ids_legend(3) |
+  | <$c4> | $ids_legend(4) |
+  | <$c5> | $ids_legend(5) |
+  | <$c6> | $ids_legend(6) |
+  | <$c7> | $ids_legend(7) |
+endlegend
+
+@enduml

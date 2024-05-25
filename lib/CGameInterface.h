@@ -14,6 +14,8 @@
 
 #include "spells/ViewSpellInt.h"
 
+#include <stdexcept>
+
 class CBattleCallback;
 class CCallback;
 
@@ -77,6 +79,7 @@ public:
 
 	virtual ~CBattleGameInterface() {};
 	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB){};
+	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, std::any baggage, std::string colorstr){ initBattleInterface(ENV, CB); };
 	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences){};
 
 	//battle call-ins
@@ -90,6 +93,7 @@ class DLL_LINKAGE CGameInterface : public CBattleGameInterface, public IGameEven
 public:
 	virtual ~CGameInterface() = default;
 	virtual void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB){};
+	virtual void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, std::any baggage){ initGameInterface(ENV, CB); };
 	virtual void yourTurn(QueryID askID){}; //called AFTER playerStartsTurn(player)
 
 	//pskill is gained primary skill, interface has to choose one of given skills and call callback with selection id

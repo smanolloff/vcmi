@@ -22,6 +22,8 @@ set(vcmiservercommon_SRCS
 		NetPacksServer.cpp
 		NetPacksLobbyServer.cpp
 		TurnTimerHandler.cpp
+
+		stats.cpp
 )
 
 set(vcmiservercommon_HEADERS
@@ -48,10 +50,15 @@ set(vcmiservercommon_HEADERS
 		LobbyNetPackVisitors.h
 		ServerNetPackVisitors.h
 		TurnTimerHandler.h
+
+		stats.h
 )
+
+find_package(SQLite3 REQUIRED)
 
 assign_source_group(${vcmiservercommon_SRCS} ${vcmiservercommon_HEADERS})
 
+set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
 add_library(vcmiservercommon STATIC ${vcmiservercommon_SRCS} ${vcmiservercommon_HEADERS})
 set(vcmiservercommon_LIBS vcmi)
 
@@ -59,7 +66,7 @@ if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	set(vcmiservercommon_LIBS execinfo ${vcmiservercommon_LIBS})
 endif()
 
-target_link_libraries(vcmiservercommon PRIVATE ${vcmiservercommon_LIBS} minizip::minizip)
+target_link_libraries(vcmiservercommon PRIVATE ${vcmiservercommon_LIBS} minizip::minizip SQLite::SQLite3)
 
 target_include_directories(vcmiservercommon
 	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}

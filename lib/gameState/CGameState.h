@@ -84,6 +84,11 @@ class DLL_LINKAGE CGameState : public CNonConstInfoCallback
 	friend class CGameStateCampaign;
 
 public:
+	std::vector<const CGHeroInstance*> allheroes;
+	int herocounter = 0;
+	int battlecounter = 0;
+	ui32 lastSeed = 0;
+
 	/// Stores number of times each artifact was placed on map via randomization
 	std::map<ArtifactID, int> allocatedArtifacts;
 

@@ -86,6 +86,7 @@ public: // TODO: make private
 
 	//During battle is quick combat mode is used
 	std::shared_ptr<CBattleGameInterface> autofightingAI; //AI that makes decisions
+	std::any aiBaggage;
 	bool isAutoFightOn; //Flag, switch it to stop quick combat. Don't touch if there is no battle interface.
 	bool isAutoFightEndBattle; //Flag, if battle forced to end with autocombat
 
@@ -93,6 +94,7 @@ protected: // Call-ins from server, should not be called directly, but only via 
 
 	void update() override;
 	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB) override;
+	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, std::any aiBaggage) override;
 
 	void garrisonsChanged(ObjectInstanceID id1, ObjectInstanceID id2) override;
 	void buildChanged(const CGTownInstance *town, BuildingID buildingID, int what) override; //what: 1 - built, 2 - demolished

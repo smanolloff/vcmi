@@ -168,6 +168,12 @@ void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::
 	adventureInt.reset(new AdventureMapInterface());
 }
 
+void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, std::any aiBaggage_)
+{
+	aiBaggage = aiBaggage_;
+	initGameInterface(ENV, CB);
+}
+
 void CPlayerInterface::playerEndsTurn(PlayerColor player)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
@@ -626,7 +632,12 @@ void CPlayerInterface::battleStart(const BattleID & battleID, const CCreatureSet
 		AutocombatPreferences autocombatPreferences = AutocombatPreferences();
 		autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
 
-		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+		if (aiBaggage.has_value()) {
+			autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getMyColor()->getStr());
+		} else {
+			autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+		}
+
 		autofightingAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, false);
 		isAutoFightOn = true;
 		cb->registerBattleInterface(autofightingAI);
