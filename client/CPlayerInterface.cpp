@@ -618,6 +618,21 @@ void CPlayerInterface::battleStartBefore(const BattleID & battleID, const CCreat
 		waitForAllDialogs();
 }
 
+void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side) {
+	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
+	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
+	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
+
+	if (aiBaggage.has_value()) {
+		autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getPlayerID()->toString());
+	} else {
+		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+	}
+	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
+	isAutoFightOn = true;
+	cb->registerBattleInterface(autofightingAI);
+}
+
 void CPlayerInterface::battleStart(const BattleID & battleID, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
@@ -627,20 +642,7 @@ void CPlayerInterface::battleStart(const BattleID & battleID, const CCreatureSet
 
 	if ((replayAllowed && useQuickCombat) || forceQuickCombat)
 	{
-		autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
-
-		AutocombatPreferences autocombatPreferences = AutocombatPreferences();
-		autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-
-		if (aiBaggage.has_value()) {
-			autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getMyColor()->getStr());
-		} else {
-			autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
-		}
-
-		autofightingAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, false);
-		isAutoFightOn = true;
-		cb->registerBattleInterface(autofightingAI);
+		prepareAutoFightingAI(battleID, army1, army2, tile, hero1, hero2, side);
 	}
 
 	//Don't wait for dialogs when we are non-active hot-seat player

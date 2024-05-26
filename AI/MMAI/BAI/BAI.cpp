@@ -14,11 +14,11 @@
 // limitations under the License.
 // =============================================================================
 
-#include "NetPacks.h"
 #include "BAI.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
 #include "battle/ReachabilityInfo.h"
+#include "networkPacks/PacksForClientBattle.h"
 #include "types/hexaction.h"
 #include "vcmi/Creature.h"
 #include "vstd/CLoggerBase.h"
@@ -52,12 +52,12 @@ namespace MMAI {
         return validActions.at(randomIndex);
     }
 
-    void BAI::activeStack(const CStack * astack) {
+    void BAI::activeStack(const BattleID &bid, const CStack * astack) {
         info("*** activeStack ***");
         debug("activeStack called for " + astack->nodeName());
 
-        battlefield = std::make_unique<Battlefield>(cb.get(), astack);
-        result = std::make_unique<Export::Result>(buildResult(*battlefield));
+        battlefield = std::make_unique<Battlefield>(battle.get(), astack);
+        result = std::make_unique<Export::Result>(buildResult(bid, *battlefield));
 
         std::shared_ptr<BattleAction> ba;
 
@@ -75,7 +75,7 @@ namespace MMAI {
             allactions.push_back(_action);
             action = std::make_unique<Action>(_action, battlefield.get(), color);
             info("Got action: " + std::to_string(action->action) + " (" + action->name() + ")");
-            auto actres = buildAction(*battlefield, *action);
+            auto actres = buildAction(bid, *battlefield, *action);
 
             ba = actres.battleAction;
             result->errmask = actres.errmask;
@@ -97,11 +97,11 @@ namespace MMAI {
         }
 
         debug("cb->battleMakeUnitAction(*ba)");
-        cb->battleMakeUnitAction(*ba);
+        cb->battleMakeUnitAction(bid, *ba);
         return;
     }
 
-    Export::Result BAI::buildResult(Battlefield &bf) {
+    Export::Result BAI::buildResult(const BattleID &bid, Battlefield &bf) {
         int dmgReceived = 0;
         int unitsLost = 0;
         int valueLost = 0;
@@ -124,7 +124,7 @@ namespace MMAI {
             }
         }
 
-        for (auto &stack : cb->battleGetStacks()) {
+        for (auto &stack : battle->battleGetStacks()) {
             auto value = stack->getCount() * stack->unitType()->getAIValue();
             stack->unitSide() == 0
                 ? side0ArmyValue += value
@@ -135,7 +135,7 @@ namespace MMAI {
             bf.exportState(),
             bf.exportActMask(),
             bf.exportAttnMasks(),
-            Export::Side(cb->battleGetMySide()),
+            Export::Side(battle->battleGetMySide()),
             dmgDealt,
             dmgReceived,
             unitsLost,
@@ -147,7 +147,7 @@ namespace MMAI {
         );
     }
 
-    BuildActionResult BAI::buildAction(Battlefield &bf, Action &action) {
+    BuildActionResult BAI::buildAction(const BattleID &bid, Battlefield &bf, Action &action) {
         auto res = BuildActionResult();
         auto apos = bf.astack->getPosition();
 
@@ -166,7 +166,7 @@ namespace MMAI {
         if (!action.hex) {
             switch(NonHexAction(action.action)) {
             break; case NonHexAction::RETREAT:
-                res.setAction(BattleAction::makeRetreat(cb->battleGetMySide()));
+                res.setAction(BattleAction::makeRetreat(battle->battleGetMySide()));
             break; case NonHexAction::WAIT:
                 (bf.astack->waitedThisTurn)
                     ? res.addError(ErrType::ALREADY_WAITED)
@@ -207,7 +207,7 @@ namespace MMAI {
                 auto &edir = AMOVE_TO_EDIR.at(action.hexaction);
                 auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
                 ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
-                auto estack = cb->battleGetStackByPos(nbh);
+                auto estack = battle->battleGetStackByPos(nbh);
                 ASSERT(estack, "no enemy stack for melee attack");
                 res.setAction(BattleAction::makeMeleeAttack(bf.astack, nbh, bhex));
             }
@@ -223,7 +223,7 @@ namespace MMAI {
                 auto obh = bf.astack->occupiedHex(bhex);
                 auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
                 ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
-                auto estack = cb->battleGetStackByPos(nbh);
+                auto estack = battle->battleGetStackByPos(nbh);
                 ASSERT(estack, "no enemy stack for melee attack");
                 res.setAction(BattleAction::makeMeleeAttack(bf.astack, nbh, bhex));
             }
@@ -246,8 +246,8 @@ namespace MMAI {
         // => *throw* errors here only if the mask SHOULD HAVE ALLOWED it
         //    and *set* regular, non-throw errors otherwise
         //
-        auto rinfo = cb->getReachability(bf.astack);
-        auto ainfo = cb->getAccesibility();
+        auto rinfo = battle->getReachability(bf.astack);
+        auto ainfo = battle->getAccesibility();
 
         switch(action.hexaction) {
             case HexAction::AMOVE_TR:
@@ -266,7 +266,7 @@ namespace MMAI {
                 auto a = ainfo.at(action.hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
                     auto hs = hex.getState();
-                    ASSERT(hs == Export::HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, bf.astack, nullptr));
+                    ASSERT(hs == Export::HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(bid, action, bf.astack, nullptr));
                     res.addError(ErrType::HEX_BLOCKED);
                     break;
                 } else if (a == EAccessibility::ALIVE_STACK) {
@@ -275,9 +275,9 @@ namespace MMAI {
                         // means we want to defend (moving to self)
                         // or attack from same hex we're currently at
                         // this should always be allowed
-                        ASSERT(false, "mask prevented (A)MOVE to own hex" + debugInfo(action, bf.astack, nullptr));
+                        ASSERT(false, "mask prevented (A)MOVE to own hex" + debugInfo(bid, action, bf.astack, nullptr));
                     } else if (bh.hex == bf.astack->occupiedHex().hex) {
-                        ASSERT(rinfo.distances.at(bh) == ReachabilityInfo::INFINITE_DIST, "mask prevented (A)MOVE to self-occupied hex" + debugInfo(action, bf.astack, nullptr));
+                        ASSERT(rinfo.distances.at(bh) == ReachabilityInfo::INFINITE_DIST, "mask prevented (A)MOVE to self-occupied hex" + debugInfo(bid, action, bf.astack, nullptr));
                         // means we can't fit on our own back hex
                         res.addError(ErrType::HEX_BLOCKED);
                     }
@@ -309,7 +309,7 @@ namespace MMAI {
                     break;
                 }
 
-                auto estack = cb->battleGetStackByPos(nbh);
+                auto estack = battle->battleGetStackByPos(nbh);
 
                 if (!estack) {
                     res.addError(ErrType::STACK_NA);
@@ -327,7 +327,7 @@ namespace MMAI {
                 else if (cstack->unitSide() == bf.astack->unitSide())
                     res.addError(ErrType::FRIENDLY_FIRE);
                 else {
-                    ASSERT(!cb->battleCanShoot(bf.astack, bhex), "mask prevented SHOOT at a shootable bhex " + action.hex->name());
+                    ASSERT(!battle->battleCanShoot(bf.astack, bhex), "mask prevented SHOOT at a shootable bhex " + action.hex->name());
                     res.addError(ErrType::CANNOT_SHOOT);
                 }
             break;
@@ -335,22 +335,22 @@ namespace MMAI {
                 throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(action.hexaction)));
             }
 
-        ASSERT(res.errmask, "Could not identify why the action is invalid" + debugInfo(action, bf.astack, nullptr));
+        ASSERT(res.errmask, "Could not identify why the action is invalid" + debugInfo(bid, action, bf.astack, nullptr));
 
         return res;
     }
 
-    std::string BAI::debugInfo(Action &action, const CStack* astack, BattleHex* nbh) {
+    std::string BAI::debugInfo(const BattleID &bid, Action &action, const CStack* astack, BattleHex* nbh) {
         auto info = std::stringstream();
         info << "\n*** DEBUG INFO ***\n";
         info << "action: " << action.name() << " [" << action.action << "]\n";
         info << "action.hex->bhex.hex = " << action.hex->bhex.hex << "\n";
 
-        auto ainfo = cb->getAccesibility();
-        auto rinfo = cb->getReachability(astack);
+        auto ainfo = battle->getAccesibility();
+        auto rinfo = battle->getReachability(astack);
 
         info << "ainfo[bhex]=" << EI(ainfo.at(action.hex->bhex.hex)) << "\n";
-        info << "rinfo.distances[bhex] <= astack->speed(): " << (rinfo.distances[action.hex->bhex.hex] <= astack->speed()) << "\n";
+        info << "rinfo.distances[bhex] <= astack->getMovementRange(): " << (rinfo.distances[action.hex->bhex.hex] <= astack->getMovementRange()) << "\n";
 
         info << "action.hex->name = " << action.hex->name() << "\n";
 
@@ -366,7 +366,7 @@ namespace MMAI {
             info << "cstack->getPosition().hex=" << cstack->getPosition().hex << "\n";
             info << "cstack->slot=" << cstack->unitSlot() << "\n";
             info << "cstack->doubleWide=" << cstack->doubleWide() << "\n";
-            info << "cb->battleCanShoot(cstack)=" << cb->battleCanShoot(cstack) << "\n";
+            info << "cb->battleCanShoot(cstack)=" << battle->battleCanShoot(cstack) << "\n";
         } else {
             info << "cstack: (nullptr)\n";
         }
@@ -374,12 +374,12 @@ namespace MMAI {
         info << "astack->getPosition().hex=" << astack->getPosition().hex << "\n";
         info << "astack->slot=" << astack->unitSlot() << "\n";
         info << "astack->doubleWide=" << astack->doubleWide() << "\n";
-        info << "cb->battleCanShoot(astack)=" << cb->battleCanShoot(astack) << "\n";
+        info << "cb->battleCanShoot(astack)=" << battle->battleCanShoot(astack) << "\n";
 
         if (nbh) {
             info << "nbh->hex=" << nbh->hex << "\n";
             info << "ainfo[nbh]=" << EI(ainfo.at(*nbh)) << "\n";
-            info << "rinfo.distances[nbh] <= astack->speed(): " << (rinfo.distances[*nbh] <= astack->speed()) << "\n";
+            info << "rinfo.distances[nbh] <= astack->getMovementRange(): " << (rinfo.distances[*nbh] <= astack->getMovementRange()) << "\n";
 
             if (cstack)
                 info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, cstack, *nbh) << "\n";
@@ -395,12 +395,12 @@ namespace MMAI {
         return info.str();
     }
 
-    void BAI::battleStacksAttacked(const std::vector<BattleStackAttacked> &bsa, bool ranged) {
+    void BAI::battleStacksAttacked(const BattleID &bid, const std::vector<BattleStackAttacked> &bsa, bool ranged) {
         info("*** battleStacksAttacked ***");
 
         for(auto & elem : bsa) {
-            auto * defender = cb->battleGetStackByID(elem.stackAttacked, false);
-            auto * attacker = cb->battleGetStackByID(elem.attackerID, false);
+            auto * defender = battle->battleGetStackByID(elem.stackAttacked, false);
+            auto * attacker = battle->battleGetStackByID(elem.attackerID, false);
 
             ASSERT(defender, "defender is NULL");
 
@@ -418,11 +418,11 @@ namespace MMAI {
     }
 
     // NOTE: not triggered for retreat
-    void BAI::actionFinished(const BattleAction &action) {
+    void BAI::actionFinished(const BattleID &bid, const BattleAction &action) {
         debug("*** actionFinished - START***");
         auto shouldupdate = false;
 
-        for (auto &cstack : cb->battleGetAllStacks()) {
+        for (auto &cstack : battle->battleGetAllStacks()) {
             if(cstack && !cstack->alive()) {
                 shouldupdate = true;
                 break;
@@ -442,8 +442,10 @@ namespace MMAI {
         }
     }
 
-    void BAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side_, bool replayAllowed) {
+    void BAI::battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
+        battle = cb->getBattle(bid);
+
         // side is FALSE for attacker
         if (side_) {
             debug("Side: DEFENDER (" + std::to_string(static_cast<int>(side)) + ")");
@@ -456,10 +458,10 @@ namespace MMAI {
         ASSERT(getAction, "BAI->getAction is null!");
     }
 
-    void BAI::battleEnd(const BattleResult *br, QueryID queryID) {
+    void BAI::battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(queryID.getNum()) + ") ***");
         // Export::Result res(std::move(*result), true);
-        auto victory = br->winner == cb->battleGetMySide();
+        auto victory = br->winner == battle->battleGetMySide();
 
         // Null battlefield means the battle ended without us receiving a turn
         // (can only happen if we are DEFENDER)
@@ -468,7 +470,7 @@ namespace MMAI {
             return;
         }
 
-        result = std::make_unique<Export::Result>(buildResult(*battlefield), victory);
+        result = std::make_unique<Export::Result>(buildResult(bid, *battlefield), victory);
         ASSERT(result->ended, "expected result->ended to be true");
     }
 }

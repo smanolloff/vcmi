@@ -15,10 +15,10 @@ add_dependencies(myclient-headless myclient)
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch")
 
 find_package(Torch REQUIRED)
-find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED COMPONENTS CXX)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-target_link_libraries(myclient PRIVATE vcmiclient)
+target_link_libraries(myclient PUBLIC vcmi vcmiclient)
 target_link_libraries(myclient-gui PRIVATE myclient)
 target_link_libraries(myclient-headless PRIVATE myclient)
 target_include_directories(myclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

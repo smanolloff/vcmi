@@ -35,7 +35,8 @@ namespace MMAI {
     //       (have not investigated properly though)
     std::tuple<Hexes, const CStack*> BAI::Reconstruct(
         const Export::Result &r,
-        const std::shared_ptr<CBattleCallback> cb
+        const std::shared_ptr<CBattleCallback> cb,
+        const std::shared_ptr<CPlayerBattleCallback> battle
     ) {
         auto stateu = r.stateUnencoded;
         auto hexes = Hexes();
@@ -45,15 +46,15 @@ namespace MMAI {
         auto r_CStacks = std::array<const CStack*, 7>{};
         auto rinfos = std::map<const CStack*, ReachabilityInfo>{};
 
-        for (auto &cstack : cb->battleGetStacks()) {
-            if (cstack->unitId() == cb->battleActiveUnit()->unitId())
+        for (auto &cstack : battle->battleGetStacks()) {
+            if (cstack->unitId() == battle->battleActiveUnit()->unitId())
                 astack = cstack;
 
             cstack->unitSide()
                 ? r_CStacks.at(cstack->unitSlot()) = cstack
                 : l_CStacks.at(cstack->unitSlot()) = cstack;
 
-            rinfos.insert({cstack, cb->getReachability(cstack)});
+            rinfos.insert({cstack, battle->getReachability(cstack)});
         }
 
         // Return (attr == N/A), but after performing some checks
@@ -72,7 +73,7 @@ namespace MMAI {
         //
         auto checkReachable = [=](BattleHex bh, int v, const CStack* stack) {
             auto distance = rinfos.at(stack).distances.at(bh);
-            auto canreach = (stack->speed() >= distance);
+            auto canreach = (stack->getMovementRange() >= distance);
             if (v == 0)
                 return !canreach;
             else if (v == 1)
@@ -93,7 +94,7 @@ namespace MMAI {
         // as opposed to ensureHexShootableOrNA, this hex works with a mask
         // values are 0 or 1 (not 0..2) and this check requires a valid target
         auto ensureShootability = [=](BattleHex bh, int v, const CStack* cstack, const char* attrname) {
-            auto canshoot = cb->battleCanShoot(cstack);
+            auto canshoot = battle->battleCanShoot(cstack);
             auto estacks = (cstack->unitSide() == BattleSide::DEFENDER) ? l_CStacks : r_CStacks;
             auto it = std::find_if(estacks.begin(), estacks.end(), [&bh](auto estack) {
                 return estack && estack->coversPos(bh);
@@ -138,7 +139,7 @@ namespace MMAI {
             auto res = std::vector<int>{};
 
             for (auto &nbh : nbhs)
-                if (nbh.isAvailable() && rinfos.at(stack).distances.at(nbh) <= stack->speed())
+                if (nbh.isAvailable() && rinfos.at(stack).distances.at(nbh) <= stack->getMovementRange())
                     res.push_back(nbh);
 
             return res;
@@ -156,7 +157,7 @@ namespace MMAI {
 
         auto ensureHexShootableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
             if (isNA(v, stack, attrname)) return;
-            auto canshoot = cb->battleCanShoot(stack);
+            auto canshoot = battle->battleCanShoot(stack);
             auto distance = bh.getDistance(bh, stack->getPosition());
             auto norangepen = stack->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY);
 
@@ -332,8 +333,8 @@ namespace MMAI {
                     expect(cstack->getPosition() == bh, "Hex's stack info about side+slot is incorrect");
             }
 
-            // auto rinfo = cb->getReachability(cstack);
-            auto ainfo = cb->getAccesibility();
+            // auto rinfo = battle->getReachability(cstack);
+            auto ainfo = battle->getAccesibility();
             auto aa = ainfo.at(bh);
 
             // Now validate all attributes...
@@ -544,7 +545,7 @@ namespace MMAI {
                     ensureValueMatch(cstack, v, cstack->getFirstHPleft(), "STACK_HP_LEFT");
                 break; case A::STACK_SPEED:
                     if (isNA(v, cstack, "STACK_SPEED")) break;
-                    ensureValueMatch(cstack, v, cstack->speed(), "STACK_SPEED");
+                    ensureValueMatch(cstack, v, cstack->getMovementRange(), "STACK_SPEED");
                 break; case A::STACK_WAITED:
                     if (isNA(v, cstack, "STACK_WAITED")) break;
                     ensureValueMatch(cstack, v, cstack->waitedThisTurn, "STACK_WAITED");
@@ -627,6 +628,7 @@ namespace MMAI {
     std::string BAI::Render(
         const Export::Result &r,
         const std::shared_ptr<CBattleCallback> cb,
+        const std::shared_ptr<CPlayerBattleCallback> battle,
         const Battlefield &bf,  // verification only
         const std::string color,
         const Action *action,  // for displaying "last action"
@@ -634,7 +636,7 @@ namespace MMAI {
     ) {
         expect(r.stateUnencoded.size() == 165*EI(A::_count), "r.stateu.size %d != 165*%d", r.stateUnencoded.size(), EI(A::_count));
 
-        auto reconstructed = Reconstruct(r, cb);
+        auto reconstructed = Reconstruct(r, cb, battle);
         auto hexes = std::get<0>(reconstructed);
         auto astack = std::get<1>(reconstructed);
 
@@ -791,7 +793,7 @@ namespace MMAI {
                     sym = "\033[90m▦\033[0m";
                 break; case Export::HexState::OCCUPIED: {
                     auto slot = hex.attr(A::STACK_SLOT);
-                    auto friendly = hex.attr(A::STACK_SIDE) == cb->battleGetMySide();
+                    auto friendly = hex.attr(A::STACK_SIDE) == battle->battleGetMySide();
                     auto col = friendly ? ourcol : enemycol;
 
                     if (hex.attr(A::STACK_IS_ACTIVE) > 0)

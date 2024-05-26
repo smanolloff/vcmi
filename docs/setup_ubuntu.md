@@ -30,6 +30,7 @@ $ rm libtorch.zip
 
 ```bash
 $ cmake -S . -B rel -Wno-dev \
+    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
     -D CMAKE_BUILD_TYPE=Release \
     -D ENABLE_SINGLE_APP_BUILD=1 \
     -D ENABLE_CCACHE=1 \
@@ -46,14 +47,15 @@ _(Optional)_ Compile a debug binary:
 
 ```bash
 $ cmake -S . -B build -Wno-dev \
-    -D CMAKE_BUILD_TYPE=Debug \
-    -D ENABLE_SINGLE_APP_BUILD=1 \
-    -D ENABLE_CCACHE=1 \
-    -D ENABLE_NULLKILLER_AI=0 \
-    -D ENABLE_LAUNCHER=0 \
-    -D ENABLE_MYCLIENT_BUILD=1 \
-    -D ENABLE_DEV_BUILD=1 \
-    -D CMAKE_EXPORT_COMPILE_COMMANDS=1
+      -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
+      -D CMAKE_BUILD_TYPE=Debug \
+      -D ENABLE_SINGLE_APP_BUILD=1 \
+      -D ENABLE_CCACHE=1 \
+      -D ENABLE_NULLKILLER_AI=0 \
+      -D ENABLE_LAUNCHER=0 \
+      -D ENABLE_MYCLIENT_BUILD=1 \
+      -D ENABLE_DEV_BUILD=1 \
+      -D CMAKE_EXPORT_COMPILE_COMMANDS=1
 
 $ cmake --build build/
 ```
@@ -71,7 +73,8 @@ Instead, symbolic links must be manually created to files which contain
 the appropriate settings for vcmi-gym:
 
 ```bash
-$ ln -s "$PWD"/myclient/{settings,modSettings}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
+$ mkdir "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
+$ ln -s "$PWD"/myclient/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
 ```
 
 ### Manual test

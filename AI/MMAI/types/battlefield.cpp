@@ -20,6 +20,7 @@
 #include "CStack.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
+#include "battle/CPlayerBattleCallback.h"
 #include "battle/ReachabilityInfo.h"
 #include "battle/Unit.h"
 #include "bonuses/BonusEnum.h"
@@ -338,11 +339,11 @@ namespace MMAI {
     // XXX: possibly similar issues occur when low morale occurs
     // As a workaround, morale is diabled (all battles are on cursed ground)
     // Possible solution is to set some flag via BAI->battleTriggerEffect (TODO)
-    Queue Battlefield::GetQueue(CBattleCallback* cb) {
+    Queue Battlefield::GetQueue(CPlayerBattleCallback* battle) {
         auto res = Queue{};
 
         auto tmp = std::vector<battle::Units>{};
-        cb->battleGetTurnOrder(tmp, QSIZE, 0);
+        battle->battleGetTurnOrder(tmp, QSIZE, 0);
         for (auto &units : tmp)
             for (auto &unit : units)
                 res.insert(res.end(), unit->unitId());
@@ -351,27 +352,27 @@ namespace MMAI {
     }
 
     // static
-    Hexes Battlefield::InitHexes(CBattleCallback* cb, const CStack* astack) {
+    Hexes Battlefield::InitHexes(CPlayerBattleCallback* battle, const CStack* astack) {
         auto res = Hexes{};
-        auto ainfo = cb->getAccesibility();
+        auto ainfo = battle->getAccesibility();
         auto hexstacks = HexStacks{};  // expensive check for blocked shooters => eager load once
         auto stackinfos = StackInfos{}; // expensive check for stack->speed, isblocked and getReachability
 
-        for (const auto& cstack : cb->battleGetStacks()) {
+        for (const auto& cstack : battle->battleGetStacks()) {
             stackinfos.insert({cstack, StackInfo(
-                cstack->speed(),
+                cstack->getMovementRange(),
                 // cstack->canShoot() && (cstack->hasBonusOfType(BonusType::FREE_SHOOTING) || !cb->battleIsUnitBlocked(cstack))
-                cb->battleCanShoot(cstack),
+                battle->battleCanShoot(cstack),
                 (cstack->isShooter() && !cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY) ? Export::DmgMod::HALF : Export::DmgMod::FULL),
                 cstack->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY),
-                std::make_shared<ReachabilityInfo>(cb->getReachability(cstack))
+                std::make_shared<ReachabilityInfo>(battle->getReachability(cstack))
             )});
 
             for (auto bh : cstack->getHexes())
                 hexstacks.insert({bh, cstack});
         }
 
-        auto queue = GetQueue(cb);
+        auto queue = GetQueue(battle);
 
         for (int i=0; i<BF_SIZE; i++) {
             auto hex = InitHex(i, astack, queue, ainfo, stackinfos, hexstacks);
@@ -460,9 +461,9 @@ namespace MMAI {
      * - used if expecting a battle end (for terminal state/render)
      * - no "reachable" hexes (off-turn means no active stack)
      */
-    void Battlefield::offTurnUpdate(CBattleCallback* cb) {
-        auto ainfo = cb->getAccesibility();
-        auto queue = GetQueue(cb);
+    void Battlefield::offTurnUpdate(CPlayerBattleCallback* battle) {
+        auto ainfo = battle->getAccesibility();
+        auto queue = GetQueue(battle);
 
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {

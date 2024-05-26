@@ -39,7 +39,7 @@ else()
   install(TARGETS MMAI RUNTIME DESTINATION ${AI_LIB_DIR} LIBRARY DESTINATION ${AI_LIB_DIR})
 endif()
 
-target_link_libraries(MMAI PRIVATE ${VCMI_LIB_TARGET} pybind11::headers pybind11::pybind11 pybind11::module pybind11::lto)
+target_link_libraries(MMAI PRIVATE vcmi)
 target_include_directories(MMAI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 vcmi_set_output_dir(MMAI "AI")

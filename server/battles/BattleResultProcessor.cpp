@@ -8,6 +8,7 @@
  *
  */
 #include "StdInc.h"
+#include "CVCMIServer.h"
 #include "BattleResultProcessor.h"
 
 #include "../CGameHandler.h"
@@ -29,6 +30,7 @@
 #include "../../lib/networkPacks/PacksForClient.h"
 #include "../../lib/serializer/Cast.h"
 #include "../../lib/spells/CSpellHandler.h"
+#include "../../client/CMT.h"
 
 BattleResultProcessor::BattleResultProcessor(BattleProcessor * owner, CGameHandler * newGameHandler)
 //	: owner(owner)
@@ -251,6 +253,29 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	if(heroDefender)
 		battleResult->exp[1] = heroDefender->calculateXp(battleResult->exp[1]);
 
+	// if(heroAttacker)
+	// 	logGlobal->error("ATTACKER tmpOwner was: " + std::to_string(heroAttacker->tempOwner));
+	// if(heroDefender)
+	// 	logGlobal->error("DEFENDER tmpOwner was: " + std::to_string(heroDefender->tempOwner));
+	// logGlobal->error("redside was: " + std::to_string(redside));
+
+	// don't record stats for retreats (i.e. env resets)
+	if (gameHandler->stats && battleResult->result == EBattleResult::NORMAL) {
+		gameHandler->stats->dataadd(
+			gameHandler->redside,
+			battleResult->winner == BattleSide::ATTACKER,
+			heroAttacker->exp,  // training map is designed such that exp = hero ID
+			heroDefender->exp
+		);
+	}
+
+	if (gameHandler->maxBattles && gameHandler->battlecounter >= gameHandler->maxBattles) {
+		std::cout << "Hit battle limit of " << gameHandler->maxBattles << ", will quit now...\n";
+		if (gameHandler->stats) gameHandler->stats->dbpersist();
+		gameHandler->gameLobby()->setState(EServerState::SHUTDOWN);
+		return;
+	}
+
 	auto battleQuery = std::dynamic_pointer_cast<CBattleQuery>(gameHandler->queries->topQuery(battle.sideToPlayer(0)));
 	if(!battleQuery)
 		battleQuery = std::dynamic_pointer_cast<CBattleQuery>(gameHandler->queries->topQuery(battle.sideToPlayer(1)));
@@ -270,15 +295,20 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	finishingBattles[battle.getBattle()->getBattleID()] = std::make_unique<FinishingBattleHelper>(battle, *battleResult, queriedPlayers);
 
 	// in battles against neutrals, 1st player can ask to replay battle manually
-	const auto * attackerPlayer = gameHandler->getPlayerState(battle.getBattle()->getSidePlayer(BattleSide::ATTACKER));
-	const auto * defenderPlayer = gameHandler->getPlayerState(battle.getBattle()->getSidePlayer(BattleSide::DEFENDER));
-	bool isAttackerHuman = attackerPlayer && attackerPlayer->isHuman();
-	bool isDefenderHuman = defenderPlayer && defenderPlayer->isHuman();
-	bool onlyOnePlayerHuman = isAttackerHuman != isDefenderHuman;
+	// const auto * attackerPlayer = gameHandler->getPlayerState(battle.getBattle()->getSidePlayer(BattleSide::ATTACKER));
+	// const auto * defenderPlayer = gameHandler->getPlayerState(battle.getBattle()->getSidePlayer(BattleSide::DEFENDER));
+	// bool isAttackerHuman = attackerPlayer && attackerPlayer->isHuman();
+	// bool isDefenderHuman = defenderPlayer && defenderPlayer->isHuman();
+	// bool onlyOnePlayerHuman = isAttackerHuman != isDefenderHuman;
 	// in battles against neutrals attacker can ask to replay battle manually, additionally in battles against AI player human side can also ask for replay
-	if(onlyOnePlayerHuman)
+	// if(onlyOnePlayerHuman)
+	if(true)
 	{
 		auto battleDialogQuery = std::make_shared<CBattleDialogQuery>(gameHandler, battle.getBattle(), battleQuery->result);
+
+		if (battle.getBattle()->getSidePlayer(1).isValidPlayer()) // only attacker gets to choose
+			battleDialogQuery->players.pop_back();
+
 		battleResult->queryID = battleDialogQuery->queryID;
 		gameHandler->queries->addQuery(battleDialogQuery);
 	}
@@ -499,8 +529,8 @@ void BattleResultProcessor::endBattleConfirm(const CBattleInfoCallback & battle)
 		gameHandler->swapGarrisonOnSiege(finishingBattle->winnerHero->visitedTown->id); //return defending visitor from garrison to its rightful place
 	}
 	//give exp
-	if(!finishingBattle->isDraw() && battleResult->exp[finishingBattle->winnerSide] && finishingBattle->winnerHero)
-		gameHandler->giveExperience(finishingBattle->winnerHero, battleResult->exp[finishingBattle->winnerSide]);
+	// if(!finishingBattle->isDraw() && battleResult->exp[finishingBattle->winnerSide] && finishingBattle->winnerHero)
+	// 	gameHandler->giveExperience(finishingBattle->winnerHero, battleResult->exp[finishingBattle->winnerSide]);
 
 	BattleResultAccepted raccepted;
 	raccepted.battleID = battle.getBattle()->getBattleID();

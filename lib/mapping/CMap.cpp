@@ -7,6 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "IGameCallback.h"
 #include "StdInc.h"
 #include "CMap.h"
 

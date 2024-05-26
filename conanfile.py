@@ -19,7 +19,6 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-        "pybind11/[~2.7.1]",
         "llvm-openmp/17.0.6",
         "sqlite3/[~3.45.3]"
     ]
@@ -27,7 +26,7 @@ class VCMI(ConanFile):
         "onetbb/[^2021.3]",
     ]
 
-    requires = _libRequires + _clientRequires + _nullkillerAIRequires
+    requires = list(set(_libRequires + _clientRequires + _nullkillerAIRequires))
 
     options = {
         "default_options_of_requirements": [True, False],

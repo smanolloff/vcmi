@@ -181,6 +181,7 @@ void CGameState::init(const IMapService * mapService, StartInfo * si, Load::Prog
 {
 	assert(services);
 	assert(callback);
+	assert(callback->gameState());
 	logGlobal->info("\tUsing random seed: %d", si->seedToBeUsed);
 	getRandomGenerator().setSeed(si->seedToBeUsed);
 	scenarioOps = CMemorySerializer::deepCopy(*si).release();
@@ -1254,7 +1255,12 @@ void CGameState::updateRumor()
 	int rumorId = -1;
 	int rumorExtra = -1;
 	auto & rand = getRandomGenerator();
-	rumor.type = *RandomGeneratorUtil::nextItem(rumorTypes, rand);
+
+	// XXX: SPECIAL rumors cause address violation. Call chain is:
+	//  	obtainPlayersStats() -> ... -> getObjectName() -> isCampaignGem()
+	// 		which tries to dereference cb->gs (NULL at this point)
+	// rumor.type = *RandomGeneratorUtil::nextItem(rumorTypes, rand);
+	rumor.type = RumorState::TYPE_RAND;
 
 	do
 	{

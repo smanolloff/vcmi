@@ -89,8 +89,9 @@ CBattleDialogQuery::CBattleDialogQuery(CGameHandler * owner, const IBattleInfo *
 
 void CBattleDialogQuery::onRemoval(PlayerColor color)
 {
-	if (!gh->getPlayerState(color)->isHuman())
-		return;
+	// during AI training, no players are human
+	// if (!gh->getPlayerState(color)->isHuman())
+	// 	return;
 
 	assert(answer);
 	if(*answer == 1)

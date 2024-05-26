@@ -19,11 +19,11 @@
 // Contains boilerplate related implementations of virtual methods
 
 namespace MMAI {
-    void AAI::saveGame(BinarySerializer & h, const int version) {
+    void AAI::saveGame(BinarySerializer & h) {
         debug("*** saveGame ***");
     }
 
-    void AAI::loadGame(BinaryDeserializer & h, const int version) {
+    void AAI::loadGame(BinaryDeserializer & h) {
         debug("*** loadGame ***");
     }
 
@@ -35,11 +35,11 @@ namespace MMAI {
         debug("*** finish ***");
     }
 
-    void AAI::heroGotLevel(const CGHeroInstance * hero, PrimarySkill::PrimarySkill pskill, std::vector<SecondarySkill> & skills, QueryID queryID) {
+    void AAI::heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, std::vector<SecondarySkill> &skills, QueryID queryID) {
         debug("*** heroGotLevel ***");
     }
 
-    void AAI::showBlockingDialog(const std::string & text, const std::vector<Component> & components, QueryID askID, const int soundID, bool selection, bool cancel) {
+    void AAI::showBlockingDialog(const std::string &text, const std::vector<Component> &components, QueryID askID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept) {
         debug("*** showBlockingDialog ***");
     }
 
@@ -51,7 +51,7 @@ namespace MMAI {
         debug("*** showMapObjectSelectDialog ***");
     }
 
-    void AAI::showTeleportDialog(TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) {
+    void AAI::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) {
         debug("*** showTeleportDialog ***");
     }
 
@@ -59,7 +59,7 @@ namespace MMAI {
         debug("*** showWorldViewEx ***");
     }
 
-    void AAI::advmapSpellCast(const CGHeroInstance * caster, int spellID) {
+    void AAI::advmapSpellCast(const CGHeroInstance * caster, SpellID spellID) {
         debug("*** advmapSpellCast ***");
     }
 
@@ -139,7 +139,7 @@ namespace MMAI {
         debug("*** heroMoved ***");
     }
 
-    void AAI::heroPrimarySkillChanged(const CGHeroInstance * hero, int which, si64 val) {
+    void AAI::heroPrimarySkillChanged(const CGHeroInstance * hero, PrimarySkill which, si64 val) {
         debug("*** heroPrimarySkillChanged ***");
     }
 
@@ -163,7 +163,7 @@ namespace MMAI {
         debug("*** objectPropertyChanged ***");
     }
 
-    void AAI::objectRemoved(const CGObjectInstance * obj) {
+    void AAI::objectRemoved(const CGObjectInstance * obj, const PlayerColor &initiator) {
         debug("*** objectRemoved ***");
     }
 
@@ -195,7 +195,7 @@ namespace MMAI {
         debug("*** showInfoDialog ***");
     }
 
-    void AAI::showMarketWindow(const IMarket * market, const CGHeroInstance * visitor) {
+    void AAI::showMarketWindow(const IMarket *market, const CGHeroInstance *visitor, QueryID queryID) {
         debug("*** showMarketWindow ***");
     }
 
@@ -203,7 +203,7 @@ namespace MMAI {
         debug("*** showPuzzleMap ***");
     }
 
-    void AAI::showRecruitmentDialog(const CGDwelling * dwelling, const CArmedInstance * dst, int level) {
+    void AAI::showRecruitmentDialog(const CGDwelling *dwelling, const CArmedInstance *dst, int level, QueryID queryID) {
         debug("*** showRecruitmentDialog ***");
     }
 
@@ -211,7 +211,7 @@ namespace MMAI {
         debug("*** showShipyardDialog ***");
     }
 
-    void AAI::showTavernWindow(const CGObjectInstance * townOrTavern) {
+    void AAI::showTavernWindow(const CGObjectInstance * object, const CGHeroInstance * visitor, QueryID queryID) {
         debug("*** showTavernWindow ***");
     }
 
@@ -219,7 +219,7 @@ namespace MMAI {
         debug("*** showThievesGuildWindow ***");
     }
 
-    void AAI::showUniversityWindow(const IMarket * market, const CGHeroInstance * visitor) {
+    void AAI::showUniversityWindow(const IMarket *market, const CGHeroInstance *visitor, QueryID queryID) {
         debug("*** showUniversityWindow ***");
     }
 
@@ -233,5 +233,9 @@ namespace MMAI {
 
     void AAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID query) {
         debug("*** heroExchangeStarted ***");
+    }
+
+    std::optional<BattleAction> AAI::makeSurrenderRetreatDecision(const BattleID & battleID, const BattleStateInfoForRetreat & battleState) {
+        return std::nullopt;
     }
 }

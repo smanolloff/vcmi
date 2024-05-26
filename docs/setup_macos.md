@@ -104,7 +104,7 @@ Instead, symbolic links must be manually created to files which contain
 the appropriate settings for vcmi-gym:
 
 ```bash
-$ ln -s "$PWD"/myclient/{settings,modSettings}.json "$HOME/Library/Application Support/vcmi/config"
+$ ln -s "$PWD"/myclient/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
 ```
 
 ### Manual test

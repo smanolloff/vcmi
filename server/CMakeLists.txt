@@ -58,8 +58,8 @@ find_package(SQLite3 REQUIRED)
 
 assign_source_group(${vcmiservercommon_SRCS} ${vcmiservercommon_HEADERS})
 
-set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
 add_library(vcmiservercommon STATIC ${vcmiservercommon_SRCS} ${vcmiservercommon_HEADERS})
+set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
 set(vcmiservercommon_LIBS vcmi)
 
 if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)

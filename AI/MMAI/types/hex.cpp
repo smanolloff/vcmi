@@ -166,7 +166,7 @@ namespace MMAI {
         setattr(A::STACK_DMG_MAX,   cstack->getMaxDamage(false));
         setattr(A::STACK_HP,        cstack->getMaxHealth());
         setattr(A::STACK_HP_LEFT,   cstack->getFirstHPleft());
-        setattr(A::STACK_SPEED,     cstack->speed());
+        setattr(A::STACK_SPEED,     cstack->getMovementRange());
         setattr(A::STACK_WAITED,    cstack->waitedThisTurn);
         setattr(A::STACK_QUEUE_POS, qpos);
 

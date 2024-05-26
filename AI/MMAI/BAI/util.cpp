@@ -32,6 +32,6 @@ namespace MMAI {
     }
 
     std::string BAI::renderANSI() {
-        return Render(*result, cb, *battlefield, color, action.get(), attackLogs);
+        return Render(*result, cb, battle, *battlefield, color, action.get(), attackLogs);
     }
 }

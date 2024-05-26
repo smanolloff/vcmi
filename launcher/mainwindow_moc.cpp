@@ -232,7 +232,7 @@ void MainWindow::updateTranslation()
 {
 #ifdef ENABLE_QT_TRANSLATIONS
 	std::string translationFile = settings["general"]["language"].String() + ".qm";
-	logGlobal->info("Loading translation '%s'", translationFile);
+	// logGlobal->info("Loading translation '%s'", translationFile);
 
 	QVector<QString> searchPaths;
 

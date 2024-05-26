@@ -63,6 +63,9 @@ public:
 	/// Restart ongoing battle and end previous battle
 	void restartBattlePrimary(const BattleID & battleID, const CArmedInstance *army1, const CArmedInstance *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool creatureBank = false, const CGTownInstance *town = nullptr);
 
+	/// Prepare battle for gym training
+	void gymPreBattleHook(const CArmedInstance *& army1, const CArmedInstance *& army2, const CGHeroInstance *& hero1, const CGHeroInstance *& hero2);
+
 	/// Processing of incoming battle action netpack
 	bool makePlayerBattleAction(const BattleID & battleID, PlayerColor player, const BattleAction & ba);
 

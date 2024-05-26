@@ -20,7 +20,6 @@
 #include "export.h"
 #include "gameState/CGameState.h"
 #include "AAI.h"
-#include "NetPacks.h"
 #include "mapObjects/CArmedInstance.h"
 #include "mapObjects/CGHeroInstance.h"
 
@@ -52,7 +51,7 @@ namespace MMAI {
     void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage_) {
         info("*** initGameInterface ***");
 
-        color = CB->getMyColor()->getStr();
+        color = CB->getPlayerID()->toString();
 
         ASSERT(baggage_.has_value(), "baggage has no value");
         ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
@@ -115,7 +114,7 @@ namespace MMAI {
         // info("getNonRenderAciton called with result type: " + std::to_string(result->type));
         auto action = getActionOrig(result);
         while (action == Export::ACTION_RENDER_ANSI) {
-            auto res = Export::Result(bai->renderANSI(), Export::Side(cb->battleGetMySide()));
+            auto res = Export::Result(bai->renderANSI(), Export::Side(bai->battle->battleGetMySide()));
             // info("getNonRenderAciton (loop) called with result type: " + std::to_string(res.type));
             action = getActionOrig(&res);
         }
@@ -123,11 +122,14 @@ namespace MMAI {
         return action;
     }
 
-    void AAI::yourTurn() {
-        info("*** yourTurn ***");
+    void AAI::yourTurn(QueryID queryID) {
+        info("*** yourTurn *** (" + std::to_string(queryID.getNum()) + ")");
 
-        std::make_unique<boost::thread>([this]() {
+        std::make_unique<boost::thread>([this, queryID]() {
             boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
+
+            info("Answering query " + std::to_string(queryID) + " to start turn");
+            cb->selectionMade(0, queryID);
 
             auto heroes = cb->getHeroesInfo();
             assert(!heroes.empty());
@@ -138,7 +140,7 @@ namespace MMAI {
         });
     }
 
-    void AAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side_, bool replayAllowed) {
+    void AAI::battleStart(const BattleID &bid, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
 
         side = side_;
@@ -195,10 +197,10 @@ namespace MMAI {
             battleAI->initBattleInterface(env, cbc);
         }
 
-        battleAI->battleStart(army1, army2, tile, hero1, hero2, side_, replayAllowed);
+        battleAI->battleStart(bid, army1, army2, tile, hero1, hero2, side_, replayAllowed);
     }
 
-    void AAI::battleEnd(const BattleResult * br, QueryID queryID) {
+    void AAI::battleEnd(const BattleID &bid, const BattleResult * br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(static_cast<int>(queryID)) + ") ***");
 
         if (!bai) {
@@ -218,7 +220,7 @@ namespace MMAI {
 
             // first call bai->battleEnd to update result
             // (in case there are render actions)
-            bai->battleEnd(br, queryID);
+            bai->battleEnd(bid, br, queryID);
 
             debug("<BATTLE_END> Will request a non-render action");
             auto action = getNonRenderAction(bai->result.get());
@@ -228,7 +230,7 @@ namespace MMAI {
             ASSERT(action == Export::ACTION_RESET, "expected RESET, got: " + std::to_string(action));
         }
 
-        if (cb->battleGetMySide() == BattlePerspective::LEFT_SIDE) {
+        if (cb->getBattle(bid)->battleGetMySide() == BattlePerspective::LEFT_SIDE) {
             ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
             info("Answering query " + std::to_string(queryID) + " to re-play battle");
 

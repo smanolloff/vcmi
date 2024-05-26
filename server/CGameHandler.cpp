@@ -541,6 +541,16 @@ void CGameHandler::reinitScripting()
 
 void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTracking)
 {
+	maxBattles = si->maxBattles;
+	randomHeroes = si->randomHeroes;
+	randomObstacles = si->randomObstacles;
+	swapSides = si->swapSides;
+	statsMode = si->statsMode;
+	statsStorage = si->statsStorage;
+	statsPersistFreq = si->statsPersistFreq;
+	statsSampling = si->statsSampling;
+	statsScoreVar = si->statsScoreVar;
+
 	if (si->seedToBeUsed == 0)
 	{
 		si->seedToBeUsed = CRandomGenerator::getDefault().nextInt();
@@ -3313,7 +3323,7 @@ bool CGameHandler::queryReply(QueryID qid, std::optional<int32_t> answer, Player
 		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer())
 			currentQuery->setReply(answer);
 
-		COMPLAIN_RET("This player top query has different ID!"); //topQuery->queryID != qid
+		COMPLAIN_RET("This player top query (" + topQuery->toString() + ") has ID != " + std::to_string(qid)); //topQuery->queryID != qid
 	}
 	COMPLAIN_RET_FALSE_IF(!topQuery->endsByPlayerAnswer(), "This query cannot be ended by player's answer!");
 

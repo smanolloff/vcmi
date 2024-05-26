@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "constants/EntityIdentifiers.h"
 #include "export.h"
 #include "BAI/BAI.h"
 
@@ -51,26 +52,26 @@ namespace MMAI {
 
         // impl CAdventureAI
         std::string getBattleAIName() const override;
-        void battleEnd(const BattleResult * br, QueryID queryID) override;
-        void battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) override;
+        void yourTurn(QueryID queryID) override;
+        void battleEnd(const BattleID &bid, const BattleResult * br, QueryID queryID) override;
+        void battleStart(const BattleID &bid, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) override;
 
         // impl CGlobalAI
         // (nothing)
 
         // impl CGameInterface
-        void saveGame(BinarySerializer & h, const int version) override; //saving
-        void loadGame(BinaryDeserializer & h, const int version) override; //loading
+        void saveGame(BinarySerializer & h) override; //saving
+        void loadGame(BinaryDeserializer & h) override; //loading
         void commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QueryID queryID) override; //TODO
         void finish() override;
-        void heroGotLevel(const CGHeroInstance * hero, PrimarySkill::PrimarySkill pskill, std::vector<SecondarySkill> & skills, QueryID queryID) override; //pskill is gained primary skill, interface has to choose one of given skills and call callback with selection id
+        void heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, std::vector<SecondarySkill> &skills, QueryID queryID) override; //pskill is gained primary skill, interface has to choose one of given skills and call callback with selection id
         void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB) override;
         void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, std::any baggage) override;
-        void showBlockingDialog(const std::string & text, const std::vector<Component> & components, QueryID askID, const int soundID, bool selection, bool cancel) override; //Show a dialog, player must take decision. If selection then he has to choose between one of given components, if cancel he is allowed to not choose. After making choice, CCallback::selectionMade should be called with number of selected component (1 - n) or 0 for cancel (if allowed) and askID.
+        void showBlockingDialog(const std::string &text, const std::vector<Component> &components, QueryID askID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept) override; //Show a dialog, player must take decision. If selection then he has to choose between one of given components, if cancel he is allowed to not choose. After making choice, CCallback::selectionMade should be called with number of selected component (1 - n) or 0 for cancel (if allowed) and askID.
         void showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID) override; //all stacks operations between these objects become allowed, interface has to call onEnd when done
         void showMapObjectSelectDialog(QueryID askID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects) override;
-        void showTeleportDialog(TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) override;
+        void showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) override;
         void showWorldViewEx(const std::vector<ObjectPosInfo> & objectPositions, bool showTerrain) override;
-        void yourTurn() override;
 
         // impl CBattleGameInterface
         // (nothing)
@@ -79,7 +80,7 @@ namespace MMAI {
         // (nothing)
 
         // impl IGameEventsReceiver
-        void advmapSpellCast(const CGHeroInstance * caster, int spellID) override;
+        void advmapSpellCast(const CGHeroInstance * caster, SpellID spellID) override;
         void artifactAssembled(const ArtifactLocation & al) override;
         void artifactDisassembled(const ArtifactLocation & al) override;
         void artifactMoved(const ArtifactLocation & src, const ArtifactLocation & dst) override;
@@ -99,13 +100,13 @@ namespace MMAI {
         void heroManaPointsChanged(const CGHeroInstance * hero) override;
         void heroMovePointsChanged(const CGHeroInstance * hero) override;
         void heroMoved(const TryMoveHero & details, bool verbose = true) override;
-        void heroPrimarySkillChanged(const CGHeroInstance * hero, int which, si64 val) override;
+        void heroPrimarySkillChanged(const CGHeroInstance * hero, PrimarySkill which, si64 val) override;
         void heroSecondarySkillChanged(const CGHeroInstance * hero, int which, int val) override;
         void heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start) override;
         void heroVisitsTown(const CGHeroInstance * hero, const CGTownInstance * town) override;
         void newObject(const CGObjectInstance * obj) override;
         void objectPropertyChanged(const SetObjectProperty * sop) override;
-        void objectRemoved(const CGObjectInstance * obj) override;
+        void objectRemoved(const CGObjectInstance * obj, const PlayerColor &initiator) override;
         void playerBlocked(int reason, bool start) override;
         void playerBonusChanged(const Bonus & bonus, bool gain) override;
         void receivedResource() override;
@@ -113,13 +114,13 @@ namespace MMAI {
         void requestSent(const CPackForServer * pack, int requestID) override;
         void showHillFortWindow(const CGObjectInstance * object, const CGHeroInstance * visitor) override;
         void showInfoDialog(EInfoWindowMode type, const std::string & text, const std::vector<Component> & components, int soundID) override;
-        void showMarketWindow(const IMarket * market, const CGHeroInstance * visitor) override;
+        void showMarketWindow(const IMarket *market, const CGHeroInstance *visitor, QueryID queryID) override;
         void showPuzzleMap() override;
-        void showRecruitmentDialog(const CGDwelling * dwelling, const CArmedInstance * dst, int level) override;
+        void showRecruitmentDialog(const CGDwelling *dwelling, const CArmedInstance *dst, int level, QueryID queryID) override;
         void showShipyardDialog(const IShipyard * obj) override;
-        void showTavernWindow(const CGObjectInstance * townOrTavern) override;
+        void showTavernWindow(const CGObjectInstance * object, const CGHeroInstance * visitor, QueryID queryID) override;
         void showThievesGuildWindow(const CGObjectInstance * obj) override;
-        void showUniversityWindow(const IMarket * market, const CGHeroInstance * visitor) override;
+        void showUniversityWindow(const IMarket *market, const CGHeroInstance *visitor, QueryID queryID) override;
         void tileHidden(const std::unordered_set<int3> & pos) override;
         void tileRevealed(const std::unordered_set<int3> & pos) override;
 
@@ -159,9 +160,7 @@ namespace MMAI {
         */
 
         // These are part of CGameInterface, but VCAI does not implement them
-        /*
-        virtual std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleStateInfoForRetreat & battleState) { return std::nullopt; }
-        */
+        virtual std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleID & battleID, const BattleStateInfoForRetreat & battleState) override;
 
         // These are part of CBattleGameInterface, but VCAI does not implement them
         /*

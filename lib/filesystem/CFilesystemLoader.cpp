@@ -27,7 +27,7 @@ std::unique_ptr<CInputStream> CFilesystemLoader::load(const ResourcePath & resou
 {
 	assert(fileList.count(resourceName));
 	boost::filesystem::path file = baseDirectory / fileList.at(resourceName);
-	logGlobal->trace("loading %s", file.string());
+	// logGlobal->trace("loading %s", file.string());
 	return std::make_unique<CFileInputStream>(file);
 }
 

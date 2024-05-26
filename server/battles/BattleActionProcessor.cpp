@@ -249,7 +249,7 @@ bool BattleActionProcessor::doAttackAction(const CBattleInfoCallback & battle, c
 
 	if(!CStack::isMeleeAttackPossible(stack, destinationStack))
 	{
-		gameHandler->complain("Attack cannot be performed!");
+		gameHandler->complain("Attack cannot be performed! Stack: " + std::to_string(stack->unitSlot()) + ", Target stack: " + std::to_string(destinationStack->unitSlot()) + ", startingPos: " + std::to_string(stack->getPosition()) + ", destinationTile: " + std::to_string(destinationTile) + ", attackPos: " + std::to_string(attackPos));
 		return false;
 	}
 

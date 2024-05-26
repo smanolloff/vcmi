@@ -129,6 +129,18 @@ struct DLL_LINKAGE StartInfo
 
 	std::shared_ptr<CampaignState> campState;
 
+	// XXX: define those as member vars
+
+	int maxBattles = 0;
+	int randomHeroes = 0;
+	int randomObstacles = 0;
+	int swapSides = 0;
+	int statsSampling = 0;
+	int statsPersistFreq = 0;
+	std::string statsStorage = "-";
+	std::string statsMode = "red";
+	float statsScoreVar = 0.4;
+
 	PlayerSettings & getIthPlayersSettings(const PlayerColor & no);
 	const PlayerSettings & getIthPlayersSettings(const PlayerColor & no) const;
 	PlayerSettings * getPlayersSettings(const ui8 connectedPlayerId);

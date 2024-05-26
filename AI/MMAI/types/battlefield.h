@@ -100,13 +100,12 @@ namespace MMAI {
             const HexStacks &hexstacks
         );
 
-        static Hexes InitHexes(CBattleCallback* cb, const CStack* astack);
-        static Queue GetQueue(CBattleCallback* cb);
+        static Hexes InitHexes(CPlayerBattleCallback* battle, const CStack* astack);
+        static Queue GetQueue(CPlayerBattleCallback* battle);
 
-
-        Battlefield(CBattleCallback* cb, const CStack* astack_) :
+        Battlefield(CPlayerBattleCallback* battle, const CStack* astack_) :
             astack(astack_),
-            hexes(InitHexes(cb, astack_))
+            hexes(InitHexes(battle, astack_))
             {};
 
         Hexes hexes; // not const due to offTurnUpdate
@@ -118,6 +117,6 @@ namespace MMAI {
         // needed only for getting stack by slot
         std::array<const CStack*, 7> enemystacks;
 
-        void offTurnUpdate(CBattleCallback* cb);
+        void offTurnUpdate(CPlayerBattleCallback* battle);
     };
 }

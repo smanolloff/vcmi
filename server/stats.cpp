@@ -220,7 +220,7 @@ void Stats::dataload(int nheroes) {
                 break;
 
             if (rc != SQLITE_ROW)
-                Error("dataload error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(memdb));
+                Error("dataload error: sqlite3_step status %d != %d, errmsg: %s", rc, SQLITE_ROW, sqlite3_errmsg(memdb));
 
             int id = sqlite3_column_int(stmt, 0);  // id for the 2-hero combination
             int side = sqlite3_column_int(stmt, 1);
@@ -321,7 +321,7 @@ void Stats::flushbuffers(int side) {
             auto rc = sqlite3_step(stmt);
 
             if (rc != SQLITE_ROW)
-                Error("dataadd error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(memdb));
+                Error("dataadd error: sqlite3_step status %d != %d, errmsg: %s", rc, SQLITE_ROW, sqlite3_errmsg(memdb));
 
             auto dbid = sqlite3_column_int(stmt, 0);
             auto wins = sqlite3_column_int(stmt, 1);
@@ -331,7 +331,11 @@ void Stats::flushbuffers(int side) {
 
             rc = sqlite3_step(stmt);
             if (rc != SQLITE_DONE)
-                Error("dataadd error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(memdb));
+                Error("dataadd error: sqlite3_step status %d != %d, errmsg: %s", rc, SQLITE_DONE, sqlite3_errmsg(memdb));
+
+            rc = sqlite3_reset(stmt);
+            if (rc != SQLITE_OK)
+                Error("dataadd error: sqlite3_reset status %d != %d, errmsg: %s", rc, SQLITE_OK, sqlite3_errmsg(memdb));
         }
     });
     dbexec("COMMIT");
@@ -369,7 +373,7 @@ std::pair<int, int> Stats::sample2(bool side) {
 
         auto rc = sqlite3_step(stmt);
         if (rc != SQLITE_ROW)
-            Error("sample2 error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(memdb));
+            Error("sample2 error: sqlite3_step status %d != %d, errmsg: %s", rc, SQLITE_ROW, sqlite3_errmsg(memdb));
 
         auto dbside = sqlite3_column_int(stmt, 0);
         assert(dbside == side);
@@ -380,7 +384,7 @@ std::pair<int, int> Stats::sample2(bool side) {
 
         rc = sqlite3_step(stmt);
         if (rc != SQLITE_DONE)
-            Error("sample2 error: sqlite3_step status %d != %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(memdb));
+            Error("sample2 error: sqlite3_step status %d != %d, errmsg: %s", rc, SQLITE_DONE, sqlite3_errmsg(memdb));
     });
 
     return {heroL, heroR};
@@ -411,7 +415,7 @@ void Stats::dump(bool side, bool nonzero) {
                 break;
 
             if (rc != SQLITE_ROW)
-                Error("dataload sqlite3_step error: status %d != %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(memdb));
+                Error("dataload sqlite3_step error: status %d != %d, errmsg: %s", rc, SQLITE_ROW, sqlite3_errmsg(memdb));
 
             auto dbid = sqlite3_column_int(stmt, 0);  // id for the 2-hero combination
             auto side = sqlite3_column_int(stmt, 1);

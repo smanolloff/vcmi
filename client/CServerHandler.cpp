@@ -7,6 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "CVCMIServer.h"
 #include "StdInc.h"
 
 #include "CServerHandler.h"
@@ -21,6 +22,7 @@
 #include "globalLobby/GlobalLobbyClient.h"
 #include "lobby/CSelectionBase.h"
 #include "lobby/CLobbyScreen.h"
+#include "network/NetworkServer.h"
 #include "windows/InfoWindows.h"
 
 #include "mainmenu/CMainMenu.h"
@@ -241,10 +243,20 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
 
+	si->maxBattles = settings["server"]["maxBattles"].Integer();
+	si->randomHeroes = settings["server"]["randomHeroes"].Integer();
+	si->randomObstacles = settings["server"]["randomObstacles"].Integer();
+	si->swapSides = settings["server"]["swapSides"].Integer();
+	si->statsSampling = settings["server"]["statsSampling"].Integer();
+	si->statsPersistFreq = settings["server"]["statsPersistFreq"].Integer();
+	si->statsStorage = settings["server"]["statsStorage"].String();
+	si->statsMode = settings["server"]["statsMode"].String();
+	si->statsScoreVar = settings["server"]["statsScoreVar"].Float();
+
 	logNetwork->trace("\tStarting local server");
-	serverRunner->start(getLocalPort(), connectToLobby, si);
-	logNetwork->trace("\tConnecting to local server");
-	connectToServer(getLocalHostname(), getLocalPort());
+	auto srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
+	logNetwork->trace("\tConnecting to local server on port %d", srvport);
+	connectToServer(getLocalHostname(), srvport);
 	logNetwork->trace("\tWaiting for connection");
 }
 
@@ -590,7 +602,7 @@ void CServerHandler::sendGuiAction(ui8 action) const
 void CServerHandler::sendRestartGame() const
 {
 	GH.windows().createAndPushWindow<CLoadingScreen>();
-	
+
 	LobbyRestartGame endGame;
 	sendLobbyPack(endGame);
 }
@@ -634,7 +646,7 @@ void CServerHandler::sendStartGame(bool allowOnlyAI) const
 
 	if(!settings["session"]["headless"].Bool())
 		GH.windows().createAndPushWindow<CLoadingScreen>();
-	
+
 	LobbyPrepareStartGame lpsg;
 	sendLobbyPack(lpsg);
 
@@ -652,7 +664,7 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 	if(CMM)
 		CMM->disable();
 
-	client = new CClient(aiBaggage);
+	client = std::make_unique<CClient>(aiBaggage);
 	campaignScoreCalculator = nullptr;
 
 	switch(si->mode)
@@ -807,7 +819,7 @@ void CServerHandler::showServerError(const std::string & txt) const
 {
 	if(auto w = GH.windows().topWindow<CLoadingScreen>())
 		GH.windows().popWindow(w);
-	
+
 	CInfoWindow::showInfoDialog(txt, {});
 }
 
@@ -861,7 +873,10 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 	else
 		startLocalServerAndConnect(false);
 
-	boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+	while(!logicConnection) {
+		std::cout << "Connection to server not available, sleeping 100ms...\n";
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+	}
 
 	while(!settings["session"]["headless"].Bool() && !GH.windows().topWindow<CLobbyScreen>())
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));

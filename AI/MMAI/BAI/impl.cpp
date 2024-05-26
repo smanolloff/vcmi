@@ -19,43 +19,43 @@
 // Contains boilerplate related implementations of virtual methods
 
 namespace MMAI {
-    void BAI::actionStarted(const BattleAction &action) {
+    void BAI::actionStarted(const BattleID &bid, const BattleAction &action) {
         debug("*** actionStarted ***");
     }
 
-    void BAI::yourTacticPhase(int distance) {
-        cb->battleMakeTacticAction(BattleAction::makeEndOFTacticPhase(cb->battleGetTacticsSide()));
+    void BAI::yourTacticPhase(const BattleID &bid, int distance) {
+        cb->battleMakeTacticAction(bid, BattleAction::makeEndOFTacticPhase(battle->battleGetTacticsSide()));
     }
 
-    void BAI::battleAttack(const BattleAttack *ba) {
+    void BAI::battleAttack(const BattleID &bid, const BattleAttack *ba) {
         debug("*** battleAttack ***");
     }
 
-    void BAI::battleNewRoundFirst(int round) {
+    void BAI::battleNewRoundFirst(const BattleID &bid) {
         debug("*** battleNewRoundFirst ***");
     }
 
-    void BAI::battleNewRound(int round) {
+    void BAI::battleNewRound(const BattleID &bid) {
         debug("*** battleNewRound ***");
     }
 
-    void BAI::battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) {
+    void BAI::battleStackMoved(const BattleID &bid, const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) {
         debug("*** battleStackMoved ***");
     }
 
-    void BAI::battleSpellCast(const BattleSpellCast *sc) {
+    void BAI::battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) {
         debug("*** battleSpellCast ***");
     }
 
-    void BAI::battleStacksEffectsSet(const SetStackEffect & sse) {
+    void BAI::battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) {
         debug("*** battleStacksEffectsSet ***");
     }
 
-    void BAI::battleCatapultAttacked(const CatapultAttack & ca) {
+    void BAI::battleCatapultAttacked(const BattleID &bid, const CatapultAttack & ca) {
         debug("*** battleCatapultAttacked ***");
     }
 
-    void BAI::battleUnitsChanged(const std::vector<UnitChanges> &units) {
+    void BAI::battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> &units) {
         debug("*** battleUnitsChanged ***");
     }
 

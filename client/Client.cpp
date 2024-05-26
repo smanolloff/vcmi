@@ -36,6 +36,7 @@
 #include "../lib/pathfinder/CGPathNode.h"
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/registerTypes/RegisterTypesClientPacks.h"
+#include "mapping/CMap.h"
 
 #include <memory>
 #include <vcmi/events/EventBus.h>

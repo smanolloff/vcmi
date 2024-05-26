@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 #include "AI/MMAI/export.h"
+#include "ExceptionsCommon.h"
 #include "myclient.h"
 #include "mmai_export.h"
 
@@ -46,7 +47,6 @@
 #include "../lib/CConsoleHandler.h"
 #include "../lib/VCMIDirs.h"
 #include "../client/gui/CGuiHandler.h"
-#include "../client/mainmenu/CMainMenu.h"
 #include "../client/windows/CMessage.h"
 #include "../client/CServerHandler.h"
 #include "../client/CVideoHandler.h"
@@ -70,9 +70,9 @@
 #include <torch/torch.h>
 #include <torch/script.h>
 
-extern boost::thread_specific_ptr<bool> inGuiThread;
-
 static CBasicLogConfigurator *logConfig;
+
+static std::optional<std::string> criticalInitializationError;
 
 std::string mapname;
 MMAI::Export::Baggage* baggage;
@@ -89,6 +89,62 @@ bool headless;
 #else
 #error "Unsupported OS"
 #endif
+
+/*
+[[noreturn]] static void quitApplication()
+{
+    CSH->endNetwork();
+
+    if(!settings["session"]["headless"].Bool())
+    {
+        if(CSH->client)
+            CSH->endGameplay();
+
+        GH.windows().clear();
+    }
+
+    vstd::clear_pointer(CSH);
+
+    if(!settings["session"]["headless"].Bool())
+    {
+        // cleanup, mostly to remove false leaks from analyzer
+        if(CCS)
+        {
+            CCS->musich->release();
+            CCS->soundh->release();
+
+            delete CCS->consoleh;
+            delete CCS->curh;
+            delete CCS->videoh;
+            delete CCS->musich;
+            delete CCS->soundh;
+
+            vstd::clear_pointer(CCS);
+        }
+        CMessage::dispose();
+
+        vstd::clear_pointer(graphics);
+    }
+
+    vstd::clear_pointer(VLC);
+
+    // sometimes leads to a hang. TODO: investigate
+    //vstd::clear_pointer(console);// should be removed after everything else since used by logging
+
+    if(!settings["session"]["headless"].Bool())
+        GH.screenHandler().close();
+
+    if(logConfig != nullptr)
+    {
+        logConfig->deconfigure();
+        delete logConfig;
+        logConfig = nullptr;
+    }
+
+    std::cout << "Ending...\n";
+    exit(1);
+}
+*/
 
 std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath, bool floatEncoding, bool printModelPredictions) {
     c10::InferenceMode guard;
@@ -422,6 +478,9 @@ void processArguments(
     Settings(settings.write({"server", "statsScoreVar"}))->Float() = statsScoreVar;
     Settings(settings.write({"server", "statsLoglevel"}))->String() = loglevelStats;
 
+    Settings(settings.write({"server", "localPort"}))->Integer() = 0;
+    Settings(settings.write({"server", "useProcess"}))->Bool() = false;
+
     // CPI needs this setting in case the attacker is human (headless==false)
     Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->battleAINameRed;
 
@@ -459,11 +518,10 @@ void processArguments(
     //      where it's configured via Settings in CVCMIServer.cpp#create
     // conflog("stats", "info");
 
-    // conflog("global", "trace");
-    // conflog("ai", "trace");
-    // conflog("network", "trace");
-    // conflog("mod", "error");
-    // conflog("animation", "error");
+    conflog("network", "error");
+    conflog("mod", "error");
+    conflog("animation", "error");
+    conflog("bonus", "error");
 }
 
 void init_vcmi(
@@ -533,7 +591,7 @@ void init_vcmi(
     logConfig->configureDefault();
 
     // XXX: apparently this needs to be invoked before Settings() stuff
-    preinitDLL(::console);
+    preinitDLL(::console, false);
 
     boost::filesystem::current_path(wd);
     processArguments(
@@ -627,10 +685,29 @@ void init_vcmi(
     }
 
     boost::thread loading([]() {
-        loadDLLClasses();
-        const_cast<CGameInfo*>(CGI)->setFromLib();
+        CStopWatch tmh;
+        try
+        {
+            loadDLLClasses(true);
+            CGI->setFromLib();
+        }
+        catch (const DataLoadingException & e)
+        {
+            criticalInitializationError = e.what();
+            return;
+        }
+
+        logGlobal->info("Initializing VCMI_Lib: %d ms", tmh.getDiff());
     });
     loading.join();
+
+    if (criticalInitializationError.has_value()) {
+        auto msg = criticalInitializationError.value();
+        logGlobal->error("FATAL ERROR ENCOUTERED, VCMI WILL NOW TERMINATE");
+        logGlobal->error("Reason: %s", msg);
+        std::string messageToShow = "Fatal error! " + msg;
+        throw std::runtime_error(msg);
+    }
 
     if (!headless) {
         graphics = new Graphics(); // should be before curh
@@ -652,7 +729,6 @@ void start_vcmi() {
     logGlobal->info("quickCombat -> " + std::to_string(settings["adventure"]["quickCombat"].Bool()));
 
     auto t = boost::thread(&CServerHandler::debugStartTest, CSH, mapname, false);
-    inGuiThread.reset(new bool(true));
 
     if(headless) {
         while (true) {
@@ -662,7 +738,6 @@ void start_vcmi() {
         GH.screenHandler().clearScreen();
         while(true) {
             GH.input().fetchEvents();
-            CSH->applyPacksOnLobbyScreen();
             GH.renderFrame();
         }
     }

@@ -471,8 +471,6 @@ endif()
 ############################################
 #        Finding packages                  #
 ############################################
-find_package(pybind11 REQUIRED)
-
 set(BOOST_COMPONENTS date_time filesystem locale program_options system thread)
 if(ENABLE_INNOEXTRACT)
 	list(APPEND BOOST_COMPONENTS iostreams)

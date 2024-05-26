@@ -7,6 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "GameSettings.h"
 #include "StdInc.h"
 #include "BattleProcessor.h"
 
@@ -30,6 +31,7 @@
 #include "../../lib/networkPacks/PacksForClient.h"
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 #include "../../lib/CPlayerState.h"
+#include "constants/EntityIdentifiers.h"
 
 BattleProcessor::BattleProcessor(CGameHandler * gameHandler)
 	: gameHandler(gameHandler)
@@ -102,9 +104,13 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
 
 	const CArmedInstance *armies[2];
+	const CGHeroInstance *heroes[2];
+
+	// std::tie(army1, army2, hero1, hero2) = gymPreBattleHook(army1, army2, hero1, hero2);
+	gymPreBattleHook(army1, army2, hero1, hero2);
+
 	armies[0] = army1;
 	armies[1] = army2;
-	const CGHeroInstance*heroes[2];
 	heroes[0] = hero1;
 	heroes[1] = hero2;
 
@@ -112,7 +118,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 
 	const auto * battle = gameHandler->gameState()->getBattle(battleID);
 	assert(battle);
-	
+
 	//add battle bonuses based from player state only when attacks neutral creatures
 	const auto * attackerInfo = gameHandler->getPlayerState(army1->getOwner(), false);
 	if(attackerInfo && !army2->getOwner().isValidPlayer())
@@ -149,8 +155,73 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 	flowProcessor->onBattleStarted(*battle);
 }
 
+void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArmedInstance *&army2, const CGHeroInstance *&hero1, const CGHeroInstance *&hero2) {
+	auto gh = gameHandler;
+	bool swappingSides = (gh->swapSides > 0 && (gh->battlecounter % gh->swapSides) == 0);
+	// printf("battlecounter: %d, swapSides: %d, rem: %d\n", gh->battlecounter, gh->swapSides, gh->battlecounter % gh->swapSides);
+
+	gh->battlecounter++;
+
+	if (!gh->stats && gh->statsMode != "disabled") {
+		gh->stats = std::make_unique<Stats>(
+			gh->allheroes.size(),
+			gh->statsStorage,
+			gh->statsPersistFreq,
+			gh->statsSampling,
+			gh->statsScoreVar
+		);
+	}
+
+	if (swappingSides)
+		gh->redside = !gameHandler->redside;
+
+
+	if (gh->randomHeroes > 0) {
+		if (gh->stats && gh->statsSampling) {
+			auto [id1, id2] = gh->stats->sample2(gh->statsMode == "red" ? gh->redside : !gh->redside);
+			hero1 = gh->allheroes.at(id1);
+			hero2 = gh->allheroes.at(id2);
+			// printf("sampled: hero1: %d, hero2: %d (perspective: %s)\n", id1, id2, gh->statsMode.c_str());
+		} else {
+			if (gh->allheroes.size() % 2 != 0)
+				throw std::runtime_error("Heroes size must be even");
+
+			if (gh->herocounter % gh->allheroes.size() == 0) {
+				gh->herocounter = 0;
+			    std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), std::random_device());
+			}
+
+			// XXX: heroes must be different (objects must have different tempOwner)
+			hero1 = gh->allheroes.at(gh->herocounter);
+			hero2 = gh->allheroes.at(gh->herocounter+1);
+
+			if (gh->battlecounter % gh->randomHeroes == 0)
+				gh->herocounter += 2;
+		}
+	}
+
+	// Set temp owner of both heroes to player0 and player1
+	// XXX: causes UB after battle, unless it is replayed (ok for training)
+	// XXX: if redside=1 (right), hero2 should have owner=0 (red)
+	//      if redside=0 (left), hero1 should have owner=0 (red)
+	const_cast<CGHeroInstance*>(hero1)->tempOwner = PlayerColor(gh->redside);
+	const_cast<CGHeroInstance*>(hero2)->tempOwner = PlayerColor(!gh->redside);
+
+	// printf("swappingSides: %d, redside: %d, hero1->tmpOwner: %d, hero2->tmpOwner: %d\n", swappingSides, gh->redside, hero1->tempOwner.getNum(), hero2->tempOwner.getNum());
+
+	// modification by reference
+	army1 = static_cast<const CArmedInstance*>(hero1);
+	army2 = static_cast<const CArmedInstance*>(hero2);
+}
+
 void BattleProcessor::startBattleI(const CArmedInstance *army1, const CArmedInstance *army2, int3 tile, bool creatureBank)
 {
+	for (const auto &obj : gameHandler->gameState()->map->objects) {
+		if (obj->ID == Obj::HERO) {
+			gameHandler->allheroes.push_back(dynamic_cast<const CGHeroInstance *>(obj.get()));
+		}
+	}
+
 	startBattlePrimary(army1, army2, tile,
 		army1->ID == Obj::HERO ? static_cast<const CGHeroInstance*>(army1) : nullptr,
 		army2->ID == Obj::HERO ? static_cast<const CGHeroInstance*>(army2) : nullptr,
@@ -173,9 +244,15 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	if (heroes[0] && heroes[0]->boat && heroes[1] && heroes[1]->boat)
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
+	auto gh = gameHandler;
+
+	if (gh->randomObstacles > 0 && (gh->battlecounter % gh->randomObstacles == 0)) {
+		gh->lastSeed = gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+	}
+
 	//send info about battles
 	BattleStart bs;
-	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, creatureBank, town);
+	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, creatureBank, town, gh->lastSeed);
 	bs.battleID = gameHandler->gameState()->nextBattleID;
 
 	engageIntoBattle(bs.info->sides[0].color);
@@ -188,7 +265,11 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	bool isAttackerHuman = gameHandler->getPlayerState(bs.info->sides[0].color)->isHuman();
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
-	bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
+
+	if (VLC->settings()->getBoolean(EGameSettings::COMBAT_INFINITE_QUICK_COMBAT_REPLAYS))
+		bs.info->replayAllowed = true;
+	else
+		bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
 
 	gameHandler->sendAndApply(&bs);
 
