@@ -7,13 +7,16 @@
 
 The setup guide below is tested on Ubuntu 22.04 with Python 3.10.12.
 
+It also works on Debian 12.5 with python3.11-dev installed instead.
+
 All commands in this tutorial must be executed from the VCMI root folder
 <br>(e.g. `/home/yourname/vcmi-gym/vcmi_gym/envs/v0/vcmi`).
 
 ### Set up dependencies
 
 ```bash
-$ sudo apt-get install cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+$ sudo apt update
+$ sudo apt install cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
     libsdl2-mixer-dev zlib1g-dev libavformat-dev libswscale-dev libboost-dev \
     libboost-filesystem-dev libboost-system-dev libboost-thread-dev libboost-program-options-dev \
     libboost-locale-dev qtbase5-dev libtbb-dev libluajit-5.1-dev qttools5-dev \
