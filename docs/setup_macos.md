@@ -151,7 +151,7 @@ Benchmark:
 Launch the game and replace the default VCMI scripted AI with a pre-trained *real* AI:
 
 ```bash
-rel/bin/myclient-gui --map gym/A1.vmap --defender-ai MMAI_MODEL --defender-model /path/to/model.pt
+rel/bin/myclient-gui --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
 ```
 
 where `/path/to/model.pt` is a pre-trained Torch JIT model. If you don't have

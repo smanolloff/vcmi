@@ -20,7 +20,7 @@ $ sudo apt install cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
     libsdl2-mixer-dev zlib1g-dev libavformat-dev libswscale-dev libboost-dev \
     libboost-filesystem-dev libboost-system-dev libboost-thread-dev libboost-program-options-dev \
     libboost-locale-dev qtbase5-dev libtbb-dev libluajit-5.1-dev qttools5-dev \
-    libsqlite3-dev pybind11-dev python3.10-dev
+    libsqlite3-dev pybind11-dev python3.10-dev ccache
 ```
 
 ```
@@ -33,7 +33,6 @@ $ rm libtorch.zip
 
 ```bash
 $ cmake -S . -B rel -Wno-dev \
-    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
     -D CMAKE_BUILD_TYPE=Release \
     -D ENABLE_SINGLE_APP_BUILD=1 \
     -D ENABLE_CCACHE=1 \
@@ -50,7 +49,6 @@ _(Optional)_ Compile a debug binary:
 
 ```bash
 $ cmake -S . -B build -Wno-dev \
-      -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
       -D CMAKE_BUILD_TYPE=Debug \
       -D ENABLE_SINGLE_APP_BUILD=1 \
       -D ENABLE_CCACHE=1 \
