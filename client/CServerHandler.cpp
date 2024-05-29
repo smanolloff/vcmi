@@ -874,7 +874,7 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		startLocalServerAndConnect(false);
 
 	while(!logicConnection) {
-		std::cout << "Connection to server not available, sleeping 100ms...\n";
+		logNetwork->debug("Connection to server not available, sleeping 100ms...");
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 	}
 
