@@ -121,7 +121,7 @@ public:
 	std::unique_ptr<BattleAction> currentBattleAction;
 	std::any aiBaggage;
 
-	CClient(std::any aiBaggage);
+	CClient();
 	~CClient();
 
 	const Services * services() const override;

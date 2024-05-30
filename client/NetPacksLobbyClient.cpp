@@ -140,7 +140,7 @@ void ApplyOnLobbyHandlerNetPackVisitor::visitLobbyRestartGame(LobbyRestartGame &
 
 void ApplyOnLobbyHandlerNetPackVisitor::visitLobbyPrepareStartGame(LobbyPrepareStartGame & pack)
 {
-	handler.client = std::make_unique<CClient>(std::any());
+	handler.client = std::make_unique<CClient>();
 	handler.logicConnection->enterLobbyConnectionMode();
 	handler.logicConnection->setCallback(handler.client.get());
 }

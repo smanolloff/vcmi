@@ -132,7 +132,7 @@ const CPlayerEnvironment::GameCb * CPlayerEnvironment::game() const
 }
 
 
-CClient::CClient(std::any aiBaggage_) : aiBaggage(aiBaggage_)
+CClient::CClient()
 {
 	waitingRequest.clear();
 	applier = std::make_shared<CApplier<CBaseForCLApply>>();

@@ -86,12 +86,13 @@ void ButtonBase::setOverlay(const std::shared_ptr<CIntObject>& newOverlay)
 	update();
 }
 
-void ButtonBase::setImage(const AnimationPath & defName, bool playerColoredButton)
+void ButtonBase::setImage(const AnimationPath defName, bool playerColoredButton)
 {
 	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
 
 	configurable.reset();
-	image = std::make_shared<CAnimImage>(defName, vstd::to_underlying(getState()));
+	auto u = vstd::to_underlying(getState());
+	image = std::make_shared<CAnimImage>(defName, u);
 	pos = image->pos;
 
 	if (playerColoredButton)

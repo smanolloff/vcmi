@@ -664,7 +664,7 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 	if(CMM)
 		CMM->disable();
 
-	client = std::make_unique<CClient>(aiBaggage);
+	client->aiBaggage = aiBaggage;
 	campaignScoreCalculator = nullptr;
 
 	switch(si->mode)
