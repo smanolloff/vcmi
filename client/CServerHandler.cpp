@@ -884,7 +884,7 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 	//  	Unfortunately, there seems to be no easy way to check if rendering
 	// 		of the main menu has completed, so we just sleep it out.
 	while(!settings["session"]["headless"].Bool() && !GH.windows().topWindow<CLobbyScreen>())
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
 
 	while(!mi || mapInfo->fileURI != mi->fileURI)
 	{

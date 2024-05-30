@@ -64,6 +64,7 @@ namespace MMAI {
         std::shared_ptr<CBattleCallback> cb;
         std::shared_ptr<Environment> env;
         std::shared_ptr<CPlayerBattleCallback> battle;
+        bool isMorale; // if our activeStack is called after good morale effect
 
 
         // std::shared_ptr<CPlayerBattleCallback> battle;
@@ -144,7 +145,7 @@ namespace MMAI {
         void battleStackMoved(const BattleID &bid, const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) override;
         void battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) override;
         void battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) override;//called when a specific effect is set to stacks
-        //void battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) override;
+        void battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) override;
         //void battleStartBefore(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2) override; //called just before battle start
         void battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed) override; //called by engine when battle starts; side=0 - left, side=1 - right
         void battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> & units) override;

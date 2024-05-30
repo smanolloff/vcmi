@@ -100,12 +100,12 @@ namespace MMAI {
             const HexStacks &hexstacks
         );
 
-        static Hexes InitHexes(CPlayerBattleCallback* battle, const CStack* astack);
-        static Queue GetQueue(CPlayerBattleCallback* battle);
+        static Hexes InitHexes(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
+        static Queue GetQueue(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
 
-        Battlefield(CPlayerBattleCallback* battle, const CStack* astack_) :
+        Battlefield(CPlayerBattleCallback* battle, const CStack* astack_, bool isMorale) :
             astack(astack_),
-            hexes(InitHexes(battle, astack_))
+            hexes(InitHexes(battle, astack_, isMorale))
             {};
 
         Hexes hexes; // not const due to offTurnUpdate

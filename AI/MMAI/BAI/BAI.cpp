@@ -56,7 +56,8 @@ namespace MMAI {
         info("*** activeStack ***");
         debug("activeStack called for " + astack->nodeName());
 
-        battlefield = std::make_unique<Battlefield>(battle.get(), astack);
+        battlefield = std::make_unique<Battlefield>(battle.get(), astack, isMorale);
+        isMorale = false;
         result = std::make_unique<Export::Result>(buildResult(bid, *battlefield));
 
         std::shared_ptr<BattleAction> ba;
@@ -472,5 +473,15 @@ namespace MMAI {
 
         result = std::make_unique<Export::Result>(buildResult(bid, *battlefield), victory);
         ASSERT(result->ended, "expected result->ended to be true");
+    }
+
+    // XXX: positive morale triggers an effect
+    //      negative morale just skips turn
+    void BAI::battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) {
+        if (static_cast<BonusType>(bte.effect) != BonusType::MORALE)
+            return;
+
+        auto stack = battle->battleGetStackByID(bte.stackID);
+        isMorale = stack->unitSide() == battle->battleGetMySide();
     }
 }

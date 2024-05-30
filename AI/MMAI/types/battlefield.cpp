@@ -336,10 +336,10 @@ namespace MMAI {
     //      - the stack acts as if it's already the next unit's turn
     //      - as a result, QueuePos for the ACTIVE stack is non-0
     //        while the QueuePos for the next (non-active) stack is 0
-    // XXX: possibly similar issues occur when low morale occurs
-    // As a workaround, morale is diabled (all battles are on cursed ground)
-    // Possible solution is to set some flag via BAI->battleTriggerEffect (TODO)
-    Queue Battlefield::GetQueue(CPlayerBattleCallback* battle) {
+    // (this applies only to good morale; bad morale simply skips turn)
+    // As a workaround, a "isMorale" flag is passed whenever the astack is
+    // acting because of high morale and queue is "shifted" accordingly.
+    Queue Battlefield::GetQueue(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale) {
         auto res = Queue{};
 
         auto tmp = std::vector<battle::Units>{};
@@ -348,11 +348,19 @@ namespace MMAI {
             for (auto &unit : units)
                 res.insert(res.end(), unit->unitId());
 
+        if (isMorale) {
+            assert(astack);
+            std::rotate(res.rbegin(), res.rbegin() + 1, res.rend());
+            res.at(0) = astack->unitId();
+        } else {
+            assert(astack == nullptr || res.at(0) == astack->unitId());
+        }
+
         return res;
     }
 
     // static
-    Hexes Battlefield::InitHexes(CPlayerBattleCallback* battle, const CStack* astack) {
+    Hexes Battlefield::InitHexes(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale) {
         auto res = Hexes{};
         auto ainfo = battle->getAccesibility();
         auto hexstacks = HexStacks{};  // expensive check for blocked shooters => eager load once
@@ -372,7 +380,7 @@ namespace MMAI {
                 hexstacks.insert({bh, cstack});
         }
 
-        auto queue = GetQueue(battle);
+        auto queue = GetQueue(battle, astack, isMorale);
 
         for (int i=0; i<BF_SIZE; i++) {
             auto hex = InitHex(i, astack, queue, ainfo, stackinfos, hexstacks);
@@ -463,7 +471,7 @@ namespace MMAI {
      */
     void Battlefield::offTurnUpdate(CPlayerBattleCallback* battle) {
         auto ainfo = battle->getAccesibility();
-        auto queue = GetQueue(battle);
+        auto queue = GetQueue(battle, nullptr, false);
 
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {
