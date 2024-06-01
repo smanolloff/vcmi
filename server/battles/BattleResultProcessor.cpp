@@ -273,6 +273,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 		std::cout << "Hit battle limit of " << gameHandler->maxBattles << ", will quit now...\n";
 		if (gameHandler->stats) gameHandler->stats->dbpersist();
 		gameHandler->gameLobby()->setState(EServerState::SHUTDOWN);
+		exit(0); // FIXME
 		return;
 	}
 

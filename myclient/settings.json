@@ -1,6 +1,12 @@
 {
 	"general" : {
-		"lastMap" : "MAPS\/DELUGE"
+		"lastMap" : "MAPS/DELUGE",
+		"sound": 0,
+		"music": 0
+	},
+	"gameTweaks": {
+		"showGrid": true,
+		"skipBattleIntroMusic": true
 	},
 	"launcher" : {
 		"setupCompleted" : true
