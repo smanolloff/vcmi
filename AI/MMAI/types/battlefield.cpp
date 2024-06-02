@@ -143,6 +143,7 @@ namespace MMAI {
     Hex Battlefield::InitHex(
         const int id,
         const CStack* astack,
+        const int percentValue,
         const Queue &queue,
         const AccessibilityInfo &ainfo, // accessibility info for active stack
         const StackInfos &stackinfos,
@@ -156,6 +157,7 @@ namespace MMAI {
 
         auto hex = Hex{};
         hex.bhex = bh;
+        hex.setPercentCurToStartTotalValue(percentValue);
         hex.setX(x);
         hex.setY(y);
 
@@ -360,7 +362,7 @@ namespace MMAI {
     }
 
     // static
-    Hexes Battlefield::InitHexes(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale) {
+    Hexes Battlefield::InitHexes(CPlayerBattleCallback* battle, const CStack* astack, int percentValue, bool isMorale) {
         auto res = Hexes{};
         auto ainfo = battle->getAccesibility();
         auto hexstacks = HexStacks{};  // expensive check for blocked shooters => eager load once
@@ -383,7 +385,7 @@ namespace MMAI {
         auto queue = GetQueue(battle, astack, isMorale);
 
         for (int i=0; i<BF_SIZE; i++) {
-            auto hex = InitHex(i, astack, queue, ainfo, stackinfos, hexstacks);
+            auto hex = InitHex(i, astack, percentValue, queue, ainfo, stackinfos, hexstacks);
             expect(hex.getX() + hex.getY()*BF_XMAX == i, "hex.x + hex.y*BF_XMAX != i: %d + %d*%d != %d", hex.getX(), hex.getY(), BF_XMAX, i);
             res.at(hex.getY()).at(hex.getX()) = hex;
         }

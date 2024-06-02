@@ -56,7 +56,8 @@ namespace MMAI {
         info("*** activeStack ***");
         debug("activeStack called for " + astack->nodeName());
 
-        battlefield = std::make_unique<Battlefield>(battle.get(), astack, isMorale);
+        int valueRatio = 100 * calcTotalValue() / static_cast<float>(initialTotalValue);
+        battlefield = std::make_unique<Battlefield>(battle.get(), astack, valueRatio, isMorale);
         isMorale = false;
         result = std::make_unique<Export::Result>(buildResult(bid, *battlefield));
 
@@ -443,9 +444,18 @@ namespace MMAI {
         }
     }
 
+    int BAI::calcTotalValue() {
+        float res = 0;
+        for (auto &cstack : battle->battleGetStacks())
+            res += (cstack->getCount() * cstack->creatureId().toCreature()->getAIValue());
+        return res;
+    }
+
     void BAI::battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
         battle = cb->getBattle(bid);
+
+        initialTotalValue = calcTotalValue();
 
         // side is FALSE for attacker
         if (side_) {

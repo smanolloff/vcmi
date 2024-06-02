@@ -56,6 +56,7 @@ namespace MMAI {
     // Attribute setters
     //
 
+    void Hex::setPercentCurToStartTotalValue(int percent) { attrs.at(EI(Export::Attribute::PERCENT_CUR_TO_START_TOTAL_VALUE)) = percent; }
     void Hex::setX(int x) { attrs.at(EI(Export::Attribute::HEX_X_COORD)) = x; }
     void Hex::setY(int y) { attrs.at(EI(Export::Attribute::HEX_Y_COORD)) = y; }
 

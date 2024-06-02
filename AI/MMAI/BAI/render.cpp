@@ -306,8 +306,8 @@ namespace MMAI {
             int x = ihex%15;
             int y = ihex/15;
 
-            ASSERT(y == stateu.at(ibase).v, "hex.y mismatch");
-            ASSERT(x == stateu.at(ibase+1).v, "hex.x mismatch");
+            ASSERT(y == stateu.at(ibase+1).v, "hex.y mismatch");
+            ASSERT(x == stateu.at(ibase+2).v, "hex.x mismatch");
             auto bh = BattleHex(x+1, y);
             hex.bhex = bh;
 
@@ -343,6 +343,8 @@ namespace MMAI {
                 auto v = hex.attrs.at(i);
 
                 switch(attr) {
+                break; case A::PERCENT_CUR_TO_START_TOTAL_VALUE:
+                    // expect(v == y, "HEX_Y_COORD: %d != %d", v, y);
                 break; case A::HEX_Y_COORD:
                     expect(v == y, "HEX_Y_COORD: %d != %d", v, y);
                 break; case A::HEX_X_COORD:

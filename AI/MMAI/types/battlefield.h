@@ -94,18 +94,19 @@ namespace MMAI {
         static Hex InitHex(
             const int id,
             const CStack* astack,
+            const int percentValue,
             const Queue &queue,
             const AccessibilityInfo &ainfo,
             const StackInfos &stackinfos,
             const HexStacks &hexstacks
         );
 
-        static Hexes InitHexes(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
+        static Hexes InitHexes(CPlayerBattleCallback* battle, const CStack* astack, int percentValue, bool isMorale);
         static Queue GetQueue(CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
 
-        Battlefield(CPlayerBattleCallback* battle, const CStack* astack_, bool isMorale) :
+        Battlefield(CPlayerBattleCallback* battle, const CStack* astack_, int percentValue, bool isMorale) :
             astack(astack_),
-            hexes(InitHexes(battle, astack_, isMorale))
+            hexes(InitHexes(battle, astack_, percentValue, isMorale))
             {};
 
         Hexes hexes; // not const due to offTurnUpdate

@@ -57,6 +57,7 @@ namespace MMAI {
         int getY() const;
         Export::HexState getState() const;
 
+        void setPercentCurToStartTotalValue(int percent);
         void setX(int x);
         void setY(int x);
         void setState(Export::HexState state);

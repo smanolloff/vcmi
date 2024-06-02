@@ -65,6 +65,7 @@ namespace MMAI {
         std::shared_ptr<Environment> env;
         std::shared_ptr<CPlayerBattleCallback> battle;
         bool isMorale; // if our activeStack is called after good morale effect
+        int initialTotalValue;
 
 
         // std::shared_ptr<CPlayerBattleCallback> battle;
@@ -88,6 +89,7 @@ namespace MMAI {
         Export::Result buildResult(const BattleID &bid, Battlefield &bf);
 
         std::string renderANSI();
+        int calcTotalValue();
 
         static std::string PadLeft(const std::string& input, size_t desiredLength, char paddingChar);
         static std::string PadRight(const std::string& input, size_t desiredLength, char paddingChar);

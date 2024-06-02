@@ -113,6 +113,7 @@ namespace MMAI::Export {
 
     // For description on each attribute, see the comments for HEX_ENCODING
     enum class Attribute : int {
+        PERCENT_CUR_TO_START_TOTAL_VALUE,
         HEX_Y_COORD,
         HEX_X_COORD,
         HEX_STATE,
@@ -288,6 +289,7 @@ namespace MMAI::Export {
     // XXX: It contains tuple primitives instead of OneHot objects, because
     //      this enables compile-time checks for preventing human errors.
     constexpr HexEncoding HEX_ENCODING {
+        ToE4(A::PERCENT_CUR_TO_START_TOTAL_VALUE,   E::FLOATING,        100),     // percentage of all units still alive (global value - same for each hex)
         ToE4(A::HEX_Y_COORD,                        E::CATEGORICAL,     11),      //
         ToE4(A::HEX_X_COORD,                        E::CATEGORICAL,     15),      //
         ToE4(A::HEX_STATE,                          E::CATEGORICAL,     3),       // see HexState
