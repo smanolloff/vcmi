@@ -261,4 +261,9 @@ namespace MMAI {
         debug("(getBattleAIName) battleAiName: " + ainame);
         return ainame;
     }
+
+    void AAI::battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) {
+        if (!bai) return;
+        bai->battleTriggerEffect(bid, bte);
+    }
 }

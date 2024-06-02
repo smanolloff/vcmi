@@ -55,6 +55,7 @@ namespace MMAI {
         void yourTurn(QueryID queryID) override;
         void battleEnd(const BattleID &bid, const BattleResult * br, QueryID queryID) override;
         void battleStart(const BattleID &bid, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed) override;
+        void battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) override; //called for various one-shot effects
 
         // impl CGlobalAI
         // (nothing)
@@ -186,7 +187,6 @@ namespace MMAI {
         virtual void battleStackMoved(const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport){};
         virtual void battleSpellCast(const BattleSpellCast *sc){};
         virtual void battleStacksEffectsSet(const SetStackEffect & sse){};//called when a specific effect is set to stacks
-        virtual void battleTriggerEffect(const BattleTriggerEffect & bte){}; //called for various one-shot effects
         virtual void battleStartBefore(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2) {}; //called just before battle start
         virtual void battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed){}; //called by engine when battle starts; side=0 - left, side=1 - right
         virtual void battleUnitsChanged(const std::vector<UnitChanges> & units){};
