@@ -98,8 +98,12 @@
 				"level" : "error"
 			},
 			{
+				"domain" : "ai",
+				"level" : "error"
+			},
+			{
 				"domain" : "stats",
-				"level" : "trace"
+				"level" : "info"
 			},
 			{
 				"domain" : "ai",

@@ -119,7 +119,7 @@ Args parse_args(int argc, char * argv[])
         {"state-encoding", "default"},
         {"map", "gym/A1.vmap"},
         {"loglevel-global", "error"},
-        {"loglevel-ai", "debug"},
+        {"loglevel-ai", "error"},
         {"loglevel-stats", "error"},
         {"red-ai", AI_MMAI_USER},
         {"blue-ai", AI_STUPIDAI},
