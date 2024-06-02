@@ -249,6 +249,7 @@ void validateArguments(
     std::string &stateEncoding,
     std::string &map,
     int &maxBattles,
+    int &seed,
     int &randomHeroes,
     int &randomObstacles,
     int &swapSides,
@@ -371,6 +372,7 @@ void processArguments(
     std::string &redModel,
     std::string &blueModel,
     int maxBattles,
+    int seed,
     int randomHeroes,
     int randomObstacles,
     int swapSides,
@@ -468,6 +470,7 @@ void processArguments(
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
     Settings(settings.write({"server", "maxBattles"}))->Integer() = maxBattles;
+    Settings(settings.write({"server", "seed"}))->Integer() = seed;
     Settings(settings.write({"server", "randomHeroes"}))->Integer() = randomHeroes;
     Settings(settings.write({"server", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
@@ -529,6 +532,7 @@ void init_vcmi(
     std::string stateEncoding,
     std::string map,
     int maxBattles,
+    int seed,
     int randomHeroes,
     int randomObstacles,
     int swapSides,
@@ -561,6 +565,7 @@ void init_vcmi(
         stateEncoding,
         map,
         maxBattles,
+        seed,
         randomHeroes,
         randomObstacles,
         swapSides,
@@ -605,6 +610,7 @@ void init_vcmi(
         redModel,
         blueModel,
         maxBattles,
+        seed,
         randomHeroes,
         randomObstacles,
         swapSides,

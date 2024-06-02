@@ -24,6 +24,7 @@ using Args = std::tuple<
     std::string, // stateEncoding
     std::string, // mapname
     int,         // maxBattles
+    int,         // seed
     int,         // randomHeroes
     int,         // randomObstacles
     int,         // swapSides

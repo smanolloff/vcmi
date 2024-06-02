@@ -5,7 +5,6 @@
 		"music": 0
 	},
 	"gameTweaks": {
-		"showGrid": true,
 		"skipBattleIntroMusic": true
 	},
 	"launcher" : {

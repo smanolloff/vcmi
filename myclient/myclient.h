@@ -41,6 +41,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     std::string stateEncoding,
     std::string mapname,
     int maxbattles,
+    int seed,
     int randomHeroes,
     int randomObstacles,
     int swapSides,

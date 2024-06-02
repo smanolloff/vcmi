@@ -155,13 +155,11 @@ namespace MMAI {
 
         // XXX: fix wrong color if --swap-sides option is used
         if (side == BattleSide::ATTACKER) {
-            info("Will play ATTACKER in this battle");
             hero = dynamic_cast<const CGHeroInstance*>(army1);
-            debug("(battleStart) side=ATTACKER => hero=(army1)");
+            info("Will play with " + hero->getNameTextID() + " on the left side (ATTACKER) in this battle");
         } else {
-            info("Will play DEFENDER in this battle");
             hero = dynamic_cast<const CGHeroInstance*>(army2);
-            debug("(battleStart) side=DEFENDER => hero=(army2)");
+            info("Will play with " + hero->getNameTextID() + " on the right side (DEFENDER) in this battle");
         }
 
         // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON

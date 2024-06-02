@@ -67,6 +67,7 @@ public:
 
 	std::vector<const CGHeroInstance*> allheroes;
 	std::unique_ptr<Stats> stats;
+	std::mt19937 herorng;
 	ui32 lastSeed = 0;
 	int herocounter = 0;
 	int battlecounter = 0;

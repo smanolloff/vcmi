@@ -244,6 +244,7 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	si->difficulty = lastDifficulty.Integer();
 
 	si->maxBattles = settings["server"]["maxBattles"].Integer();
+	si->seedToBeUsed = settings["server"]["seed"].Integer();
 	si->randomHeroes = settings["server"]["randomHeroes"].Integer();
 	si->randomObstacles = settings["server"]["randomObstacles"].Integer();
 	si->swapSides = settings["server"]["swapSides"].Integer();

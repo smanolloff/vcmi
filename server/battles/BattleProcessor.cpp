@@ -85,8 +85,9 @@ void BattleProcessor::restartBattlePrimary(const BattleID & battleID, const CArm
 
 		lastBattleQuery->result = std::nullopt;
 
-		assert(lastBattleQuery->belligerents[0] == battle->sides[0].armyObject);
-		assert(lastBattleQuery->belligerents[1] == battle->sides[1].armyObject);
+		// swapping armies between battle replayes causes these asserts to fail
+		//assert(lastBattleQuery->belligerents[0] == battle->sides[0].armyObject);
+		//assert(lastBattleQuery->belligerents[1] == battle->sides[1].armyObject);
 	}
 
 	BattleCancelled bc;
@@ -175,6 +176,7 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 	if (swappingSides)
 		gh->redside = !gameHandler->redside;
 
+	// printf("gh->randomHeroes = %d\n", gh->randomHeroes);
 
 	if (gh->randomHeroes > 0) {
 		if (gh->stats && gh->statsSampling) {
@@ -188,8 +190,13 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 
 			if (gh->herocounter % gh->allheroes.size() == 0) {
 				gh->herocounter = 0;
-			    std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), std::random_device());
+			    std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->herorng);
 			}
+
+			// printf("gh->herocounter = %d\n", gh->herocounter);
+			// for (int i=0; i<gh->allheroes.size(); i++)
+			// 	printf("gh->allheroes[%d] = %s\n", i, gh->allheroes.at(i)->getNameTextID().c_str());
+
 
 			// XXX: heroes must be different (objects must have different tempOwner)
 			hero1 = gh->allheroes.at(gh->herocounter);

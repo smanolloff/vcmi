@@ -129,16 +129,17 @@ Args parse_args(int argc, char * argv[])
         {"stats-storage", "-"}
     };
 
-    static auto maxBattles = 0;
-    static auto randomHeroes = 0;
-    static auto randomObstacles = 0;
-    static auto swapSides = 0;
-    static auto benchmark = false;
-    static auto interactive = false;
-    static auto prerecorded = false;
-    static auto statsSampling = 0;
-    static auto statsPersistFreq = 0;
-    static auto printModelPredictions = false;
+    static int maxBattles = 0;
+    static int seed = 0;
+    static int randomHeroes = 0;
+    static int randomObstacles = 0;
+    static int swapSides = 0;
+    static bool benchmark = false;
+    static bool interactive = false;
+    static bool prerecorded = false;
+    static int statsSampling = 0;
+    static int statsPersistFreq = 0;
+    static bool printModelPredictions = false;
     static float statsScoreVar = 0.4;
 
     auto usage = std::stringstream();
@@ -155,6 +156,8 @@ Args parse_args(int argc, char * argv[])
             values(ENCODINGS, omap.at("state-encoding")).c_str())
         ("max-battles", po::value<int>()->value_name("<N>"),
             "Quit game after the Nth comat (disabled if 0*)")
+        ("seed", po::value<int>()->value_name("<N>"),
+            "Seed for the VCMI RNG (random if 0*)")
         ("random-heroes", po::value<int>()->value_name("<N>"),
             "Pick heroes at random each Nth combat (disabled if 0*)")
         ("random-obstacles", po::value<int>()->value_name("<N>"),
@@ -217,6 +220,9 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("max-battles"))
         maxBattles = vm.at("max-battles").as<int>();
+
+    if (vm.count("seed"))
+        seed = vm.at("seed").as<int>();
 
     if (vm.count("random-heroes"))
         randomHeroes = vm.at("random-heroes").as<int>();
@@ -349,6 +355,7 @@ Args parse_args(int argc, char * argv[])
             : MMAI::Export::STATE_ENCODING_FLOAT,
         omap.at("map"),
         maxBattles,
+        seed,
         randomHeroes,
         randomObstacles,
         swapSides,
