@@ -13,9 +13,6 @@ All commands in this tutorial must be executed from the VCMI root folder
 ### Set up dependencies
 
 ```bash
-$ curl -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.2.2.zip
-$ unzip -d myclient libtorch.zip
-$ rm libtorch.zip
 $ brew install --cask cmake
 $ pip3 install conan~=1.6
 $ conan profile new default --detect
@@ -39,9 +36,18 @@ In case the above command fails with a qt-related error, apply
 patch to `~/.conan/data/qt/5.15.11/_/_/source/qt5/qtbase/mkspecs/features/mac/toolchain.prf`
 (exact qt version may vary), then repeat the `conan install` command.
 
+To be able to load AI models in VCMI, a dependency to libtorch was added.
 
+For development purposes, VCMI should use the same libtorch as the one
+used by vcmi-gym and installed by pip. Create these symlinks:
+
+```bash
+$ ln -s ../../../../.venv .venv
+$ ln -s ../.venv/lib/python3.10/site-packages/torch myclient/libtorch
+```
 
 ### Compile VCMI
+
 
 ```bash
 $ cmake --fresh -S . -B build -Wno-dev \

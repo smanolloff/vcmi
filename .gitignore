@@ -74,10 +74,11 @@ fuzzylite.pc
 # CLion
 .idea/
 
-# simo
+# vcmi-gym
 h3.zip
 h3/
 rel
 .cmake
-myclient/libtorch
 *.sqlite3
+.venv
+myclient/libtorch

@@ -7,7 +7,8 @@
 
 The setup guide below is tested on Ubuntu 22.04 with Python 3.10.12.
 
-It also works on Debian 12.5 with python3.11-dev installed instead.
+It also works on Debian 12.5 with python3.11-dev installed instead (make sure
+to replace 3.10 with 3.11 when following the steps below).
 
 All commands in this tutorial must be executed from the VCMI root folder
 <br>(e.g. `/home/yourname/vcmi-gym/vcmi_gym/envs/v0/vcmi`).
