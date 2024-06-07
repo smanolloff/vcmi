@@ -56,7 +56,7 @@ namespace MMAI {
         info("*** activeStack ***");
         debug("activeStack called for " + astack->nodeName());
 
-        int valueRatio = 100 * calcTotalValue() / static_cast<float>(initialTotalValue);
+        int valueRatio = (100.0 * calcTotalValue()) / initialTotalValue;
         battlefield = std::make_unique<Battlefield>(battle.get(), astack, valueRatio, isMorale);
         isMorale = false;
         result = std::make_unique<Export::Result>(buildResult(bid, *battlefield));
@@ -445,7 +445,7 @@ namespace MMAI {
     }
 
     int BAI::calcTotalValue() {
-        float res = 0;
+        int res = 0;
         for (auto &cstack : battle->battleGetStacks())
             res += (cstack->getCount() * cstack->creatureId().toCreature()->getAIValue());
         return res;
