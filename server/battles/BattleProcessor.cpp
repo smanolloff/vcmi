@@ -190,13 +190,18 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 
 			if (gh->herocounter % gh->allheroes.size() == 0) {
 				gh->herocounter = 0;
-			    std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->herorng);
+
+				// XXX: test with std::random_device()
+				if (gh->trueRng) {
+					std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), std::random_device());
+				} else {
+					std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->pseudorng);
+				}
+
+				// for (int i=0; i<gh->allheroes.size(); i++)
+				// 	printf("gh->allheroes[%d] = %s\n", i, gh->allheroes.at(i)->getNameTextID().c_str());
 			}
-
 			// printf("gh->herocounter = %d\n", gh->herocounter);
-			// for (int i=0; i<gh->allheroes.size(); i++)
-			// 	printf("gh->allheroes[%d] = %s\n", i, gh->allheroes.at(i)->getNameTextID().c_str());
-
 
 			// XXX: heroes must be different (objects must have different tempOwner)
 			hero1 = gh->allheroes.at(gh->herocounter);
@@ -254,7 +259,10 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	auto gh = gameHandler;
 
 	if (gh->randomObstacles > 0 && (gh->battlecounter % gh->randomObstacles == 0)) {
-		gh->lastSeed = gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+		if (gh->trueRng)
+			gh->lastSeed = std::random_device()();
+		else
+			gh->lastSeed = gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
 	}
 
 	//send info about battles

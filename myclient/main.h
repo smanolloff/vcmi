@@ -40,7 +40,8 @@ using Args = std::tuple<
     int,         // statsPersistFreq
     int,         // statsSampling
     float,       // statsScoreVar
-    bool         // printModelPredictions
+    bool,        // printModelPredictions
+    bool         // trueRng
 >;
 
 Args parse_args(int argc, char * argv[]);

@@ -140,6 +140,7 @@ Args parse_args(int argc, char * argv[])
     static int statsSampling = 0;
     static int statsPersistFreq = 0;
     static bool printModelPredictions = false;
+    static bool trueRng = false;
     static float statsScoreVar = 0.4;
 
     auto usage = std::stringstream();
@@ -186,6 +187,8 @@ Args parse_args(int argc, char * argv[])
             "Measure performance")
         ("print-predictions", po::bool_switch(&printModelPredictions),
             "Print MMAI model predictions (no effect for other AIs)")
+        ("true-rng", po::bool_switch(&trueRng),
+            "Use std::random_device() instead of std::mt19937 hero & obstacle randomization")
         ("stats-mode", po::value<std::string>()->value_name("<MODE>"),
             ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
         ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
@@ -372,5 +375,6 @@ Args parse_args(int argc, char * argv[])
         statsSampling,
         statsScoreVar,
         printModelPredictions,
+        trueRng,
     };
 }

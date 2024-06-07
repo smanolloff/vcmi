@@ -38,7 +38,8 @@ int main(int argc, char * argv[]) {
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
-        printModelPredictions
+        printModelPredictions,
+        trueRng
     ] = parse_args(argc, argv);
 
     init_vcmi(
@@ -63,6 +64,7 @@ int main(int argc, char * argv[]) {
         statsSampling,
         statsScoreVar,
         printModelPredictions,
+        trueRng,
         true
     );
 

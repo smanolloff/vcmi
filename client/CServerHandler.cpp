@@ -253,6 +253,7 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	si->statsStorage = settings["server"]["statsStorage"].String();
 	si->statsMode = settings["server"]["statsMode"].String();
 	si->statsScoreVar = settings["server"]["statsScoreVar"].Float();
+	si->trueRng = settings["server"]["trueRng"].Bool();
 
 	logNetwork->trace("\tStarting local server");
 	auto srvport = serverRunner->start(getLocalPort(), connectToLobby, si);

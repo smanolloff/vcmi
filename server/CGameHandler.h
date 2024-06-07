@@ -67,7 +67,9 @@ public:
 
 	std::vector<const CGHeroInstance*> allheroes;
 	std::unique_ptr<Stats> stats;
-	std::mt19937 herorng;
+	std::mt19937 pseudorng;
+	// std::random_device _truerng = std::random_device();
+	bool trueRng = false;
 	ui32 lastSeed = 0;
 	int herocounter = 0;
 	int battlecounter = 0;

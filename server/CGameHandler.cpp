@@ -550,13 +550,14 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 	statsPersistFreq = si->statsPersistFreq;
 	statsSampling = si->statsSampling;
 	statsScoreVar = si->statsScoreVar;
+	trueRng = si->trueRng;
 
 	if (si->seedToBeUsed == 0)
 	{
 		si->seedToBeUsed = CRandomGenerator::getDefault().nextInt();
 	}
 
-	herorng = std::mt19937(si->seedToBeUsed);
+	pseudorng = std::mt19937(si->seedToBeUsed);
 	CMapService mapService;
 	gs = new CGameState();
 	gs->preInit(VLC, this);

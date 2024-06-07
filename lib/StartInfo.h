@@ -129,8 +129,6 @@ struct DLL_LINKAGE StartInfo
 
 	std::shared_ptr<CampaignState> campState;
 
-	// XXX: define those as member vars
-
 	int maxBattles = 0;
 	int randomHeroes = 0;
 	int randomObstacles = 0;
@@ -140,6 +138,7 @@ struct DLL_LINKAGE StartInfo
 	std::string statsStorage = "-";
 	std::string statsMode = "red";
 	float statsScoreVar = 0.4;
+	bool trueRng = false;
 
 	PlayerSettings & getIthPlayersSettings(const PlayerColor & no);
 	const PlayerSettings & getIthPlayersSettings(const PlayerColor & no) const;

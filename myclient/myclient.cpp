@@ -273,7 +273,8 @@ void validateArguments(
     int &statsPersistFreq,
     int &statsSampling,
     float &statsScoreVar,
-    bool &_printModelPredictions
+    bool &_printModelPredictions,
+    bool &_trueRng
 ) {
     if (stateEncoding != MMAI::Export::STATE_ENCODING_DEFAULT && stateEncoding != MMAI::Export::STATE_ENCODING_FLOAT)
         throw std::runtime_error("Invalid state encoding: " + stateEncoding);
@@ -399,7 +400,8 @@ void processArguments(
     int statsPersistFreq,
     int statsSampling,
     float statsScoreVar,
-    bool printModelPredictions
+    bool printModelPredictions,
+    bool trueRng
 ) {
     // Notes on AI creation
     //
@@ -498,6 +500,7 @@ void processArguments(
     Settings(settings.write({"server", "statsSampling"}))->Integer() = statsSampling;
     Settings(settings.write({"server", "statsScoreVar"}))->Float() = statsScoreVar;
     Settings(settings.write({"server", "statsLoglevel"}))->String() = loglevelStats;
+    Settings(settings.write({"server", "trueRng"}))->Bool() = trueRng;
 
     Settings(settings.write({"server", "localPort"}))->Integer() = 0;
     Settings(settings.write({"server", "useProcess"}))->Bool() = false;
@@ -567,6 +570,7 @@ void init_vcmi(
     int statsSampling,
     float statsScoreVar,
     bool printModelPredictions,
+    bool trueRng,
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
@@ -599,7 +603,8 @@ void init_vcmi(
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
-        printModelPredictions
+        printModelPredictions,
+        trueRng
     );
 
     auto wd = boost::filesystem::current_path();
@@ -637,7 +642,8 @@ void init_vcmi(
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
-        printModelPredictions
+        printModelPredictions,
+        trueRng
     );
 
     // chdir needed for VCMI init
