@@ -24,12 +24,6 @@ $ sudo apt install cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
     libsqlite3-dev pybind11-dev python3.10-dev ccache
 ```
 
-```
-$ curl -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-static-with-deps-2.1.2%2Bcpu.zip
-$ unzip -d myclient libtorch.zip
-$ rm libtorch.zip
-```
-
 ### Compile VCMI
 
 Linux binaries use CXX11 ABI. As such, they are incompatible with non-CXX11
