@@ -24,7 +24,7 @@ Here is a list of features I would like to have implemented:
 | Action injection | ✅ | The actions to take are produced by separate program and must be passed to VCMI for execution |
 | State reporting | ✅ | VCMI must collect important aspects of the battle's state and communicate them to a separate program |
 | Map hot-swap | ❌ | Changing the map without restarting VCMI is one way change the army compositions during training, which would improve training performance |
-| Battlefield hot-swap | ❌ | Changing the battlefield terrain without changing the entire map (hence re-starting VCMI) would improve performance|
+| Battlefield hot-swap | ✅ | Changing the battlefield terrain without changing the entire map (hence re-starting VCMI) would improve performance|
 | Army hot-swap | ✅ | Changing the army compositions without changing the entire map (hence re-starting VCMI) would improve performance |
 | Battle side hot-swap | ✅ | Changing battle side (attacker/defender) without changing the entire map (hence re-starting VCMI) would improve performance |
 
