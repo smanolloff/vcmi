@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <functional>
 #include <cmath>
+#include <cstdint>
 
 /*****
 ****** THIS FILE LIVES IN:

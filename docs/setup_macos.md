@@ -48,7 +48,6 @@ $ ln -s ../.venv/lib/python3.10/site-packages/torch myclient/libtorch
 
 ### Compile VCMI
 
-
 ```bash
 $ cmake --fresh -S . -B build -Wno-dev \
         -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
@@ -59,6 +58,7 @@ $ cmake --fresh -S . -B build -Wno-dev \
         -D ENABLE_LAUNCHER=0 \
         -D ENABLE_MYCLIENT_BUILD=1 \
         -D ENABLE_DEV_BUILD=1 \
+        -D ENABLE_LIBTORCH=1 \
         -D CMAKE_EXPORT_COMPILE_COMMANDS=1
 
 $ cmake --build rel/
@@ -76,6 +76,7 @@ $ cmake -S . -B build -Wno-dev \
     -D ENABLE_LAUNCHER=0 \
     -D ENABLE_MYCLIENT_BUILD=1 \
     -D ENABLE_DEV_BUILD=1 \
+    -D ENABLE_LIBTORCH=1 \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=1
 
 $ cmake --build build/

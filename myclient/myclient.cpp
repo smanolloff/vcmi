@@ -14,10 +14,16 @@
 // limitations under the License.
 // =============================================================================
 
+#ifdef ENABLE_LIBTORCH
 #include <ATen/core/enum_tag.h>
 #include <ATen/core/ivalue.h>
 #include <boost/filesystem/operations.hpp>
 #include <c10/core/SymFloat.h>
+#include <c10/core/ScalarType.h>
+#include <torch/torch.h>
+#include <torch/script.h>
+#endif
+
 #include <cstdio>
 #include <iostream>
 #include <dlfcn.h>
@@ -66,9 +72,6 @@
 #include "../lib/CConfigHandler.h"
 #include "vstd/CLoggerBase.h"
 
-#include <c10/core/ScalarType.h>
-#include <torch/torch.h>
-#include <torch/script.h>
 
 static CBasicLogConfigurator *logConfig;
 
@@ -147,6 +150,7 @@ bool headless;
 */
 
 std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::string modelPath, bool floatEncoding, bool printModelPredictions) {
+#ifdef ENABLE_LIBTORCH
     c10::InferenceMode guard;
     torch::jit::script::Module model = torch::jit::load(modelPath);
     model.eval();
@@ -215,6 +219,10 @@ std::pair<MMAI::Export::F_GetAction, MMAI::Export::F_GetValue> loadModel(std::st
 
         return MMAI::Export::Action(res);
     };
+#else
+    auto getaction = [](const MMAI::Export::Result * r) { return MMAI::Export::Action(0); };
+    auto getvalue = [](const MMAI::Export::Result * r) { return 0.0; };
+#endif // ENABLE_LIBTORCH
 
     return {getaction, getvalue};
 }
@@ -275,11 +283,21 @@ void validateArguments(
     validateValue("redAI", redAI, AIS);
     validateValue("blueAI", blueAI, AIS);
 
-    if (redAI == AI_MMAI_MODEL)
+    if (redAI == AI_MMAI_MODEL) {
+        #ifndef ENABLE_LIBTORCH
+        std::cerr << "This binary was compiled without the ENABLE_LIBTORCH flag and cannot load \"MMAI_MODEL\" files.\n";
+        exit(1);
+        #endif
         validateFile("redModel", redModel, wd);
+    }
 
-    if (blueAI == AI_MMAI_MODEL)
+    if (blueAI == AI_MMAI_MODEL) {
+        #ifndef ENABLE_LIBTORCH
+        std::cerr << "This binary was compiled without the ENABLE_LIBTORCH flag and cannot load \"MMAI_MODEL\" files.\n";
+        exit(1);
+        #endif
         validateFile("blueModel", blueModel, wd);
+    }
 
     // XXX: this might blow up since preinitDLL is not yet called here
     validateFile("map", map, VCMIDirs::get().userDataPath() / "Maps");

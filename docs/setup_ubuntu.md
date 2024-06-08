@@ -32,6 +32,20 @@ $ rm libtorch.zip
 
 ### Compile VCMI
 
+Linux binaries use CXX11 ABI. As such, they are incompatible with non-CXX11
+ABI binaries. Unfortunately, the `libtorch` shipped with Python's `torch`
+package is non-CXX11 by default and cannot be linked to VCMI.
+
+There are two workarounds to this issue:
+
+1. Compile VCMI with `-D ENABLE_LIBTORCH=1` *after* installing the CPU-only
+cxx11 ABI torch package (see `requirements.txt` in vcmi-gym). Recommended
+if you want to use VCMI for playing against pre-trained AI models, OR for
+training new AI models on CPU only.
+1. Compile VCMI with `-D ENABLE_LIBTORCH=0`. Recommended if you want to train
+new AI models on CPU or GPU. VCMI itself will not be able to load pre-trained
+models.
+
 ```bash
 $ cmake -S . -B rel -Wno-dev \
     -D CMAKE_BUILD_TYPE=Release \
@@ -41,6 +55,7 @@ $ cmake -S . -B rel -Wno-dev \
     -D ENABLE_LAUNCHER=0 \
     -D ENABLE_MYCLIENT_BUILD=1 \
     -D ENABLE_DEV_BUILD=0 \
+    -D ENABLE_LIBTORCH=1 \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=0
 
 $ cmake --build rel/
@@ -57,6 +72,7 @@ $ cmake -S . -B build -Wno-dev \
       -D ENABLE_LAUNCHER=0 \
       -D ENABLE_MYCLIENT_BUILD=1 \
       -D ENABLE_DEV_BUILD=1 \
+      -D ENABLE_LIBTORCH=1 \
       -D CMAKE_EXPORT_COMPILE_COMMANDS=1
 
 $ cmake --build build/
