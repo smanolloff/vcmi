@@ -1,30 +1,39 @@
 set(MMAI_FILES
-  AAI/AAI.h
   AAI/AAI.cpp
-  AAI/impl.cpp
+  AAI/AAI.h
 
-  BAI/build_action_result.cpp
-  BAI/build_action_result.h
   BAI/BAI.cpp
   BAI/BAI.h
-  BAI/impl.cpp
-  BAI/init.cpp
-  BAI/util.cpp
-  BAI/render.cpp
+  BAI/delegatee.cpp
+  BAI/delegatee.h
+  BAI/v1/BAI.cpp
+  BAI/v1/BAI.h
+  BAI/v1/action.cpp
+  BAI/v1/action.h
+  BAI/v1/attack_log.h
+  BAI/v1/battlefield.cpp
+  BAI/v1/battlefield.h
+  BAI/v1/encode.cpp
+  BAI/v1/encode.h
+  BAI/v1/hex.cpp
+  BAI/v1/hex.h
+  BAI/v1/hexaction.h
+  BAI/v1/hexactmask.h
+  BAI/v1/render.cpp
+  BAI/v1/render.h
+  BAI/v1/stackinfo.h
+  BAI/v1/state.cpp
+  BAI/v1/state.h
+  BAI/v1/supplementary_data.cpp
+  BAI/v1/supplementary_data.h
 
-  types/action.cpp
-  types/action.h
-  types/battlefield.cpp
-  types/battlefield.h
-  types/hex.cpp
-  types/hex.h
-  types/hexaction.h
-  types/hexactmask.h
+  schema/schema.h
+  schema/v1/constants.h
+  schema/v1/types.h
 
-  common.h
   MMAI.h
-  export.h
   StdInc.h
+  common.h
 )
 
 if(NOT ENABLE_STATIC_AI_LIBS)

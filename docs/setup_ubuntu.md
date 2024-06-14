@@ -47,7 +47,7 @@ $ cmake -S . -B rel -Wno-dev \
     -D ENABLE_CCACHE=1 \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
-    -D ENABLE_MYCLIENT_BUILD=1 \
+    -D ENABLE_GYMCLIENT=1 \
     -D ENABLE_DEV_BUILD=0 \
     -D ENABLE_LIBTORCH=1 \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=0
@@ -64,7 +64,7 @@ $ cmake -S . -B build -Wno-dev \
       -D ENABLE_CCACHE=1 \
       -D ENABLE_NULLKILLER_AI=0 \
       -D ENABLE_LAUNCHER=0 \
-      -D ENABLE_MYCLIENT_BUILD=1 \
+      -D ENABLE_GYMCLIENT=1 \
       -D ENABLE_DEV_BUILD=1 \
       -D ENABLE_LIBTORCH=1 \
       -D CMAKE_EXPORT_COMPILE_COMMANDS=1
@@ -86,7 +86,7 @@ the appropriate settings for vcmi-gym:
 
 ```bash
 $ mkdir "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
-$ ln -s "$PWD"/myclient/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
+$ ln -s "$PWD"/gymclient/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
 ```
 
 ### Manual test

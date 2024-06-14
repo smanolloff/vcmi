@@ -1,0 +1,143 @@
+INESTIGATION
+
+SIGSEGV in CGHeroInstance.cpp:
+
+    bool CGHeroInstance::isCampaignGem() const
+    {
+      const StartInfo *si = cb->getStartInfo();
+
+...due to scenarioOps being a nullptr:
+
+    const StartInfo * CGameInfoCallback::getStartInfo(bool beforeRandomization) const
+    {
+      //boost::shared_lock<boost::shared_mutex> lock(*gs->mx);
+      if(beforeRandomization)
+        return gs->initialOpts;
+      else
+        return gs->scenarioOps;
+    }
+
+scenarioOps is set in CGameState::init, which apparently was called in both scenarios
+as there is this log line:
+
+    [runServer][global] INFO  Using random seed: 390057628
+    [runServer][global] INFO  Using random seed: 1376658418
+
+the second time the CGHeroInstance's cb->gs was null!
+in MapFormatJson.cpp, CGHeroInstance is initialized with:
+
+      auto * hero = new CGHeroInstance(map->cb);
+
+=> map->cb is bad. 
+Going up the stack of the SIGSEGV we reach void CClient::handlePack(CPack * pack):
+
+    apply->applyOnClBefore(this, pack);
+    logNetwork->trace("\tMade first apply on cl: %s", typeid(*pack).name());
+    {
+      boost::unique_lock<boost::shared_mutex> lock(CGameState::mutex);
+----> gs->apply(pack);
+
+Funny thing: gs itself does this apply. The same gs that is null for map->gs?
+In debugger, inspecting gs.map reveals this chain:
+  gs.map
+    GameCallbackHolder
+      CGameInfoCallback
+        gs -> <null>
+
+Weird that gs.map.gs is not a valid attribute.
+
+map->cb is initialized during CMap constructor.
+The constructor is called twice: 1 for server, 1 for client
+The one for server always receives non-null gs in cb
+The one for client always receives NULL gs in cb (even when the SIGSEGV does not occur!)
+=> client's gs is somehow updated in a race cond?
+  
+=============== WEIRD STUFF:
+SIGSEGV occurs in "runNetwork" thread (client thread)
+
+      const StartInfo *si = cb->getStartInfo();
+
+!!!BUT!!! breakpoints after this line (i.e. if no SIGSEGV) is in the "runServer" thread
+
+=> no SIGSEGV means this code is never called in the client thread.
+  Why is it called sometimes?
+
+  Here is the client call chain (up to SIGSEGV):
+    CServerHandler::onPacketReceived()  -- packet is NewTurn
+    -> ...
+    -> NetPacksLib.cpp:2004 NewTurn::applyGs(CGameState *gs)
+      gs->updateRumor();
+    -> CGameState.cpp:1267
+      obtainPlayersStats()
+    -> CGHeroInstance::getObjectName()
+    -> ...
+    -> CGHeroInstance::isCampaignGem() const
+      const StartInfo *si = cb->getStartInfo(); <------- SIGSEGV
+
+
+  Here is the server call chain (NO SIGSEGV):
+    CVCMIServer::run()
+    -> NetworkHandler->run()
+    -> ...
+    -> CVCMIServer::onPacketReceived() -- packet is MoveHero
+    -> ...
+    -> CGameHandler::objectVisited()
+    -> CGHeroInstance::getObjectName()
+    -> ...
+    -> CGHeroInstance::isCampaignGem() const
+      const StartInfo *si = cb->getStartInfo(); <------- NO SIGSEGV
+
+i.e.
+successful runs have logs for NewTurn from both servere and client,
+=> *conditionally* triggers this code; what is the condition?
+packet NewTurn *conditionally* triggers this code; what is the condition?
+
+    // NO ERROR logs:
+    [runServer][network] TRACE  Sending to all clients: 7NewTurn
+    [runServer][network] TRACE Sending a pack of type 7NewTurn
+    [runServer][network] TRACE  Applied on gs: 7NewTurn               <------- NO call to CGHeroInstance::isCampaignGem()
+    ...
+    [runNetwork][network] TRACE Received CPack of type 7NewTurn
+    [runNetwork][network] TRACE   Made first apply on cl: 7NewTurn
+    [runNetwork][network] TRACE   Applied on gs: 7NewTurn             <------- NO call to CGHeroInstance::isCampaignGem()
+    [runNetwork][network] TRACE   Made second apply on cl: 7NewTurn
+    ...
+    [0x16dbff000][network] TRACE Sending a request "8MoveHero". It'll have an ID=2.
+    [0x16dbff000][network] TRACE Sending a pack of type 8MoveHero
+    [runServer][network] TRACE Received CPack of type 8MoveHero
+
+
+    // ERROR logs:
+    [runServer][network] TRACE  Sending to all clients: 7NewTurn
+    [runServer][network] TRACE Sending a pack of type 7NewTurn
+    [runServer][network] TRACE  Applied on gs: 7NewTurn              <-------- NO call to CGHeroInstance::isCampaignGem()
+    ...
+    [runNetwork][network] TRACE Received CPack of type 7NewTurn
+    [runNetwork][network] TRACE   Made first apply on cl: 7NewTurn   <-------- !!!!!!!! CALL TO CGHeroInstance::isCampaignGem()
+    fish: Job 1, 'build/bin/myclient-headless --m…' terminated by signal SIGSEGV (Address boundary error)
+
+Condition is RNG in updateRumor():
+
+  rumor.type = *RandomGeneratorUtil::nextItem(rumorTypes, rand);   <----- RNG
+
+  do
+  {
+    switch(rumor.type)
+    {
+    case RumorState::TYPE_SPECIAL:        <--------- cond
+    {
+      SThievesGuildInfo tgi;
+      obtainPlayersStats(tgi, 20);        <--------- SIGSEGV
+
+
+========================================
+======= EASY SOLUTION: disable rumors :)
+========================================
+======= "CORRECT" SOLUTION: initialize CMap in client with a non-null gs
+
+CMap is initialized as part of LobbyStartGame packet deserialization
+the CGameState itself is deserialized (which contains map)
+It seems that CClient is assigned gs in CClient::NewGame
+
+(server) LobbyStartClient sent
+(client) LobbyStartClient received

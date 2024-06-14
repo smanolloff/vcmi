@@ -14,28 +14,29 @@
 // limitations under the License.
 // =============================================================================
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#pragma once
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+#include "BAI/v1/hexaction.h"
 
-static const char * g_cszAiName = "MMAI";
+namespace MMAI::BAI::V1 {
+    /**
+     * A list of booleans for a single hex (see HexAction)
+     */
+    using HexActMask = std::bitset<EI(HexAction::_count)>;
 
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
+    struct ActMask {
+        bool retreat = false;
+        bool wait = false;
 
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+        /**
+         * A list of HexActMask objects
+         *
+         * [0] HexActMask for hex 0
+         * [1] HexActMask for hex 1
+         * ...
+         * [164] HexActMask for hex 164
+         */
+        std::array<HexActMask, BF_SIZE> hexactmasks = {};
+    };
+    static_assert(BF_SIZE == 165, "doc assumes BF_SIZE=165");
 }
