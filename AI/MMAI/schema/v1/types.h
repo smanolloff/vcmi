@@ -255,7 +255,7 @@ namespace MMAI::Schema::V1 {
 
     using HexAttrs = std::array<int, static_cast<int>(HexAttribute::_count)>;
 
-    class DLL_EXPORT IHex {
+    class IHex {
     public:
         virtual const HexAttrs& getAttrs() const = 0;
         virtual int getAttr(HexAttribute) const = 0;
@@ -264,7 +264,7 @@ namespace MMAI::Schema::V1 {
 
     using Hexes = std::array<std::array<IHex*, 15>, 11>;
 
-    class DLL_EXPORT IAttackLog {
+    class IAttackLog {
     public:
         virtual int getAttackerSlot() const = 0;
         virtual int getDefenderSlot() const = 0;
@@ -277,6 +277,8 @@ namespace MMAI::Schema::V1 {
 
     using AttackLogs = std::vector<IAttackLog*>;
 
+    // This is returned as std::any by IState
+    // => DLL_LINKAGE is needed to ensure std::any_cast sees the same symbol
     class DLL_EXPORT ISupplementaryData {
     public:
         enum class Type : int {REGULAR, ANSI_RENDER};

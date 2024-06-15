@@ -20,11 +20,34 @@
 #include <functional>
 #include <vector>
 
-namespace MMAI::Schema {
-    #ifndef DLL_EXPORT
-    #define DLL_EXPORT __attribute__((visibility("default")))
-    #endif
+// Import + Export macro declarations
+#ifdef VCMI_WINDOWS
+#  ifdef VCMI_DLL_STATIC
+#    define DLL_IMPORT
+#    define DLL_EXPORT
+#  elif defined(__GNUC__)
+#    define DLL_IMPORT __attribute__((dllimport))
+#    define DLL_EXPORT __attribute__((dllexport))
+#  else
+#    define DLL_IMPORT __declspec(dllimport)
+#    define DLL_EXPORT __declspec(dllexport)
+#  endif
+#  define ELF_VISIBILITY
+#else
+#  ifdef __GNUC__
+#    define DLL_IMPORT	__attribute__ ((visibility("default")))
+#    define DLL_EXPORT __attribute__ ((visibility("default")))
+#    define ELF_VISIBILITY __attribute__ ((visibility("default")))
+#  endif
+#endif
 
+#ifdef MMAI_DLL
+#  define DLL_LINKAGE DLL_EXPORT
+#else
+#  define DLL_LINKAGE DLL_IMPORT
+#endif
+
+namespace MMAI::Schema {
     #define EI(enum_value) static_cast<int>(enum_value)
 
     using Action = int;
@@ -37,13 +60,14 @@ namespace MMAI::Schema {
     constexpr Action ACTION_RESET = -1;
     constexpr Action ACTION_RENDER_ANSI = -2;
 
-    class DLL_EXPORT IState {
+    class IState {
     public:
         virtual const ActionMask& getActionMask() const = 0;
         virtual const AttentionMask& getAttentionMask() const = 0;
         virtual const BattlefieldState& getBattlefieldState() const = 0;
 
-        // Supplementary data may differ across versions
+        // Supplementary data may differ across versions => expose it as std::any
+        // XXX: ensure the real data type has DLL_LINKAGE to prevent std::any_cast errors
         virtual const std::any getSupplementaryData() const = 0;
 
         virtual int version() const = 0;
@@ -64,7 +88,8 @@ namespace MMAI::Schema {
     // The CB functions above are bundled into Baggage struct
     // to be seamlessly transported through VCMI code as a std::any object,
     // then cast back to `Baggage` in the AI constructor.
-    struct DLL_EXPORT Baggage {
+    // Linkage needed due to ensure std::any_cast sees the proper symbol
+    struct DLL_LINKAGE Baggage {
         Baggage() = delete;
         Baggage(std::string map_, F_GetAction f, int version)
         : map(map_)

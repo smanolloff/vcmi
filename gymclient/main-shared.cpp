@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <boost/program_options.hpp>
+#include <boost/core/demangle.hpp>
 #include <filesystem>
 
 #include "AI/MMAI/common.h"
@@ -284,9 +285,12 @@ Args parse_args(int argc, char * argv[])
 
         auto any = s->getSupplementaryData();
         ASSERT(any.has_value(), "supdata is empty");
-        logGlobal->error("************* TYPE (MAIN/getAction): %s (%d)\n", any.type().name(), any.type().hash_code());
-        logGlobal->error("&&&&&& TARGET TYPE (MAIN/getAction): %s (%d)\n", typeid(MMAI::Schema::V1::ISupplementaryData*).name(), typeid(MMAI::Schema::V1::ISupplementaryData*).hash_code());
-        ASSERT(any.type() == typeid(MMAI::Schema::V1::ISupplementaryData*), "BBBBBB");
+        auto &t = typeid(MMAI::Schema::V1::ISupplementaryData*);
+        ASSERT(any.type() == t, boost::str(
+            boost::format("Bad std::any payload type from getSupplementaryData(): want: %s/%u, have: %s/%u") \
+            % boost::core::demangle(t.name()) % t.hash_code() \
+            % boost::core::demangle(any.type().name()) % any.type().hash_code()
+        ));
 				auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
         auto side = static_cast<int>(sup->getSide());
 

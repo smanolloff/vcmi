@@ -48,6 +48,8 @@ else()
   install(TARGETS MMAI RUNTIME DESTINATION ${AI_LIB_DIR} LIBRARY DESTINATION ${AI_LIB_DIR})
 endif()
 
+set_target_properties(MMAI PROPERTIES COMPILE_DEFINITIONS "MMAI_DLL=1")
+
 target_link_libraries(MMAI PRIVATE vcmi)
 target_include_directories(MMAI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
