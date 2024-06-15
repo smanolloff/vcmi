@@ -93,8 +93,6 @@ namespace MMAI::BAI::V1 {
             battlefield.get(),
             attackLogs  // store the logs since last turn
         );
-        sdw_ = std::make_unique<SupplementaryDataWrapper>(7);
-        sdw = std::make_any<SupplementaryDataWrapper*>(sdw_.get());
         attackLogs.clear(); // accumulate new logs until next turn
 
         for (int i=0; i<EI(NonHexAction::count); i++) {

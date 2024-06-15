@@ -56,6 +56,10 @@ namespace MMAI::AAI {
 
         ASSERT(baggage_.has_value(), "baggage has no value");
         ASSERT(baggage_.type() == typeid(Schema::Baggage*), "baggage of unexpected type");
+
+        //logGlobal->error("************* BAGGAGE TYPE (AAI): %s (%d)\n", baggage_.type().name(), baggage_.type().hash_code());
+        //logGlobal->error("&&&&&&&&&&&&& BAGGAGE TARGET TYPE (AAI): %s (%d)\n", typeid(Schema::Baggage*).name(), typeid(Schema::Baggage*).hash_code());
+
         auto baggage__ = std::any_cast<Schema::Baggage*>(baggage);
         ASSERT(baggage__, "baggage contains a nullptr");
 

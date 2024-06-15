@@ -284,70 +284,65 @@ Args parse_args(int argc, char * argv[])
 
         auto any = s->getSupplementaryData();
         ASSERT(any.has_value(), "supdata is empty");
-        printf("************* TYPE (MAIN): %s\n", any.type().name());
-        // printf("&&&&&&&&&&&&& TARGET TYPE: %s\n", typeid(MMAI::Schema::V1::ISupplementaryData*).name());
-        // ASSERT(any.type() == typeid(MMAI::Schema::V1::ISupplementaryData*), "BBBBBB");
-        // auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(s->getSupplementaryData());
-        printf("&&&&&&&&&&&&& TARGET TYPE: %s\n", typeid(MMAI::Schema::V1::SupplementaryDataWrapper*).name());
-        ASSERT(any.type() == typeid(MMAI::Schema::V1::SupplementaryDataWrapper*), "BBBBBB");
-        auto supw = std::any_cast<MMAI::Schema::V1::SupplementaryDataWrapper*>(s->getSupplementaryData());
-        printf("ETOGO: %d\n", supw->kur);
-        // auto sup = supw->contents;
-        // auto side = static_cast<int>(sup->getSide());
+        logGlobal->error("************* TYPE (MAIN/getAction): %s (%d)\n", any.type().name(), any.type().hash_code());
+        logGlobal->error("&&&&&& TARGET TYPE (MAIN/getAction): %s (%d)\n", typeid(MMAI::Schema::V1::ISupplementaryData*).name(), typeid(MMAI::Schema::V1::ISupplementaryData*).hash_code());
+        ASSERT(any.type() == typeid(MMAI::Schema::V1::ISupplementaryData*), "BBBBBB");
+				auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
+        auto side = static_cast<int>(sup->getSide());
 
-        // if (steps == 0 && benchmark) {
-        //     t0 = clock();
-        //     benchside = side;
-        // }
+        if (steps == 0 && benchmark) {
+            t0 = clock();
+            benchside = side;
+        }
 
-        // steps++;
+        steps++;
 
-        // if (sup->getType() == MMAI::Schema::V1::ISupplementaryData::Type::ANSI_RENDER) {
-        //     std::cout << sup->getAnsiRender() << "\n";
-        //     // use stored mask from pre-render result
-        //     act = interactive
-        //         ? promptAction(lastmasks.at(side))
-        //         : (prerecorded ? recordedAction(recordings) : randomValidAction(lastmasks.at(side)));
+        if (sup->getType() == MMAI::Schema::V1::ISupplementaryData::Type::ANSI_RENDER) {
+            std::cout << sup->getAnsiRender() << "\n";
+            // use stored mask from pre-render result
+            act = interactive
+                ? promptAction(lastmasks.at(side))
+                : (prerecorded ? recordedAction(recordings) : randomValidAction(lastmasks.at(side)));
 
-        //     renders.at(side) = false;
-        // } else if (sup->getIsBattleEnded()) {
-        //     if (side == benchside) {
-        //         resets++;
+            renders.at(side) = false;
+        } else if (sup->getIsBattleEnded()) {
+            if (side == benchside) {
+                resets++;
 
-        //         switch (resets % 4) {
-        //         case 0: printf("\r|"); break;
-        //         case 1: printf("\r\\"); break;
-        //         case 2: printf("\r-"); break;
-        //         case 3: printf("\r/"); break;
-        //         }
+                switch (resets % 4) {
+                case 0: printf("\r|"); break;
+                case 1: printf("\r\\"); break;
+                case 2: printf("\r-"); break;
+                case 3: printf("\r/"); break;
+                }
 
-        //         if (resets == 10) {
-        //             auto s = double(clock() - t0) / CLOCKS_PER_SEC;
-        //             printf("  steps/s: %-6.0f resets/s: %-6.2f\n", steps/s, resets/s);
-        //             resets = 0;
-        //             steps = 0;
-        //             t0 = clock();
-        //         }
+                if (resets == 10) {
+                    auto s = double(clock() - t0) / CLOCKS_PER_SEC;
+                    printf("  steps/s: %-6.0f resets/s: %-6.2f\n", steps/s, resets/s);
+                    resets = 0;
+                    steps = 0;
+                    t0 = clock();
+                }
 
-        //         std::cout.flush();
-        //     }
+                std::cout.flush();
+            }
 
-        //     if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
-        //     act = MMAI::Schema::ACTION_RESET;
-        // // } else if (false)
-        // } else if (!benchmark && !renders.at(side)) {
-        //     renders.at(side) = true;
-        //     // store mask of this result for the next action
-        //     lastmasks.at(side) = s->getActionMask();
-        //     act = MMAI::Schema::ACTION_RENDER_ANSI;
-        // } else {
-        //     renders.at(side) = false;
-        //     act = interactive
-        //         ? promptAction(s->getActionMask())
-        //         : (prerecorded ? recordedAction(recordings) : randomValidAction(s->getActionMask()));
-        // }
+            if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
+            act = MMAI::Schema::ACTION_RESET;
+        // } else if (false)
+        } else if (!benchmark && !renders.at(side)) {
+            renders.at(side) = true;
+            // store mask of this result for the next action
+            lastmasks.at(side) = s->getActionMask();
+            act = MMAI::Schema::ACTION_RENDER_ANSI;
+        } else {
+            renders.at(side) = false;
+            act = interactive
+                ? promptAction(s->getActionMask())
+                : (prerecorded ? recordedAction(recordings) : randomValidAction(s->getActionMask()));
+        }
 
-        // if (printModelPredictions && !benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
+        if (printModelPredictions && !benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
         return act;
     };
 

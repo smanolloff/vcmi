@@ -35,12 +35,7 @@ namespace MMAI::BAI::V1 {
         const Schema::AttentionMask& getAttentionMask() const override { return attnmask; }
         const Schema::BattlefieldState& getBattlefieldState() const override { return bfstate; }
         const std::any getSupplementaryData() const override {
-            // auto p = static_cast<Schema::V1::ISupplementaryData*>(supdata.get());
-            // auto any = std::make_any<Schema::V1::ISupplementaryData*>(p);
-            // ASSERT(any.type() == typeid(MMAI::Schema::V1::ISupplementaryData*), "AXCXAXAXAXXA");
-            // printf("************* TYPE (BAI): %s\n", any.type().name());
-
-            return sdw;
+            return static_cast<MMAI::Schema::V1::ISupplementaryData*>(supdata.get());
         }
         int version() const override { return 1; }
 
@@ -64,9 +59,6 @@ namespace MMAI::BAI::V1 {
         const int initialSide0ArmyValue;
         const int initialSide1ArmyValue;
         bool isMorale = false;
-
-        std::any sdw;
-        std::unique_ptr<SupplementaryDataWrapper> sdw_;
 
         static const std::pair<int, int> CalcTotalArmyValues(const CPlayerBattleCallback* battle);
     };

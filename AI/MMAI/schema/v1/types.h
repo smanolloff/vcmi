@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "../base.h"
+
 namespace MMAI::Schema::V1 {
     enum class Encoding : int {
         NUMERIC,            // see Encoder::encodeNumeric
@@ -253,7 +255,7 @@ namespace MMAI::Schema::V1 {
 
     using HexAttrs = std::array<int, static_cast<int>(HexAttribute::_count)>;
 
-    class IHex {
+    class DLL_EXPORT IHex {
     public:
         virtual const HexAttrs& getAttrs() const = 0;
         virtual int getAttr(HexAttribute) const = 0;
@@ -262,7 +264,7 @@ namespace MMAI::Schema::V1 {
 
     using Hexes = std::array<std::array<IHex*, 15>, 11>;
 
-    class IAttackLog {
+    class DLL_EXPORT IAttackLog {
     public:
         virtual int getAttackerSlot() const = 0;
         virtual int getDefenderSlot() const = 0;
@@ -275,12 +277,7 @@ namespace MMAI::Schema::V1 {
 
     using AttackLogs = std::vector<IAttackLog*>;
 
-
-    // XXX:
-    // This can not be an interface due to how std::any_cast works
-    // https://stackoverflow.com/a/58718285
-    // Maybe its member functions can be interfaces?
-    class ISupplementaryData {
+    class DLL_EXPORT ISupplementaryData {
     public:
         enum class Type : int {REGULAR, ANSI_RENDER};
         enum class Side : int {LEFT, RIGHT}; // corresponds to BattleSide::Type
@@ -303,11 +300,5 @@ namespace MMAI::Schema::V1 {
         virtual const AttackLogs getAttackLogs() const = 0;
         virtual const std::string getAnsiRender() const = 0;
         virtual ~ISupplementaryData() = default;
-    };
-
-    struct SupplementaryDataWrapper {
-        // const ISupplementaryData* contents;
-        SupplementaryDataWrapper(int k) : kur(k) {};
-        const int kur;
     };
 }

@@ -37,7 +37,7 @@ namespace MMAI::Schema {
     constexpr Action ACTION_RESET = -1;
     constexpr Action ACTION_RENDER_ANSI = -2;
 
-    class IState {
+    class DLL_EXPORT IState {
     public:
         virtual const ActionMask& getActionMask() const = 0;
         virtual const AttentionMask& getAttentionMask() const = 0;

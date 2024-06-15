@@ -701,8 +701,12 @@ void init_vcmi(
 
     CCS = new CClientState();
     CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-    CSH = new CServerHandler(std::make_any<MMAI::Schema::Baggage*>(baggage));
+    auto b = std::make_any<MMAI::Schema::Baggage*>(baggage);
+    //logGlobal->error("************* BAGGAGE TYPE (MAIN): %s (%d)\n", b.type().name(), b.type().hash_code());
+    //logGlobal->error("&&&&&&&&&&&&& BAGGAGE TARGET TYPE (MAIN): %s (%d)\n", typeid(MMAI::Schema::Baggage*).name(), typeid(MMAI::Schema::Baggage*).hash_code());
+    CSH = new CServerHandler(b);
 
+    logGlobal->error("$$$$$$ TARGET TYPE (init_vcmi): %s (%d)\n", typeid(MMAI::Schema::V1::ISupplementaryData*).name(), typeid(MMAI::Schema::V1::ISupplementaryData*).hash_code());
     if (!headless) {
         CCS->videoh = new CEmptyVideoPlayer();
         CCS->soundh = new CSoundHandler();
