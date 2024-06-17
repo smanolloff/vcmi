@@ -29,12 +29,7 @@ namespace MMAI::BAI::V2 {
         }
 
         if (v > vmax)
-            throw std::runtime_error(
-                "Cannot encode value: " + std::to_string(v) \
-                + "(vmax=" + std::to_string(vmax) \
-                + ", a=" + std::to_string(EI(a)) \
-                + ", n=" + std::to_string(n) + ")"
-            );
+            THROW_FORMAT("Cannot encode value: %d (vmax=%d, a=%d, n=%d)", v % vmax % EI(a) % n);
 
         if (e != Schema::V1::Encoding::FLOATING)
             throw std::runtime_error("V2 encodes all values as floats");

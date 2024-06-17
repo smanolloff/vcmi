@@ -69,8 +69,10 @@ namespace MMAI::AAI {
             // Maps and everything basically assumes red human player attacking blue human player
             // Swapping armies and sides still uses only RED and BLUE as players
             // Other players should never be asked to lead a battle
-            throw std::runtime_error("Tried to initialize AAI for player " + color);
-            battleAiName = "BUG_IF_REQUESTED";
+            // However, gymclient sets settings["server"]["playerAI"] = "MMAI"
+            // => all players get initialized with MMAI::AAI
+            // We must make sure the getBattleAI never gets called on them
+            battleAiName = "-";
         }
 
         debug("(init) battleAiName: " + battleAiName);
@@ -172,6 +174,8 @@ namespace MMAI::AAI {
         debug("*** getBattleAIName ***");
 
         ASSERT(!battleAiName.empty(), "battleAIName is not initialized yet");
+        ASSERT(battleAiName != "-", "battleAIName should not be called on player " + color);
+
         debug("getBattleAIName: " + battleAiName);
         return battleAiName;
     }

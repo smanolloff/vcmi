@@ -94,6 +94,11 @@ namespace MMAI::BAI {
         void warn(const std::string &text) const;
         void info(const std::string &text) const;
         void debug(const std::string &text) const;
+
+        template<typename T, typename ... Args> void error(const std::string &format, T t, Args ... args) const;
+        template<typename T, typename ... Args> void warn(const std::string &format, T t, Args ... args) const;
+        template<typename T, typename ... Args> void info(const std::string &format, T t, Args ... args) const;
+        template<typename T, typename ... Args> void debug(const std::string &format, T t, Args ... args) const;
     private:
         void _error(const std::string &text) const;
         void _warn(const std::string &text) const;

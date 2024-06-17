@@ -24,6 +24,7 @@
 #include "BAI/v1/encoder.h"
 #include "BAI/v1/hexaction.h"
 #include "BAI/v1/supplementary_data.h"
+#include "vstd/CLoggerBase.h"
 
 #include <memory>
 
@@ -74,7 +75,9 @@ namespace MMAI::BAI::V1 {
             }
         }
 
-        int valueRatio = (100.0 * initialSide0ArmyValue + initialSide1ArmyValue) / (value0 + value1);
+        int valueRatio = 100.0 * (value0 + value1) / (initialSide0ArmyValue + initialSide1ArmyValue);
+        // logAi->debug("initialSide0ArmyValue=%d, initialSide1ArmyValue=%d, value0=%d, value1=%d, ratio=%d", initialSide0ArmyValue, initialSide1ArmyValue, value0, value1, valueRatio);
+
         battlefield = std::make_unique<Battlefield>(battle, astack, valueRatio, isMorale);
         isMorale = false;
 
@@ -102,7 +105,7 @@ namespace MMAI::BAI::V1 {
             break; case NonHexAction::RETREAT: actmask.push_back(true);
             break; case NonHexAction::WAIT: actmask.push_back(!battlefield->astack->waitedThisTurn);
             break; default:
-                throw std::runtime_error("Unexpected NonHexAction: " + std::to_string(i));
+                THROW_FORMAT("Unexpected NonHexAction: %d", i);
             }
         }
 
@@ -153,10 +156,11 @@ namespace MMAI::BAI::V1 {
 
     void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> &bsa) {
         for(auto & elem : bsa) {
-            auto * defender = battle->battleGetStackByID(elem.stackAttacked, false);
-            auto * attacker = battle->battleGetStackByID(elem.attackerID, false);
+            auto defender = battle->battleGetStackByID(elem.stackAttacked, false);
+            auto attacker = battle->battleGetStackByID(elem.attackerID, false);
 
             ASSERT(defender, "defender cannot be NULL");
+            // logAi->debug("Attack: %s -> %s (%d dmg, %d died)", attacker->getName(), defender->getName(), elem.damageAmount, elem.killedAmount);
 
             attackLogs.push_back(std::make_shared<AttackLog>(
                 // XXX: attacker can be NULL when an effect does dmg (eg. Acid)
@@ -165,7 +169,7 @@ namespace MMAI::BAI::V1 {
                 defender->unitSide(),
                 elem.damageAmount,
                 elem.killedAmount,
-                elem.killedAmount * defender->creatureId().toCreature()->getAIValue()
+                elem.killedAmount * defender->unitType()->getAIValue()
             ));
         }
     }

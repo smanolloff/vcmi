@@ -77,12 +77,7 @@ namespace MMAI::BAI::V1 {
         }
 
         if (v > vmax)
-            throw std::runtime_error(
-                "Cannot encode value: " + std::to_string(v) \
-                + "(vmax=" + std::to_string(vmax) \
-                + ", a=" + std::to_string(EI(a)) \
-                + ", n=" + std::to_string(n) + ")"
-            );
+            THROW_FORMAT("Cannot encode value: %d (vmax=%d, a=%d, n=%d)", v % vmax % EI(a) % n);
 
         switch (e) {
         break; case Encoding::FLOATING: EncodeFloating(v, vmax, vec);
@@ -91,7 +86,7 @@ namespace MMAI::BAI::V1 {
         break; case Encoding::NUMERIC_SQRT: EncodeNumericSqrt(v, n, vmax, vec);
         break; case Encoding::CATEGORICAL: EncodeCategorical(v, n, vmax, vec);
         break; default:
-            throw std::runtime_error("Unexpected Encoding: " + std::to_string(EI(e)));
+            THROW_FORMAT("Unexpected Encoding: %d", EI(e));
         }
     }
 }

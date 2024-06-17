@@ -28,6 +28,11 @@ namespace MMAI::BAI {
     void Delegatee::info(const std::string &text) const { logAi->info("BAI::V%d-%s [%s] %s", version, addrstr, colorname, text); }
     void Delegatee::debug(const std::string &text) const { logAi->debug("BAI::V%d-%s [%s] %s", version, addrstr, colorname, text); }
 
+    template<typename T, typename ... Args> void Delegatee::error(const std::string &format, T t, Args ... args) const { logAi->error("BAI::V%d-%s [%s] " + format, version, addrstr, colorname, args...); }
+    template<typename T, typename ... Args> void Delegatee::warn(const std::string &format, T t, Args ... args) const { logAi->warn("BAI::V%d-%s [%s] " + format, version, addrstr, colorname, args...); }
+    template<typename T, typename ... Args> void Delegatee::info(const std::string &format, T t, Args ... args) const { logAi->info("BAI::V%d-%s [%s] " + format, version, addrstr, colorname, args...); }
+    template<typename T, typename ... Args> void Delegatee::debug(const std::string &format, T t, Args ... args) const { logAi->debug("BAI::V%d-%s [%s] " + format, version, addrstr, colorname, args...); }
+
     // Local
     void Delegatee::_error(const std::string &text) const { logAi->error("Delegatee-%s [%s] %s", addrstr, colorname, text); }
     void Delegatee::_warn(const std::string &text) const { logAi->warn("Delegatee-%s [%s] %s", addrstr, colorname, text); }

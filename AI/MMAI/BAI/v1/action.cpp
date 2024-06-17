@@ -15,6 +15,7 @@
 // =============================================================================
 
 #include <stdexcept>
+#include "Global.h"
 #include "battle/CBattleInfoEssentials.h"
 
 #include "BAI/v1/hex.h"
@@ -115,7 +116,7 @@ namespace MMAI::BAI::V1 {
         break; case HexAction::AMOVE_2BR: res = "Attack " + stackstr + " from " + hex->name() + " /bottom-right-2/";
         break; case HexAction::SHOOT:     res = "Attack " + stackstr + " " + hex->name() + " (ranged)";
         break; default:
-            throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(ha)));
+            THROW_FORMAT("Unexpected hexaction: %d", EI(ha));
         }
 
         return res;

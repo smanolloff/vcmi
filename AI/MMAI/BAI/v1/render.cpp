@@ -81,7 +81,7 @@ namespace MMAI::BAI::V1 {
             else if (v == 1)
                 return canreach;
             else
-                throw std::runtime_error("Unexpected v: " + std::to_string(v));
+                THROW_FORMAT("Unexpected v: %d", v);
         };
 
         auto ensureReachability = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
@@ -175,7 +175,7 @@ namespace MMAI::BAI::V1 {
                 expect(canshoot, "%s: =2, but the stack is unable to shoot", attrname);
                 expect(norangepen || distance <= 10, "%s: =2, but norangepen=0 and distance=%d (>10)", attrname, distance, norangepen);
             } else {
-                throw std::runtime_error("Unexpected v: " + std::to_string(v));
+                THROW_FORMAT("Unexpected v: %d", v);
             }
         };
 
@@ -250,7 +250,7 @@ namespace MMAI::BAI::V1 {
             break; case HexAction::AMOVE_2L: nbh = l_nbh.cloneInDirection(BattleHex::EDir::LEFT, false);
             break; case HexAction::AMOVE_2TL: nbh = l_nbh.cloneInDirection(BattleHex::EDir::TOP_LEFT, false);
             break; default:
-                throw std::runtime_error("Unexpected HexAction: " + std::to_string(EI(ha)));
+                THROW_FORMAT("Unexpected HexAction: %d", EI(ha));
               break;
             }
 
@@ -353,7 +353,7 @@ namespace MMAI::BAI::V1 {
                     break; case HexState::FREE:
                         expect(aa == EAccessibility::ACCESSIBLE, "HEX_STATE: FREE -> %d", aa);
                     break; default:
-                        throw std::runtime_error("HEX_STATE: Unexpected HexState: " + std::to_string(v));
+                        THROW_FORMAT("HEX_STATE: Unexpected HexState: %d", v);
                     }
                 break; case A::HEX_ACTION_MASK_FOR_ACT_STACK: {
                     // Check mask is the same for the corresponding FRIENDLY_STACK_ attribute
@@ -593,7 +593,7 @@ namespace MMAI::BAI::V1 {
                     if (isNA(v, cstack, "STACK_DEFENSIVE_STANCE")) break;
                     ensureValueMatch(cstack, v, cstack->hasBonusOfType(BonusType::DEFENSIVE_STANCE), "STACK_DEFENSIVE_STANCE");
                 break; default:
-                    throw std::runtime_error("Unexpected attr: " + std::to_string(EI(attr)));
+                    THROW_FORMAT("Unexpected attr: %d", EI(attr));
                 }
             }
         }
@@ -768,7 +768,7 @@ namespace MMAI::BAI::V1 {
                     sym = col + std::to_string(slot) + nocol;
                 }
                 break; default:
-                    throw std::runtime_error("unexpected HEX_STATE: " + std::to_string(EI(hex->getAttr(A::HEX_STATE))));
+                    THROW_FORMAT("unexpected HEX_STATE: %d", EI(hex->getAttr(A::HEX_STATE)));
                 }
 
                 row << sym;

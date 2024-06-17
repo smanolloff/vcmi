@@ -152,7 +152,7 @@ Args parse_args(int argc, char * argv[])
     static bool prerecorded = false;
     static int statsSampling = 0;
     static int statsPersistFreq = 0;
-    static int schemaVersion = 0;
+    static int schemaVersion = 1;
     static bool printModelPredictions = false;
     static bool trueRng = false;
     static float statsScoreVar = 0.4;
@@ -350,7 +350,6 @@ Args parse_args(int argc, char * argv[])
             logAi->debug("Side: %d", side);
             act = MMAI::Schema::ACTION_RENDER_ANSI;
         } else {
-            LOG("-----3");
             renders.at(side) = false;
             act = interactive
                 ? promptAction(s->getActionMask())

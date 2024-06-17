@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <limits>
 
+#include "Global.h"
 #include "common.h"
 #include "schema/base.h"
 #include "schema/v1/types.h"
@@ -58,7 +59,7 @@ namespace MMAI::BAI::V1 {
             nbh = nbh.cloneInDirection(BattleHex::EDir::LEFT);
             break;
         default:
-            throw std::runtime_error("Unexpected action: " + std::to_string(EI(action)));
+            THROW_FORMAT("Unexpected action: %d", EI(action));
         }
 
         ASSERT(nbh.isAvailable(), "unavailable AMOVE target hex #" + std::to_string(nbh.hex));
@@ -165,10 +166,7 @@ namespace MMAI::BAI::V1 {
         // case EAccessibility::UNAVAILABLE:
         // case EAccessibility::SIDE_COLUMN:
         break; default:
-          throw std::runtime_error(
-            "Unexpected hex accessibility for hex "+ std::to_string(bh.hex) + ": "
-              + std::to_string(static_cast<int>(ainfo.at(bh.hex)))
-          );
+            THROW_FORMAT("Unexpected hex accessibility for hex %d: %d", bh.hex % static_cast<int>(ainfo.at(bh.hex)));
         }
 
         //
@@ -418,10 +416,7 @@ namespace MMAI::BAI::V1 {
                     // => no action mask
                 }
                 break; default:
-                  throw std::runtime_error(
-                    "Unexpected hex accessibility for hex "+ std::to_string(hex->bhex.hex) + ": "
-                      + std::to_string(static_cast<int>(ainfo.at(hex->bhex.hex)))
-                  );
+                  THROW_FORMAT("Unexpected hex accessibility for hex %d: %d", hex->bhex.hex % static_cast<int>(ainfo.at(hex->bhex.hex)));
                 }
             }
         }

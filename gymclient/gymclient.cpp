@@ -14,6 +14,9 @@
 // limitations under the License.
 // =============================================================================
 
+#include "AI/MMAI/schema/base.h"
+#include "AI/MMAI/schema/v1/constants.h"
+#include <algorithm>
 #ifdef ENABLE_LIBTORCH
 #include <ATen/core/enum_tag.h>
 #include <ATen/core/ivalue.h>
@@ -152,51 +155,66 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
     c10::InferenceMode guard;
     torch::jit::script::Module model = torch::jit::load(modelPath);
     model.eval();
+    auto version = model.get_method("get_schema_version")({}).toInt();
 
-    std::cout << "Loaded " << modelPath << "\n";
+    std::cout << "Loaded v" << version << " model from " << modelPath << "\n";
 
-    auto version = model.get_method("get_version")({}).toInt();
-
-    auto size = MMAI::Schema::STATE_SIZE_DEFAULT;
-    auto sizeOneHex = MMAI::Schema::STATE_SIZE_DEFAULT_ONE_HEX;
-
-    if (floatEncoding) {
-        size = MMAI::Schema::STATE_SIZE_FLOAT;
-        sizeOneHex = MMAI::Schema::STATE_SIZE_FLOAT_ONE_HEX;
+    int size;
+    int sizeOneHex;
+    int nactions;
+    switch(version) {
+        break; case 1:
+            size = MMAI::Schema::V1::BATTLEFIELD_STATE_SIZE;
+            sizeOneHex = MMAI::Schema::V1::BATTLEFIELD_STATE_SIZE_ONE_HEX;
+            nactions = MMAI::Schema::V1::N_ACTIONS;
+        break; case 2:
+            size = MMAI::Schema::V2::BATTLEFIELD_STATE_SIZE;
+            sizeOneHex = MMAI::Schema::V2::BATTLEFIELD_STATE_SIZE_ONE_HEX;
+            nactions = MMAI::Schema::V1::N_ACTIONS;
+        break; default:
+            throw std::runtime_error("Unknown MMAI version: " + std::to_string(version));
     }
 
-    auto getvalue = [guard, model, size, sizeOneHex, floatEncoding](const MMAI::Schema::Result * r) {
-        auto state = MMAI::Schema::State{};
-        state.reserve(size);
-
-        for (auto &u : r->stateUnencoded)
-            floatEncoding ? state.push_back(u.encode2Floating()) : u.encode(state);
+    auto getvalue = [guard, model, size, sizeOneHex](const MMAI::Schema::IState * s) {
+        auto &src = s->getBattlefieldState();
+        auto dst = MMAI::Schema::BattlefieldState{};
+        dst.reserve(dst.size());
+        std::copy(src.begin(), src.end(), dst.begin());
 
         // TODO: see if from_blob can directly accept the correct shape
-        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, sizeOneHex});
+        auto obs = torch::from_blob(dst.data(), {size}, torch::kFloat).reshape({11, 15, sizeOneHex});
         auto method = model.get_method("get_value");
         auto inputs = std::vector<torch::IValue>{obs};
         auto res = method(inputs).toDouble();
         return res;
     };
 
-    auto getaction = [guard, model, size, floatEncoding, sizeOneHex, printModelPredictions](const MMAI::Schema::Result * r) {
-        if (r->ended)
+    auto getaction = [guard, model, size, sizeOneHex, nactions, printModelPredictions](const MMAI::Schema::IState * s) {
+        auto any = s->getSupplementaryData();
+        auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
+
+        if (sup->getIsBattleEnded())
             return MMAI::Schema::ACTION_RESET;
 
-        auto state = MMAI::Schema::State{};
-        state.reserve(size);
-
-        for (auto &u : r->stateUnencoded)
-            floatEncoding ? state.push_back(u.encode2Floating()) : u.encode(state);
+        auto &src = s->getBattlefieldState();
+        auto dst = MMAI::Schema::BattlefieldState{};
+        dst.reserve(src.size());
+        std::copy(src.begin(), src.end(), dst.begin());
 
         // TODO: see if from_blob can directly accept the correct shape
         // XXX: handle FLOAT encoding
-        auto obs = torch::from_blob(state.data(), {static_cast<long>(state.size())}, torch::kFloat).reshape({11, 15, sizeOneHex});
+        auto obs = torch::from_blob(dst.data(), {static_cast<long>(size)}, torch::kFloat).reshape({11, 15, sizeOneHex});
 
-        auto intmask = std::array<int, MMAI::Schema::N_ACTIONS - 1>{};
-        for (int i=0; i < intmask.size(); i++)
-            intmask.at(i) = static_cast<int>(r->actmask.at(i+1));
+        auto intmask = std::vector<int>{};
+        intmask.reserve(nactions);
+        auto skip = true; // skip first item in action mask (retreat is "hidden" from agent)
+        for (auto m : s->getActionMask()) {
+            if (skip) {
+                skip = false;
+                continue;
+            }
+            intmask.push_back(static_cast<int>(m));
+        }
 
         auto mask = torch::from_blob(intmask.data(), {static_cast<long>(intmask.size())}, torch::kInt).to(torch::kBool);
 
@@ -446,10 +464,6 @@ void processArguments(
         baggage->battleAINameRed = "MMAI";
         // Same as above, but with replaced "getAction" for attacker
         auto [getaction, getvalue, version] = loadModel(redModel, printModelPredictions);
-
-        if (version < MIN_SCHEMA_VERSION || version > MAX_SCHEMA_VERSION)
-            throw std::runtime_error("Unsupported schema version for red: " + std::to_string(version));
-
         baggage->f_getActionRed = getaction;
         baggage->f_getValueRed = getvalue;
         baggage->versionRed = version;
@@ -471,14 +485,12 @@ void processArguments(
     //
     if (blueAI == AI_MMAI_USER) {
         baggage->battleAINameBlue = "MMAI";
+        if (baggage->versionRed < MIN_SCHEMA_VERSION || baggage->versionBlue > MAX_SCHEMA_VERSION)
+            throw std::runtime_error("Unsupported schema version for blue: " + std::to_string(baggage->versionRed));
     } else if (blueAI == AI_MMAI_MODEL) {
         baggage->battleAINameBlue = "MMAI";
         // Same as above, but with replaced "getAction" for defender
         auto [getaction, getvalue, version] = loadModel(blueModel, printModelPredictions);
-
-        if (version < MIN_SCHEMA_VERSION || version > MAX_SCHEMA_VERSION)
-            throw std::runtime_error("Unsupported schema version for blue: " + std::to_string(version));
-
         baggage->f_getActionBlue = getaction;
         baggage->f_getValueBlue = getvalue;
         baggage->versionBlue = version;

@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "Global.h"
 #include "lib/AI_Base.h"
 #include "networkPacks/PacksForClientBattle.h"
 #include "battle/BattleAction.h"
@@ -179,7 +180,7 @@ namespace MMAI::BAI::V1 {
                 ASSERT(!astack->waitedThisTurn, "stack already waited this turn");
                 res = std::make_shared<BattleAction>(BattleAction::makeWait(astack));
             break; default:
-                throw std::runtime_error("Unexpected non-hex action: " + std::to_string(state->action->action));
+                THROW_FORMAT("Unexpected non-hex action: %d", state->action->action);
             }
 
             return res;
@@ -238,7 +239,7 @@ namespace MMAI::BAI::V1 {
             }
             break;
             default:
-                throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(action->hexaction)));
+                THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
             }
 
             return res;
@@ -354,7 +355,7 @@ namespace MMAI::BAI::V1 {
                 }
             break;
             default:
-                throw std::runtime_error("Unexpected hexaction: " + std::to_string(EI(action->hexaction)));
+                THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
             }
 
         ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, astack, nullptr));
