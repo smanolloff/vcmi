@@ -19,6 +19,7 @@
 #include <any>
 #include <functional>
 #include <vector>
+#include <string>
 
 // Import + Export macro declarations
 #ifdef VCMI_WINDOWS

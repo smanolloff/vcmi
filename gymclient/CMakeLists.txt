@@ -32,14 +32,9 @@ target_link_libraries(gymclient PUBLIC vcmi vcmiclient)
 target_link_libraries(gymclient-gui PRIVATE gymclient)
 target_link_libraries(gymclient-headless PRIVATE gymclient)
 
-# target_include_directories(gymclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-# target_include_directories(gymclient-gui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-# target_include_directories(gymclient-headless PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
 target_link_libraries(gymclient PRIVATE ${VCMI_LIB_TARGET} SDL2::SDL2 SDL2::Image SDL2::Mixer SDL2::TTF)
 target_link_libraries(gymclient-gui PRIVATE ${VCMI_LIB_TARGET})
 target_link_libraries(gymclient-headless PRIVATE ${VCMI_LIB_TARGET})
-
 
 if(ENABLE_LIBTORCH)
   target_link_libraries(gymclient PRIVATE "${TORCH_LIBRARIES}" OpenMP::OpenMP_CXX)
