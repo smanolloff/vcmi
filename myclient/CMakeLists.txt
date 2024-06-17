@@ -20,7 +20,7 @@ if(ENABLE_LIBTORCH)
 
   # Ensure myclient/libtorch is a symlink to the
   # same libtorch downloaded by pip in the vcmi-gym project
-  list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/libtorch")
+  list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch")
   find_package(OpenMP REQUIRED)
   find_package(Torch REQUIRED)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
