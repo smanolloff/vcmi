@@ -27,4 +27,4 @@
 
 #include "base.h"
 #include "v1/schema.h"
-
+#include "v2/schema.h"

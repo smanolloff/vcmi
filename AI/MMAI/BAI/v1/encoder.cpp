@@ -16,7 +16,7 @@
 
 #include "schema/v1/types.h"
 #include "schema/v1/constants.h"
-#include "BAI/v1/encode.h"
+#include "BAI/v1/encoder.h"
 
 namespace MMAI::BAI::V1 {
     using namespace Schema::V1;
@@ -24,7 +24,7 @@ namespace MMAI::BAI::V1 {
 
     // Example: v=1, vmax=5
     //  => add 0.2
-    void EncodeFloating(const int &v, const int &vmax, BS &vec) {
+    void Encoder::EncodeFloating(const int &v, const int &vmax, BS &vec) {
         // XXX: this is a simplified version for 0..1 norm
         vec.push_back(static_cast<float>(v) / static_cast<float>(vmax));
     }
@@ -32,7 +32,7 @@ namespace MMAI::BAI::V1 {
     // Example: v=5, n=4
     //  Represent 5 as a 4-bit binary (LSB first)
     //  => add [1,0,1,0]
-    void EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec) {
+    void Encoder::EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec) {
         int vtmp = v;
         for (int i=0; i < n; i++) {
             vec.push_back(vtmp % 2);
@@ -42,7 +42,7 @@ namespace MMAI::BAI::V1 {
 
     // Example: v=2, n=3
     //  Add v=2 ones and 3-2=1 zero
-    void EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec) {
+    void Encoder::EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec) {
         int n_ones = v;
         vec.insert(vec.end(), n_ones, 1);
         vec.insert(vec.end(), n - n_ones, 0);
@@ -51,7 +51,7 @@ namespace MMAI::BAI::V1 {
     // Example: v=10, n=4
     //  Add int(sqrt(10))=3 ones and 4-3=1 zero
     //  => add [1,1,1,0]
-    void EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec) {
+    void Encoder::EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec) {
         int n_ones = int(std::sqrt(v));
         vec.insert(vec.end(), n_ones, 1);
         vec.insert(vec.end(), n - n_ones, 0);
@@ -59,12 +59,12 @@ namespace MMAI::BAI::V1 {
 
     // Example: v=1, n=5
     //  => add [0,1,0,0,0]
-    void EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec) {
+    void Encoder::EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec) {
         for (int i=0; i < n; i++)
             vec.push_back(i == v);
     }
 
-    void Encode(const HexAttribute &a, const int &v, BS &vec) {
+    void Encoder::Encode(const HexAttribute &a, const int &v, BS &vec) {
         auto &[_, e, n, vmax] = HEX_ENCODING.at(EI(a));
 
         if (v == BATTLEFIELD_STATE_VALUE_NA) {

@@ -13,19 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
+
 #pragma once
 
-#include "schema/schema.h"
-#include "schema/v1/types.h"
+#include "BAI/v1/BAI.h"
 
-namespace MMAI::BAI::V1 {
-    using HexAttribute = Schema::V1::HexAttribute;
-    using BS = Schema::BattlefieldState;
-
-    void Encode(const HexAttribute &a, const int &v, BS &vec);
-    void EncodeFloating(const int &v, const int &vmax, BS &vec);
-    void EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec);
-    void EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec);
-    void EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec);
-    void EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec);
+namespace MMAI::BAI::V2 {
+    class BAI : public V1::BAI {
+        using V1::BAI::BAI; // inherit parent constructor
+        std::unique_ptr<V1::State> initState(const CPlayerBattleCallback* b) override;
+    };
 }

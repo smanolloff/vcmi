@@ -13,26 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
-
 #pragma once
 
-#ifdef MAX_SCHEMA_VERSION
-  #if MAX_SCHEMA_VERSION < 1
-    #undef MAX_SCHEMA_VERSION
-    #define MAX_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MAX_SCHEMA_VERSION 1
-#endif
+#include "BAI/v1/state.h"
 
-#ifdef MIN_SCHEMA_VERSION
-  #if MIN_SCHEMA_VERSION > 1
-    #undef MAX_SCHEMA_VERSION
-    #define MIN_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MIN_SCHEMA_VERSION 1
-#endif
+namespace MMAI::BAI::V2 {
+    using HexAttribute = Schema::V1::HexAttribute;
+    using BS = Schema::BattlefieldState;
 
-#include "types.h"
-#include "constants.h"
+    class State : public V1::State {
+        using V1::State::State; // inherit parent constructor
+
+        int version() const override { return 2; }
+
+        void encodeHex(V1::Hex* hex) override;
+        void verify() override;
+    };
+}

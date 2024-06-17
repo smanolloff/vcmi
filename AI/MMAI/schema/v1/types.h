@@ -278,8 +278,8 @@ namespace MMAI::Schema::V1 {
     using AttackLogs = std::vector<IAttackLog*>;
 
     // This is returned as std::any by IState
-    // => DLL_LINKAGE is needed to ensure std::any_cast sees the same symbol
-    class DLL_EXPORT ISupplementaryData {
+    // => MMAI_LINKAGE is needed to ensure std::any_cast sees the same symbol
+    class MMAI_LINKAGE ISupplementaryData {
     public:
         enum class Type : int {REGULAR, ANSI_RENDER};
         enum class Side : int {LEFT, RIGHT}; // corresponds to BattleSide::Type
@@ -303,4 +303,11 @@ namespace MMAI::Schema::V1 {
         virtual const std::string getAnsiRender() const = 0;
         virtual ~ISupplementaryData() = default;
     };
+
+    /*
+     * E4 is a tuple of {a, e, n, vmax} tuples
+     * where a=attribute, e=encoding, n=size, vmax=max expected value
+     */
+    using E4 = std::tuple<HexAttribute, Encoding, int, int>;
+    using HexEncoding = std::array<E4, EI(HexAttribute::_count)>;
 }

@@ -22,7 +22,6 @@
 #include "constants/EntityIdentifiers.h"
 
 #include "common.h"
-#include "schema/schema.h"
 #include "schema/v1/types.h"
 
 #include "BAI/v1/BAI.h"
@@ -52,7 +51,11 @@ namespace MMAI::BAI::V1 {
     void BAI::battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed) {
         info("*** battleStart ***");
         battle = cb->getBattle(bid);
-        state = std::make_unique<State>(colorname, battle.get());
+        state = initState(battle.get());
+    }
+
+    std::unique_ptr<State> BAI::initState(const CPlayerBattleCallback* b) {
+        return std::make_unique<State>(colorname, b);
     }
 
     // XXX: battleEnd() is NOT called by CPlayerInterface (i.e. GUI)
@@ -137,7 +140,7 @@ namespace MMAI::BAI::V1 {
                 resetting = true;
             }
 
-            state->action = std::make_unique<Action>(a, battlefield.get(), colorname);
+            state->action = std::make_unique<Action>(a, state->battlefield.get(), colorname);
             info("Got action: " + std::to_string(a) + " (" + state->action->name() + ")");
             auto ba = buildBattleAction();
 

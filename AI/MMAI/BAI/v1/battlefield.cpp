@@ -20,7 +20,7 @@
 #include <limits>
 
 #include "common.h"
-#include "schema/schema.h"
+#include "schema/base.h"
 #include "schema/v1/types.h"
 #include "schema/v1/constants.h"
 #include "BAI/v1/hexaction.h"

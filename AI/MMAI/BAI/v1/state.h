@@ -18,7 +18,7 @@
 #include "battle/BattleHex.h"
 #include "battle/CBattleInfoEssentials.h"
 #include "battle/CPlayerBattleCallback.h"
-#include "schema/schema.h"
+#include "schema/base.h"
 #include "schema/v1/types.h"
 #include "BAI/v1/supplementary_data.h"
 #include "BAI/v1/battlefield.h"
@@ -45,6 +45,11 @@ namespace MMAI::BAI::V1 {
         void onActiveStack(const CStack* astack);
         void onBattleStacksAttacked(const std::vector<BattleStackAttacked> &bsa);
         void onBattleTriggerEffect(const BattleTriggerEffect &bte);
+
+        // Subsequent versions may override this if they only change
+        // the data type of encoded values (i.e. have their own HEX_ENCODING)
+        virtual void encodeHex(Hex* hex);
+        virtual void verify();
 
         Schema::BattlefieldState bfstate = {};
         Schema::ActionMask actmask = {};

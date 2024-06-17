@@ -23,7 +23,7 @@
 #include "BAI/v1/hex.h"
 #include "BAI/v1/stackinfo.h"
 
-#include "schema/schema.h"
+#include "schema/base.h"
 
 namespace MMAI::BAI::V1 {
     using Hexes = std::array<std::array<std::unique_ptr<Hex>, BF_XMAX>, BF_YMAX>;

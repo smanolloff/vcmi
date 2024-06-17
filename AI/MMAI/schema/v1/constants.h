@@ -18,6 +18,7 @@
 
 #include "../base.h"
 #include "types.h"
+#include "util.h"
 
 namespace MMAI::Schema::V1 {
     constexpr int N_NONHEX_ACTIONS = 2;
@@ -37,26 +38,6 @@ namespace MMAI::Schema::V1 {
      */
     using E4 = std::tuple<HexAttribute, Encoding, int, int>;
     using HexEncoding = std::array<E4, EI(HexAttribute::_count)>;
-
-
-    /*
-     * Compile time int(sqrt(x))
-     * https://stackoverflow.com/a/27709195
-     */
-    template <typename T> constexpr T Sqrt(T x, T lo, T hi) {
-        if (lo == hi) return lo;
-        const T mid = (lo + hi + 1) / 2;
-        return (x / mid < mid) ? Sqrt<T>(x, lo, mid - 1) : Sqrt(x, mid, hi);
-    }
-    template <typename T> constexpr T CTSqrt(T x) { return Sqrt<T>(x, 0, x / 2 + 1); }
-
-    /*
-     * Compile time int(log(x, 2))
-     * https://stackoverflow.com/a/23784921
-     */
-    constexpr unsigned Log2(unsigned n) {
-        return n <= 1 ? 0 : 1 + Log2((n + 1) / 2);
-    }
 
     /*
      * Compile constructor for E4 tuples

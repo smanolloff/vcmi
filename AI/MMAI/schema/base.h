@@ -23,28 +23,28 @@
 // Import + Export macro declarations
 #ifdef VCMI_WINDOWS
 #  ifdef VCMI_DLL_STATIC
-#    define DLL_IMPORT
-#    define DLL_EXPORT
+#    define MMAI_IMPORT
+#    define MMAI_EXPORT
 #  elif defined(__GNUC__)
-#    define DLL_IMPORT __attribute__((dllimport))
-#    define DLL_EXPORT __attribute__((dllexport))
+#    define MMAI_IMPORT __attribute__((dllimport))
+#    define MMAI_EXPORT __attribute__((dllexport))
 #  else
-#    define DLL_IMPORT __declspec(dllimport)
-#    define DLL_EXPORT __declspec(dllexport)
+#    define MMAI_IMPORT __declspec(dllimport)
+#    define MMAI_EXPORT __declspec(dllexport)
 #  endif
 #  define ELF_VISIBILITY
 #else
 #  ifdef __GNUC__
-#    define DLL_IMPORT	__attribute__ ((visibility("default")))
-#    define DLL_EXPORT __attribute__ ((visibility("default")))
+#    define MMAI_IMPORT	__attribute__ ((visibility("default")))
+#    define MMAI_EXPORT __attribute__ ((visibility("default")))
 #    define ELF_VISIBILITY __attribute__ ((visibility("default")))
 #  endif
 #endif
 
 #ifdef MMAI_DLL
-#  define DLL_LINKAGE DLL_EXPORT
+#  define MMAI_LINKAGE MMAI_EXPORT
 #else
-#  define DLL_LINKAGE DLL_IMPORT
+#  define MMAI_LINKAGE MMAI_IMPORT
 #endif
 
 namespace MMAI::Schema {
@@ -67,7 +67,7 @@ namespace MMAI::Schema {
         virtual const BattlefieldState& getBattlefieldState() const = 0;
 
         // Supplementary data may differ across versions => expose it as std::any
-        // XXX: ensure the real data type has DLL_LINKAGE to prevent std::any_cast errors
+        // XXX: ensure the real data type has MMAI_LINKAGE to prevent std::any_cast errors
         virtual const std::any getSupplementaryData() const = 0;
 
         virtual int version() const = 0;
@@ -89,7 +89,7 @@ namespace MMAI::Schema {
     // to be seamlessly transported through VCMI code as a std::any object,
     // then cast back to `Baggage` in the AI constructor.
     // Linkage needed due to ensure std::any_cast sees the proper symbol
-    struct DLL_LINKAGE Baggage {
+    struct MMAI_LINKAGE Baggage {
         Baggage() = delete;
         Baggage(std::string map_, F_GetAction f, int version)
         : map(map_)

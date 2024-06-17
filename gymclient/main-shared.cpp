@@ -152,6 +152,7 @@ Args parse_args(int argc, char * argv[])
     static bool prerecorded = false;
     static int statsSampling = 0;
     static int statsPersistFreq = 0;
+    static int schemaVersion = 0;
     static bool printModelPredictions = false;
     static bool trueRng = false;
     static float statsScoreVar = 0.4;
@@ -209,7 +210,9 @@ Args parse_args(int argc, char * argv[])
         ("stats-sampling", po::value<int>()->value_name("<N>"),
             "Sample random heroes from stats, redistributing every Nth combat (disabled if 0*)")
         ("stats-score-var", po::value<float>()->value_name("<F>"),
-            "Limit score variance to a float between 0.1 and 0.4*");
+            "Limit score variance to a float between 0.1 and 0.4*")
+        ("schema-version", po::value<int>()->value_name("<V>"),
+            "Use specified encoding schema version (defaults to 1*)");
 
     po::variables_map vm;
 
@@ -256,6 +259,9 @@ Args parse_args(int argc, char * argv[])
     if (vm.count("stats-score-var"))
         statsScoreVar = vm.at("stats-score-var").as<float>();
 
+    if (vm.count("schema-version"))
+        schemaVersion = vm.at("schema-version").as<int>();
+
     // The user CB function is hard-coded
     // (no way to provide this from the cmd line args)
     static std::array<bool, 2> renders = {false, false};
@@ -280,8 +286,8 @@ Args parse_args(int argc, char * argv[])
         MMAI::Schema::Action act;
 
         // Support for other versions can be implemented if needed
-        if (s->version() != 1)
-            throw std::runtime_error("Expected version 1, got: " + std::to_string(s->version()));
+        if (s->version() != 1 && s->version() != 2)
+            throw std::runtime_error("Expected version 1 or 2, got: " + std::to_string(s->version()));
 
         auto any = s->getSupplementaryData();
         ASSERT(any.has_value(), "supdata is empty");
@@ -291,7 +297,8 @@ Args parse_args(int argc, char * argv[])
             % boost::core::demangle(t.name()) % t.hash_code() \
             % boost::core::demangle(any.type().name()) % any.type().hash_code()
         ));
-				auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
+
+        auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
         auto side = static_cast<int>(sup->getSide());
 
         if (steps == 0 && benchmark) {
@@ -331,22 +338,26 @@ Args parse_args(int argc, char * argv[])
                 std::cout.flush();
             }
 
-            if (!benchmark) LOG("user-callback battle ended => sending ACTION_RESET");
+            if (!benchmark) logGlobal->debug("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Schema::ACTION_RESET;
         // } else if (false)
         } else if (!benchmark && !renders.at(side)) {
+            logAi->debug("Side: %d", side);
             renders.at(side) = true;
+            logAi->debug("Side: %d", side);
             // store mask of this result for the next action
             lastmasks.at(side) = s->getActionMask();
+            logAi->debug("Side: %d", side);
             act = MMAI::Schema::ACTION_RENDER_ANSI;
         } else {
+            LOG("-----3");
             renders.at(side) = false;
             act = interactive
                 ? promptAction(s->getActionMask())
                 : (prerecorded ? recordedAction(recordings) : randomValidAction(s->getActionMask()));
         }
 
-        if (printModelPredictions && !benchmark) LOGSTR("user-callback getAction returning: ", std::to_string(act));
+        if (printModelPredictions && !benchmark) logGlobal->debug("user-callback getAction returning: ", std::to_string(act));
         return act;
     };
 
@@ -379,7 +390,7 @@ Args parse_args(int argc, char * argv[])
     return {
         // custom getAction function above uses version 1
         // if pre-trained models are loaded, versions will be updated accordingly
-        new MMAI::Schema::Baggage(omap.at("map"), getaction, 1),
+        new MMAI::Schema::Baggage(omap.at("map"), getaction, schemaVersion),
         maxBattles,
         seed,
         randomHeroes,

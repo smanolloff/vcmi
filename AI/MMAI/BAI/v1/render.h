@@ -14,7 +14,7 @@
 // limitations under the License.
 // =============================================================================
 
-#include "schema/schema.h"
+#include "schema/base.h"
 #include "BAI/v1/action.h"
 #include "BAI/v1/state.h"
 

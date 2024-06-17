@@ -18,7 +18,7 @@
 #include "CGameInterface.h"
 #include "battle/CPlayerBattleCallback.h"
 
-#include "schema/schema.h"
+#include "schema/base.h"
 
 namespace MMAI::BAI {
     class Delegatee : public CBattleGameInterface {
@@ -39,8 +39,6 @@ namespace MMAI::BAI {
             const std::shared_ptr<Environment> env_,
             const std::shared_ptr<CBattleCallback> cb_
         );
-
-        virtual ~Delegatee() = default;
 
         /*
          * These methods MUST be overridden by sub-delegatees (e.g. BAI::V1)

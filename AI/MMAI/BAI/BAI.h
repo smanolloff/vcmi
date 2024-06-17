@@ -24,7 +24,7 @@ namespace MMAI::BAI {
     class BAI : public CBattleGameInterface {
     public:
         BAI();
-        ~BAI();
+        ~BAI() override;
 
         /*
          * Implemented locally (not delegated)

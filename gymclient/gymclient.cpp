@@ -439,6 +439,9 @@ void processArguments(
     //
     if (redAI == AI_MMAI_USER) {
         baggage->battleAINameRed = "MMAI";
+
+        if (baggage->versionRed < MIN_SCHEMA_VERSION || baggage->versionRed > MAX_SCHEMA_VERSION)
+            throw std::runtime_error("Unsupported schema version for red: " + std::to_string(baggage->versionRed));
     } else if (redAI == AI_MMAI_MODEL) {
         baggage->battleAINameRed = "MMAI";
         // Same as above, but with replaced "getAction" for attacker

@@ -603,8 +603,6 @@ namespace MMAI::BAI::V1 {
     // the schema is properly exposing all needed informaton
     std::string Render(const Schema::IState* istate, const Action *action) {
         auto bfstate = istate->getBattlefieldState();
-        expect(bfstate.size() == Schema::V1::BATTLEFIELD_STATE_SIZE, "bfstate.size() mismatch: %d", bfstate.size());
-
         auto supdata_ = istate->getSupplementaryData();
         expect(supdata_.has_value(), "supdata_ holds no value");
         expect(supdata_.type() == typeid(ISupplementaryData*), "supdata_ of unexpected type");
@@ -617,7 +615,7 @@ namespace MMAI::BAI::V1 {
         IHex* ahex;
         for (auto &hexrow : hexes) {
             for (auto &hex : hexrow) {
-                if (hex->getAttrs().at(EI(HexAttribute::STACK_IS_ACTIVE))) {
+                if (hex->getAttrs().at(EI(HexAttribute::STACK_IS_ACTIVE)) == 1) {
                     ahex = hex;
                     break;
                 }
@@ -921,7 +919,6 @@ namespace MMAI::BAI::V1 {
             table.push_back(row);
         }
 
-        // XXX: table is rotated here
         for (auto &r : table) {
             auto row = std::stringstream();
             for (auto& [color, width, txt] : r)

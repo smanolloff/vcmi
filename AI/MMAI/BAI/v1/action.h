@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include "schema/schema.h"
-
 #include "BAI/v1/hex.h"
 #include "BAI/v1/hexaction.h"
 #include "BAI/v1/battlefield.h"

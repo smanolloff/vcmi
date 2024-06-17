@@ -25,7 +25,7 @@ namespace MMAI::BAI::V1 {
         for (int y=0; y<battlefield->hexes.size(); ++y) {
             auto &hexrow = battlefield->hexes.at(y);
             auto &resrow = res.at(y);
-            for (int x=0; y<hexrow.size(); ++x) {
+            for (int x=0; x<hexrow.size(); ++x) {
                 resrow.at(x) = hexrow.at(x).get();
             }
         }

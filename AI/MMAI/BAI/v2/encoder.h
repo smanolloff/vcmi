@@ -13,26 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
-
 #pragma once
 
-#ifdef MAX_SCHEMA_VERSION
-  #if MAX_SCHEMA_VERSION < 1
-    #undef MAX_SCHEMA_VERSION
-    #define MAX_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MAX_SCHEMA_VERSION 1
-#endif
+#include "schema/base.h"
+#include "schema/v1/types.h"
+#include "BAI/v1/encoder.h"
 
-#ifdef MIN_SCHEMA_VERSION
-  #if MIN_SCHEMA_VERSION > 1
-    #undef MAX_SCHEMA_VERSION
-    #define MIN_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MIN_SCHEMA_VERSION 1
-#endif
+namespace MMAI::BAI::V2 {
+    using HexAttribute = Schema::V1::HexAttribute;
+    using BS = Schema::BattlefieldState;
 
-#include "types.h"
-#include "constants.h"
+    class Encoder : public V1::Encoder {
+    public:
+        static void Encode(const HexAttribute &a, const int &v, BS &vec);
+    };
+}

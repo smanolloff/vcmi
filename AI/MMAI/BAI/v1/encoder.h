@@ -13,26 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
-
 #pragma once
 
-#ifdef MAX_SCHEMA_VERSION
-  #if MAX_SCHEMA_VERSION < 1
-    #undef MAX_SCHEMA_VERSION
-    #define MAX_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MAX_SCHEMA_VERSION 1
-#endif
+#include "schema/base.h"
+#include "schema/v1/types.h"
 
-#ifdef MIN_SCHEMA_VERSION
-  #if MIN_SCHEMA_VERSION > 1
-    #undef MAX_SCHEMA_VERSION
-    #define MIN_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MIN_SCHEMA_VERSION 1
-#endif
+namespace MMAI::BAI::V1 {
+    using HexAttribute = Schema::V1::HexAttribute;
+    using BS = Schema::BattlefieldState;
 
-#include "types.h"
-#include "constants.h"
+    class Encoder {
+    public:
+        static void Encode(const HexAttribute &a, const int &v, BS &vec);
+        static void EncodeFloating(const int &v, const int &vmax, BS &vec);
+        static void EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec);
+    };
+}

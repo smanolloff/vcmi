@@ -16,23 +16,23 @@
 
 #pragma once
 
-#ifdef MAX_SCHEMA_VERSION
-  #if MAX_SCHEMA_VERSION < 1
-    #undef MAX_SCHEMA_VERSION
-    #define MAX_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MAX_SCHEMA_VERSION 1
-#endif
+namespace MMAI::Schema::V1 {
+    /*
+     * Compile time int(sqrt(x))
+     * https://stackoverflow.com/a/27709195
+     */
+    template <typename T> constexpr T Sqrt(T x, T lo, T hi) {
+        if (lo == hi) return lo;
+        const T mid = (lo + hi + 1) / 2;
+        return (x / mid < mid) ? Sqrt<T>(x, lo, mid - 1) : Sqrt(x, mid, hi);
+    }
+    template <typename T> constexpr T CTSqrt(T x) { return Sqrt<T>(x, 0, x / 2 + 1); }
 
-#ifdef MIN_SCHEMA_VERSION
-  #if MIN_SCHEMA_VERSION > 1
-    #undef MAX_SCHEMA_VERSION
-    #define MIN_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MIN_SCHEMA_VERSION 1
-#endif
-
-#include "types.h"
-#include "constants.h"
+    /*
+     * Compile time int(log(x, 2))
+     * https://stackoverflow.com/a/23784921
+     */
+    constexpr unsigned Log2(unsigned n) {
+        return n <= 1 ? 0 : 1 + Log2((n + 1) / 2);
+    }
+}

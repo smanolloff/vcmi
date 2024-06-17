@@ -17,12 +17,11 @@
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/IBattleState.h"
 #include "networkPacks/PacksForClientBattle.h"
-#include "schema/schema.h"
 #include "schema/v1/constants.h"
 #include "schema/v1/types.h"
 
 #include "BAI/v1/state.h"
-#include "BAI/v1/encode.h"
+#include "BAI/v1/encoder.h"
 #include "BAI/v1/hexaction.h"
 #include "BAI/v1/supplementary_data.h"
 
@@ -94,6 +93,9 @@ namespace MMAI::BAI::V1 {
             attackLogs  // store the logs since last turn
         );
         attackLogs.clear(); // accumulate new logs until next turn
+        bfstate.clear();
+        actmask.clear();
+        attnmask.clear();
 
         for (int i=0; i<EI(NonHexAction::count); i++) {
             switch (NonHexAction(i)) {
@@ -104,40 +106,46 @@ namespace MMAI::BAI::V1 {
             }
         }
 
-        for (auto &hexrow : battlefield->hexes) {
-            for (auto &hex : hexrow) {
-                // Battlefield state
-                for (int i=0; i<EI(HexAttribute::_count); ++i) {
-                    auto a = HexAttribute(i);
-                    auto v = hex->attrs.at(EI(a));
-                    Encode(a, v, bfstate);
-                }
+        for (auto &hexrow : battlefield->hexes)
+            for (auto &hex : hexrow)
+                encodeHex(hex.get());
 
-                // Action mask
-                for (int m=0; m<hex->hexactmask.size(); ++m) {
-                    actmask.push_back(hex->hexactmask.test(m));
-                }
+        verify();
+    }
 
-                // // Attention mask
-                // // (not used)
-                // if (hex->cstack) {
-                //     auto side = hex->attrs.at(EI(HexAttribute::STACK_SIDE));
-                //     auto slot = hex->attrs.at(EI(HexAttribute::STACK_SLOT));
-                //     for (auto &hexrow1 : bf.hexes) {
-                //         for (auto &hex1 : hexrow1) {
-                //             if (hex1.hexactmasks.at(side).at(slot).any()) {
-                //                 attnmask.push_back(0);
-                //             } else {
-                //                 attnmask.push_back(std::numeric_limits<float>::lowest());
-                //             }
-                //         }
-                //     }
-                // } else {
-                //     attnmask.insert(attnmask.end(), 165, std::numeric_limits<float>::lowest());
-                // }
-            }
+    void State::encodeHex(Hex* hex) {
+        // Battlefield state
+        for (int i=0; i<EI(HexAttribute::_count); ++i) {
+            auto a = HexAttribute(i);
+            auto v = hex->attrs.at(EI(a));
+            Encoder::Encode(a, v, bfstate);
         }
 
+        // Action mask
+        for (int m=0; m<hex->hexactmask.size(); ++m) {
+            actmask.push_back(hex->hexactmask.test(m));
+        }
+
+        // // Attention mask
+        // // (not used)
+        // if (hex->cstack) {
+        //     auto side = hex->attrs.at(EI(HexAttribute::STACK_SIDE));
+        //     auto slot = hex->attrs.at(EI(HexAttribute::STACK_SLOT));
+        //     for (auto &hexrow1 : bf.hexes) {
+        //         for (auto &hex1 : hexrow1) {
+        //             if (hex1.hexactmasks.at(side).at(slot).any()) {
+        //                 attnmask.push_back(0);
+        //             } else {
+        //                 attnmask.push_back(std::numeric_limits<float>::lowest());
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     attnmask.insert(attnmask.end(), 165, std::numeric_limits<float>::lowest());
+        // }
+    }
+
+    void State::verify() {
         ASSERT(bfstate.size() == BATTLEFIELD_STATE_SIZE, "unexpected bfstate.size(): " + std::to_string(bfstate.size()));
         ASSERT(actmask.size() == N_ACTIONS, "unexpected actmask.size(): " + std::to_string(actmask.size()));
         // ASSERT(attnmask.size() == 165*165, "unexpected attnmask.size(): " + std::to_string(attnmask.size()));

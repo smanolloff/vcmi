@@ -51,12 +51,13 @@ namespace MMAI::BAI::V1 {
 
         Schema::Action getNonRenderAction() override;
 
-    private:
-        std::unique_ptr<Battlefield> battlefield;
+        // Subsequent versions may override this with subclasses of State
+        virtual std::unique_ptr<State> initState(const CPlayerBattleCallback* battle);
         std::unique_ptr<State> state;
-        std::shared_ptr<CPlayerBattleCallback> battle;
+
         bool resetting = false;
         std::vector<Schema::Action> allactions; // DEBUG ONLY
+        std::shared_ptr<CPlayerBattleCallback> battle;
 
         std::string renderANSI();
         std::string debugInfo(Action *action, const CStack *astack, BattleHex *nbh); // DEBUG ONLY

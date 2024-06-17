@@ -17,9 +17,9 @@
 #include <memory>
 #include <stdexcept>
 
-#include "BAI/v1/state.h"
 #include "delegatee.h"
 #include "v1/BAI.h"
+#include "v2/BAI.h"
 
 namespace MMAI::BAI {
     // Inheritable
@@ -48,6 +48,8 @@ namespace MMAI::BAI {
         switch (version) {
         break; case 1:
             res = std::make_unique<V1::BAI>(version, colorname, baggage, env, cb);
+        break; case 2:
+            res = std::make_unique<V2::BAI>(version, colorname, baggage, env, cb);
         break; default:
             throw std::runtime_error("Unsupported schema version: " + std::to_string(version));
         }

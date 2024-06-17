@@ -14,25 +14,12 @@
 // limitations under the License.
 // =============================================================================
 
-#pragma once
+#include "BAI/v1/BAI.h"
+#include "BAI/v2/BAI.h"
+#include "BAI/v2/state.h"
 
-#ifdef MAX_SCHEMA_VERSION
-  #if MAX_SCHEMA_VERSION < 1
-    #undef MAX_SCHEMA_VERSION
-    #define MAX_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MAX_SCHEMA_VERSION 1
-#endif
-
-#ifdef MIN_SCHEMA_VERSION
-  #if MIN_SCHEMA_VERSION > 1
-    #undef MAX_SCHEMA_VERSION
-    #define MIN_SCHEMA_VERSION 1
-  #endif
-#else
-  #define MIN_SCHEMA_VERSION 1
-#endif
-
-#include "types.h"
-#include "constants.h"
+namespace MMAI::BAI::V2 {
+    std::unique_ptr<V1::State> BAI::initState(const CPlayerBattleCallback* b) {
+        return std::make_unique<State>(colorname, b);
+    };
+}
