@@ -42,11 +42,8 @@ namespace MMAI::BAI::V1 {
 
         Battlefield(const CPlayerBattleCallback* battle, const CStack* astack_, int percentValue, bool isMorale);
 
-        // FIXME this method is broken
-        void offTurnUpdate(CPlayerBattleCallback* battle);
-
         const CStack* const astack;
-        Hexes hexes; // not const due to offTurnUpdate
+        const Hexes hexes;
 
     private:
         static bool IsReachable(

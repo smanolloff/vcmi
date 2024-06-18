@@ -48,7 +48,7 @@ namespace MMAI::BAI::V1 {
     , initialSide1ArmyValue(std::get<1>(CalcTotalArmyValues(battle_))) {
         bfstate.reserve(Schema::V1::BATTLEFIELD_STATE_SIZE);
         actmask.reserve(Schema::V1::N_ACTIONS);
-        attnmask.reserve(165 * 165);
+        // attnmask.reserve(165 * 165);
         battle = battle_;
     }
 
@@ -83,7 +83,7 @@ namespace MMAI::BAI::V1 {
 
         supdata = std::make_unique<SupplementaryData>(
             colorname,
-            SupplementaryData::Side(side),
+            Side(side),
             dmgDealt,
             dmgReceived,
             unitsLost,
@@ -98,12 +98,12 @@ namespace MMAI::BAI::V1 {
         attackLogs.clear(); // accumulate new logs until next turn
         bfstate.clear();
         actmask.clear();
-        attnmask.clear();
+        // attnmask.clear();
 
         for (int i=0; i<EI(NonHexAction::count); i++) {
             switch (NonHexAction(i)) {
             break; case NonHexAction::RETREAT: actmask.push_back(true);
-            break; case NonHexAction::WAIT: actmask.push_back(!battlefield->astack->waitedThisTurn);
+            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->waitedThisTurn);
             break; default:
                 THROW_FORMAT("Unexpected NonHexAction: %d", i);
             }
@@ -180,5 +180,11 @@ namespace MMAI::BAI::V1 {
 
         auto stack = battle->battleGetStackByID(bte.stackID);
         isMorale = stack->unitSide() == side;
+    }
+
+    void State::onBattleEnd(const BattleResult *br) {
+        onActiveStack(nullptr);
+        supdata->ended = true;
+        supdata->victory = (br->winner == battle->battleGetMySide());
     }
 };

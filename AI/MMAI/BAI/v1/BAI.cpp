@@ -65,9 +65,7 @@ namespace MMAI::BAI::V1 {
     void BAI::battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(queryID.getNum()) + ") ***");
 
-        // Re-use last observation, just set end/victory flags
-        state->supdata->ended = true;
-        state->supdata->victory = (br->winner == battle->battleGetMySide());
+        state->onBattleEnd(br);
 
         // Check if battle ended normally or was forced via a RETREAT action
         if (state->action == nullptr) {
@@ -188,7 +186,7 @@ namespace MMAI::BAI::V1 {
 
         // With action masking, invalid actions should never occur
         // However, for manual playing/testing, it's bad to raise exceptions
-        // => return errmask and raise in Gym env if errmask != 0
+        // => return errcode (Gym env will raise an exception if errcode > 0)
         auto &bhex = action->hex->bhex;
         auto &cstack = action->hex->cstack;
         auto mask = HexActMask(action->hex->attr(HexAttribute::HEX_ACTION_MASK_FOR_ACT_STACK));

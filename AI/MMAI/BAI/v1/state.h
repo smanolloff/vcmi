@@ -35,7 +35,7 @@ namespace MMAI::BAI::V1 {
         const Schema::AttentionMask& getAttentionMask() const override { return attnmask; }
         const Schema::BattlefieldState& getBattlefieldState() const override { return bfstate; }
         const std::any getSupplementaryData() const override {
-            return static_cast<MMAI::Schema::V1::ISupplementaryData*>(supdata.get());
+            return static_cast<const MMAI::Schema::V1::ISupplementaryData*>(supdata.get());
         }
         int version() const override { return 1; }
 
@@ -45,6 +45,7 @@ namespace MMAI::BAI::V1 {
         void onActiveStack(const CStack* astack);
         void onBattleStacksAttacked(const std::vector<BattleStackAttacked> &bsa);
         void onBattleTriggerEffect(const BattleTriggerEffect &bte);
+        void onBattleEnd(const BattleResult *br);
 
         // Subsequent versions may override this if they only change
         // the data type of encoded values (i.e. have their own HEX_ENCODING)

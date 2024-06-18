@@ -277,12 +277,13 @@ namespace MMAI::Schema::V1 {
 
     using AttackLogs = std::vector<IAttackLog*>;
 
+    enum class Side : int {LEFT, RIGHT}; // corresponds to BattleSide::Type
+
     // This is returned as std::any by IState
     // => MMAI_LINKAGE is needed to ensure std::any_cast sees the same symbol
     class MMAI_LINKAGE ISupplementaryData {
     public:
         enum class Type : int {REGULAR, ANSI_RENDER};
-        enum class Side : int {LEFT, RIGHT}; // corresponds to BattleSide::Type
 
         virtual Type getType() const = 0;
         virtual Side getSide() const = 0;

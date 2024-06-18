@@ -53,8 +53,10 @@ MMAI::Schema::Action randomValidAction(const MMAI::Schema::ActionMask &mask) {
             validActions.push_back(j);
     }
 
-    if (validActions.empty())
-        throw std::runtime_error("No valid actions?!");
+    if (validActions.empty()) {
+        logAi->info("No valid actions => reset");
+        return MMAI::Schema::ACTION_RESET;
+    }
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -291,14 +293,14 @@ Args parse_args(int argc, char * argv[])
 
         auto any = s->getSupplementaryData();
         ASSERT(any.has_value(), "supdata is empty");
-        auto &t = typeid(MMAI::Schema::V1::ISupplementaryData*);
+        auto &t = typeid(const MMAI::Schema::V1::ISupplementaryData*);
         ASSERT(any.type() == t, boost::str(
             boost::format("Bad std::any payload type from getSupplementaryData(): want: %s/%u, have: %s/%u") \
             % boost::core::demangle(t.name()) % t.hash_code() \
             % boost::core::demangle(any.type().name()) % any.type().hash_code()
         ));
 
-        auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
+        auto sup = std::any_cast<const MMAI::Schema::V1::ISupplementaryData*>(any);
         auto side = static_cast<int>(sup->getSide());
 
         if (steps == 0 && benchmark) {
@@ -316,6 +318,12 @@ Args parse_args(int argc, char * argv[])
                 : (prerecorded ? recordedAction(recordings) : randomValidAction(lastmasks.at(side)));
 
             renders.at(side) = false;
+        } else if (!benchmark && !renders.at(side)) {
+            logAi->debug("Side: %d", side);
+            renders.at(side) = true;
+            // store mask of this result for the next action
+            lastmasks.at(side) = s->getActionMask();
+            act = MMAI::Schema::ACTION_RENDER_ANSI;
         } else if (sup->getIsBattleEnded()) {
             if (side == benchside) {
                 resets++;
@@ -341,14 +349,6 @@ Args parse_args(int argc, char * argv[])
             if (!benchmark) logGlobal->debug("user-callback battle ended => sending ACTION_RESET");
             act = MMAI::Schema::ACTION_RESET;
         // } else if (false)
-        } else if (!benchmark && !renders.at(side)) {
-            logAi->debug("Side: %d", side);
-            renders.at(side) = true;
-            logAi->debug("Side: %d", side);
-            // store mask of this result for the next action
-            lastmasks.at(side) = s->getActionMask();
-            logAi->debug("Side: %d", side);
-            act = MMAI::Schema::ACTION_RENDER_ANSI;
         } else {
             renders.at(side) = false;
             act = interactive

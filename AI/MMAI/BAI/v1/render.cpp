@@ -59,6 +59,16 @@ namespace MMAI::BAI::V1 {
             rinfos.insert({cstack, battle->getReachability(cstack)});
         }
 
+        auto ended = state->supdata->ended;
+
+        if (!astack) // draw?
+            expect(ended, "astack is NULL, but ended is not true");
+        if (ended) {
+            // at battle-end, activeStack is usually the ENEMY stack
+            expect(state->supdata->victory == (astack->getOwner() == battle->battleGetMySide()), "state->supdata->victory is %d, but astack->side=%d and myside=%d", state->supdata->victory, astack->getOwner(), battle->battleGetMySide());
+            expect(!state->battlefield->astack, "ended, but battlefield->astack is not NULL");
+        }
+
         // Return (attr == N/A), but after performing some checks
         auto isNA = [](int v, const CStack* stack, const char* attrname) {
             if (v == BATTLEFIELD_STATE_VALUE_NA) {
@@ -357,15 +367,19 @@ namespace MMAI::BAI::V1 {
                     }
                 break; case A::HEX_ACTION_MASK_FOR_ACT_STACK: {
                     // Check mask is the same for the corresponding FRIENDLY_STACK_ attribute
-                    auto baseattr = astack->unitSide()
-                        ? A::HEX_ACTION_MASK_FOR_R_STACK_0
-                        : A::HEX_ACTION_MASK_FOR_L_STACK_0;
+                    if (!ended) {
+                        auto baseattr = astack->unitSide()
+                            ? A::HEX_ACTION_MASK_FOR_R_STACK_0
+                            : A::HEX_ACTION_MASK_FOR_L_STACK_0;
 
-                    expect(
-                        v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
-                        "HEX_ACTION_MASK_FOR_ACT_STACK: =%d but different corresponding R/L v=%d",
-                        v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
-                    );
+                        expect(
+                            v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
+                            "HEX_ACTION_MASK_FOR_ACT_STACK: =%d but different corresponding R/L v=%d",
+                            v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
+                        );
+                    } else {
+                        expect(v == -1, "HEX_ACTION_MASK_FOR_ACT_STACK: =%d but there is no active stack");
+                    }
                 }
                 break; case A::HEX_ACTION_MASK_FOR_R_STACK_0:
                     ensureCorrectMaskOrNA(bh, v, r_CStacks.at(0), "HEX_ACTION_MASK_FOR_R_STACK_0");
@@ -396,16 +410,20 @@ namespace MMAI::BAI::V1 {
                 break; case A::HEX_ACTION_MASK_FOR_L_STACK_6:
                     ensureCorrectMaskOrNA(bh, v, l_CStacks.at(6), "HEX_ACTION_MASK_FOR_L_STACK_6");
                 break; case A::HEX_MELEEABLE_BY_ACT_STACK: {
-                    // Check meleeability is the same for the corresponding FRIENDLY_STACK_ attribute
-                    auto baseattr = astack->unitSide()
-                        ? A::HEX_MELEEABLE_BY_R_STACK_0
-                        : A::HEX_MELEEABLE_BY_L_STACK_0;
+                    if (!ended) {
+                        // Check meleeability is the same for the corresponding FRIENDLY_STACK_ attribute
+                        auto baseattr = astack->unitSide()
+                            ? A::HEX_MELEEABLE_BY_R_STACK_0
+                            : A::HEX_MELEEABLE_BY_L_STACK_0;
 
-                    expect(
-                        v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
-                        "HEX_MELEEABLE_BY_ACT_STACK: =%d but different corresponding R/L v=%d",
-                        v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
-                    );
+                        expect(
+                            v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
+                            "HEX_MELEEABLE_BY_ACT_STACK: =%d but different corresponding R/L v=%d",
+                            v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
+                        );
+                    } else {
+                        expect(v == -1, "HEX_MELEEABLE_BY_ACT_STACK: =%d but there is no active stack");
+                    }
                 }
                 break; case A::HEX_MELEEABLE_BY_L_STACK_0:
                     ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_MELEEABLE_BY_L_STACK_0");
@@ -436,16 +454,20 @@ namespace MMAI::BAI::V1 {
                 break; case A::HEX_MELEEABLE_BY_R_STACK_6:
                     ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_MELEEABLE_BY_R_STACK_6");
                 break; case A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK: {
-                    // Check meleeability is the same for the corresponding FRIENDLY_STACK_ attribute
-                    auto baseattr = astack->unitSide()
-                        ? A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0
-                        : A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0;
+                    if (!ended) {
+                        // Check meleeability is the same for the corresponding FRIENDLY_STACK_ attribute
+                        auto baseattr = astack->unitSide()
+                            ? A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0
+                            : A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0;
 
-                    expect(
-                        v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
-                        "HEX_SHOOT_DISTANCE_FROM_ACT_STACK: =%d but different corresponding R/L v=%d",
-                        v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
-                    );
+                        expect(
+                            v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
+                            "HEX_SHOOT_DISTANCE_FROM_ACT_STACK: =%d but different corresponding R/L v=%d",
+                            v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
+                        );
+                    } else {
+                        expect(v == -1, "HEX_SHOOT_DISTANCE_FROM_ACT_STACK: =%d but there is no active stack");
+                    }
                 }
                 break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0:
                     ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_SHOOT_DISTANCE_FROM_L_STACK_0");
@@ -476,16 +498,20 @@ namespace MMAI::BAI::V1 {
                 break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_6:
                     ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_SHOOT_DISTANCE_FROM_R_STACK_6");
                 break; case A::HEX_MELEE_DISTANCE_FROM_ACT_STACK: {
-                    // Check meleeability is the same for the corresponding FRIENDLY_STACK_ attribute
-                    auto baseattr = astack->unitSide()
-                        ? A::HEX_MELEE_DISTANCE_FROM_R_STACK_0
-                        : A::HEX_MELEE_DISTANCE_FROM_L_STACK_0;
+                    if (!ended) {
+                        // Check meleeability is the same for the corresponding FRIENDLY_STACK_ attribute
+                        auto baseattr = astack->unitSide()
+                            ? A::HEX_MELEE_DISTANCE_FROM_R_STACK_0
+                            : A::HEX_MELEE_DISTANCE_FROM_L_STACK_0;
 
-                    expect(
-                        v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
-                        "HEX_MELEE_DISTANCE_FROM_ACT_STACK: =%d but different corresponding R/L v=%d",
-                        v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
-                    );
+                        expect(
+                            v == hex->attrs.at(EI(baseattr) + astack->unitSlot()),
+                            "HEX_MELEE_DISTANCE_FROM_ACT_STACK: =%d but different corresponding R/L v=%d",
+                            v, hex->attrs.at(EI(baseattr) + astack->unitSlot())
+                        );
+                    } else {
+                        expect(v == -1, "HEX_MELEE_DISTANCE_FROM_ACT_STACK: =%d but there is no active stack");
+                    }
                 }
                 break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_0:
                     ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_MELEE_DISTANCE_FROM_L_STACK_0");
@@ -605,8 +631,8 @@ namespace MMAI::BAI::V1 {
         auto bfstate = istate->getBattlefieldState();
         auto supdata_ = istate->getSupplementaryData();
         expect(supdata_.has_value(), "supdata_ holds no value");
-        expect(supdata_.type() == typeid(ISupplementaryData*), "supdata_ of unexpected type");
-        auto supdata = std::any_cast<ISupplementaryData*>(supdata_);
+        expect(supdata_.type() == typeid(const ISupplementaryData*), "supdata_ of unexpected type");
+        auto supdata = std::any_cast<const ISupplementaryData*>(supdata_);
         expect(supdata, "supdata holds a nullptr");
         auto hexes = supdata->getHexes();
         auto color = supdata->getColor();
@@ -622,8 +648,8 @@ namespace MMAI::BAI::V1 {
             }
         }
 
-        // Battle ended?
-        expect(ahex, "Cannot render without an active hex");
+        if (!ahex)
+            logAi->warn("could not find an active hex. Is this a draw?");
 
         std::string nocol = "\033[0m";
         std::string redcol = "\033[31m"; // red
@@ -652,7 +678,7 @@ namespace MMAI::BAI::V1 {
             auto col1 = ourcol;
             auto col2 = enemycol;
 
-            if (alog->getDefenderSide() == ahex->getAttr(A::STACK_SIDE)) {
+            if (alog->getDefenderSide() == EI(supdata->getSide())) {
                 col1 = enemycol;
                 col2 = ourcol;
             }
@@ -738,16 +764,14 @@ namespace MMAI::BAI::V1 {
 
                 switch(HexState(hex->getAttr(A::HEX_STATE))) {
                 break; case HexState::FREE: {
-                    if (amask.test(EI(HexAction::MOVE)) > 0) {
+                    if (!supdata->getIsBattleEnded() && amask.test(EI(HexAction::MOVE)) > 0) {
                         sym = "○";
 
-                        if (ahex) {
-                            auto emasks = masks.at(!ahex->getAttr(A::STACK_SIDE));
-                            for (auto &emask : emasks) {
-                                if (emask.test(EI(HexAction::MOVE))) {
-                                    sym = "◎";
-                                    break;
-                                }
+                        auto emasks = masks.at(!EI(supdata->getSide()));
+                        for (auto &emask : emasks) {
+                            if (emask.test(EI(HexAction::MOVE))) {
+                                sym = "◎";
+                                break;
                             }
                         }
                     } else {
@@ -758,10 +782,10 @@ namespace MMAI::BAI::V1 {
                     sym = "\033[90m▦\033[0m";
                 break; case HexState::OCCUPIED: {
                     auto slot = hex->getAttr(A::STACK_SLOT);
-                    auto friendly = hex->getAttr(A::STACK_SIDE) == ahex->getAttr(A::STACK_SIDE);
+                    auto friendly = hex->getAttr(A::STACK_SIDE) == EI(supdata->getSide());
                     auto col = friendly ? ourcol : enemycol;
 
-                    if (hex->getAttr(A::STACK_IS_ACTIVE) > 0)
+                    if (hex->getAttr(A::STACK_IS_ACTIVE) > 0 && !supdata->getIsBattleEnded())
                         col += activemod;
 
                     stackhexes.at(hex->getAttr(A::STACK_SIDE) ? 7+slot : slot) = hex;
@@ -799,7 +823,10 @@ namespace MMAI::BAI::V1 {
             switch(i) {
             case 1:
                 name = "Player";
-                value = ourcol == redcol ? redcol + "RED" + nocol : bluecol + "BLUE" + nocol;
+                if (supdata->getIsBattleEnded())
+                    value = "";
+                else
+                    value = ourcol == redcol ? redcol + "RED" + nocol : bluecol + "BLUE" + nocol;
                 break;
             case 2:
                 name = "Last action";
@@ -908,9 +935,9 @@ namespace MMAI::BAI::V1 {
                 std::string value = "";
 
                 if (hex) {
-                    color = (hex->getAttr(A::STACK_SIDE) == ahex->getAttr(A::STACK_SIDE)) ? ourcol : enemycol;
+                    color = (hex->getAttr(A::STACK_SIDE) == EI(supdata->getSide())) ? ourcol : enemycol;
                     value = std::to_string(hex->getAttr(a));
-                    if (hex->getAttr(A::STACK_IS_ACTIVE) > 0) color += activemod;
+                    if (hex->getAttr(A::STACK_IS_ACTIVE) > 0 && !supdata->getIsBattleEnded()) color += activemod;
                 }
 
                 row.at(2+i) = {color, colwidths.at(2+i), value};

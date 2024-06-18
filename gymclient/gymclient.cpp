@@ -159,39 +159,35 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
 
     std::cout << "Loaded v" << version << " model from " << modelPath << "\n";
 
-    int size;
     int sizeOneHex;
     int nactions;
     switch(version) {
         break; case 1:
-            size = MMAI::Schema::V1::BATTLEFIELD_STATE_SIZE;
             sizeOneHex = MMAI::Schema::V1::BATTLEFIELD_STATE_SIZE_ONE_HEX;
             nactions = MMAI::Schema::V1::N_ACTIONS;
         break; case 2:
-            size = MMAI::Schema::V2::BATTLEFIELD_STATE_SIZE;
             sizeOneHex = MMAI::Schema::V2::BATTLEFIELD_STATE_SIZE_ONE_HEX;
             nactions = MMAI::Schema::V1::N_ACTIONS;
         break; default:
             throw std::runtime_error("Unknown MMAI version: " + std::to_string(version));
     }
 
-    auto getvalue = [guard, model, size, sizeOneHex](const MMAI::Schema::IState * s) {
+    auto getvalue = [guard, model, sizeOneHex](const MMAI::Schema::IState * s) {
         auto &src = s->getBattlefieldState();
         auto dst = MMAI::Schema::BattlefieldState{};
         dst.reserve(dst.size());
         std::copy(src.begin(), src.end(), dst.begin());
+        auto obs = torch::from_blob(dst.data(), {11, 15, sizeOneHex}, torch::kFloat);
 
-        // TODO: see if from_blob can directly accept the correct shape
-        auto obs = torch::from_blob(dst.data(), {size}, torch::kFloat).reshape({11, 15, sizeOneHex});
         auto method = model.get_method("get_value");
         auto inputs = std::vector<torch::IValue>{obs};
         auto res = method(inputs).toDouble();
         return res;
     };
 
-    auto getaction = [guard, model, size, sizeOneHex, nactions, printModelPredictions](const MMAI::Schema::IState * s) {
+    auto getaction = [guard, model, sizeOneHex, nactions, printModelPredictions](const MMAI::Schema::IState * s) {
         auto any = s->getSupplementaryData();
-        auto sup = std::any_cast<MMAI::Schema::V1::ISupplementaryData*>(any);
+        auto sup = std::any_cast<const MMAI::Schema::V1::ISupplementaryData*>(any);
 
         if (sup->getIsBattleEnded())
             return MMAI::Schema::ACTION_RESET;
@@ -200,10 +196,10 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
         auto dst = MMAI::Schema::BattlefieldState{};
         dst.reserve(src.size());
         std::copy(src.begin(), src.end(), dst.begin());
+        auto obs = torch::from_blob(dst.data(), {11, 15, sizeOneHex}, torch::kFloat);
 
-        // TODO: see if from_blob can directly accept the correct shape
-        // XXX: handle FLOAT encoding
-        auto obs = torch::from_blob(dst.data(), {static_cast<long>(size)}, torch::kFloat).reshape({11, 15, sizeOneHex});
+        // yields no performance benefit over (safer) copy approach:
+        // auto obs = torch::from_blob(const_cast<float*>(s->getBattlefieldState().data()), {11, 15, sizeOneHex}, torch::kFloat);
 
         auto intmask = std::vector<int>{};
         intmask.reserve(nactions);

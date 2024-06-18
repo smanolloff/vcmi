@@ -391,34 +391,4 @@ namespace MMAI::BAI::V1 {
 
         return res;
     };
-
-    /**
-     * Update state between turns:
-     * - used if expecting a battle end (for terminal state/render)
-     * - no "reachable" hexes (off-turn means no active stack)
-     */
-    void Battlefield::offTurnUpdate(CPlayerBattleCallback* battle) {
-        auto ainfo = battle->getAccesibility();
-        auto queue = GetQueue(battle, nullptr, false);
-
-        for (auto &hexrow : hexes) {
-            for (auto &hex : hexrow) {
-                switch(ainfo.at(hex->bhex.hex)) {
-                break; case EAccessibility::ACCESSIBLE:
-                    hex->setState(HexState::FREE);
-                break; case EAccessibility::OBSTACLE:
-                    hex->setState(HexState::OBSTACLE);
-                break; case EAccessibility::ALIVE_STACK: {
-                    hex->setState(HexState::OCCUPIED);
-
-                    // nothing else needed here: no active stack
-                    // => no special move case
-                    // => no action mask
-                }
-                break; default:
-                  THROW_FORMAT("Unexpected hex accessibility for hex %d: %d", hex->bhex.hex % static_cast<int>(ainfo.at(hex->bhex.hex)));
-                }
-            }
-        }
-    }
 }
