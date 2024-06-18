@@ -14,28 +14,26 @@
 // limitations under the License.
 // =============================================================================
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#include "BAI/v2/encoder.h"
+#include "schema/v1/constants.h"
+#include "schema/v2/constants.h"
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+namespace MMAI::BAI::V2 {
+    // Same as V1, but uses HEX_ENCODING from V2
+    void Encoder::Encode(const HexAttribute &a, const int &v, BS &vec) {
+        auto &[_, e, n, vmax] = Schema::V2::HEX_ENCODING.at(EI(a));
 
-static const char * g_cszAiName = "MMAI";
+        if (v == Schema::V1::BATTLEFIELD_STATE_VALUE_NA) {
+            vec.push_back(Schema::V1::BATTLEFIELD_STATE_VALUE_NA);
+            return;
+        }
 
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
+        if (v > vmax)
+            THROW_FORMAT("Cannot encode value: %d (vmax=%d, a=%d, n=%d)", v % vmax % EI(a) % n);
 
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
+        if (e != Schema::V1::Encoding::FLOATING)
+            throw std::runtime_error("V2 encodes all values as floats");
 
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+        EncodeFloating(v, vmax, vec);
+    }
 }

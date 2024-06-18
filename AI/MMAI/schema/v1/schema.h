@@ -14,28 +14,25 @@
 // limitations under the License.
 // =============================================================================
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#pragma once
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
+#ifdef MAX_SCHEMA_VERSION
+  #if MAX_SCHEMA_VERSION < 1
+    #undef MAX_SCHEMA_VERSION
+    #define MAX_SCHEMA_VERSION 1
+  #endif
+#else
+  #define MAX_SCHEMA_VERSION 1
 #endif
 
-static const char * g_cszAiName = "MMAI";
+#ifdef MIN_SCHEMA_VERSION
+  #if MIN_SCHEMA_VERSION > 1
+    #undef MAX_SCHEMA_VERSION
+    #define MIN_SCHEMA_VERSION 1
+  #endif
+#else
+  #define MIN_SCHEMA_VERSION 1
+#endif
 
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
-
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
-}
+#include "types.h"
+#include "constants.h"

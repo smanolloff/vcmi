@@ -8,7 +8,7 @@
 The setup guide below is tested on MacOS 14.0 Sonoma.
 
 All commands in this tutorial must be executed from the VCMI root folder
-<br>(e.g. `/home/yourname/vcmi-gym/vcmi_gym/envs/v0/vcmi`).
+<br>(e.g. `/home/yourname/vcmi-gym/vcmi`).
 
 ### Set up dependencies
 
@@ -42,8 +42,7 @@ For development purposes, VCMI should use the same libtorch as the one
 used by vcmi-gym and installed by pip. Create these symlinks:
 
 ```bash
-$ ln -s ../../../../.venv .venv
-$ ln -s ../.venv/lib/python3.10/site-packages/torch myclient/libtorch
+$ ln -s ../../.venv/lib/python3.10/site-packages/torch gymclient/libtorch
 ```
 
 ### Compile VCMI
@@ -51,15 +50,15 @@ $ ln -s ../.venv/lib/python3.10/site-packages/torch myclient/libtorch
 ```bash
 $ cmake --fresh -S . -B build -Wno-dev \
         -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
-        -D CMAKE_BUILD_TYPE=Debug \
+        -D CMAKE_BUILD_TYPE=Release \
         -D ENABLE_SINGLE_APP_BUILD=1 \
         -D ENABLE_CCACHE=1 \
         -D ENABLE_NULLKILLER_AI=0 \
         -D ENABLE_LAUNCHER=0 \
-        -D ENABLE_MYCLIENT_BUILD=1 \
+        -D ENABLE_GYMCLIENT=1 \
         -D ENABLE_DEV_BUILD=1 \
         -D ENABLE_LIBTORCH=1 \
-        -D CMAKE_EXPORT_COMPILE_COMMANDS=1
+        -D CMAKE_EXPORT_COMPILE_COMMANDS=0
 
 $ cmake --build rel/
 ```
@@ -74,7 +73,7 @@ $ cmake -S . -B build -Wno-dev \
     -D ENABLE_CCACHE=1 \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
-    -D ENABLE_MYCLIENT_BUILD=1 \
+    -D ENABLE_GYMCLIENT=1 \
     -D ENABLE_DEV_BUILD=1 \
     -D ENABLE_LIBTORCH=1 \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=1
@@ -111,7 +110,7 @@ Instead, symbolic links must be manually created to files which contain
 the appropriate settings for vcmi-gym:
 
 ```bash
-$ ln -s "$PWD"/myclient/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
+$ ln -s "$PWD"/gymclient/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
 ```
 
 ### Manual test
@@ -119,13 +118,13 @@ $ ln -s "$PWD"/myclient/{settings,modSettings,persistentStorage}.json "$HOME/Lib
 Start a new game on the specified map (with GUI):
 
 ```bash
-$ rel/bin/myclient-gui --map ai/P1.vmap
+$ rel/bin/gymclient-gui --map gym/A1.vmap
 ```
 
 ### Benchmark
 
 ```
-$ rel/bin/myclient-headless --map ai/A1.vmap --loglevel-ai error --benchmark
+$ rel/bin/gymclient-headless --map gym/A1.vmap --loglevel-ai error --benchmark
 ```
 
 This will run the game in headless mode and directly engage in a battle
@@ -150,7 +149,7 @@ Benchmark:
 
 > [!TIP]
 > If you also compiled the debug binary, you can benchmark it by running
-> `build/bin/myclient-headless` with the same arguments and
+> `build/bin/gymclient-headless` with the same arguments and
 > observe the performance difference for yourself.
 
 ### Loading AI models
@@ -158,7 +157,7 @@ Benchmark:
 Launch the game and replace the default VCMI scripted AI with a pre-trained *real* AI:
 
 ```bash
-rel/bin/myclient-gui --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
+rel/bin/gymclient-gui --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
 ```
 
 where `/path/to/model.pt` is a pre-trained Torch JIT model. If you don't have

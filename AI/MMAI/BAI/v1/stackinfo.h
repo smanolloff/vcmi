@@ -14,28 +14,31 @@
 // limitations under the License.
 // =============================================================================
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#pragma once
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+#include "battle/ReachabilityInfo.h"
+#include "schema/v1/types.h"
 
-static const char * g_cszAiName = "MMAI";
+namespace MMAI::BAI::V1 {
+    using DmgMod = Schema::V1::DmgMod;
 
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
+    struct StackInfo {
+        int speed;
+        bool canshoot;
+        DmgMod meleemod;
+        bool noDistancePenalty;
+        std::shared_ptr<ReachabilityInfo> rinfo;
 
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+        StackInfo(
+            int speed_,
+            bool canshoot_,
+            DmgMod meleemod_,
+            bool noDistancePenalty_,
+            std::shared_ptr<ReachabilityInfo> rinfo_
+        ) : speed(speed_),
+            canshoot(canshoot_),
+            meleemod(meleemod_),
+            noDistancePenalty(noDistancePenalty_),
+            rinfo(rinfo_) {};
+    };
 }

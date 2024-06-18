@@ -14,28 +14,31 @@
 // limitations under the License.
 // =============================================================================
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#pragma once
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+#include "AI/MMAI/schema/schema.h"
 
-static const char * g_cszAiName = "MMAI";
+using Args = std::tuple<
+    MMAI::Schema::Baggage*,
+    int,         // maxBattles
+    int,         // seed
+    int,         // randomHeroes
+    int,         // randomObstacles
+    int,         // swapSides
+    std::string, // loglevelGlobal
+    std::string, // loglevelAI
+    std::string, // loglevelStats
+    std::string, // redAI
+    std::string, // blueAI
+    std::string, // redModel
+    std::string, // blueModel
+    std::string, // statsMode
+    std::string, // statsStorage
+    int,         // statsPersistFreq
+    int,         // statsSampling
+    float,       // statsScoreVar
+    bool,        // printModelPredictions
+    bool         // trueRng
+>;
 
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
-
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
-}
+Args parse_args(int argc, char * argv[]);

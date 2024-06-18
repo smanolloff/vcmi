@@ -14,19 +14,19 @@
 // limitations under the License.
 // =============================================================================
 
-#include "GameConstants.h"
-#include "battle/BattleHex.h"
-#include "battle/CBattleInfoEssentials.h"
-#include "export.h"
-#include "gameState/CGameState.h"
-#include "AAI.h"
-#include "mapObjects/CArmedInstance.h"
-#include "mapObjects/CGHeroInstance.h"
-
 #include <cstdio>
 #include <boost/thread.hpp>
+#include <stdexcept>
 
-namespace MMAI {
+#include "CCallback.h"
+#include "battle/BattleAction.h"
+#include "gameState/CGameState.h"
+#include "mapObjects/CGHeroInstance.h"
+
+#include "common.h"
+#include "AAI.h"
+
+namespace MMAI::AAI {
     AAI::AAI() {
         std::ostringstream oss;
         oss << this; // Store this memory address
@@ -52,75 +52,38 @@ namespace MMAI {
         info("*** initGameInterface ***");
 
         color = CB->getPlayerID()->toString();
+        baggage = baggage_;
 
         ASSERT(baggage_.has_value(), "baggage has no value");
-        ASSERT(baggage_.type() == typeid(Export::Baggage*), "baggage of unexpected type");
-
-        baggage = std::any_cast<Export::Baggage*>(baggage_);
+        ASSERT(baggage_.type() == typeid(Schema::Baggage*), "baggage of unexpected type");
+        auto baggage__ = std::any_cast<Schema::Baggage*>(baggage);
+        ASSERT(baggage__, "baggage contains a nullptr");
 
         if (color == "red") {
             // ansicolor = "\033[41m";  // red background
-            battleAiName = baggage->battleAINameRed;
-            getActionOrig = baggage->f_getActionRed;
-            getValue = baggage->f_getValueRed;
-            debug("(initGameInterface) using f_getActionRed");
+            battleAiName = baggage__->battleAINameRed;
         } else if (color == "blue") {
             // ansicolor = "\033[44m";  // blue background
-            battleAiName = baggage->battleAINameBlue;
-            getActionOrig = baggage->f_getActionBlue;
-            getValue = baggage->f_getValueBlue;
-            debug("(initGameInterface) using f_getActionBlue");
+            battleAiName = baggage__->battleAINameBlue;
         } else {
             // Maps and everything basically assumes red human player attacking blue human player
             // Swapping armies and sides still uses only RED and BLUE as players
-            // All other players should never be asked to lead a battle
-            getActionOrig = [](const Export::Result* result) {
-                throw std::runtime_error("Tried to call getAction on a non-RED non-BLUE player");
-                return 0;
-            };
-            getValue = getActionOrig;
-            battleAiName = "BUG_IF_REQUESTED";
-            debug("(initGameInterface) n/a getAction");
+            // Other players should never be asked to lead a battle
+            // However, gymclient sets settings["server"]["playerAI"] = "MMAI"
+            // => all players get initialized with MMAI::AAI
+            // We must make sure the getBattleAI never gets called on them
+            battleAiName = "-";
         }
-
 
         debug("(init) battleAiName: " + battleAiName);
 
-        // A wrapper around baggage->getAction
-        // It ensures special handling for non-game actions (eg. render, reset)
-        getActionWrapper = [this](const Export::Result* result) {
-            debug("getActionWrapper called with result type: " + std::to_string(result->type));
-            auto action = getNonRenderAction(result);
-            debug("getActionWrapper received action: " + std::to_string(action));
-
-            if (action == Export::ACTION_RESET) {
-                // AAI::getAction is called only by BAI, only during battle
-                // FIXME: retreat may be impossible, a _real_ reset should be implemented
-                info("Will retreat in order to reset battle");
-                ASSERT(!bai->result->ended, "expected active battle");
-                action = Export::ACTION_RETREAT;
-            }
-
-            return action;
-        };
-
         cb = CB;
         cbc = CB;
+
+        // XXX: not sure if needed
         cb->waitTillRealize = true;
         cb->unlockGsWhenWaiting = true;
     };
-
-    Export::Action AAI::getNonRenderAction(const Export::Result* result) {
-        // info("getNonRenderAciton called with result type: " + std::to_string(result->type));
-        auto action = getActionOrig(result);
-        while (action == Export::ACTION_RENDER_ANSI) {
-            auto res = Export::Result(bai->renderANSI(), Export::Side(bai->battle->battleGetMySide()));
-            // info("getNonRenderAciton (loop) called with result type: " + std::to_string(res.type));
-            action = getActionOrig(&res);
-        }
-
-        return action;
-    }
 
     void AAI::yourTurn(QueryID queryID) {
         info("*** yourTurn *** (" + std::to_string(queryID.getNum()) + ")");
@@ -164,17 +127,12 @@ namespace MMAI {
 
         // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON
         //      The gym maps use the hero's experience as a unique ref
-
-        debug("(battleStart) hero1->tempOwner: " + std::to_string(hero1->tempOwner));
-        debug("(battleStart) hero2->tempOwner: " + std::to_string(hero2->tempOwner));
-        debug("(battleStart) hero(army)->tempOwner: " + std::to_string(hero->tempOwner));
-        debug("(battleStart) hero1->getOwner(): " + std::to_string(hero1->getOwner()));
-        debug("(battleStart) hero2->getOwner(): " + std::to_string(hero2->getOwner()));
-        debug("(battleStart) hero(army)->getOwner(): " + std::to_string(hero->getOwner()));
-
-        // armyID = int(hero->exp);
-        // debug("(battleStart) armyID: " + std::to_string(armyID));
-        // debug("Our hero: " + std::to_string(armyID));
+        // debug("(battleStart) hero1->tempOwner: " + std::to_string(hero1->tempOwner));
+        // debug("(battleStart) hero2->tempOwner: " + std::to_string(hero2->tempOwner));
+        // debug("(battleStart) hero(army)->tempOwner: " + std::to_string(hero->tempOwner));
+        // debug("(battleStart) hero1->getOwner(): " + std::to_string(hero1->getOwner()));
+        // debug("(battleStart) hero2->getOwner(): " + std::to_string(hero2->getOwner()));
+        // debug("(battleStart) hero(army)->getOwner(): " + std::to_string(hero->getOwner()));
 
         // just copied code from CAdventureAI::battleStart
         // only difference is argument to initBattleInterface()
@@ -183,50 +141,14 @@ namespace MMAI {
 
         auto ainame = getBattleAIName();
         battleAI = CDynLibHandler::getNewBattleAI(ainame);
-
-        ASSERT(!bai, "expected a nullptr bai");
-
-        if (ainame == "MMAI") {
-            bai = std::static_pointer_cast<BAI>(battleAI);
-            bai->color = color;
-            bai->ansicolor = ansicolor;
-            bai->myInitBattleInterface(env, cbc, getActionWrapper, getValue);
-        } else {
-            battleAI->initBattleInterface(env, cbc);
-        }
-
+        battleAI->initBattleInterface(env, cbc, baggage, color);
         battleAI->battleStart(bid, army1, army2, tile, hero1, hero2, side_, replayAllowed);
     }
 
     void AAI::battleEnd(const BattleID &bid, const BattleResult * br, QueryID queryID) {
         info("*** battleEnd (QueryID: " + std::to_string(static_cast<int>(queryID)) + ") ***");
 
-        if (!bai) {
-            ASSERT(getBattleAIName() != "MMAI", "no bai, but battleAIName is MMAI");
-            // We are not MMAI, nothing to do
-        } else if (!bai->action) {
-            // Null action means the battle ended without us receiving a turn
-            // Happens if the enemy immediately retreats (we won)
-            // or if the enemy one-shots us (we lost)
-            // Nothing to do
-        } else if (bai->action->action != Export::ACTION_RETREAT) {
-            // TODO: must add check that *we* have retreated and not the enemy
-            // XXX: ^^^ still relevant?
-
-            // battleEnd after MOVE
-            // => call f_getAction (expecting RESET)
-
-            // first call bai->battleEnd to update result
-            // (in case there are render actions)
-            bai->battleEnd(bid, br, queryID);
-
-            debug("<BATTLE_END> Will request a non-render action");
-            auto action = getNonRenderAction(bai->result.get());
-            info("<BATTLE_END> Got action: " + std::to_string(action));
-
-            // Any non-render action *must* be a reset (battle has ended)
-            ASSERT(action == Export::ACTION_RESET, "expected RESET, got: " + std::to_string(action));
-        }
+        battleAI->battleEnd(bid, br, queryID);
 
         if (cb->getBattle(bid)->battleGetMySide() == BattlePerspective::LEFT_SIDE) {
             ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
@@ -240,30 +162,245 @@ namespace MMAI {
             // My patch in CGameHandler::endBattle allows replay even when
             // both sides are non-neutrals. Could not figure out how to
             // send the query only to the attacker.
-            // ASSERT(queryID == -1, "QueryID is not -1, but we are DEFENDER");
 
             // The defender should not answer replay battle queries
             info("Ignoring query " + std::to_string(queryID));
         }
 
         battleAI.reset();
-        bai = nullptr;  // XXX: call this last, it changes cb->waitTillRealize
     }
 
     std::string AAI::getBattleAIName() const {
         debug("*** getBattleAIName ***");
 
-        // Attackers are red, defenders are blue
-        auto ainame = (color == "red")
-            ? baggage->battleAINameRed
-            : baggage->battleAINameBlue;
+        ASSERT(!battleAiName.empty(), "battleAIName is not initialized yet");
+        ASSERT(battleAiName != "-", "battleAIName should not be called on player " + color);
 
-        debug("(getBattleAIName) battleAiName: " + ainame);
-        return ainame;
+        debug("getBattleAIName: " + battleAiName);
+        return battleAiName;
     }
 
     void AAI::battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) {
-        if (!bai) return;
-        bai->battleTriggerEffect(bid, bte);
+        battleAI->battleTriggerEffect(bid, bte);
+    }
+
+    void AAI::saveGame(BinarySerializer & h) {
+        debug("*** saveGame ***");
+    }
+
+    void AAI::loadGame(BinaryDeserializer & h) {
+        debug("*** loadGame ***");
+    }
+
+    void AAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QueryID queryID) {
+        debug("*** commanderGotLevel ***");
+    }
+
+    void AAI::finish() {
+        debug("*** finish ***");
+    }
+
+    void AAI::heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, std::vector<SecondarySkill> &skills, QueryID queryID) {
+        debug("*** heroGotLevel ***");
+    }
+
+    void AAI::showBlockingDialog(const std::string &text, const std::vector<Component> &components, QueryID askID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept) {
+        debug("*** showBlockingDialog ***");
+    }
+
+    void AAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID) {
+        debug("*** showGarrisonDialog ***");
+    }
+
+    void AAI::showMapObjectSelectDialog(QueryID askID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects) {
+        debug("*** showMapObjectSelectDialog ***");
+    }
+
+    void AAI::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) {
+        debug("*** showTeleportDialog ***");
+    }
+
+    void AAI::showWorldViewEx(const std::vector<ObjectPosInfo> & objectPositions, bool showTerrain) {
+        debug("*** showWorldViewEx ***");
+    }
+
+    void AAI::advmapSpellCast(const CGHeroInstance * caster, SpellID spellID) {
+        debug("*** advmapSpellCast ***");
+    }
+
+    void AAI::artifactAssembled(const ArtifactLocation & al) {
+        debug("*** artifactAssembled ***");
+    }
+
+    void AAI::artifactDisassembled(const ArtifactLocation & al) {
+        debug("*** artifactDisassembled ***");
+    }
+
+    void AAI::artifactMoved(const ArtifactLocation & src, const ArtifactLocation & dst) {
+        debug("*** artifactMoved ***");
+    }
+
+    void AAI::artifactPut(const ArtifactLocation & al) {
+        debug("*** artifactPut ***");
+    }
+
+    void AAI::artifactRemoved(const ArtifactLocation & al) {
+        debug("*** artifactRemoved ***");
+    }
+
+    void AAI::availableArtifactsChanged(const CGBlackMarket * bm) {
+        debug("*** availableArtifactsChanged ***");
+    }
+
+    void AAI::availableCreaturesChanged(const CGDwelling * town) {
+        debug("*** availableCreaturesChanged ***");
+    }
+
+    void AAI::battleResultsApplied() {
+        debug("*** battleResultsApplied ***");
+    }
+
+    void AAI::beforeObjectPropertyChanged(const SetObjectProperty * sop) {
+        debug("*** beforeObjectPropertyChanged ***");
+    }
+
+    void AAI::buildChanged(const CGTownInstance * town, BuildingID buildingID, int what) {
+        debug("*** buildChanged ***");
+    }
+
+    void AAI::centerView(int3 pos, int focusTime) {
+        debug("*** centerView ***");
+    }
+
+    void AAI::gameOver(PlayerColor player, const EVictoryLossCheckResult & victoryLossCheckResult) {
+        debug("*** gameOver ***");
+    }
+
+    void AAI::garrisonsChanged(ObjectInstanceID id1, ObjectInstanceID id2) {
+        debug("*** garrisonsChanged ***");
+    }
+
+    void AAI::heroBonusChanged(const CGHeroInstance * hero, const Bonus & bonus, bool gain) {
+        debug("*** heroBonusChanged ***");
+    }
+
+    void AAI::heroCreated(const CGHeroInstance *) {
+        debug("*** heroCreated ***");
+    }
+
+    void AAI::heroInGarrisonChange(const CGTownInstance * town) {
+        debug("*** heroInGarrisonChange ***");
+    }
+
+    void AAI::heroManaPointsChanged(const CGHeroInstance * hero) {
+        debug("*** heroManaPointsChanged ***");
+    }
+
+    void AAI::heroMovePointsChanged(const CGHeroInstance * hero) {
+        debug("*** heroMovePointsChanged ***");
+    }
+
+    void AAI::heroMoved(const TryMoveHero & details, bool verbose) {
+        debug("*** heroMoved ***");
+    }
+
+    void AAI::heroPrimarySkillChanged(const CGHeroInstance * hero, PrimarySkill which, si64 val) {
+        debug("*** heroPrimarySkillChanged ***");
+    }
+
+    void AAI::heroSecondarySkillChanged(const CGHeroInstance * hero, int which, int val) {
+        debug("*** heroSecondarySkillChanged ***");
+    }
+
+    void AAI::heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start) {
+        debug("*** heroVisit ***");
+    }
+
+    void AAI::heroVisitsTown(const CGHeroInstance * hero, const CGTownInstance * town) {
+        debug("*** heroVisitsTown ***");
+    }
+
+    void AAI::newObject(const CGObjectInstance * obj) {
+        debug("*** newObject ***");
+    }
+
+    void AAI::objectPropertyChanged(const SetObjectProperty * sop) {
+        debug("*** objectPropertyChanged ***");
+    }
+
+    void AAI::objectRemoved(const CGObjectInstance * obj, const PlayerColor &initiator) {
+        debug("*** objectRemoved ***");
+    }
+
+    void AAI::playerBlocked(int reason, bool start) {
+        debug("*** playerBlocked ***");
+    }
+
+    void AAI::playerBonusChanged(const Bonus & bonus, bool gain) {
+        debug("*** playerBonusChanged ***");
+    }
+
+    void AAI::receivedResource() {
+        debug("*** receivedResource ***");
+    }
+
+    void AAI::requestRealized(PackageApplied * pa) {
+        debug("*** requestRealized ***");
+    }
+
+    void AAI::requestSent(const CPackForServer * pack, int requestID) {
+        debug("*** requestSent ***");
+    }
+
+    void AAI::showHillFortWindow(const CGObjectInstance * object, const CGHeroInstance * visitor) {
+        debug("*** showHillFortWindow ***");
+    }
+
+    void AAI::showInfoDialog(EInfoWindowMode type, const std::string & text, const std::vector<Component> & components, int soundID) {
+        debug("*** showInfoDialog ***");
+    }
+
+    void AAI::showMarketWindow(const IMarket *market, const CGHeroInstance *visitor, QueryID queryID) {
+        debug("*** showMarketWindow ***");
+    }
+
+    void AAI::showPuzzleMap() {
+        debug("*** showPuzzleMap ***");
+    }
+
+    void AAI::showRecruitmentDialog(const CGDwelling *dwelling, const CArmedInstance *dst, int level, QueryID queryID) {
+        debug("*** showRecruitmentDialog ***");
+    }
+
+    void AAI::showShipyardDialog(const IShipyard * obj) {
+        debug("*** showShipyardDialog ***");
+    }
+
+    void AAI::showTavernWindow(const CGObjectInstance * object, const CGHeroInstance * visitor, QueryID queryID) {
+        debug("*** showTavernWindow ***");
+    }
+
+    void AAI::showThievesGuildWindow(const CGObjectInstance * obj) {
+        debug("*** showThievesGuildWindow ***");
+    }
+
+    void AAI::showUniversityWindow(const IMarket *market, const CGHeroInstance *visitor, QueryID queryID) {
+        debug("*** showUniversityWindow ***");
+    }
+
+    void AAI::tileHidden(const std::unordered_set<int3> & pos) {
+        debug("*** tileHidden ***");
+    }
+
+    void AAI::tileRevealed(const std::unordered_set<int3> & pos) {
+        debug("*** tileRevealed ***");
+    }
+
+    void AAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID query) {
+        debug("*** heroExchangeStarted ***");
+    }
+
+    std::optional<BattleAction> AAI::makeSurrenderRetreatDecision(const BattleID & battleID, const BattleStateInfoForRetreat & battleState) {
+        return std::nullopt;
     }
 }

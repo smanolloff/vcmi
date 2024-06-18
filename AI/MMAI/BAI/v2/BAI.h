@@ -14,28 +14,13 @@
 // limitations under the License.
 // =============================================================================
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#pragma once
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+#include "BAI/v1/BAI.h"
 
-static const char * g_cszAiName = "MMAI";
-
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
-
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+namespace MMAI::BAI::V2 {
+    class BAI : public V1::BAI {
+        using V1::BAI::BAI; // inherit parent constructor
+        std::unique_ptr<V1::State> initState(const CPlayerBattleCallback* b) override;
+    };
 }

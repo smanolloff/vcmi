@@ -13,29 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
+#pragma once
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#include "schema/base.h"
+#include "schema/v1/types.h"
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+namespace MMAI::BAI::V1 {
+    using HexAttribute = Schema::V1::HexAttribute;
+    using BS = Schema::BattlefieldState;
 
-static const char * g_cszAiName = "MMAI";
-
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
-
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+    class Encoder {
+    public:
+        static void Encode(const HexAttribute &a, const int &v, BS &vec);
+        static void EncodeFloating(const int &v, const int &vmax, BS &vec);
+        static void EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec);
+    };
 }

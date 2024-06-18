@@ -1,30 +1,49 @@
 set(MMAI_FILES
-  AAI/AAI.h
   AAI/AAI.cpp
-  AAI/impl.cpp
+  AAI/AAI.h
 
-  BAI/build_action_result.cpp
-  BAI/build_action_result.h
   BAI/BAI.cpp
   BAI/BAI.h
-  BAI/impl.cpp
-  BAI/init.cpp
-  BAI/util.cpp
-  BAI/render.cpp
+  BAI/delegatee.cpp
+  BAI/delegatee.h
+  BAI/v1/BAI.cpp
+  BAI/v1/BAI.h
+  BAI/v1/action.cpp
+  BAI/v1/action.h
+  BAI/v1/attack_log.h
+  BAI/v1/battlefield.cpp
+  BAI/v1/battlefield.h
+  BAI/v1/encoder.cpp
+  BAI/v1/encoder.h
+  BAI/v1/hex.cpp
+  BAI/v1/hex.h
+  BAI/v1/hexaction.h
+  BAI/v1/hexactmask.h
+  BAI/v1/render.cpp
+  BAI/v1/render.h
+  BAI/v1/stackinfo.h
+  BAI/v1/state.cpp
+  BAI/v1/state.h
+  BAI/v1/supplementary_data.cpp
+  BAI/v1/supplementary_data.h
+  BAI/v2/BAI.cpp
+  BAI/v2/BAI.h
+  BAI/v2/encoder.cpp
+  BAI/v2/encoder.h
+  BAI/v2/state.cpp
+  BAI/v2/state.h
 
-  types/action.cpp
-  types/action.h
-  types/battlefield.cpp
-  types/battlefield.h
-  types/hex.cpp
-  types/hex.h
-  types/hexaction.h
-  types/hexactmask.h
+  schema/schema.h
+  schema/v1/constants.h
+  schema/v1/schema.h
+  schema/v1/types.h
+  schema/v1/util.h
+  schema/v2/constants.h
+  schema/v2/schema.h
 
-  common.h
   MMAI.h
-  export.h
   StdInc.h
+  common.h
 )
 
 if(NOT ENABLE_STATIC_AI_LIBS)
@@ -38,6 +57,8 @@ else()
   add_library(MMAI SHARED ${MMAI_FILES})
   install(TARGETS MMAI RUNTIME DESTINATION ${AI_LIB_DIR} LIBRARY DESTINATION ${AI_LIB_DIR})
 endif()
+
+set_target_properties(MMAI PROPERTIES COMPILE_DEFINITIONS "MMAI_DLL=1")
 
 target_link_libraries(MMAI PRIVATE vcmi)
 target_include_directories(MMAI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

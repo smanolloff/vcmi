@@ -16,14 +16,12 @@
 
 #pragma once
 
-#include "constants/EntityIdentifiers.h"
-#include "export.h"
+#include "lib/AI_Base.h"
 #include "BAI/BAI.h"
 
-namespace MMAI {
+namespace MMAI::AAI {
     class DLL_EXPORT AAI : public CAdventureAI {
-        Export::Baggage * baggage = new Export::Baggage(nullptr);
-        std::shared_ptr<BAI> bai;
+        std::any baggage;
 
         // XXX: those mess up the regular log colors => leave blank
         std::string ansicolor = "";
@@ -32,13 +30,8 @@ namespace MMAI {
         std::string color = "?";
         std::string addrstr = "?";
         std::string battleAiName;
-        bool side;
-        int armyID;
 
-        Export::F_GetValue getValue;
-        Export::F_GetAction getActionOrig;
-        Export::F_GetAction getActionWrapper;
-        Export::Action getNonRenderAction(const Export::Result* result);
+        bool side;
 
         void error(const std::string &text) const;
         void warn(const std::string &text) const;

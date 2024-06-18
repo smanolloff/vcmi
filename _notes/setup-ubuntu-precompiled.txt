@@ -23,7 +23,7 @@
             -D ENABLE_CCACHE=1 \
             -D ENABLE_NULLKILLER_AI=0 \
             -D ENABLE_LAUNCHER=0 \
-            -D ENABLE_MYCLIENT_BUILD=1 \
+            -D ENABLE_GYMCLIENT=1 \
             -D ENABLE_DEV_BUILD=1 \
             -D CMAKE_EXPORT_COMPILE_COMMANDS=1
 
@@ -39,7 +39,7 @@
             -D ENABLE_CCACHE=1 \
             -D ENABLE_NULLKILLER_AI=0 \
             -D ENABLE_LAUNCHER=0 \
-            -D ENABLE_MYCLIENT_BUILD=1 \
+            -D ENABLE_GYMCLIENT=1 \
             -D ENABLE_DEV_BUILD=0 \
             -D CMAKE_EXPORT_COMPILE_COMMANDS=0
 

@@ -21,6 +21,7 @@ Here is a list of features I would like to have implemented:
 | Multi-VCMI mode | ✅ | Running multiple VCMI processes simultaneously is essential for efficient training |
 | Only battles | ✅ | Anything not related to battles is out of scope |
 | Quick restarts | ✅ | Re-starting only the battle instead of the entire game improves performance |
+| Real restarts | ❌ | Re-starting is currently implemented via a Retreat action. This has some drawbacks and a "proper" battle restart is needed |
 | Action injection | ✅ | The actions to take are produced by separate program and must be passed to VCMI for execution |
 | State reporting | ✅ | VCMI must collect important aspects of the battle's state and communicate them to a separate program |
 | Map hot-swap | ❌ | Changing the map without restarting VCMI is one way change the army compositions during training, which would improve training performance |

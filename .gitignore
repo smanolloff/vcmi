@@ -81,4 +81,4 @@ rel
 .cmake
 *.sqlite3
 .venv
-myclient/libtorch
+gymclient/libtorch

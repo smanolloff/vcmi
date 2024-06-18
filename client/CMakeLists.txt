@@ -391,7 +391,7 @@ endif()
 
 assign_source_group(${client_SRCS} ${client_HEADERS} VCMI_client.rc)
 
-if(ENABLE_MYCLIENT_BUILD)
+if(ENABLE_GYMCLIENT)
 	add_library(vcmiclient STATIC ${client_SRCS} ${client_HEADERS})
 	set_target_properties(vcmiclient PROPERTIES COMPILE_FLAGS "-fPIC")
 else()

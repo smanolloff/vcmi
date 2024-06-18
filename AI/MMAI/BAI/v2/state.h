@@ -13,29 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
+#pragma once
 
-#include "StdInc.h"
-#include "../../lib/AI_Base.h"
-#include "MMAI.h"
+#include "BAI/v1/state.h"
 
-#ifdef __GNUC__
-#define strcpy_s(a, b, c) strncpy(a, c, b)
-#endif
+namespace MMAI::BAI::V2 {
+    using HexAttribute = Schema::V1::HexAttribute;
+    using BS = Schema::BattlefieldState;
 
-static const char * g_cszAiName = "MMAI";
+    class State : public V1::State {
+        using V1::State::State; // inherit parent constructor
 
-extern "C" DLL_EXPORT int GetGlobalAiVersion() {
-    return AI_INTERFACE_VER;
-}
+        int version() const override { return 2; }
 
-extern "C" DLL_EXPORT void GetAiName(char * name) {
-    strcpy_s(name, strlen(g_cszAiName) + 1, g_cszAiName);
-}
-
-extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
-    out = std::make_shared<MMAI::AAI::AAI>();
-}
-
-extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+        void encodeHex(V1::Hex* hex) override;
+        void verify() override;
+    };
 }
