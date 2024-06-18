@@ -155,7 +155,19 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
     c10::InferenceMode guard;
     torch::jit::script::Module model = torch::jit::load(modelPath);
     model.eval();
-    auto version = model.get_method("get_schema_version")({}).toInt();
+
+    // auto version = model.get_method("get_version")({}).toInt();
+    // Temporary workaround for older models which used action offset
+    auto get_version = model.find_method("get_version");
+    int version;
+    int actionOffset;
+    if (get_version.has_value()) {
+        version = get_version.value()({}).toInt();
+        actionOffset = 0;
+    } else {
+        version = 2;
+        actionOffset = 1;
+    }
 
     std::cout << "Loaded v" << version << " model from " << modelPath << "\n";
 
@@ -185,7 +197,7 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
         return res;
     };
 
-    auto getaction = [guard, model, sizeOneHex, nactions, printModelPredictions](const MMAI::Schema::IState * s) {
+    auto getaction = [guard, model, actionOffset, sizeOneHex, nactions, printModelPredictions](const MMAI::Schema::IState * s) {
         auto any = s->getSupplementaryData();
         auto sup = std::any_cast<const MMAI::Schema::V1::ISupplementaryData*>(any);
 
@@ -203,10 +215,10 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
 
         auto intmask = std::vector<int>{};
         intmask.reserve(nactions);
-        auto skip = true; // skip first item in action mask (retreat is "hidden" from agent)
+        auto skip = actionOffset; // skip first item in action mask (retreat is "hidden" from agent)
         for (auto m : s->getActionMask()) {
             if (skip) {
-                skip = false;
+                --skip;
                 continue;
             }
             intmask.push_back(static_cast<int>(m));
@@ -220,7 +232,7 @@ std::tuple<MMAI::Schema::F_GetAction, MMAI::Schema::F_GetValue, int> loadModel(s
 
         auto method = model.get_method("predict");
         auto inputs = std::vector<torch::IValue>{obs, mask};
-        auto res = method(inputs).toInt() + 1; // 1 is action offset
+        auto res = method(inputs).toInt() + actionOffset;
 
         if (printModelPredictions) {
             printf("AI action prediction: %d\n", int(res));
