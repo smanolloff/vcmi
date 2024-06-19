@@ -32,13 +32,14 @@ package is non-CXX11 by default and cannot be linked to VCMI.
 
 There are two workarounds to this issue:
 
-1. Compile VCMI with `-D ENABLE_LIBTORCH=1` *after* installing the CPU-only
-cxx11 ABI torch package (see `requirements.txt` in vcmi-gym). Recommended
-if you want to use VCMI for playing against pre-trained AI models, OR for
-training new AI models on CPU only.
 1. Compile VCMI with `-D ENABLE_LIBTORCH=0`. Recommended if you want to train
 new AI models on CPU or GPU. VCMI itself will not be able to load pre-trained
-models.
+models. Requirements: you have installed the "default" Python torch package
+with `pip` (see `requirements.txt` in vcmi-gym).
+1. Compile VCMI with `-D ENABLE_LIBTORCH=1`. Recommended if you want to play
+VCMI against pre-trained AI models, OR if you want ot train new AI models on
+CPU only. Requirements: you have installed the CPU-only cxx11 ABI torch
+package with `pip` (see `requirements.txt` in vcmi-gym).
 
 ```bash
 $ cmake -S . -B rel -Wno-dev \
@@ -49,7 +50,7 @@ $ cmake -S . -B rel -Wno-dev \
     -D ENABLE_LAUNCHER=0 \
     -D ENABLE_GYMCLIENT=1 \
     -D ENABLE_DEV_BUILD=0 \
-    -D ENABLE_LIBTORCH=1 \
+    -D ENABLE_LIBTORCH=0 \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=0
 
 $ cmake --build rel/
