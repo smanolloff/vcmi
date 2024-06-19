@@ -1,5 +1,3 @@
-# VCMI Project (AI fork)
-
 This is a fork of VCMI which adapts the game for AI development purposes and is
 part of the [vcmi-gym](https://github.com/smanolloff/vcmi-gym) project.
 
