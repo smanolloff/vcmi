@@ -2,10 +2,10 @@ set(MMAI_FILES
   AAI/AAI.cpp
   AAI/AAI.h
 
-  BAI/BAI.cpp
-  BAI/BAI.h
-  BAI/delegatee.cpp
-  BAI/delegatee.h
+  BAI/base.cpp
+  BAI/base.h
+  BAI/router.cpp
+  BAI/router.h
   BAI/v1/BAI.cpp
   BAI/v1/BAI.h
   BAI/v1/action.cpp

@@ -37,5 +37,5 @@ extern "C" DLL_EXPORT void GetNewAI(std::shared_ptr<CGlobalAI> & out) {
 }
 
 extern "C" DLL_EXPORT void GetNewBattleAI(std::shared_ptr<CBattleGameInterface> &out) {
-    out = std::make_shared<MMAI::BAI::BAI>();
+    out = std::make_shared<MMAI::BAI::Router>();
 }

@@ -17,14 +17,23 @@
 #include <cstdio>
 #include <boost/thread.hpp>
 #include <stdexcept>
+#include <string>
 
 #include "CCallback.h"
+#include "CStack.h"
 #include "battle/BattleAction.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
 
 #include "common.h"
-#include "AAI.h"
+#include "schema/base.h"
+#include "AAI/AAI.h"
+
+#include "networkPacks/BattleChanges.h"
+#include "networkPacks/PacksForClientBattle.h"
+#include "networkPacks/SetStackEffect.h"
+#include "spells/CSpellHandler.h"
+#include "vstd/CLoggerBase.h"
 
 namespace MMAI::AAI {
     AAI::AAI() {
@@ -38,70 +47,19 @@ namespace MMAI::AAI {
         info("--- (destructor) ---");
     }
 
-    void AAI::error(const std::string &text) const { logAi->error("AAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
-    void AAI::warn(const std::string &text) const { logAi->warn("AAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
-    void AAI::info(const std::string &text) const { logAi->info("AAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
-    void AAI::debug(const std::string &text) const { logAi->debug("AAI-%s [%s%s%s] %s", addrstr, ansicolor, color, ansireset, text); }
+    std::string AAI::getBattleAIName() const {
+        debug("*** getBattleAIName ***");
 
-    void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
-        error("*** initGameInterface -- BUT NO BAGGAGE ***");
-        initGameInterface(env, CB, std::any{});
+        ASSERT(!battleAiName.empty(), "battleAIName is not initialized yet");
+        ASSERT(battleAiName != "-", "battleAIName should not be called on player " + color);
+
+        debug("getBattleAIName: " + battleAiName);
+        return battleAiName;
     }
 
-    void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage_) {
-        info("*** initGameInterface ***");
-
-        color = CB->getPlayerID()->toString();
-        baggage = baggage_;
-
-        ASSERT(baggage_.has_value(), "baggage has no value");
-        ASSERT(baggage_.type() == typeid(Schema::Baggage*), "baggage of unexpected type");
-        auto baggage__ = std::any_cast<Schema::Baggage*>(baggage);
-        ASSERT(baggage__, "baggage contains a nullptr");
-
-        if (color == "red") {
-            // ansicolor = "\033[41m";  // red background
-            battleAiName = baggage__->battleAINameRed;
-        } else if (color == "blue") {
-            // ansicolor = "\033[44m";  // blue background
-            battleAiName = baggage__->battleAINameBlue;
-        } else {
-            // Maps and everything basically assumes red human player attacking blue human player
-            // Swapping armies and sides still uses only RED and BLUE as players
-            // Other players should never be asked to lead a battle
-            // However, gymclient sets settings["server"]["playerAI"] = "MMAI"
-            // => all players get initialized with MMAI::AAI
-            // We must make sure the getBattleAI never gets called on them
-            battleAiName = "-";
-        }
-
-        debug("(init) battleAiName: " + battleAiName);
-
-        cb = CB;
-        cbc = CB;
-
-        // XXX: not sure if needed
-        cb->waitTillRealize = true;
-        cb->unlockGsWhenWaiting = true;
-    };
-
-    void AAI::yourTurn(QueryID queryID) {
-        info("*** yourTurn *** (" + std::to_string(queryID.getNum()) + ")");
-
-        std::make_unique<boost::thread>([this, queryID]() {
-            boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
-
-            info("Answering query " + std::to_string(queryID) + " to start turn");
-            cb->selectionMade(0, queryID);
-
-            auto heroes = cb->getHeroesInfo();
-            assert(!heroes.empty());
-            auto h = heroes.at(0);
-
-            // Move 1 tile to the right
-            cb->moveHero(h, h->pos + int3{1,0,0}, false);
-        });
-    }
+    /*
+     * Hybrid call-ins (conecrning both AAI and BAI)
+     */
 
     void AAI::battleStart(const BattleID &bid, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side_, bool replayAllowed) {
         info("*** battleStart ***");
@@ -170,30 +128,87 @@ namespace MMAI::AAI {
         battleAI.reset();
     }
 
-    std::string AAI::getBattleAIName() const {
-        debug("*** getBattleAIName ***");
-
-        ASSERT(!battleAiName.empty(), "battleAIName is not initialized yet");
-        ASSERT(battleAiName != "-", "battleAIName should not be called on player " + color);
-
-        debug("getBattleAIName: " + battleAiName);
-        return battleAiName;
+    /*
+     * AAI call-ins
+     */
+    std::optional<BattleAction> AAI::makeSurrenderRetreatDecision(const BattleID &bid, const BattleStateInfoForRetreat &bs) {
+        debug("*** makeSurrenderRetreatDecision ***");
+        return std::nullopt;
     }
 
-    void AAI::battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) {
-        battleAI->battleTriggerEffect(bid, bte);
+    void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB) {
+        error("*** initGameInterface -- BUT NO BAGGAGE ***");
+        initGameInterface(env, CB, std::any{});
+    }
+
+    void AAI::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, std::any baggage_) {
+        info("*** initGameInterface ***");
+
+        color = CB->getPlayerID()->toString();
+        baggage = baggage_;
+
+        ASSERT(baggage_.has_value(), "baggage has no value");
+        ASSERT(baggage_.type() == typeid(Schema::Baggage*), "baggage of unexpected type");
+        auto baggage__ = std::any_cast<Schema::Baggage*>(baggage);
+        ASSERT(baggage__, "baggage contains a nullptr");
+
+        if (color == "red") {
+            // ansicolor = "\033[41m";  // red background
+            battleAiName = baggage__->battleAINameRed;
+        } else if (color == "blue") {
+            // ansicolor = "\033[44m";  // blue background
+            battleAiName = baggage__->battleAINameBlue;
+        } else {
+            // Maps and everything basically assumes red human player attacking blue human player
+            // Swapping armies and sides still uses only RED and BLUE as players
+            // Other players should never be asked to lead a battle
+            // However, gymclient sets settings["server"]["playerAI"] = "MMAI"
+            // => all players get initialized with MMAI::AAI
+            // We must make sure the getBattleAI never gets called on them
+            battleAiName = "-";
+        }
+
+        debug("(init) battleAiName: " + battleAiName);
+
+        cb = CB;
+        cbc = CB;
+
+        // XXX: not sure if needed
+        cb->waitTillRealize = true;
+        cb->unlockGsWhenWaiting = true;
+    };
+
+    void AAI::yourTurn(QueryID queryID) {
+        info("*** yourTurn *** (" + std::to_string(queryID.getNum()) + ")");
+
+        std::make_unique<boost::thread>([this, queryID]() {
+            boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
+
+            info("Answering query " + std::to_string(queryID) + " to start turn");
+            cb->selectionMade(0, queryID);
+
+            auto heroes = cb->getHeroesInfo();
+            assert(!heroes.empty());
+            auto h = heroes.at(0);
+
+            // Move 1 tile to the right
+            cb->moveHero(h, h->pos + int3{1,0,0}, false);
+        });
     }
 
     void AAI::saveGame(BinarySerializer & h) {
         debug("*** saveGame ***");
+        throw std::runtime_error("`saveGame` not implemented by AAI");
     }
 
     void AAI::loadGame(BinaryDeserializer & h) {
         debug("*** loadGame ***");
+        throw std::runtime_error("`loadGame` not implemented by AAI");
     }
 
     void AAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QueryID queryID) {
         debug("*** commanderGotLevel ***");
+        throw std::runtime_error("`commanderGotLevel` not implemented by AAI");
     }
 
     void AAI::finish() {
@@ -202,22 +217,27 @@ namespace MMAI::AAI {
 
     void AAI::heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, std::vector<SecondarySkill> &skills, QueryID queryID) {
         debug("*** heroGotLevel ***");
+        throw std::runtime_error("`heroGotLevel` not implemented by AAI");
     }
 
     void AAI::showBlockingDialog(const std::string &text, const std::vector<Component> &components, QueryID askID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept) {
         debug("*** showBlockingDialog ***");
+        throw std::runtime_error("`showBlockingDialog` not implemented by AAI");
     }
 
     void AAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID) {
         debug("*** showGarrisonDialog ***");
+        throw std::runtime_error("`showGarrisonDialog` not implemented by AAI");
     }
 
     void AAI::showMapObjectSelectDialog(QueryID askID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects) {
         debug("*** showMapObjectSelectDialog ***");
+        throw std::runtime_error("`showMapObjectSelectDialog` not implemented by AAI");
     }
 
     void AAI::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QueryID askID) {
         debug("*** showTeleportDialog ***");
+        throw std::runtime_error("`showTeleportDialog` not implemented by AAI");
     }
 
     void AAI::showWorldViewEx(const std::vector<ObjectPosInfo> & objectPositions, bool showTerrain) {
@@ -258,6 +278,11 @@ namespace MMAI::AAI {
 
     void AAI::battleResultsApplied() {
         debug("*** battleResultsApplied ***");
+    }
+
+    void AAI::battleStartBefore(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2) {
+        debug("*** battleStartBefore ***");
+        // XXX: battleAI is nullptr here
     }
 
     void AAI::beforeObjectPropertyChanged(const SetObjectProperty * sop) {
@@ -396,11 +421,140 @@ namespace MMAI::AAI {
         debug("*** tileRevealed ***");
     }
 
+    void AAI::bulkArtMovementStart(size_t numOfArts) {
+        debug("*** bulkArtMovementStart ***");
+    }
+
+    void AAI::askToAssembleArtifact(const ArtifactLocation & dst) {
+        debug("*** askToAssembleArtifact ***");
+    }
+
+    void AAI::viewWorldMap() {
+        debug("*** viewWorldMap ***");
+    }
+
+    void AAI::showQuestLog() {
+        debug("*** showQuestLog ***");
+    }
+
+    void AAI::objectRemovedAfter() {
+        debug("*** objectRemovedAfter ***");
+    }
+
+    void AAI::playerStartsTurn(PlayerColor player) {
+        debug("*** playerStartsTurn ***");
+    }
+
     void AAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID query) {
         debug("*** heroExchangeStarted ***");
     }
 
-    std::optional<BattleAction> AAI::makeSurrenderRetreatDecision(const BattleID & battleID, const BattleStateInfoForRetreat & battleState) {
-        return std::nullopt;
+
+    /*
+     * BAI call-ins
+     */
+
+    void AAI::actionFinished(const BattleID &bid, const BattleAction &action) {
+        battleAI->actionFinished(bid, action);
     }
+
+    void AAI::actionStarted(const BattleID &bid, const BattleAction &action) {
+        battleAI->actionStarted(bid, action);
+    }
+
+    void AAI::activeStack(const BattleID &bid, const CStack * stack) {
+        battleAI->activeStack(bid, stack);
+    }
+
+    void AAI::battleAttack(const BattleID &bid, const BattleAttack *ba) {
+        battleAI->battleAttack(bid, ba);
+    }
+
+    void AAI::battleCatapultAttacked(const BattleID &bid, const CatapultAttack & ca) {
+        battleAI->battleCatapultAttacked(bid, ca);
+    }
+
+    void AAI::battleGateStateChanged(const BattleID &bid, const EGateState state) {
+        battleAI->battleGateStateChanged(bid, state);
+    }
+
+    void AAI::battleLogMessage(const BattleID &bid, const std::vector<MetaString> & lines) {
+        battleAI->battleLogMessage(bid, lines);
+    }
+
+    void AAI::battleNewRound(const BattleID &bid) {
+        battleAI->battleNewRound(bid);
+    }
+
+    void AAI::battleNewRoundFirst(const BattleID &bid) {
+        battleAI->battleNewRoundFirst(bid);
+    }
+
+    void AAI::battleObstaclesChanged(const BattleID &bid, const std::vector<ObstacleChanges> &obstacles) {
+        battleAI->battleObstaclesChanged(bid, obstacles);
+    }
+
+    void AAI::battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) {
+        battleAI->battleSpellCast(bid, sc);
+    }
+
+    void AAI::battleStackMoved(const BattleID &bid, const CStack *stack, std::vector<BattleHex> dest, int distance, bool teleport) {
+        battleAI->battleStackMoved(bid, stack, dest, distance, teleport);
+    }
+
+    void AAI::battleStacksAttacked(const BattleID &bid, const std::vector<BattleStackAttacked> &bsa, bool ranged) {
+        battleAI->battleStacksAttacked(bid, bsa, ranged);
+    }
+
+    void AAI::battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) {
+        battleAI->battleStacksEffectsSet(bid, sse);
+    }
+
+    void AAI::battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) {
+        battleAI->battleTriggerEffect(bid, bte);
+    }
+
+    void AAI::battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> & changes) {
+        battleAI->battleUnitsChanged(bid, changes);
+    }
+
+    void AAI::yourTacticPhase(const BattleID &bid, int distance) {
+        battleAI->yourTacticPhase(bid, distance);
+    }
+
+    /*
+     * private
+     */
+
+    template<typename ... Args> void AAI::_log(const ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
+        logAi->log(level, "AAI-%s [%s%s%s] " + format, addrstr, ansicolor, color, ansireset, args...);
+    }
+
+    template<typename ... Args> void AAI::error(const std::string &format, Args ... args) const { log(ELogLevel::ERROR, format, args...); }
+    template<typename ... Args> void AAI::warn(const std::string &format, Args ... args) const { log(ELogLevel::WARN, format, args...); }
+    template<typename ... Args> void AAI::info(const std::string &format, Args ... args) const { log(ELogLevel::INFO, format, args...); }
+    template<typename ... Args> void AAI::debug(const std::string &format, Args ... args) const { log(ELogLevel::DEBUG, format, args...); }
+    template<typename ... Args> void AAI::trace(const std::string &format, Args ... args) const { log(ELogLevel::DEBUG, format, args...); }
+    template<typename ... Args> void AAI::log(const ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
+        if (logAi->getLevel() <= level) _log(level, format, args...);
+    }
+
+    void AAI::error(const std::string &text) const { log(ELogLevel::ERROR, text); }
+    void AAI::warn(const std::string &text) const { log(ELogLevel::WARN, text); }
+    void AAI::info(const std::string &text) const { log(ELogLevel::INFO, text); }
+    void AAI::debug(const std::string &text) const { log(ELogLevel::DEBUG, text); }
+    void AAI::trace(const std::string &text) const { log(ELogLevel::TRACE, text); }
+    void AAI::log(ELogLevel::ELogLevel level, const std::string &text) const {
+        if (logAi->getLevel() <= level) _log(level, "%s", text);
+    }
+
+    void AAI::error(const std::function<std::string()> &cb) const { log(ELogLevel::ERROR, cb); }
+    void AAI::warn(const std::function<std::string()> &cb) const { log(ELogLevel::WARN, cb); }
+    void AAI::info(const std::function<std::string()> &cb) const { log(ELogLevel::INFO, cb); }
+    void AAI::debug(const std::function<std::string()> &cb) const { log(ELogLevel::DEBUG, cb); }
+    void AAI::trace(const std::function<std::string()> &cb) const { log(ELogLevel::TRACE, cb); }
+    void AAI::log(ELogLevel::ELogLevel level, const std::function<std::string()> &cb) const {
+        if (logAi->getLevel() <= level) _log(level, "%s", cb());
+    }
+
 }

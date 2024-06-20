@@ -21,6 +21,7 @@
 namespace MMAI::BAI::V2 {
     class BAI : public V1::BAI {
         using V1::BAI::BAI; // inherit parent constructor
+    protected:
         std::unique_ptr<V1::State> initState(const CPlayerBattleCallback* b) override;
     };
 }

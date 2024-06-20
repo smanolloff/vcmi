@@ -18,16 +18,16 @@
 
 #include "lib/AI_Base.h"
 
-#include "BAI/delegatee.h"
+#include "BAI/base.h"
 #include "BAI/v1/battlefield.h"
 #include "BAI/v1/attack_log.h"
 #include "BAI/v1/action.h"
 #include "BAI/v1/state.h"
 
 namespace MMAI::BAI::V1 {
-    class BAI : public Delegatee {
+    class BAI : public Base {
     public:
-        using Delegatee::Delegatee;
+        using Base::Base;
 
         void activeStack(const BattleID &bid, const CStack * stack) override;
         void yourTacticPhase(const BattleID &bid, int distance) override;
@@ -37,20 +37,8 @@ namespace MMAI::BAI::V1 {
         void battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) override;
         void battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed) override; //called by engine when battle starts; side=0 - left, side=1 - right
 
-        // Just for logging
-        void actionFinished(const BattleID &bid, const BattleAction &action) override; //occurs AFTER every action taken by any stack or by the hero
-        void actionStarted(const BattleID &bid, const BattleAction &action) override; //occurs BEFORE every action taken by any stack or by the hero
-        void battleAttack(const BattleID &bid, const BattleAttack *ba) override; //called when stack is performing attack
-        void battleNewRoundFirst(const BattleID &bid) override; //called at the beginning of each turn before changes are applied;
-        void battleNewRound(const BattleID &bid) override; //called at the beginning of each turn, round=-1 is the tactic phase, round=0 is the first "normal" turn
-        void battleStackMoved(const BattleID &bid, const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) override;
-        void battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) override;
-        void battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) override;//called when a specific effect is set to stacks
-        void battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> & units) override;
-        void battleCatapultAttacked(const BattleID &bid, const CatapultAttack & ca) override; //called when catapult makes an attack
-
         Schema::Action getNonRenderAction() override;
-
+    protected:
         // Subsequent versions may override this with subclasses of State
         virtual std::unique_ptr<State> initState(const CPlayerBattleCallback* battle);
         std::unique_ptr<State> state;

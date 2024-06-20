@@ -14,13 +14,9 @@
 // limitations under the License.
 // =============================================================================
 
-#include <memory>
-
 #include "Global.h"
 #include "lib/AI_Base.h"
-#include "networkPacks/PacksForClientBattle.h"
 #include "battle/BattleAction.h"
-#include "constants/EntityIdentifiers.h"
 
 #include "common.h"
 #include "schema/v1/types.h"
@@ -49,22 +45,21 @@ namespace MMAI::BAI::V1 {
         return action;
     }
 
-    void BAI::battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed) {
-        info("*** battleStart ***");
-        battle = cb->getBattle(bid);
-        state = initState(battle.get());
-    }
-
     std::unique_ptr<State> BAI::initState(const CPlayerBattleCallback* b) {
         return std::make_unique<State>(colorname, b);
+    }
+
+    void BAI::battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed) {
+        Base::battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);
+        battle = cb->getBattle(bid);
+        state = initState(battle.get());
     }
 
     // XXX: battleEnd() is NOT called by CPlayerInterface (i.e. GUI)
     //      However, it's called by AAI (i.e. headless) and that's all we want
     //      since the terminal result is needed only during training.
     void BAI::battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) {
-        info("*** battleEnd (QueryID: " + std::to_string(queryID.getNum()) + ") ***");
-
+        Base::battleEnd(bid, br, queryID);
         state->onBattleEnd(br);
 
         // Check if battle ended normally or was forced via a RETREAT action
@@ -94,38 +89,22 @@ namespace MMAI::BAI::V1 {
     }
 
     void BAI::battleStacksAttacked(const BattleID &bid, const std::vector<BattleStackAttacked> &bsa, bool ranged) {
-        info("*** battleStacksAttacked ***");
+        Base::battleStacksAttacked(bid, bsa, ranged);
         state->onBattleStacksAttacked(bsa);
     }
 
-    // XXX: positive morale triggers an effect
-    //      negative morale just skips turn
     void BAI::battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect &bte) {
-        info("*** battleTriggerEffect ***");
+        Base::battleTriggerEffect(bid, bte);
         state->onBattleTriggerEffect(bte);
     }
 
-    // Commented out as it is broken (and not worth fixing atm)
-    // // NOTE: not triggered for retreat
-    // void BAI::actionFinished(const BattleID &bid, const BattleAction &action) {
-    //     debug("*** actionFinished - START***");
-    //     auto stacks = battle->battleGetAllStacks();
-    //     auto shouldupdate = std::any_of(stacks.begin(), stacks.end(), [](const CStack* cstack) {
-    //         return cstack->alive();
-    //     });
-    //     if (shouldupdate) {
-    //         if (!state->battlefield) {
-    //             // Enemy was first and attacked us before our first turn
-    //             // => battlefield will be nullptr in this case
-    //             // What do?
-    //         }
-    //         battlefield->offTurnUpdate(cb.get());
-    //     }
-    // }
+    void BAI::yourTacticPhase(const BattleID &bid, int distance) {
+        Base::yourTacticPhase(bid, distance);
+        cb->battleMakeTacticAction(bid, BattleAction::makeEndOFTacticPhase(battle->battleGetTacticsSide()));
+    }
 
-    void BAI::activeStack(const BattleID &bid, const CStack * astack) {
-        info("*** activeStack ***");
-        debug("activeStack called for " + astack->nodeName());
+    void BAI::activeStack(const BattleID &bid, const CStack *astack) {
+        Base::activeStack(bid, astack);
         state->onActiveStack(astack);
 
         while(true) {
@@ -359,50 +338,6 @@ namespace MMAI::BAI::V1 {
         ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, astack, nullptr));
 
         return res;
-    }
-
-    void BAI::actionStarted(const BattleID &bid, const BattleAction &action) {
-        debug("*** actionStarted ***");
-    }
-
-    void BAI::actionFinished(const BattleID &bid, const BattleAction &action) {
-        debug("*** actionFinished ***");
-    }
-
-    void BAI::yourTacticPhase(const BattleID &bid, int distance) {
-        cb->battleMakeTacticAction(bid, BattleAction::makeEndOFTacticPhase(battle->battleGetTacticsSide()));
-    }
-
-    void BAI::battleAttack(const BattleID &bid, const BattleAttack *ba) {
-        debug("*** battleAttack ***");
-    }
-
-    void BAI::battleNewRoundFirst(const BattleID &bid) {
-        debug("*** battleNewRoundFirst ***");
-    }
-
-    void BAI::battleNewRound(const BattleID &bid) {
-        debug("*** battleNewRound ***");
-    }
-
-    void BAI::battleStackMoved(const BattleID &bid, const CStack * stack, std::vector<BattleHex> dest, int distance, bool teleport) {
-        debug("*** battleStackMoved ***");
-    }
-
-    void BAI::battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) {
-        debug("*** battleSpellCast ***");
-    }
-
-    void BAI::battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) {
-        debug("*** battleStacksEffectsSet ***");
-    }
-
-    void BAI::battleCatapultAttacked(const BattleID &bid, const CatapultAttack & ca) {
-        debug("*** battleCatapultAttacked ***");
-    }
-
-    void BAI::battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> &units) {
-        debug("*** battleUnitsChanged ***");
     }
 
     std::string BAI::debugInfo(Action *action, const CStack* astack, BattleHex* nbh) {
