@@ -98,7 +98,7 @@ namespace MMAI::BAI::V3 {
     }
 
     //
-    // MELEEABLE_BY_*
+    // MELEE_MODIFIER_FOR_*
     //
 
     void Hex::setMeleeableByStack(bool isActive, bool isRight, int slot, DmgMod mod) {
@@ -114,19 +114,19 @@ namespace MMAI::BAI::V3 {
     }
 
     void Hex::setMeleeableByAStack(DmgMod mod) {
-        attrs.at(EI(A::HEX_MELEEABLE_BY_ACT_STACK)) = EI(mod);
+        attrs.at(EI(A::HEX_MELEE_MODIFIER_FOR_ACT_STACK)) = EI(mod);
     }
 
     void Hex::setMeleeableByRStack(int slot, DmgMod mod) {
-        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_R_STACK_0)) = EI(mod);
+        attrs.at(slot + EI(A::HEX_MELEE_MODIFIER_FOR_R_STACK_0)) = EI(mod);
     }
 
     void Hex::setMeleeableByLStack(int slot, DmgMod mod) {
-        attrs.at(slot + EI(A::HEX_MELEEABLE_BY_L_STACK_0)) = EI(mod);
+        attrs.at(slot + EI(A::HEX_MELEE_MODIFIER_FOR_L_STACK_0)) = EI(mod);
     }
 
     //
-    // SHOOTABLE_BY_*
+    // RANGED_MODIFIER_FOR_*
     //
 
     void Hex::setShootDistanceFromStack(bool isActive, bool isRight, int slot, ShootDistance distance) {
@@ -142,15 +142,15 @@ namespace MMAI::BAI::V3 {
     }
 
     void Hex::setShootDistanceFromAStack(ShootDistance distance) {
-        attrs.at(EI(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK)) = EI(distance);
+        attrs.at(EI(A::HEX_RANGED_MODIFIER_FOR_ACT_STACK)) = EI(distance);
     }
 
     void Hex::setShootDistanceFromRStack(int slot, ShootDistance distance) {
-        attrs.at(slot + EI(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0)) = EI(distance);
+        attrs.at(slot + EI(A::HEX_RANGED_MODIFIER_FOR_R_STACK_0)) = EI(distance);
     }
 
     void Hex::setShootDistanceFromLStack(int slot, ShootDistance distance) {
-        attrs.at(slot + EI(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0)) = EI(distance);
+        attrs.at(slot + EI(A::HEX_RANGED_MODIFIER_FOR_L_STACK_0)) = EI(distance);
     }
 
     void Hex::setCStackAndAttrs(const CStack* cstack_, int qpos) {

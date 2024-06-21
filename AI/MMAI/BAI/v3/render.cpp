@@ -309,12 +309,12 @@ namespace MMAI::BAI::V3 {
             // Static checks ensuring attributes are defined in the expected order
             static_assert(EI(A::HEX_ACTION_MASK_FOR_L_STACK_0) == EI(A::HEX_ACTION_MASK_FOR_ACT_STACK) + 1);
             static_assert(EI(A::HEX_ACTION_MASK_FOR_R_STACK_0) == EI(A::HEX_ACTION_MASK_FOR_ACT_STACK) + 8);
-            static_assert(EI(A::HEX_MELEEABLE_BY_L_STACK_0) == EI(A::HEX_MELEEABLE_BY_ACT_STACK) + 1);
-            static_assert(EI(A::HEX_MELEEABLE_BY_R_STACK_0) == EI(A::HEX_MELEEABLE_BY_ACT_STACK) + 8);
-            static_assert(EI(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0) == EI(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK) + 1);
-            static_assert(EI(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0) == EI(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK) + 8);
+            static_assert(EI(A::HEX_MELEE_MODIFIER_FOR_L_STACK_0) == EI(A::HEX_MELEE_MODIFIER_FOR_ACT_STACK) + 1);
+            static_assert(EI(A::HEX_MELEE_MODIFIER_FOR_R_STACK_0) == EI(A::HEX_MELEE_MODIFIER_FOR_ACT_STACK) + 8);
+            static_assert(EI(A::HEX_RANGED_MODIFIER_FOR_L_STACK_0) == EI(A::HEX_RANGED_MODIFIER_FOR_ACT_STACK) + 1);
+            static_assert(EI(A::HEX_RANGED_MODIFIER_FOR_R_STACK_0) == EI(A::HEX_RANGED_MODIFIER_FOR_ACT_STACK) + 8);
 
-            // (e.g. if HEX_MELEEABLE_BY_R_STACK_0 is index )
+            // (e.g. if HEX_MELEE_MODIFIER_FOR_R_STACK_0 is index )
             auto baseattr = A(EI(activeattr) + (astack->unitSide() ? 8 : 1));
 
             expect(
@@ -426,70 +426,70 @@ namespace MMAI::BAI::V3 {
                     ensureCorrectMaskOrNA(bh, v, l_CStacks.at(5), "HEX_ACTION_MASK_FOR_L_STACK_5");
                 break; case A::HEX_ACTION_MASK_FOR_L_STACK_6:
                     ensureCorrectMaskOrNA(bh, v, l_CStacks.at(6), "HEX_ACTION_MASK_FOR_L_STACK_6");
-                break; case A::HEX_MELEEABLE_BY_ACT_STACK:
+                break; case A::HEX_MELEE_MODIFIER_FOR_ACT_STACK:
                     isSpecialAStack
-                        ? ensureMeleeableOrNA(hex->bhex, v, astack, "HEX_MELEEABLE_BY_ACT_STACK")
-                        : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_MELEEABLE_BY_ACT_STACK");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_0:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_MELEEABLE_BY_L_STACK_0");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_1:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(1), "HEX_MELEEABLE_BY_L_STACK_1");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_2:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(2), "HEX_MELEEABLE_BY_L_STACK_2");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_3:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(3), "HEX_MELEEABLE_BY_L_STACK_3");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_4:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(4), "HEX_MELEEABLE_BY_L_STACK_4");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_5:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(5), "HEX_MELEEABLE_BY_L_STACK_5");
-                break; case A::HEX_MELEEABLE_BY_L_STACK_6:
-                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(6), "HEX_MELEEABLE_BY_L_STACK_6");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_0:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(0), "HEX_MELEEABLE_BY_R_STACK_0");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_1:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(1), "HEX_MELEEABLE_BY_R_STACK_1");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_2:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(2), "HEX_MELEEABLE_BY_R_STACK_2");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_3:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(3), "HEX_MELEEABLE_BY_R_STACK_3");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_4:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(4), "HEX_MELEEABLE_BY_R_STACK_4");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_5:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(5), "HEX_MELEEABLE_BY_R_STACK_5");
-                break; case A::HEX_MELEEABLE_BY_R_STACK_6:
-                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_MELEEABLE_BY_R_STACK_6");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK:
+                        ? ensureMeleeableOrNA(hex->bhex, v, astack, "HEX_MELEE_MODIFIER_FOR_ACT_STACK")
+                        : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_MELEE_MODIFIER_FOR_ACT_STACK");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_0:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_MELEE_MODIFIER_FOR_L_STACK_0");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_1:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(1), "HEX_MELEE_MODIFIER_FOR_L_STACK_1");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_2:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(2), "HEX_MELEE_MODIFIER_FOR_L_STACK_2");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_3:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(3), "HEX_MELEE_MODIFIER_FOR_L_STACK_3");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_4:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(4), "HEX_MELEE_MODIFIER_FOR_L_STACK_4");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_5:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(5), "HEX_MELEE_MODIFIER_FOR_L_STACK_5");
+                break; case A::HEX_MELEE_MODIFIER_FOR_L_STACK_6:
+                    ensureMeleeableOrNA(hex->bhex, v, l_CStacks.at(6), "HEX_MELEE_MODIFIER_FOR_L_STACK_6");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_0:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(0), "HEX_MELEE_MODIFIER_FOR_R_STACK_0");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_1:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(1), "HEX_MELEE_MODIFIER_FOR_R_STACK_1");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_2:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(2), "HEX_MELEE_MODIFIER_FOR_R_STACK_2");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_3:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(3), "HEX_MELEE_MODIFIER_FOR_R_STACK_3");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_4:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(4), "HEX_MELEE_MODIFIER_FOR_R_STACK_4");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_5:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(5), "HEX_MELEE_MODIFIER_FOR_R_STACK_5");
+                break; case A::HEX_MELEE_MODIFIER_FOR_R_STACK_6:
+                    ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_MELEE_MODIFIER_FOR_R_STACK_6");
+                break; case A::HEX_RANGED_MODIFIER_FOR_ACT_STACK:
                     isSpecialAStack
-                        ? ensureHexShootableOrNA(hex->bhex, v, astack, "HEX_SHOOT_DISTANCE_FROM_ACT_STACK")
-                        : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_SHOOT_DISTANCE_FROM_ACT_STACK");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_SHOOT_DISTANCE_FROM_L_STACK_0");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_1:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(1), "HEX_SHOOT_DISTANCE_FROM_L_STACK_1");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_2:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(2), "HEX_SHOOT_DISTANCE_FROM_L_STACK_2");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_3:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(3), "HEX_SHOOT_DISTANCE_FROM_L_STACK_3");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_4:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(4), "HEX_SHOOT_DISTANCE_FROM_L_STACK_4");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_5:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(5), "HEX_SHOOT_DISTANCE_FROM_L_STACK_5");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_6:
-                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(6), "HEX_SHOOT_DISTANCE_FROM_L_STACK_6");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(0), "HEX_SHOOT_DISTANCE_FROM_R_STACK_0");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_1:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(1), "HEX_SHOOT_DISTANCE_FROM_R_STACK_1");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_2:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(2), "HEX_SHOOT_DISTANCE_FROM_R_STACK_2");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_3:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(3), "HEX_SHOOT_DISTANCE_FROM_R_STACK_3");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_4:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(4), "HEX_SHOOT_DISTANCE_FROM_R_STACK_4");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_5:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(5), "HEX_SHOOT_DISTANCE_FROM_R_STACK_5");
-                break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_6:
-                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_SHOOT_DISTANCE_FROM_R_STACK_6");
+                        ? ensureHexShootableOrNA(hex->bhex, v, astack, "HEX_RANGED_MODIFIER_FOR_ACT_STACK")
+                        : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_RANGED_MODIFIER_FOR_ACT_STACK");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_0:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_RANGED_MODIFIER_FOR_L_STACK_0");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_1:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(1), "HEX_RANGED_MODIFIER_FOR_L_STACK_1");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_2:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(2), "HEX_RANGED_MODIFIER_FOR_L_STACK_2");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_3:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(3), "HEX_RANGED_MODIFIER_FOR_L_STACK_3");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_4:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(4), "HEX_RANGED_MODIFIER_FOR_L_STACK_4");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_5:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(5), "HEX_RANGED_MODIFIER_FOR_L_STACK_5");
+                break; case A::HEX_RANGED_MODIFIER_FOR_L_STACK_6:
+                    ensureHexShootableOrNA(hex->bhex, v, l_CStacks.at(6), "HEX_RANGED_MODIFIER_FOR_L_STACK_6");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_0:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(0), "HEX_RANGED_MODIFIER_FOR_R_STACK_0");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_1:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(1), "HEX_RANGED_MODIFIER_FOR_R_STACK_1");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_2:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(2), "HEX_RANGED_MODIFIER_FOR_R_STACK_2");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_3:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(3), "HEX_RANGED_MODIFIER_FOR_R_STACK_3");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_4:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(4), "HEX_RANGED_MODIFIER_FOR_R_STACK_4");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_5:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(5), "HEX_RANGED_MODIFIER_FOR_R_STACK_5");
+                break; case A::HEX_RANGED_MODIFIER_FOR_R_STACK_6:
+                    ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_RANGED_MODIFIER_FOR_R_STACK_6");
                 break; case A::STACK_QUANTITY:
                     // need separate N/A check (cstack may be nullptr)
                     if (isNA(v, cstack, "STACK_QUANTITY")) break;

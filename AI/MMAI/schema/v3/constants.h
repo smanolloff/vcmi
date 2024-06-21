@@ -79,36 +79,36 @@ namespace MMAI::Schema::V3 {
         ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_4,      E::BINARY,            16384),   //
         ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_5,      E::BINARY,            16384),   //
         ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_6,      E::BINARY,            16384),   //
-        ToE4(A::HEX_MELEEABLE_BY_ACT_STACK,         E::FLOATING,          3),       // can active stack melee attack hex? (0=no, 1=half, 2=full dmg)
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_0,         E::FLOATING,          3),       // can left-side stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_1,         E::FLOATING,          3),       // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_2,         E::FLOATING,          3),       //      It's all about whether the stack can reach a NEARBY hex
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_3,         E::FLOATING,          3),       //      Should it be false for obstacles?
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_4,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_5,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_L_STACK_6,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_0,         E::FLOATING,          3),       // can right-side stack0 melee attack hex? XXX: see note above
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_1,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_2,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_3,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_4,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_5,         E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEEABLE_BY_R_STACK_6,         E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK,  E::FLOATING,          3),       // 0=n/a, 1=half_dmg (far), 2=full_dmg (near, or no range penalty)
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_1,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_2,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_3,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_4,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_5,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_6,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0,  E::FLOATING,          3),       // Same as above, but for right-side shooters
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_1,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_2,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_3,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_4,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_5,  E::FLOATING,          3),       //
-        ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_6,  E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_ACT_STACK,   E::FLOATING,          3),       // can active stack melee attack hex? (0=no, 1=half, 2=full dmg)
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_0,   E::FLOATING,          3),       // can left-side stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_1,   E::FLOATING,          3),       // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_2,   E::FLOATING,          3),       //      It's all about whether the stack can reach a NEARBY hex
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_3,   E::FLOATING,          3),       //      Should it be false for obstacles?
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_4,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_5,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_L_STACK_6,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_0,   E::FLOATING,          3),       // can right-side stack0 melee attack hex? XXX: see note above
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_1,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_2,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_3,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_4,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_5,   E::FLOATING,          3),       //
+        ToE4(A::HEX_MELEE_MODIFIER_FOR_R_STACK_6,   E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_ACT_STACK,  E::FLOATING,          3),       // 0=n/a, 1=half_dmg (far), 2=full_dmg (near, or no range penalty)
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_0,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_1,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_2,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_3,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_4,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_5,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_L_STACK_6,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_0,  E::FLOATING,          3),       // Same as above, but for right-side shooters
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_1,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_2,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_3,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_4,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_5,  E::FLOATING,          3),       //
+        ToE4(A::HEX_RANGED_MODIFIER_FOR_R_STACK_6,  E::FLOATING,          3),       //
         ToE4(A::STACK_QUANTITY,                     E::FLOATING,          1023),    // (NUMERIC_SQRT) max for with n=31 (32^2=1024)
         ToE4(A::STACK_ATTACK,                       E::FLOATING,          63),      // (NUMERIC_SQRT) max for with n=7 (8^2=64)
         ToE4(A::STACK_DEFENSE,                      E::FLOATING,          63),      // (NUMERIC_SQRT) max for with n=7 (8^2=64) - crystal dragon is 48 when defending
