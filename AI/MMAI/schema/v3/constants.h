@@ -64,21 +64,21 @@ namespace MMAI::Schema::V3 {
         ToE4(A::HEX_Y_COORD,                        E::FLOATING,          11),      //
         ToE4(A::HEX_X_COORD,                        E::FLOATING,          15),      //
         ToE4(A::HEX_STATE,                          E::FLOATING,          3),       // see HexState
-        ToE4(A::HEX_ACTION_MASK_FOR_ACT_STACK,      E::FLOATING,          16384),   // see HexAction
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_0,      E::FLOATING,          16384),   // 16384=14 bits
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_1,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_2,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_3,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_4,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_5,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_6,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_0,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_1,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_2,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_3,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_4,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_5,      E::FLOATING,          16384),   //
-        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_6,      E::FLOATING,          16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_ACT_STACK,      E::BINARY,            16384),   // see HexAction
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_0,      E::BINARY,            16384),   // 16384=14 bits
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_1,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_2,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_3,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_4,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_5,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_L_STACK_6,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_0,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_1,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_2,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_3,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_4,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_5,      E::BINARY,            16384),   //
+        ToE4(A::HEX_ACTION_MASK_FOR_R_STACK_6,      E::BINARY,            16384),   //
         ToE4(A::HEX_MELEEABLE_BY_ACT_STACK,         E::FLOATING,          3),       // can active stack melee attack hex? (0=no, 1=half, 2=full dmg)
         ToE4(A::HEX_MELEEABLE_BY_L_STACK_0,         E::FLOATING,          3),       // can left-side stack0 melee attack hex? (0=no, 1=half, 2=full dmg)
         ToE4(A::HEX_MELEEABLE_BY_L_STACK_1,         E::FLOATING,          3),       // XXX: MELEEABLE hex does NOT mean there's a stack there (could even be an obstacle)
@@ -109,21 +109,6 @@ namespace MMAI::Schema::V3 {
         ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_4,  E::FLOATING,          3),       //
         ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_5,  E::FLOATING,          3),       //
         ToE4(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_6,  E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_ACT_STACK,  E::FLOATING,          3),       // see MeleeDistance
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_0,  E::FLOATING,          3),       // 0=n/a, 1=FAR, 2=NEAR (wide R attackers only; "~" marks their tail hex)
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_1,  E::FLOATING,          3),       // . . . . . . . . . . . . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_2,  E::FLOATING,          3),       //  . . 2 2 . . . . . 1 . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_3,  E::FLOATING,          3),       // . . 2 X 2 . . . X ~ 1 . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_4,  E::FLOATING,          3),       //  . . 2 2 . . . . . 1 . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_5,  E::FLOATING,          3),       // . . . . . . . . . . . . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_L_STACK_6,  E::FLOATING,          3),       //
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_0,  E::FLOATING,          3),       // Same as above, but for right-side stacks (i.e. 2 is for wide L attackers only)
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_1,  E::FLOATING,          3),       // . . . . . . . . . . . . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_2,  E::FLOATING,          3),       //  . . 2 2 . . . . 1 . . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_3,  E::FLOATING,          3),       // . . 2 X 2 . . . 1 ~ X . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_4,  E::FLOATING,          3),       //  . . 2 2 . . . . 1 . . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_5,  E::FLOATING,          3),       // . . . . . . . . . . . . .
-        ToE4(A::HEX_MELEE_DISTANCE_FROM_R_STACK_6,  E::FLOATING,          3),       //
         ToE4(A::STACK_QUANTITY,                     E::FLOATING,          1023),    // (NUMERIC_SQRT) max for with n=31 (32^2=1024)
         ToE4(A::STACK_ATTACK,                       E::FLOATING,          63),      // (NUMERIC_SQRT) max for with n=7 (8^2=64)
         ToE4(A::STACK_DEFENSE,                      E::FLOATING,          63),      // (NUMERIC_SQRT) max for with n=7 (8^2=64) - crystal dragon is 48 when defending
@@ -138,8 +123,8 @@ namespace MMAI::Schema::V3 {
         ToE4(A::STACK_RETALIATIONS_LEFT,            E::FLOATING,          3),       // inf is truncated to 2 (royal griffin)
         ToE4(A::STACK_SIDE,                         E::FLOATING,          2),       // 0=attacker, 1=defender
         ToE4(A::STACK_SLOT,                         E::FLOATING,          8),       // 0..6, 7=special slot (summons, war machines)
-        ToE4(A::STACK_CREATURE_TYPE,                E::FLOATING,          145),     // 0..144 (incl.)
-        ToE4(A::STACK_AI_VALUE_TENTH,               E::FLOATING,          3968),    // max for n=62 (63^2=3969) - crystal dragon is 3933
+        ToE4(A::STACK_CREATURE_TYPE,                E::FLOATING,          150),     // 0..149 (incl.)
+        ToE4(A::STACK_AI_VALUE_TENTH,               E::FLOATING,          7920),    // max for n=89 (89^2=7921) - azure dragon is 78845
         ToE4(A::STACK_IS_ACTIVE,                    E::FLOATING,          2),       //
         ToE4(A::STACK_IS_WIDE,                      E::FLOATING,          2),       // is this a two-hex stack?
         ToE4(A::STACK_FLYING,                       E::FLOATING,          2),       //

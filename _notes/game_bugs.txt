@@ -1,3 +1,5 @@
+- mapeditor does not detect changes if only army is modified
+- mapeditor does not remove creatures from army if they are set to "", but the count is >0
 - summoning demons prevents summon elementals
 - summoning elements causes random creature "cast" animation (manticores)
   (i believe same applies to all spells)

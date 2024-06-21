@@ -181,18 +181,6 @@ namespace MMAI::BAI::V3 {
             THROW_FORMAT("Unexpected hex accessibility for hex %d: %d", bh.hex % static_cast<int>(ainfo.at(bh.hex)));
         }
 
-
-        auto meleeDistanceFromStackResets = std::array<std::bitset<7>, 2> {};
-        auto maybeResetDistanceFromStack = [&hex, &meleeDistanceFromStackResets](bool isActive, bool isRight, int slot) {
-            if (slot < 0)  // summoned creatures, war machines, arrow towers
-                return;
-            if (meleeDistanceFromStackResets.at(isRight).test(slot))
-                return;
-
-            hex->setMeleeDistanceFromStack(isActive, isRight, slot, MeleeDistance::NA);
-            meleeDistanceFromStackResets.at(isRight).set(slot);
-        };
-
         const auto& nbhexes = NearbyHexes(hex->bhex);
 
         for (const auto& [cstack, stackinfo] : stackinfos) {
@@ -204,10 +192,6 @@ namespace MMAI::BAI::V3 {
             // Some of those values them will be updated to true later
             hex->setMeleeableByStack(isActive, isRight, slot, DmgMod::ZERO);
             hex->setShootDistanceFromStack(isActive, isRight, slot, ShootDistance::NA);
-
-            // XXX: MELEE_DISTANCE_FROM for THIS cstack may have been set in
-            //      a previous iteration (previous cstack) for an n_cstack
-            maybeResetDistanceFromStack(isActive, isRight, slot);
 
             if (stackinfo.canshoot) {
                 // stack can shoot (not blocked & has ammo)
@@ -290,28 +274,20 @@ namespace MMAI::BAI::V3 {
                     continue;
 
                 auto &n_cstack = it->second;
-                auto n_isActive = n_cstack == astack;
-                auto n_isRight = bool(n_cstack->unitSide());  // 1 = right = true
-                auto n_slot = n_cstack->unitSlot();
 
                 if (isReachable && cstack->unitSide() != n_cstack->unitSide()) {
-                    maybeResetDistanceFromStack(n_isActive, n_isRight, n_slot);
-
                     if (hexaction <= HexAction::AMOVE_TL) {
-                        hex->setMeleeDistanceFromStack(n_isActive, n_isRight, n_slot, MeleeDistance::NEAR);
                         //ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex->bhex), "vcmi says melee attack is IMPOSSIBLE");
                         hex->setActionForStack(isActive, isRight, slot, hexaction);
                     } else if (hexaction <= HexAction::AMOVE_2BR) {
                         // only wide R stacks can perform 2TR/2R/2BR attacks
                         if (isRight && cstack->doubleWide()) {
-                            hex->setMeleeDistanceFromStack(n_isActive, false, n_slot, MeleeDistance::FAR);
                             //ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex->bhex), "vcmi says melee attack is IMPOSSIBLE");
                             hex->setActionForStack(isActive, isRight, slot, hexaction);
                         }
                     } else {
                         // only wide L stacks can perform 2TL/2L/2BL attacks
                         if (!isRight && cstack->doubleWide()) {
-                            hex->setMeleeDistanceFromStack(n_isActive, true, n_slot, MeleeDistance::FAR);
                             //ASSERT(cstack->isMeleeAttackPossible(cstack, n_cstack, hex->bhex), "vcmi says melee attack is IMPOSSIBLE");
                             hex->setActionForStack(isActive, isRight, slot, hexaction);
                         }

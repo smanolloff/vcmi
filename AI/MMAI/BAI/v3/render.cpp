@@ -71,6 +71,8 @@ namespace MMAI::BAI::V3 {
             rinfos.insert({cstack, battle->getReachability(cstack)});
         }
 
+        bool isSpecialAStack = (astack && astack->unitSlot() < 0);
+
         auto l_CStacksAll = std::vector<const CStack*> {};
         l_CStacksAll.insert(l_CStacksAll.end(), l_CStacks.begin(), l_CStacks.end());
         l_CStacksAll.insert(l_CStacksAll.end(), l_CStacksSpecial.begin(), l_CStacksSpecial.end());
@@ -213,48 +215,6 @@ namespace MMAI::BAI::V3 {
             }
         };
 
-        auto ensureHexMeleeDistanceOrNA = [=](BattleHex bh, int v, const CStack* cstack, const char* attrname) {
-            if (isNA(v, cstack, attrname)) return;
-
-            static_assert(MeleeDistance(0) == MeleeDistance::NA);
-            static_assert(MeleeDistance(1) == MeleeDistance::FAR);
-            static_assert(MeleeDistance(2) == MeleeDistance::NEAR);
-
-            auto estacks = getAllStacksForSide(!cstack->unitSide());
-
-            if (v == 0) {
-                // for each enemy stack
-                //   ensure bh unreachable OR melee attack at cstack is impossible
-                for (auto estack : estacks) {
-                    if (!estack) continue;
-                    if (!checkReachable(bh, 1, estack)) continue;
-                    expect(!estack->isMeleeAttackPossible(estack, cstack, bh), "%s: =%d (bhex %d), but isAttackPossible=1", attrname, v, bh.hex);
-                }
-            } else {
-                // find at least 1 enemy stack
-                //   where bh is reachable AND melee attack at cstack is possible
-                auto it = std::find_if(estacks.begin(), estacks.end(), [=](auto &estack) {
-                    return estack \
-                        && checkReachable(bh, 1, estack) \
-                        && estack->isMeleeAttackPossible(estack, cstack, bh);
-                });
-
-                expect(it != estacks.end(), "%s: =%d (bhex %d), stack is not attackable by any enemy stack", attrname, bh.hex);
-
-                int mindist = -1;
-                for (auto &cbh : cstack->getHexes()) {
-                    auto dist = int(BattleHex::getDistance(bh, cbh));
-                    mindist = (mindist == -1) ? dist : std::min(mindist, dist);
-                }
-
-                if (v == 1) { // =FAR
-                    expect(mindist == 2, "%s: =1=FAR (bhex %d), but real distance is %d", attrname, bh.hex, mindist);
-                } else { // =NEAR
-                    expect(mindist == 1, "%s: =2=NEAR (bhex %d), but real distance is %d", attrname, bh.hex, mindist);
-                }
-            }
-        };
-
         auto ensureValueMatch = [=](int v, int vreal, const char* attrname) {
             expect(v == vreal, "%s: =%d, but is %d", attrname, v, vreal);
         };
@@ -344,7 +304,7 @@ namespace MMAI::BAI::V3 {
                 return;
             }
 
-            expect(astack->unitSlot() >= 0, "passing special stacks to ensureCorresponding_R_L_attr() is an error");
+            expect(astack->unitSlot() >= 0, "passing special stacks to ensureCorresponding_R_L_attr(%s) is an error", attrname.c_str());
 
             // Static checks ensuring attributes are defined in the expected order
             static_assert(EI(A::HEX_ACTION_MASK_FOR_L_STACK_0) == EI(A::HEX_ACTION_MASK_FOR_ACT_STACK) + 1);
@@ -353,8 +313,6 @@ namespace MMAI::BAI::V3 {
             static_assert(EI(A::HEX_MELEEABLE_BY_R_STACK_0) == EI(A::HEX_MELEEABLE_BY_ACT_STACK) + 8);
             static_assert(EI(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0) == EI(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK) + 1);
             static_assert(EI(A::HEX_SHOOT_DISTANCE_FROM_R_STACK_0) == EI(A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK) + 8);
-            static_assert(EI(A::HEX_MELEE_DISTANCE_FROM_L_STACK_0) == EI(A::HEX_MELEE_DISTANCE_FROM_ACT_STACK) + 1);
-            static_assert(EI(A::HEX_MELEE_DISTANCE_FROM_R_STACK_0) == EI(A::HEX_MELEE_DISTANCE_FROM_ACT_STACK) + 8);
 
             // (e.g. if HEX_MELEEABLE_BY_R_STACK_0 is index )
             auto baseattr = A(EI(activeattr) + (astack->unitSide() ? 8 : 1));
@@ -437,7 +395,7 @@ namespace MMAI::BAI::V3 {
                         THROW_FORMAT("HEX_STATE: Unexpected HexState: %d", v);
                     }
                 break; case A::HEX_ACTION_MASK_FOR_ACT_STACK:
-                    isSpecialStack
+                    isSpecialAStack
                         ? ensureCorrectMaskOrNA(bh, v, astack, "HEX_ACTION_MASK_FOR_ACT_STACK")
                         : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_ACTION_MASK_FOR_ACT_STACK");
                 break; case A::HEX_ACTION_MASK_FOR_R_STACK_0:
@@ -469,7 +427,7 @@ namespace MMAI::BAI::V3 {
                 break; case A::HEX_ACTION_MASK_FOR_L_STACK_6:
                     ensureCorrectMaskOrNA(bh, v, l_CStacks.at(6), "HEX_ACTION_MASK_FOR_L_STACK_6");
                 break; case A::HEX_MELEEABLE_BY_ACT_STACK:
-                    isSpecialStack
+                    isSpecialAStack
                         ? ensureMeleeableOrNA(hex->bhex, v, astack, "HEX_MELEEABLE_BY_ACT_STACK")
                         : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_MELEEABLE_BY_ACT_STACK");
                 break; case A::HEX_MELEEABLE_BY_L_STACK_0:
@@ -501,7 +459,7 @@ namespace MMAI::BAI::V3 {
                 break; case A::HEX_MELEEABLE_BY_R_STACK_6:
                     ensureMeleeableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_MELEEABLE_BY_R_STACK_6");
                 break; case A::HEX_SHOOT_DISTANCE_FROM_ACT_STACK:
-                    isSpecialStack
+                    isSpecialAStack
                         ? ensureHexShootableOrNA(hex->bhex, v, astack, "HEX_SHOOT_DISTANCE_FROM_ACT_STACK")
                         : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_SHOOT_DISTANCE_FROM_ACT_STACK");
                 break; case A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0:
@@ -532,38 +490,6 @@ namespace MMAI::BAI::V3 {
                     ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(5), "HEX_SHOOT_DISTANCE_FROM_R_STACK_5");
                 break; case A::HEX_SHOOT_DISTANCE_FROM_R_STACK_6:
                     ensureHexShootableOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_SHOOT_DISTANCE_FROM_R_STACK_6");
-                break; case A::HEX_MELEE_DISTANCE_FROM_ACT_STACK:
-                    isSpecialStack
-                        ? ensureHexMeleeDistanceOrNA(hex->bhex, v, astack, "HEX_MELEE_DISTANCE_FROM_ACT_STACK")
-                        : ensureCorresponding_R_L_attr(attr, v, hex->attrs, astack, "HEX_MELEE_DISTANCE_FROM_ACT_STACK");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_0:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(0), "HEX_MELEE_DISTANCE_FROM_L_STACK_0");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_1:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(1), "HEX_MELEE_DISTANCE_FROM_L_STACK_1");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_2:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(2), "HEX_MELEE_DISTANCE_FROM_L_STACK_2");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_3:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(3), "HEX_MELEE_DISTANCE_FROM_L_STACK_3");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_4:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(4), "HEX_MELEE_DISTANCE_FROM_L_STACK_4");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_5:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(5), "HEX_MELEE_DISTANCE_FROM_L_STACK_5");
-                break; case A::HEX_MELEE_DISTANCE_FROM_L_STACK_6:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, l_CStacks.at(6), "HEX_MELEE_DISTANCE_FROM_L_STACK_6");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_0:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(0), "HEX_MELEE_DISTANCE_FROM_R_STACK_0");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_1:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(1), "HEX_MELEE_DISTANCE_FROM_R_STACK_1");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_2:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(2), "HEX_MELEE_DISTANCE_FROM_R_STACK_2");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_3:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(3), "HEX_MELEE_DISTANCE_FROM_R_STACK_3");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_4:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(4), "HEX_MELEE_DISTANCE_FROM_R_STACK_4");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_5:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(5), "HEX_MELEE_DISTANCE_FROM_R_STACK_5");
-                break; case A::HEX_MELEE_DISTANCE_FROM_R_STACK_6:
-                    ensureHexMeleeDistanceOrNA(hex->bhex, v, r_CStacks.at(6), "HEX_MELEE_DISTANCE_FROM_R_STACK_6");
                 break; case A::STACK_QUANTITY:
                     // need separate N/A check (cstack may be nullptr)
                     if (isNA(v, cstack, "STACK_QUANTITY")) break;

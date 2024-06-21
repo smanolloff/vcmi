@@ -153,34 +153,6 @@ namespace MMAI::BAI::V3 {
         attrs.at(slot + EI(A::HEX_SHOOT_DISTANCE_FROM_L_STACK_0)) = EI(distance);
     }
 
-    //
-    // NEXT_TO_*
-    //
-
-    void Hex::setMeleeDistanceFromStack(bool isActive, bool isRight, int slot, MeleeDistance distance) {
-        if (isActive)
-            setMeleeDistanceFromAStack(distance);
-
-        if (slot < 0)  // summoned creatures, war machines, arrow towers
-            return;
-
-        isRight
-            ? setMeleeDistanceFromRStack(slot, distance)
-            : setMeleeDistanceFromLStack(slot, distance);
-    }
-
-    void Hex::setMeleeDistanceFromAStack(MeleeDistance distance) {
-        attrs.at(EI(A::HEX_MELEE_DISTANCE_FROM_ACT_STACK)) = EI(distance);
-    }
-
-    void Hex::setMeleeDistanceFromRStack(int slot, MeleeDistance distance) {
-        attrs.at(slot + EI(A::HEX_MELEE_DISTANCE_FROM_R_STACK_0)) = EI(distance);
-    }
-
-    void Hex::setMeleeDistanceFromLStack(int slot, MeleeDistance distance) {
-        attrs.at(slot + EI(A::HEX_MELEE_DISTANCE_FROM_L_STACK_0)) = EI(distance);
-    }
-
     void Hex::setCStackAndAttrs(const CStack* cstack_, int qpos) {
         cstack = cstack_;
 

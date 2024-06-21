@@ -81,11 +81,6 @@ namespace MMAI::BAI::V3 {
         void setShootDistanceFromLStack(int slot, ShootDistance distance);
         void setShootDistanceFromAStack(ShootDistance distance);
 
-        void setMeleeDistanceFromStack(bool isActive, bool isRight, int slot, MeleeDistance distance);
-        void setMeleeDistanceFromRStack(int slot, MeleeDistance distance);
-        void setMeleeDistanceFromLStack(int slot, MeleeDistance distance);
-        void setMeleeDistanceFromAStack(MeleeDistance distance);
-
         void setCStackAndAttrs(const CStack* cstack_, int qpos);
     };
 }

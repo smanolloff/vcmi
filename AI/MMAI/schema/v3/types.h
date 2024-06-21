@@ -43,44 +43,6 @@ namespace MMAI::Schema::V3 {
         _count
     };
 
-    /*
-     * Possible values for HEX_MELEE_DISTANCE_FROM_STACK_* attributes
-     *
-     * Diagram explanation:
-     *      If an enemy stack covers hexes marked by "1" or "2",
-     *      HEX_MELEE_DISTANCE_FROM_STACK_ for hex X would have
-     *      the corresponding value (1 or 2)
-     *
-     *             FAR:        |    NEAR:
-     *  . . . . . . . . . . .  |  . . . . . . . . .
-     * . . . . . 1 . . 1 . . . | . . 2 2 . . . . .
-     *  . . . X ~ 1 . 1 ~ X .  |  . 2 X 2 . . . . .
-     * . . . . . 1 . . 1 . . . | . . 2 2 . . . . .
-     *  . . . . . . . . . . .  |  . . . . . . . . .
-     *
-     * XXX: in case both are possible, NEAR is set, e.g.:
-     *  . . . . . . . . . . .
-     * . . . . . . 2 1 . . . .
-     *  . . . . . X ~ . . . .
-     * . . . . . . . . . . . .
-     * => HEX_MELEE_DISTANCE_FROM_STACK_* for hex "X" will be "2" in this case.
-     *
-     * XXX: dragon breath is not taken into account, too hard to calculate.
-     * . . . . . 3 . 3 . . . . (requires a friendly stack on the * hexes)
-     *  . . . . . * * . . . .
-     * . . . 3 * ~ X * 3 . . .
-     *  . . . . . * * . . . .
-     * . . . . . 3   3 . . . .
-     * => HEX_MELEE_DISTANCE_FROM_STACK_* for hex "X" will be NA in this case.
-     */
-
-    enum class MeleeDistance {
-        NA,
-        FAR,
-        NEAR,
-        _count
-    };
-
     enum class HexState : int {
         INVALID = -1,       // no hex
         FREE,
@@ -159,21 +121,6 @@ namespace MMAI::Schema::V3 {
         HEX_SHOOT_DISTANCE_FROM_R_STACK_4,
         HEX_SHOOT_DISTANCE_FROM_R_STACK_5,
         HEX_SHOOT_DISTANCE_FROM_R_STACK_6,
-        HEX_MELEE_DISTANCE_FROM_ACT_STACK,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_0,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_1,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_2,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_3,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_4,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_5,
-        HEX_MELEE_DISTANCE_FROM_L_STACK_6,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_0,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_1,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_2,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_3,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_4,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_5,
-        HEX_MELEE_DISTANCE_FROM_R_STACK_6,
         STACK_QUANTITY,
         STACK_ATTACK,
         STACK_DEFENSE,
