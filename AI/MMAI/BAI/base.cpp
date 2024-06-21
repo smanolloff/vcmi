@@ -24,6 +24,7 @@
 #include "spells/CSpellHandler.h"
 #include "v1/BAI.h"
 #include "v2/BAI.h"
+#include "v3/BAI.h"
 
 namespace MMAI::BAI {
     // static
@@ -42,6 +43,8 @@ namespace MMAI::BAI {
             res = std::make_unique<V1::BAI>(version, colorname, baggage, env, cb);
         break; case 2:
             res = std::make_unique<V2::BAI>(version, colorname, baggage, env, cb);
+        break; case 3:
+            res = std::make_unique<V3::BAI>(version, colorname, baggage, env, cb);
         break; default:
             throw std::runtime_error("Unsupported schema version: " + std::to_string(version));
         }

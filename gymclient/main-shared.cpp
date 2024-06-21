@@ -15,6 +15,7 @@
 // =============================================================================
 
 #include <cstdio>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <boost/program_options.hpp>
@@ -22,6 +23,7 @@
 #include <filesystem>
 
 #include "AI/MMAI/common.h"
+#include "AI/MMAI/schema/base.h"
 #include "main.h"
 #include "gymclient.h"
 
@@ -29,80 +31,15 @@
 #include "AI/MMAI/schema/v1/types.h"
 #include "AI/MMAI/schema/v1/constants.h"
 
+#include "user_agents/base.h"
+#include "user_agents/agent-v1.h"
+#include "user_agents/agent-v3.h"
+
 
 namespace po = boost::program_options;
 
 #define LOG(msg) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, msg);
 #define LOGSTR(msg, a1) printf("<%s>[CPP][%s] (%s) %s\n", boost::lexical_cast<std::string>(boost::this_thread::get_id()).c_str(), std::filesystem::path(__FILE__).filename().string().c_str(), __FUNCTION__, (std::string(msg) + a1).c_str());
-
-static std::array<MMAI::Schema::ActionMask, 2> lastmasks{};
-
-MMAI::Schema::Action firstValidAction(const MMAI::Schema::ActionMask &mask) {
-    for (int j = 1; j < mask.size(); j++)
-        if (mask[j]) return j;
-
-    return -5;
-}
-
-
-MMAI::Schema::Action randomValidAction(const MMAI::Schema::ActionMask &mask) {
-    auto validActions = std::vector<MMAI::Schema::Action>{};
-
-    for (int j = 1; j < mask.size(); j++) {
-        if (mask[j])
-            validActions.push_back(j);
-    }
-
-    if (validActions.empty()) {
-        logAi->info("No valid actions => reset");
-        return MMAI::Schema::ACTION_RESET;
-    }
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(0, validActions.size() - 1);
-    int randomIndex = dist(gen);
-    return validActions[randomIndex];
-}
-
-MMAI::Schema::Action promptAction(const MMAI::Schema::ActionMask &mask) {
-    int num;
-
-    while (true) {
-        std::cout << "Enter an integer (blank or 0 for a random valid action): ";
-
-        // Read the user input as a string
-        std::string input;
-        std::getline(std::cin, input);
-
-        // If the input is empty, treat it as if 0 was entered
-        if (input.empty()) {
-            num = 0;
-            break;
-        } else {
-            try {
-                num = std::stoi(input);
-                if (num >= 0)
-                    break;
-                else
-                    std::cerr << "Invalid input!\n";
-            } catch (const std::invalid_argument& e) {
-                std::cerr << "Invalid input!\n";
-            } catch (const std::out_of_range& e) {
-                std::cerr << "Invalid input!\n";
-            }
-        }
-    }
-
-    return num == 0 ? randomValidAction(mask) : MMAI::Schema::Action(num);
-}
-
-static auto recorded_i = 0;
-
-MMAI::Schema::Action recordedAction(std::vector<int> &recording) {
-    if (recorded_i >= recording.size()) throw std::runtime_error("\n\n*** No more recorded actions in actions.txt ***\n\n");
-    return MMAI::Schema::Action(recording[recorded_i++]);
-};
 
 // "default" is a reserved word => use "fallback"
 std::string values(std::vector<std::string> all, std::string fallback) {
@@ -120,6 +57,7 @@ std::string values(std::vector<std::string> all, std::string fallback) {
     return "Values: " + boost::algorithm::join(all, " | ");
 }
 
+
 std::string demangle(const char* name) {
     int status = -1;
     char* demangledName = abi::__cxa_demangle(name, nullptr, nullptr, &status);
@@ -130,6 +68,21 @@ std::string demangle(const char* name) {
 
 Args parse_args(int argc, char * argv[])
 {
+    int maxBattles = 0;
+    int seed = 0;
+    int randomHeroes = 0;
+    int randomObstacles = 0;
+    int swapSides = 0;
+    bool benchmark = false;
+    bool interactive = false;
+    bool prerecorded = false;
+    int statsSampling = 0;
+    int statsPersistFreq = 0;
+    int schemaVersion = 1;
+    bool printModelPredictions = false;
+    bool trueRng = false;
+    float statsScoreVar = 0.4;
+
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
     auto omap = std::map<std::string, std::string> {
         {"map", "gym/A1.vmap"},
@@ -143,21 +96,6 @@ Args parse_args(int argc, char * argv[])
         {"stats-mode", "disabled"},
         {"stats-storage", "-"}
     };
-
-    static int maxBattles = 0;
-    static int seed = 0;
-    static int randomHeroes = 0;
-    static int randomObstacles = 0;
-    static int swapSides = 0;
-    static bool benchmark = false;
-    static bool interactive = false;
-    static bool prerecorded = false;
-    static int statsSampling = 0;
-    static int statsPersistFreq = 0;
-    static int schemaVersion = 1;
-    static bool printModelPredictions = false;
-    static bool trueRng = false;
-    static float statsScoreVar = 0.4;
 
     auto usage = std::stringstream();
     usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
@@ -264,16 +202,9 @@ Args parse_args(int argc, char * argv[])
     if (vm.count("schema-version"))
         schemaVersion = vm.at("schema-version").as<int>();
 
-    // The user CB function is hard-coded
-    // (no way to provide this from the cmd line args)
-    static std::array<bool, 2> renders = {false, false};
 
-    static clock_t t0;
-    static unsigned long steps = 0;
-    static unsigned long resets = 0;
-    static int benchside = -1;
+    std::vector<int> recordings = {};
 
-    static std::vector<int> recordings;
     if (prerecorded) {
         std::ifstream inputFile("actions.txt"); // Assuming the integers are stored in a file named "input.txt"
         if (!inputFile.is_open()) throw std::runtime_error("Failed to open actions.txt");
@@ -283,82 +214,6 @@ Args parse_args(int argc, char * argv[])
             recordings.push_back(num);
         }
     }
-
-    MMAI::Schema::F_GetAction getaction = [](const MMAI::Schema::IState * s){
-        MMAI::Schema::Action act;
-
-        // Support for other versions can be implemented if needed
-        if (s->version() != 1 && s->version() != 2)
-            throw std::runtime_error("Expected version 1 or 2, got: " + std::to_string(s->version()));
-
-        auto any = s->getSupplementaryData();
-        ASSERT(any.has_value(), "supdata is empty");
-        auto &t = typeid(const MMAI::Schema::V1::ISupplementaryData*);
-        ASSERT(any.type() == t, boost::str(
-            boost::format("Bad std::any payload type from getSupplementaryData(): want: %s/%u, have: %s/%u") \
-            % boost::core::demangle(t.name()) % t.hash_code() \
-            % boost::core::demangle(any.type().name()) % any.type().hash_code()
-        ));
-
-        auto sup = std::any_cast<const MMAI::Schema::V1::ISupplementaryData*>(any);
-        auto side = static_cast<int>(sup->getSide());
-
-        if (steps == 0 && benchmark) {
-            t0 = clock();
-            benchside = side;
-        }
-
-        steps++;
-
-        if (sup->getType() == MMAI::Schema::V1::ISupplementaryData::Type::ANSI_RENDER) {
-            std::cout << sup->getAnsiRender() << "\n";
-            // use stored mask from pre-render result
-            act = interactive
-                ? promptAction(lastmasks.at(side))
-                : (prerecorded ? recordedAction(recordings) : randomValidAction(lastmasks.at(side)));
-
-            renders.at(side) = false;
-        } else if (!benchmark && !renders.at(side)) {
-            logAi->debug("Side: %d", side);
-            renders.at(side) = true;
-            // store mask of this result for the next action
-            lastmasks.at(side) = s->getActionMask();
-            act = MMAI::Schema::ACTION_RENDER_ANSI;
-        } else if (sup->getIsBattleEnded()) {
-            if (side == benchside) {
-                resets++;
-
-                switch (resets % 4) {
-                case 0: printf("\r|"); break;
-                case 1: printf("\r\\"); break;
-                case 2: printf("\r-"); break;
-                case 3: printf("\r/"); break;
-                }
-
-                if (resets == 10) {
-                    auto s = double(clock() - t0) / CLOCKS_PER_SEC;
-                    printf("  steps/s: %-6.0f resets/s: %-6.2f\n", steps/s, resets/s);
-                    resets = 0;
-                    steps = 0;
-                    t0 = clock();
-                }
-
-                std::cout.flush();
-            }
-
-            if (!benchmark) logGlobal->debug("user-callback battle ended => sending ACTION_RESET");
-            act = MMAI::Schema::ACTION_RESET;
-        // } else if (false)
-        } else {
-            renders.at(side) = false;
-            act = interactive
-                ? promptAction(s->getActionMask())
-                : (prerecorded ? recordedAction(recordings) : randomValidAction(s->getActionMask()));
-        }
-
-        if (printModelPredictions && !benchmark) logGlobal->debug("user-callback getAction returning: ", std::to_string(act));
-        return act;
-    };
 
     if (benchmark) {
         if (
@@ -385,6 +240,21 @@ Args parse_args(int argc, char * argv[])
 
         printf("\n");
     }
+
+    UserAgents::Base* useragent;
+
+    switch(schemaVersion) {
+    break; case 1:
+        useragent = new UserAgents::AgentV1(benchmark, interactive, printModelPredictions, recordings);
+    break; case 3:
+        useragent = new UserAgents::AgentV3(benchmark, interactive, printModelPredictions, recordings);
+    break; default:
+        throw std::runtime_error("No agent available for schema version " + std::to_string(schemaVersion));
+    }
+
+    MMAI::Schema::F_GetAction getaction = [useragent](const MMAI::Schema::IState *s) {
+        return useragent->getAction(s);
+    };
 
     return {
         // custom getAction function above uses version 1

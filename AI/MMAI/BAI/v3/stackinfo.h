@@ -16,16 +16,29 @@
 
 #pragma once
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
+#include "battle/ReachabilityInfo.h"
+#include "schema/v3/types.h"
 
-#define MMAI_EXPORT_LOADED 1
+namespace MMAI::BAI::V3 {
+    using DmgMod = Schema::V3::DmgMod;
 
-#include "base.h"
-#include "v1/schema.h"
-#include "v2/schema.h"
-#include "v3/schema.h"
+    struct StackInfo {
+        int speed;
+        bool canshoot;
+        DmgMod meleemod;
+        bool noDistancePenalty;
+        std::shared_ptr<ReachabilityInfo> rinfo;
+
+        StackInfo(
+            int speed_,
+            bool canshoot_,
+            DmgMod meleemod_,
+            bool noDistancePenalty_,
+            std::shared_ptr<ReachabilityInfo> rinfo_
+        ) : speed(speed_),
+            canshoot(canshoot_),
+            meleemod(meleemod_),
+            noDistancePenalty(noDistancePenalty_),
+            rinfo(rinfo_) {};
+    };
+}

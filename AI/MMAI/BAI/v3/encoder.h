@@ -13,19 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
-
 #pragma once
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
+#include "schema/base.h"
+#include "schema/v3/types.h"
 
-#define MMAI_EXPORT_LOADED 1
+namespace MMAI::BAI::V3 {
+    using HexAttribute = Schema::V3::HexAttribute;
+    using BS = Schema::BattlefieldState;
 
-#include "base.h"
-#include "v1/schema.h"
-#include "v2/schema.h"
-#include "v3/schema.h"
+    class Encoder {
+    public:
+        static void Encode(const HexAttribute &a, const int &v, BS &vec);
+        static void EncodeFloating(const int &v, const int &vmax, BS &vec);
+        static void EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec);
+        static void EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec);
+    };
+}

@@ -14,18 +14,11 @@
 // limitations under the License.
 // =============================================================================
 
-#pragma once
+#include "schema/base.h"
+#include "./action.h"
+#include "./state.h"
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
-
-#define MMAI_EXPORT_LOADED 1
-
-#include "base.h"
-#include "v1/schema.h"
-#include "v2/schema.h"
-#include "v3/schema.h"
+namespace MMAI::BAI::V3 {
+    std::string Render(const Schema::IState* istate, const Action *action);
+    void Verify(const State* state);
+}

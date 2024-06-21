@@ -16,16 +16,23 @@
 
 #pragma once
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
+namespace MMAI::Schema::V3 {
+    /*
+     * Compile time int(sqrt(x))
+     * https://stackoverflow.com/a/27709195
+     */
+    template <typename T> constexpr T Sqrt(T x, T lo, T hi) {
+        if (lo == hi) return lo;
+        const T mid = (lo + hi + 1) / 2;
+        return (x / mid < mid) ? Sqrt<T>(x, lo, mid - 1) : Sqrt(x, mid, hi);
+    }
+    template <typename T> constexpr T CTSqrt(T x) { return Sqrt<T>(x, 0, x / 2 + 1); }
 
-#define MMAI_EXPORT_LOADED 1
-
-#include "base.h"
-#include "v1/schema.h"
-#include "v2/schema.h"
-#include "v3/schema.h"
+    /*
+     * Compile time int(log(x, 2))
+     * https://stackoverflow.com/a/23784921
+     */
+    constexpr unsigned Log2(unsigned n) {
+        return n <= 1 ? 0 : 1 + Log2((n + 1) / 2);
+    }
+}

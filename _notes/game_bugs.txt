@@ -1,0 +1,3 @@
+- summoning demons prevents summon elementals
+- summoning elements causes random creature "cast" animation (manticores)
+  (i believe same applies to all spells)

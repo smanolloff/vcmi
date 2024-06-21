@@ -16,16 +16,23 @@
 
 #pragma once
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
+#include "AI/MMAI/schema/base.h"
 
-#define MMAI_EXPORT_LOADED 1
+namespace UserAgents {
+    class Base {
+    public:
+        Base(bool benchmark_, bool interactive_, bool verbose_, std::vector<int> actions_)
+        : benchmark(benchmark_)
+        , interactive(interactive_)
+        , verbose(verbose_)
+        , actions(actions_) {};
 
-#include "base.h"
-#include "v1/schema.h"
-#include "v2/schema.h"
-#include "v3/schema.h"
+        virtual ~Base() = default;
+        virtual MMAI::Schema::Action getAction(const MMAI::Schema::IState * s) = 0;
+    protected:
+        const bool benchmark;  // obsoletes all options below, always picks random actions
+        const bool interactive;
+        const bool verbose;
+        const std::vector<int> actions;
+    };
+}

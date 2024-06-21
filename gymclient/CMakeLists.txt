@@ -7,8 +7,18 @@ add_definitions(-DVCMI_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 add_library(gymclient SHARED gymclient.cpp gymclient.h)
 
-add_executable(gymclient-gui main-shared.cpp main-gui.cpp main.h)
-add_executable(gymclient-headless main-shared.cpp main-headless.cpp main.h)
+set(SHARED_FILES
+  main.h
+  main-shared.cpp
+  user_agents/base.h
+  user_agents/agent-v1.cpp
+  user_agents/agent-v1.h
+  user_agents/agent-v3.cpp
+  user_agents/agent-v3.h
+)
+
+add_executable(gymclient-gui ${SHARED_FILES} main-gui.cpp)
+add_executable(gymclient-headless ${SHARED_FILES} main-headless.cpp)
 
 add_dependencies(gymclient vcmiclient)
 add_dependencies(gymclient-gui gymclient)

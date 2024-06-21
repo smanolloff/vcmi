@@ -16,16 +16,25 @@
 
 #pragma once
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
+#include "./base.h"
 
-#define MMAI_EXPORT_LOADED 1
+namespace UserAgents {
+    class AgentV3 : public Base {
+    public:
+        using Base::Base;
+        MMAI::Schema::Action getAction(const MMAI::Schema::IState * s) override;
+    private:
+        unsigned long steps = 0;
+        unsigned long resets = 0;
+        int benchside = -1;
+        clock_t t0 = 0;
+        std::array<bool, 2> renders = {false, false};
+        std::array<MMAI::Schema::ActionMask, 2> lastmasks = {};
+        int recording_i = 0;
 
-#include "base.h"
-#include "v1/schema.h"
-#include "v2/schema.h"
-#include "v3/schema.h"
+        MMAI::Schema::Action promptAction(const MMAI::Schema::ActionMask &mask);
+        MMAI::Schema::Action recordedAction();
+        MMAI::Schema::Action randomValidAction(const MMAI::Schema::ActionMask &mask);
+        MMAI::Schema::Action firstValidAction(const MMAI::Schema::ActionMask &mask);
+    };
+}
