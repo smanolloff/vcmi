@@ -16,36 +16,54 @@
 
 #pragma once
 
+#include "BAI/v3/stack.h"
 #include "CCallback.h"
+#include "battle/CObstacleInstance.h"
 #include "battle/ReachabilityInfo.h"
 #include "common.h"
 
 #include "./hex.h"
 #include "./stackinfo.h"
+#include "./general_info.h"
 
 #include "schema/base.h"
+#include "schema/v3/constants.h"
 
 namespace MMAI::BAI::V3 {
+    using Stacks = std::array<std::unique_ptr<Stack>, MAX_STACKS>;
     using Hexes = std::array<std::array<std::unique_ptr<Hex>, BF_XMAX>, BF_YMAX>;
     using Queue = std::vector<uint32_t>;
-    using HexStacks = std::map<BattleHex, const CStack*>;
+    using HexStacks = std::map<BattleHex, const Stack*>;
+    using HexObstacles = std::map<BattleHex, std::shared_ptr<const CObstacleInstance>>;
     using XY = std::pair<int, int>;
     using DirHex = std::vector<std::pair<BattleHex::EDir, BattleHex>>;
     using HexActionHex = std::array<BattleHex, 12>;
-    using StackInfos = std::map<const CStack*, StackInfo>;
 
     constexpr int QSIZE = 15;
 
     class Battlefield {
     public:
-        static BattleHex AMoveTarget(BattleHex &bh, HexAction &action);
+        static std::unique_ptr<const Battlefield> Create(
+            const CPlayerBattleCallback* battle,
+            const CStack* astack_,
+            std::pair<int, int> initialArmyValues,
+            bool isMorale
+        );
 
-        Battlefield(const CPlayerBattleCallback* battle, const CStack* astack_, int percentValue, bool isMorale);
+        // Use move semantics to avoid copying
+        Battlefield(
+            GeneralInfo&& info,
+            Hexes&& hexes,
+            Stacks&& stacks,
+            Stack* astack
+        );
 
-        const CStack* const astack;
+        const GeneralInfo info;
         const Hexes hexes;
-
+        const Stacks stacks;
+        const Stack* astack;
     private:
+
         static bool IsReachable(
             const BattleHex &bh,
             const StackInfo &stackinfo
@@ -60,7 +78,7 @@ namespace MMAI::BAI::V3 {
         static void ProcessNeighbouringHexes(
             Hex &hex,
             const CStack* astack,
-            const StackInfos &stackinfos,
+            const StackInfo &astackinfo,
             const HexStacks &hexstacks
         );
 
@@ -69,15 +87,16 @@ namespace MMAI::BAI::V3 {
 
         static std::unique_ptr<Hex> InitHex(
             const int id,
-            const CStack* astack,
-            const int percentValue,
-            const Queue &queue,
             const AccessibilityInfo &ainfo,
-            const StackInfos &stackinfos,
-            const HexStacks &hexstacks
+            const StackInfo &astackinfo,
+            const HexStacks &hexstacks,
+            const HexObstacles &hexobstacles
         );
 
-        static Hexes InitHexes(const CPlayerBattleCallback* battle, const CStack* astack, int percentValue, bool isMorale);
+        static std::pair<Stacks, Stack*> InitStacks(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
+        static Hexes InitHexes(const CPlayerBattleCallback* battle, const Stacks &stacks);
         static Queue GetQueue(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
+        static int BaseMeleeMod(const CPlayerBattleCallback* battle, const CStack* cstack);
+        static int BaseRangeMod(const CPlayerBattleCallback* battle, const CStack* cstack);
     };
 }

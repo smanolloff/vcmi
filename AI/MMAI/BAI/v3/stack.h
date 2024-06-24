@@ -17,41 +17,36 @@
 #pragma once
 
 #include "CStack.h"
-#include "battle/BattleHex.h"
 
+#include "BAI/v3/hexactmask.h"
 #include "schema/v3/types.h"
-#include "./hexactmask.h"
 
 namespace MMAI::BAI::V3 {
     using namespace Schema::V3;
 
     /**
-     * A wrapper around BattleHex. Differences:
-     *
-     * x is 0..14     (instead of 0..16),
-     * id is 0..164  (instead of 0..177)
+     * A wrapper around CStack
      */
-    class Hex : public Schema::V3::IHex {
+    class Stack : public Schema::V3::IStack {
     public:
-        static int CalcId(const BattleHex &bh);
-        static std::pair<int, int> CalcXY(const BattleHex &bh);
+        Stack();
 
-        Hex();
+        // IStack impl
+        const StackAttrs& getAttrs() const override;
+        int getAttr(StackAttribute a) const override;
 
-        // IHex impl
-        const HexAttrs& getAttrs() const override;
-        int getAttr(HexAttribute a) const override;
-
-        BattleHex bhex;
         const CStack * cstack = nullptr;
-        HexAttrs attrs;
-        HexActMask hexactmask; // for active stack only
+        StackAttrs attrs;
 
         std::string name() const;
-        int attr(HexAttribute a) const;
-        void setattr(HexAttribute a, int value);
-        void setState(HexState state);
-        void permitAction(HexAction action);
-        void finalizeActionMask();
+
+        const bool isActive = false;
+
+        int attr(StackAttribute a) const;
+        void setattr(StackAttribute a, int value);
+
+        void finalizeActionMask(bool isActive, bool isRight, int slot);
+        void setAction(bool isActive, bool isRight, int slot, HexAction action);
+        void setCStackAndAttrs(const CStack* cstack_, int qpos);
     };
 }

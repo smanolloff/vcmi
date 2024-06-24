@@ -29,24 +29,11 @@
 #include <memory>
 
 namespace MMAI::BAI::V3 {
-    // static
-    const std::pair<int, int> State::CalcTotalArmyValues(const CPlayerBattleCallback* battle) {
-        int res0 = 0;
-        int res1 = 0;
-        for (auto &stack : battle->battleGetStacks()) {
-            stack->unitSide() == 0
-                ? res0 += stack->getCount() * stack->unitType()->getAIValue()
-                : res1 += stack->getCount() * stack->unitType()->getAIValue();
-        }
-        return {res0, res1};
-    }
-
     State::State(const int version__, const std::string colorname_, const CPlayerBattleCallback* battle_)
     : version_(version__)
     , colorname(colorname_)
     , side(battle_->battleGetMySide())
-    , initialSide0ArmyValue(std::get<0>(CalcTotalArmyValues(battle_)))
-    , initialSide1ArmyValue(std::get<1>(CalcTotalArmyValues(battle_))) {
+    , initialArmyValues(GeneralInfo::CalcTotalArmyValues(battle_)) {
         bfstate.reserve(Schema::V3::BATTLEFIELD_STATE_SIZE);
         actmask.reserve(Schema::V3::N_ACTIONS);
         // attnmask.reserve(165 * 165);
@@ -54,8 +41,6 @@ namespace MMAI::BAI::V3 {
     }
 
     void State::onActiveStack(const CStack* astack) {
-        auto [value0, value1] = CalcTotalArmyValues(battle);
-
         int dmgReceived = 0;
         int unitsLost = 0;
         int valueLost = 0;
@@ -76,10 +61,7 @@ namespace MMAI::BAI::V3 {
             }
         }
 
-        int valueRatio = 100.0 * (value0 + value1) / (initialSide0ArmyValue + initialSide1ArmyValue);
-        // logAi->debug("initialSide0ArmyValue=%d, initialSide1ArmyValue=%d, value0=%d, value1=%d, ratio=%d", initialSide0ArmyValue, initialSide1ArmyValue, value0, value1, valueRatio);
-
-        battlefield = std::make_unique<Battlefield>(battle, astack, valueRatio, isMorale);
+        battlefield = Battlefield::Create(battle, astack, initialArmyValues, isMorale);
         isMorale = false;
 
         supdata = std::make_unique<SupplementaryData>(
@@ -91,11 +73,10 @@ namespace MMAI::BAI::V3 {
             unitsKilled,
             valueLost,
             valueKilled,
-            value0,
-            value1,
             battlefield.get(),
             attackLogs  // store the logs since last turn
         );
+
         attackLogs.clear(); // accumulate new logs until next turn
         bfstate.clear();
         actmask.clear();
@@ -104,7 +85,7 @@ namespace MMAI::BAI::V3 {
         for (int i=0; i<EI(NonHexAction::count); i++) {
             switch (NonHexAction(i)) {
             break; case NonHexAction::RETREAT: actmask.push_back(true);
-            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->waitedThisTurn);
+            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->cstack->waitedThisTurn);
             break; default:
                 THROW_FORMAT("Unexpected NonHexAction: %d", i);
             }

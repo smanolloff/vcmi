@@ -24,11 +24,33 @@ namespace MMAI::BAI::V3 {
 
     class Encoder {
     public:
-        static void Encode(const HexAttribute &a, const int &v, BS &vec);
-        static void EncodeFloating(const int &v, const int &vmax, BS &vec);
-        static void EncodeBinary(const int &v, const int &n, const int &vmax, BS &vec);
-        static void EncodeNumeric(const int &v, const int &n, const int &vmax, BS &vec);
-        static void EncodeNumericSqrt(const int &v, const int &n, const int &vmax, BS &vec);
-        static void EncodeCategorical(const int &v, const int &n, const int &vmax, BS &vec);
+        static void Encode(const HexAttribute &a, const int v, BS &vec);
+
+        static void EncodeAccumulatingExplicitNull(const int v, const int n, BS &vec);
+        static void EncodeAccumulatingImplicitNull(const int v, const int n, BS &vec);
+        static void EncodeAccumulatingMaskingNull(const int v, const int n, BS &vec);
+        static void EncodeAccumulatingStrictNull(const int v, const int n, BS &vec);
+        static void EncodeAccumulatingZeroNull(const int v, const int n, BS &vec);
+
+        static void EncodeBinaryExplicitNull(const int v, const int n, BS &vec);
+        static void EncodeBinaryMaskingNull(const int v, const int n, BS &vec);
+        static void EncodeBinaryStrictNull(const int v, const int n, BS &vec);
+        static void EncodeBinaryZeroNull(const int v, const int n, BS &vec);
+
+        static void EncodeCategoricalExplicitNull(const int v, const int n, BS &vec);
+        static void EncodeCategoricalImplicitNull(const int v, const int n, BS &vec);
+        static void EncodeCategoricalMaskingNull(const int v, const int n, BS &vec);
+        static void EncodeCategoricalStrictNull(const int v, const int n, BS &vec);
+        static void EncodeCategoricalZeroNull(const int v, const int n, BS &vec);
+
+        static void EncodeNormalizedExplicitNull(const int v, const int vmax, BS &vec);
+        static void EncodeNormalizedMaskingNull(const int v, const int vmax, BS &vec);
+        static void EncodeNormalizedStrictNull(const int v, const int vmax, BS &vec);
+        static void EncodeNormalizedZeroNull(const int v, const int vmax, BS &vec);
+    private:
+        static void EncodeAccumulating(const int v, const int n, BS &vec);
+        static void EncodeBinary(const int v, const int n, BS &vec);
+        static void EncodeCategorical(const int v, const int n, BS &vec);
+        static void EncodeNormalized(const int v, const int vmax, BS &vec);
     };
 }

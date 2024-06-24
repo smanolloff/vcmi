@@ -58,15 +58,12 @@ namespace MMAI::BAI::V3 {
         Schema::AttentionMask attnmask = {};
         std::unique_ptr<SupplementaryData> supdata;
         std::vector<std::shared_ptr<AttackLog>> attackLogs = {};
-        std::unique_ptr<Battlefield> battlefield = nullptr;
+        std::unique_ptr<const Battlefield> battlefield = nullptr;
         std::unique_ptr<Action> action = nullptr;
         const std::string colorname;
         const CPlayerBattleCallback* battle; // survives discard()
         const BattlePerspective::BattlePerspective side;
-        const int initialSide0ArmyValue;
-        const int initialSide1ArmyValue;
+        const std::pair<int, int> initialArmyValues;
         bool isMorale = false;
-
-        static const std::pair<int, int> CalcTotalArmyValues(const CPlayerBattleCallback* battle);
     };
 }

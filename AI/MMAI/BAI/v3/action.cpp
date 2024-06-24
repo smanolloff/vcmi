@@ -51,7 +51,38 @@ namespace MMAI::BAI::V3 {
         if (ha == HexAction::MOVE || ha == HexAction::SHOOT)
             return nullptr;
 
-        auto nbh = Battlefield::AMoveTarget(hex->bhex, ha);
+        if (ha == HexAction::MOVE || ha == HexAction::SHOOT)
+            throw std::runtime_error("MOVE and SHOOT are not AMOVE actions");
+
+        auto &bh = hex->bhex;
+
+        auto edir = AMOVE_TO_EDIR.at(ha);
+        auto nbh = bh.cloneInDirection(edir);
+
+        switch (ha) {
+        case HexAction::AMOVE_TR:
+        case HexAction::AMOVE_R:
+        case HexAction::AMOVE_BR:
+        case HexAction::AMOVE_BL:
+        case HexAction::AMOVE_L:
+        case HexAction::AMOVE_TL:
+            break;
+        case HexAction::AMOVE_2TR:
+        case HexAction::AMOVE_2R:
+        case HexAction::AMOVE_2BR:
+            nbh = nbh.cloneInDirection(BattleHex::EDir::RIGHT);
+            break;
+        case HexAction::AMOVE_2BL:
+        case HexAction::AMOVE_2L:
+        case HexAction::AMOVE_2TL:
+            nbh = nbh.cloneInDirection(BattleHex::EDir::LEFT);
+            break;
+        default:
+            THROW_FORMAT("Unexpected HexAction: %d", EI(ha));
+        }
+
+        ASSERT(nbh.isAvailable(), "unavailable AMOVE target hex #" + std::to_string(nbh.hex));
+
         auto [x, y] = Hex::CalcXY(nbh);
 
         // create a new unique_ptr with a copy of Hex

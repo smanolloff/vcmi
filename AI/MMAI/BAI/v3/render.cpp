@@ -34,6 +34,7 @@ namespace MMAI::BAI::V3 {
         return ss.str();
     }
 
+/*
     // TODO: fix for terminal observation
     //       info after off-turn update is somewhat inconsistent
     //       (investigation needed)
@@ -97,7 +98,7 @@ namespace MMAI::BAI::V3 {
 
         // Return (attr == N/A), but after performing some checks
         auto isNA = [](int v, const CStack* stack, const char* attrname) {
-            if (v == BATTLEFIELD_STATE_VALUE_NA) {
+            if (v == ENCODING_NULL_MASK) {
                 expect(!stack, "%s: N/A but stack != nullptr", attrname);
                 return true;
             }
@@ -183,43 +184,11 @@ namespace MMAI::BAI::V3 {
             return res;
         };
 
-        auto ensureMeleeableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
-            if (isNA(v, stack, attrname)) return;
-            auto bhs = getHexesForFixedTarget(bh, stack);
-            if (v == 0)
-                expect(bhs.size() == 0, "%s: =0 but there are %d neighbouring hexes to attack from", attrname, bhs.size());
-            else
-                expect(bhs.size() > 0, "%s: =%d but there are no neighbouring hexes to attack from", attrname, v);
-        };
-
-
-        auto ensureHexShootableOrNA = [=](BattleHex bh, int v, const CStack* stack, const char* attrname) {
-            if (isNA(v, stack, attrname)) return;
-            auto canshoot = battle->battleCanShoot(stack);
-            auto distance = bh.getDistance(bh, stack->getPosition());
-            auto norangepen = stack->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY);
-
-            if (v == 0) {
-                static_assert(ShootDistance(0) == ShootDistance::NA);
-                expect(!canshoot, "%s: =0 but the stack is able to shoot", attrname);
-            } else if (v == 1) {
-                static_assert(ShootDistance(1) == ShootDistance::FAR);
-                expect(canshoot, "%s: =1, but the stack is unable to shoot", attrname);
-                expect(distance > 10, "%s: =1, but distance=%d (<=10)", attrname, distance);
-            } else if (v == 2) {
-                static_assert(ShootDistance(2) == ShootDistance::NEAR);
-                expect(canshoot, "%s: =2, but the stack is unable to shoot", attrname);
-                expect(norangepen || distance <= 10, "%s: =2, but norangepen=0 and distance=%d (>10)", attrname, distance, norangepen);
-            } else {
-                THROW_FORMAT("Unexpected v: %d", v);
-            }
-        };
-
         auto ensureValueMatch = [=](int v, int vreal, const char* attrname) {
             expect(v == vreal, "%s: =%d, but is %d", attrname, v, vreal);
         };
 
-        auto ensureMeleePossibility = [=](BattleHex bh, HexActMask mask, HexAction ha, const CStack* cstack, const char* attrname) {
+        auto ensureMeleeability = [=](BattleHex bh, HexActMask mask, HexAction ha, const CStack* cstack, const char* attrname) {
             auto mv = mask.test(EI(ha));
 
             // if AMOVE is allowed, we must be able to reach hex
@@ -281,18 +250,18 @@ namespace MMAI::BAI::V3 {
 
             ensureReachability(bh, mask.test(EI(HexAction::MOVE)), cstack, (basename + "{MOVE}").c_str());
             ensureShootability(bh, mask.test(EI(HexAction::SHOOT)), cstack, (basename + "{SHOOT}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_TR, cstack, (basename + "{AMOVE_TR}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_R, cstack, (basename + "{AMOVE_R}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_BR, cstack, (basename + "{AMOVE_BR}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_BL, cstack, (basename + "{AMOVE_BL}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_L, cstack, (basename + "{AMOVE_L}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_TL, cstack, (basename + "{AMOVE_TL}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_2TR, cstack, (basename + "{AMOVE_2TR}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_2R, cstack, (basename + "{AMOVE_2R}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_2BR, cstack, (basename + "{AMOVE_2BR}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_2BL, cstack, (basename + "{AMOVE_2BL}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_2L, cstack, (basename + "{AMOVE_2L}").c_str());
-            ensureMeleePossibility(bh, mask, HexAction::AMOVE_2TL, cstack, (basename + "{AMOVE_2TL}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_TR, cstack, (basename + "{AMOVE_TR}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_R, cstack, (basename + "{AMOVE_R}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_BR, cstack, (basename + "{AMOVE_BR}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_BL, cstack, (basename + "{AMOVE_BL}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_L, cstack, (basename + "{AMOVE_L}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_TL, cstack, (basename + "{AMOVE_TL}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_2TR, cstack, (basename + "{AMOVE_2TR}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_2R, cstack, (basename + "{AMOVE_2R}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_2BR, cstack, (basename + "{AMOVE_2BR}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_2BL, cstack, (basename + "{AMOVE_2BL}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_2L, cstack, (basename + "{AMOVE_2L}").c_str());
+            ensureMeleeability(bh, mask, HexAction::AMOVE_2TL, cstack, (basename + "{AMOVE_2TL}").c_str());
         };
 
         auto ensureCorresponding_R_L_attr = [=](A activeattr, int v, HexAttrs &attrs, const CStack* astack, std::string attrname) {
@@ -305,14 +274,6 @@ namespace MMAI::BAI::V3 {
             }
 
             expect(astack->unitSlot() >= 0, "passing special stacks to ensureCorresponding_R_L_attr(%s) is an error", attrname.c_str());
-
-            // Static checks ensuring attributes are defined in the expected order
-            static_assert(EI(A::HEX_ACTION_MASK_FOR_L_STACK_0) == EI(A::HEX_ACTION_MASK_FOR_ACT_STACK) + 1);
-            static_assert(EI(A::HEX_ACTION_MASK_FOR_R_STACK_0) == EI(A::HEX_ACTION_MASK_FOR_ACT_STACK) + 8);
-            static_assert(EI(A::HEX_MELEE_MODIFIER_FOR_L_STACK_0) == EI(A::HEX_MELEE_MODIFIER_FOR_ACT_STACK) + 1);
-            static_assert(EI(A::HEX_MELEE_MODIFIER_FOR_R_STACK_0) == EI(A::HEX_MELEE_MODIFIER_FOR_ACT_STACK) + 8);
-            static_assert(EI(A::HEX_RANGED_MODIFIER_FOR_L_STACK_0) == EI(A::HEX_RANGED_MODIFIER_FOR_ACT_STACK) + 1);
-            static_assert(EI(A::HEX_RANGED_MODIFIER_FOR_R_STACK_0) == EI(A::HEX_RANGED_MODIFIER_FOR_ACT_STACK) + 8);
 
             // (e.g. if HEX_MELEE_MODIFIER_FOR_R_STACK_0 is index )
             auto baseattr = A(EI(activeattr) + (astack->unitSide() ? 8 : 1));
@@ -1020,5 +981,14 @@ namespace MMAI::BAI::V3 {
             res += "\n" + lines[i].str();
 
         return res;
+    }
+*/
+    void Verify(const State* state) {
+        logAi->warn("TODO: implement Verify(...)");
+    };
+
+    std::string Render(const Schema::IState* istate, const Action *action) {
+        logAi->warn("TODO: implement Render(...)");
+        return "";
     }
 }

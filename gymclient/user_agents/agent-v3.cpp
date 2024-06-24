@@ -92,7 +92,7 @@ namespace UserAgents {
                 : (actions.empty() ? randomValidAction(s->getActionMask()) : recordedAction());
         }
 
-        if (verbose && !benchmark) logGlobal->debug("user-callback getAction returning: ", std::to_string(act));
+        if (verbose && !benchmark) logGlobal->debug("user-callback getAction returning: %d", EI(act));
         return act;
     };
 

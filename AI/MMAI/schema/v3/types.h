@@ -20,34 +20,212 @@
 
 namespace MMAI::Schema::V3 {
     enum class Encoding : int {
-        NUMERIC,            // see Encoder::encodeNumeric
-        NUMERIC_SQRT,       // see Encoder::encodeNumericSqrt
-        BINARY,             // see Encoder::encodeBinary
-        CATEGORICAL,        // see Encoder::encodeCategorical
-        FLOATING            // see Encoder::encodeFloating
-    };
+        /*
+         * Represent `v` as `n` bits, where `bits[1..v+1]=1`.
+         * If `v=-1` (a.k.a. "NULL"), only the bit at index 0 will be `1`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,1,1,1,1]`
+         * * `v=0`,  `n=5` => `[0,1,0,0,0]`
+         * * `v=-1`, `n=5` => `[1,0,0,0,0]`
+         */
+        ACCUMULATING_EXPLICIT_NULL,
 
-    // Possible values for HEX_ATTACKABLE_BY_ENEMY_STACK_* attributes
-    enum class DmgMod {
-        ZERO,       // temp. state (e.g. can't reach, is blinded, etc.)
-        HALF,       // blocked shooter (without NO_MELEE_PENALTY bonus)
-        FULL,       // normal melee attack
-        _count
-    };
+        /*
+         * Represent `v` as `n` bits, where `bits[0..v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), all bits will be `0`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,1,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[0,0,0,0,0]`
+         */
+        ACCUMULATING_IMPLICIT_NULL,
+        /*
+         * Represent `v` as `n` bits, where `bits[0..v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), all bits will be `-1`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,1,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[-1,-1,-1,-1,-1]`
+         */
+        ACCUMULATING_MASKING_NULL,
 
-    // Possible values for HEX_SHOOT_DISTANCE_FROM_STACK_* attributes
-    enum class ShootDistance {
-        NA,         // can't shoot
-        FAR,        // >10 hexes
-        NEAR,       // <= 10 hexes (or has NO_RANGE_PENALTY bonus)
-        _count
+        /*
+         * Represent `v` as `n` bits, where `bits[0..v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), an error will be thrown.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,1,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => (error)
+         */
+        ACCUMULATING_STRICT_NULL,
+
+        /*
+         * Represent `v` as `n` bits, where `bits[0..v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), it will be treated as `0`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,1,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[1,0,0,0,0]`
+         */
+        ACCUMULATING_ZERO_NULL,
+
+        /*
+         * Represent `v<<1` as `n`-bit binary (unsigned, LSB at index 0).
+         * If `v=-1` (a.k.a. "NULL"), only the bit at index 0 will be `1`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,1,1,0,0]`
+         * * `v=0`,  `n=5` => `[0,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[1,0,0,0,0]`
+         */
+        BINARY_EXPLICIT_NULL,
+
+        /*
+         * Represent `v` as an `n`-bit binary (LSB at index 0)
+         * If `v=-1` (a.k.a. "NULL"), all bits will be `-1`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,0,0,0]`
+         * * `v=0`,  `n=5` => `[0,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[-1,-1,-1,-1,-1]`
+         */
+        BINARY_MASKING_NULL,
+
+        /*
+         * Represent `v` as an `n`-bit binary (LSB at index 0)
+         * If `v=-1` (a.k.a. "NULL"), an error will be thrown.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,0,0,0]`
+         * * `v=0`,  `n=5` => `[0,0,0,0,0]`
+         * * `v=-1`, `n=5` => (error)
+         */
+        BINARY_STRICT_NULL,
+
+        /*
+         * Represent `v` as `n`-bit binary (unsigned, LSB at index 0).
+         * If `v=-1` (a.k.a. "NULL"), it will be treated as `0`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[1,1,0,0,0]`
+         * * `v=0`,  `n=5` => `[0,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[0,0,0,0,0]`
+         */
+        BINARY_ZERO_NULL,
+        // XXX: BINARY_ZERO_NULL obsoletes BINARY_IMPLICIT_NULL
+
+        /*
+         * Represent `v` as `n` bits, where `bits[v+1]=1`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,0,0,0,1]`
+         * * `v=0`,  `n=5` => `[0,1,0,0,0]`
+         * * `v=-1`, `n=5` => `[1,0,0,0,0]`
+         */
+        CATEGORICAL_EXPLICIT_NULL,
+
+        /*
+         * Represent `v` as `n` bits, where `bits[v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), all bits will be `0`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,0,0,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[0,0,0,0,0]`
+         */
+        CATEGORICAL_IMPLICIT_NULL,
+
+        /*
+         * Represent `v` as `n` bits, where `bits[v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), all bits will be `-1`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,0,0,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[-1,-1,-1,-1,-1]`
+         */
+        CATEGORICAL_MASKING_NULL,
+
+        /*
+         * Represent `v` as `n` bits, where `bits[v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), an error will be thrown.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,0,0,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => (error)
+         */
+        CATEGORICAL_STRICT_NULL,
+
+        /*
+         * Represent `v` as `n` bits, where `bits[v]=1`.
+         * If `v=-1` (a.k.a. "NULL"), it will be treated as `0`.
+         *
+         * Examples:
+         * * `v=3`,  `n=5` => `[0,0,0,1,0]`
+         * * `v=0`,  `n=5` => `[1,0,0,0,0]`
+         * * `v=-1`, `n=5` => `[1,0,0,0,0]`
+         */
+        CATEGORICAL_ZERO_NULL,
+
+        /*
+         * Represent `v` as `[0, vnorm(0, vmax)]`.
+         * If `v=-1` (a.k.a. "NULL"), the result will be `[1, 0]
+         *
+         * Examples:
+         * * `v=3`,  `vmax=10` => `[0, 0.3]`
+         * * `v=0`,  `vmax=10` => `[0, 0]`
+         * * `v=-1`, `vmax=10` => `[1, 0]`
+         */
+        NORMALIZED_EXPLICIT_NULL,
+
+        /*
+         * Normalize `v` in the range (0, vmax)
+         * If `v=-1` (a.k.a. "NULL"), it will not be normalized.
+         *
+         * Examples:
+         * * `v=3`,  `vmax=10` => `0.3`
+         * * `v=0`,  `vmax=10` => `0`
+         * * `v=-1`, `vmax=10` => `-1`
+         */
+        NORMALIZED_MASKING_NULL,
+
+        /*
+         * Normalize `v` in the range (0, vmax)
+         * If `v=-1` (a.k.a. "NULL"), an error will be thrown.
+         *
+         * Examples:
+         * * `v=3`,  `vmax=10` => `0.3`
+         * * `v=0`,  `vmax=10` => `0`
+         * * `v=-1`, `vmax=10` => (error)
+         */
+        NORMALIZED_STRICT_NULL,
+
+        /*
+         * Normalize `v` in the range (0, vmax)
+         * If `v=-1` (a.k.a. "NULL"), it will be treated as `0`.
+         *
+         * Examples:
+         * * `v=3`,  `vmax=10` => `0.6`
+         * * `v=0`,  `vmax=10` => `0`
+         * * `v=-1`, `vmax=10` => `0`
+         */
+        NORMALIZED_ZERO_NULL,
+        // XXX: NORMALIZED_ZERO_NULL obsoletes NORMALIZED_IMPLICIT_NULL
     };
 
     enum class HexState : int {
-        INVALID = -1,       // no hex
         FREE,
         STACK_FRONT,        // alive stack (front hex)
         STACK_BACK,         // alive stack (back hex)
+        MOAT,
+        DESTRUCTIBLE_WALL,
+        GATE,
         OBSTACLE,
         _count
     };
@@ -67,122 +245,113 @@ namespace MMAI::Schema::V3 {
         AMOVE_2TL,  //  . . . . . . . . 9 3 2 . . . .
         MOVE,       // = Move to (defend if current hex)
         SHOOT,      // = shoot at
+        SPECIAL,    // creature cast/tent heal/?catapult attack?
+        _count
+    };
+
+    enum class GlobalAttribute : int {
+        PERCENT_CUR_TO_START_TOTAL_VALUE,
+    };
+
+    enum class StackAttribute : int {
+        ID,
+        Y_COORD,
+        X_COORD,
+        SIDE,
+        QUANTITY,
+        ATTACK,
+        DEFENSE,
+        SHOTS,
+        DMG_MIN,
+        DMG_MAX,
+        HP,
+        HP_LEFT,
+        SPEED,
+        WAITED,
+        QUEUE_POS,
+        RETALIATIONS_LEFT,
+        MAGIC_RESISTANCE,
+        IS_WIDE,
+        IS_ACTIVE,
+        AI_VALUE,
+        MORALE,
+        LUCK,
+
+        // Spells after attack
+        BLIND_LIKE_ATTACK, // unicorns, medusas, basilisks, scorpicores
+        WEAKENING_ATTACK, // dragon flies, zombies
+        DISPELLING_ATTACK, // blind, paralyze, stone gaze
+        POISONOUS_ATTACK, // wyverns
+        CURSING_ATTACK, // mummies, black knights
+        AGING_ATTACK,   // ghost dragon
+        ACID_ATTACK,    // rust dragon
+        BINDING_ATTACK, // dendroids
+        LIGHTNING_ATTACK, // thunderbirds
+
+        // Hate (dmg bonus in %)
+        HATES_ANGELS,
+        HATES_DEVILS,
+        HATES_TITANS,
+        HATES_BLACK_DRAGONS,
+        HATES_GENIES,
+        HATES_EFREET,
+        HATES_AIR_ELEMENTALS,
+        HATES_EARTH_ELEMENTALS,
+        HATES_WATER_ELEMENTALS,
+        HATES_FIRE_ELEMENTALS,
+
+        FREE_SHOOTING,              /*stacks can shoot even if otherwise blocked (sharpshooter's bow effect)*/
+        FLYING,
+        SHOOTER,
+        ADDITIONAL_ATTACK,          /*val: number of additional attacks to perform*/
+        NO_MELEE_PENALTY,
+        JOUSTING,                   /*for champions*/
+
+        SPELL_RESISTANCE_AURA,      /*eg. unicorns, value - resistance bonus in % for adjacent creatures*/
+        LEVEL_SPELL_IMMUNITY,       /*creature is immune to all spell with level below or equal to value of this bonus */
+        FIRE_SPELL_RESISTANCE,      // 100% means immunity
+        WATER_SPELL_RESISTANCE,     // 100% means immunity
+        AIR_SPELL_RESISTANCE,       // 100% means immunity
+        EARTH_SPELL_RESISTANCE,     // 100% means immunity
+        SPELL_DAMAGE_REDUCTION,     // golems (only "any" subtype, e.g. "prot. from fire" is ignored)
+        TWO_HEX_ATTACK_BREATH,      /*eg. dragons*/
+        NO_WALL_PENALTY,
+        // NON_LIVING,              // not useful during battle
+        BLOCKS_RETALIATION,         /*eg. naga*/
+        THREE_HEADED_ATTACK,        /*eg. cerberus*/
+        MIND_IMMUNITY,
+        FIRE_SHIELD,
+        // UNDEAD,                  // not useful during battle
+        LIFE_DRAIN,
+        DOUBLE_DAMAGE_CHANCE,       /*value in %, eg. dread knight*/
+        RETURN_AFTER_STRIKE,
+        DEFENSIVE_STANCE,           /* val - bonus to defense while defending */
+        ATTACKS_ALL_ADJACENT,       /*eg. hydra*/
+        NO_DISTANCE_PENALTY,
+        HYPNOTIZED,
+        NO_RETALIATION,             /*temporary bonus for basilisk, unicorn and scorpicore paralyze*/
+        MAGIC_MIRROR,               /* value - chance of redirecting in %*/
+        ATTACKS_NEAREST_CREATURE,   /*while in berserk*/
+        // FORGETFULL,              // <=1 is  SHOTS=0, basic sets
+        SLEEPING,                   // a more inuitive name for "NOT_ACTIVE" bonus which gets removed if attacked
+        DEATH_STARE,                /*subtype 0 - gorgon, 1 - commander*/
+        POISON,                     /*val - max health penalty from poison possible*/
+        REBIRTH,                    /* val - percent of life restored, subtype = 0 - regular, 1 - at least one unit (sacred Phoenix) */
+        ENEMY_DEFENCE_REDUCTION,    /*in % (value) eg. behemots*/
+        MELEE_DAMAGE_REDUCTION,     // armor bonus (melee - e.g. shield, armorer skill, etc.)
+        RANGED_DAMAGE_REDUCTION,    // armor bonus (ranged - e.g. air shield, etc.)
+        MELEE_ATTACK_REDUCTION,     // attack penalty (melee - e.g. blind retaliation)
+        RANGED_ATTACK_REDUCTION,    // attack penalty (ranged - e.g. shooting while forgetful)
         _count
     };
 
     // For description on each attribute, see the comments for HEX_ENCODING
     enum class HexAttribute : int {
-        PERCENT_CUR_TO_START_TOTAL_VALUE,
-        HEX_Y_COORD,
-        HEX_X_COORD,
-        HEX_STATE,
-        HEX_ACTION_MASK_FOR_ACT_STACK,
-        HEX_ACTION_MASK_FOR_L_STACK_0,
-        HEX_ACTION_MASK_FOR_L_STACK_1,
-        HEX_ACTION_MASK_FOR_L_STACK_2,
-        HEX_ACTION_MASK_FOR_L_STACK_3,
-        HEX_ACTION_MASK_FOR_L_STACK_4,
-        HEX_ACTION_MASK_FOR_L_STACK_5,
-        HEX_ACTION_MASK_FOR_L_STACK_6,
-        HEX_ACTION_MASK_FOR_R_STACK_0,
-        HEX_ACTION_MASK_FOR_R_STACK_1,
-        HEX_ACTION_MASK_FOR_R_STACK_2,
-        HEX_ACTION_MASK_FOR_R_STACK_3,
-        HEX_ACTION_MASK_FOR_R_STACK_4,
-        HEX_ACTION_MASK_FOR_R_STACK_5,
-        HEX_ACTION_MASK_FOR_R_STACK_6,
-        HEX_MELEE_MODIFIER_FOR_ACT_STACK,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_0,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_1,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_2,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_3,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_4,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_5,
-        HEX_MELEE_MODIFIER_FOR_L_STACK_6,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_0,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_1,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_2,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_3,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_4,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_5,
-        HEX_MELEE_MODIFIER_FOR_R_STACK_6,
-        HEX_RANGED_MODIFIER_FOR_ACT_STACK,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_0,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_1,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_2,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_3,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_4,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_5,
-        HEX_RANGED_MODIFIER_FOR_L_STACK_6,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_0,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_1,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_2,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_3,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_4,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_5,
-        HEX_RANGED_MODIFIER_FOR_R_STACK_6,
-        STACK_QUANTITY,
-        STACK_ATTACK,
-        STACK_DEFENSE,
-        STACK_SHOTS,
-        STACK_DMG_MIN,
-        STACK_DMG_MAX,
-        STACK_HP,
-        STACK_HP_LEFT,
-        STACK_SPEED,
-        STACK_WAITED,
-        STACK_QUEUE_POS,
-        STACK_RETALIATIONS_LEFT,
-        STACK_SIDE,
-        STACK_SLOT,
-        STACK_CREATURE_TYPE,
-        STACK_AI_VALUE_TENTH,
-        STACK_IS_ACTIVE,
-        STACK_IS_WIDE,
-        STACK_FLYING,
-        STACK_NO_MELEE_PENALTY,
-        STACK_TWO_HEX_ATTACK_BREATH,
-        STACK_BLOCKS_RETALIATION,
-        STACK_DEFENSIVE_STANCE,
-        // STACK_MORALE,                           // not used
-        // STACK_LUCK,                             // not used
-        // STACK_FREE_SHOOTING,                    // not used
-        // STACK_CHARGE_IMMUNITY,                  // not used
-        // STACK_ADDITIONAL_ATTACK,                // not used
-        // STACK_UNLIMITED_RETALIATIONS,           // not used
-        // STACK_JOUSTING,                         // not used
-        // STACK_HATE,                             // not used
-        // STACK_KING,                             // not used
-        // STACK_MAGIC_RESISTANCE,                 // not used
-        // STACK_SPELL_RESISTANCE_AURA,            // not used
-        // STACK_LEVEL_SPELL_IMMUNITY,             // not used
-        // STACK_SPELL_DAMAGE_REDUCTION,           // not used
-        // STACK_NON_LIVING,                       // not used
-        // STACK_RANDOM_SPELLCASTER,               // not used
-        // STACK_SPELL_IMMUNITY,                   // not used
-        // STACK_THREE_HEADED_ATTACK,              // not used
-        // STACK_FIRE_IMMUNITY,                    // not used
-        // STACK_WATER_IMMUNITY,                   // not used
-        // STACK_EARTH_IMMUNITY,                   // not used
-        // STACK_AIR_IMMUNITY,                     // not used
-        // STACK_MIND_IMMUNITY,                    // not used
-        // STACK_FIRE_SHIELD,                      // not used
-        // STACK_UNDEAD,                           // not used
-        // STACK_HP_REGENERATION,                  // not used
-        // STACK_LIFE_DRAIN,                       // not used
-        // STACK_DOUBLE_DAMAGE_CHANCE,             // not used
-        // STACK_RETURN_AFTER_STRIKE,              // not used
-        // STACK_ENEMY_DEFENCE_REDUCTION,          // not used
-        // STACK_GENERAL_DAMAGE_REDUCTION,         // not used
-        // STACK_GENERAL_ATTACK_REDUCTION,         // not used
-        // STACK_ATTACKS_ALL_ADJACENT,             // not used
-        // STACK_NO_DISTANCE_PENALTY,              // not used
-        // STACK_NO_RETALIATION,                   // not used
-        // STACK_NOT_ACTIVE,                       // not used
-        // STACK_DEATH_STARE,                      // not used
-        // STACK_POISON,                           // not used
-        // STACK_ACID_BREATH,                      // not used
-        // STACK_REBIRTH,                          // not used
+        Y_COORD,
+        X_COORD,
+        STATE,
+        ACTION_MASK,
+        STACK_ID,
         _count
     };
 
@@ -201,7 +370,24 @@ namespace MMAI::Schema::V3 {
         INVALID_DIR,
     };
 
+    class IStats {
+    public:
+        virtual int getInitialArmyValueLeft() const = 0;
+        virtual int getInitialArmyValueRight() const = 0;
+        virtual int getCurrentArmyValueLeft() const = 0;
+        virtual int getCurrentArmyValueRight() const = 0;
+        virtual ~IStats() = default;
+    };
+
+    using StackAttrs = std::array<int, static_cast<int>(StackAttribute::_count)>;
     using HexAttrs = std::array<int, static_cast<int>(HexAttribute::_count)>;
+
+    class IStack {
+    public:
+        virtual const StackAttrs& getAttrs() const = 0;
+        virtual int getAttr(StackAttribute) const = 0;
+        virtual ~IStack() = default;
+    };
 
     class IHex {
     public:
@@ -243,8 +429,6 @@ namespace MMAI::Schema::V3 {
         virtual int getUnitsKilled() const = 0;
         virtual int getValueLost() const = 0;
         virtual int getValueKilled() const = 0;
-        virtual int getSide0ArmyValue() const = 0;
-        virtual int getSide1ArmyValue() const = 0;
         virtual bool getIsBattleEnded() const = 0;
         virtual bool getIsVictorious() const = 0;
         virtual const Hexes getHexes() const = 0;
@@ -252,11 +436,4 @@ namespace MMAI::Schema::V3 {
         virtual const std::string getAnsiRender() const = 0;
         virtual ~ISupplementaryData() = default;
     };
-
-    /*
-     * E4 is a tuple of {a, e, n, vmax} tuples
-     * where a=attribute, e=encoding, n=size, vmax=max expected value
-     */
-    using E4 = std::tuple<HexAttribute, Encoding, int, int>;
-    using HexEncoding = std::array<E4, EI(HexAttribute::_count)>;
 }

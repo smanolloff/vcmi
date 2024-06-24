@@ -33,9 +33,6 @@ namespace MMAI::BAI::V1 {
         return ss.str();
     }
 
-    // TODO: fix for terminal observation
-    //       info after off-turn update is somewhat inconsistent
-    //       (investigation needed)
     void Verify(const State* state) {
         auto battle = state->battle;
         auto hexes = Hexes();

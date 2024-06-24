@@ -36,9 +36,7 @@ namespace MMAI::BAI::V3 {
             int unitsKilled_,
             int valueLost_,
             int valueKilled_,
-            int side0ArmyValue_,
-            int side1ArmyValue_,
-            Battlefield* battlefield_,
+            const Battlefield* battlefield_,
             std::vector<std::shared_ptr<AttackLog>> attackLogs_
         ) : colorname(colorname_),
             side(side_),
@@ -48,8 +46,6 @@ namespace MMAI::BAI::V3 {
             unitsKilled(unitsKilled_),
             valueLost(valueLost_),
             valueKilled(valueKilled_),
-            side0ArmyValue(side0ArmyValue_),
-            side1ArmyValue(side1ArmyValue_),
             battlefield(battlefield_),
             attackLogs(attackLogs_) {};
 
@@ -64,8 +60,6 @@ namespace MMAI::BAI::V3 {
         int getUnitsKilled() const override { return unitsKilled; };
         int getValueLost() const override { return valueLost; };
         int getValueKilled() const override { return valueKilled; };
-        int getSide0ArmyValue() const override { return side0ArmyValue; };
-        int getSide1ArmyValue() const override { return side1ArmyValue; };
         bool getIsBattleEnded() const override { return ended; };
         bool getIsVictorious() const override { return victory; };
 
@@ -81,8 +75,6 @@ namespace MMAI::BAI::V3 {
         const int unitsKilled;
         const int valueLost;
         const int valueKilled;
-        const int side0ArmyValue;
-        const int side1ArmyValue;
         const Battlefield* battlefield;
         const std::vector<std::shared_ptr<AttackLog>> attackLogs;
 

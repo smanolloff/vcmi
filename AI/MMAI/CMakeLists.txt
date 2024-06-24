@@ -43,12 +43,16 @@ set(MMAI_FILES
   BAI/v3/battlefield.h
   BAI/v3/encoder.cpp
   BAI/v3/encoder.h
+  BAI/v3/general_info.cpp
+  BAI/v3/general_info.h
   BAI/v3/hex.cpp
   BAI/v3/hex.h
   BAI/v3/hexaction.h
   BAI/v3/hexactmask.h
   BAI/v3/render.cpp
   BAI/v3/render.h
+  BAI/v3/stack.cpp
+  BAI/v3/stack.h
   BAI/v3/stackinfo.h
   BAI/v3/state.cpp
   BAI/v3/state.h
@@ -72,6 +76,8 @@ set(MMAI_FILES
   common.h
 )
 
+option(ENABLE_MMAI_TEST "Compile tests" OFF)
+
 if(NOT ENABLE_STATIC_AI_LIBS)
   list(APPEND MMAI_FILES main.cpp StdInc.cpp)
 endif()
@@ -85,9 +91,29 @@ else()
 endif()
 
 set_target_properties(MMAI PROPERTIES COMPILE_DEFINITIONS "MMAI_DLL=1")
-
-target_link_libraries(MMAI PRIVATE vcmi)
+target_link_libraries(MMAI PUBLIC vcmi)
 target_include_directories(MMAI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(ENABLE_MMAI_TEST)
+  include(GoogleTest)
+  include(CheckCXXCompilerFlag)
+  enable_testing()
+
+  target_link_libraries(MMAI PUBLIC gtest gtest_main)
+
+  target_include_directories(MMAI PRIVATE "${CMAKE_SOURCE_DIR}/test/googletest/googletest/include")
+  add_subdirectory(${CMAKE_SOURCE_DIR}/test/googletest ${CMAKE_SOURCE_DIR}/test/googletest/build EXCLUDE_FROM_ALL)
+  add_executable(MMAI_test test/encoder_test.cpp)
+  target_link_libraries(MMAI_test PRIVATE MMAI)
+  gtest_discover_tests(MMAI_test)
+
+  # default visibility is needed for testing
+  set_target_properties(MMAI PROPERTIES CXX_VISIBILITY_PRESET "default")
+  set_target_properties(MMAI_test PROPERTIES CXX_VISIBILITY_PRESET "default")
+
+  # Run tests with:
+  # ctest --test-dir build/AI/MMAI/
+endif()
 
 vcmi_set_output_dir(MMAI "AI")
 enable_pch(MMAI)

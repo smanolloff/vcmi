@@ -14,55 +14,34 @@
 // limitations under the License.
 // =============================================================================
 
-#include "./hex.h"
-#include "./hexactmask.h"
+#include "./stack.h"
 #include "schema/v3/constants.h"
 
 namespace MMAI::BAI::V3 {
-    using A = Schema::V3::HexAttribute;
+    using A = Schema::V3::StackAttribute;
 
-    // static
-    int Hex::CalcId(const BattleHex &bh) {
-        ASSERT(bh.isAvailable(), "Hex unavailable: " + std::to_string(bh.hex));
-        return bh.getX()-1 + bh.getY()*BF_XMAX;
-    }
-
-    // static
-    std::pair<int, int> Hex::CalcXY(const BattleHex &bh) {
-        return {bh.getX() - 1, bh.getY()};
-    }
-
-    Hex::Hex() {
+    Stack::Stack() {
         attrs.fill(NULL_VALUE_UNENCODED);
     }
 
-    const HexAttrs& Hex::getAttrs() const {
+    const StackAttrs& Stack::getAttrs() const {
         return attrs;
     }
 
-    int Hex::getAttr(HexAttribute a) const {
+    int Stack::getAttr(StackAttribute a) const {
         return attr(a);
     }
 
-    int Hex::attr(HexAttribute a) const { return attrs.at(EI(a)); };
-    void Hex::setattr(HexAttribute a, int value) {
-        attrs.at(EI(a)) = std::min(value, std::get<3>(HEX_ENCODING.at(EI(a))));
+    int Stack::attr(StackAttribute a) const {
+        return attrs.at(EI(a));
     };
 
-    std::string Hex::name() const {
+    void Stack::setattr(StackAttribute a, int value) {
+        attrs.at(EI(a)) = std::min(value, std::get<3>(STACK_ENCODING.at(EI(a))));
+    };
+
+    std::string Stack::name() const {
         // return boost::str(boost::format("(%d,%d)") % attr(A::Y_COORD) % attr(A::X_COORD));
         return "(" + std::to_string(attr(A::Y_COORD)) + "," + std::to_string(attr(A::X_COORD)) + ")";
-    }
-
-    void Hex::setState(HexState state) {
-        attrs.at(EI(HexAttribute::STATE)) = EI(state);
-    }
-
-    void Hex::finalizeActionMask() {
-        attrs.at(EI(A::ACTION_MASK)) = hexactmask.to_ulong();
-    }
-
-    void Hex::permitAction(HexAction action) {
-        hexactmask.set(EI(action));
     }
 }

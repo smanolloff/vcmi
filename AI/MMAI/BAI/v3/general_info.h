@@ -13,30 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
-
 #pragma once
 
-#include "BAI/v3/stack.h"
-#include "CStack.h"
-#include "battle/ReachabilityInfo.h"
-#include "schema/v3/types.h"
+#include "battle/CPlayerBattleCallback.h"
 
 namespace MMAI::BAI::V3 {
+    using ArmyValues = std::pair<int, int>;
 
-    struct StackInfo {
-        const Stack* stack;
-        const int speed;
-        const bool canshoot;
-        const std::unique_ptr<ReachabilityInfo> rinfo;
+    struct GeneralInfo {
+        static ArmyValues CalcTotalArmyValues(const CPlayerBattleCallback* battle);
 
-        StackInfo(
-            const Stack* stack_,
-            const bool canshoot_,
-            const ReachabilityInfo rinfo_
-        ) : stack(stack_),
-            speed(stack_->cstack->getMovementRange()),
-            canshoot(canshoot_),
-            rinfo(std::make_unique<ReachabilityInfo>(rinfo_))
-            {};
+        GeneralInfo(
+            const CPlayerBattleCallback* battle,
+            std::pair<int, int> initialArmyValues_
+        );
+
+        const ArmyValues initialArmyValues;
+        const ArmyValues currentArmyValues;
     };
 }

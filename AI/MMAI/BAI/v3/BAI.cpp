@@ -136,18 +136,14 @@ namespace MMAI::BAI::V3 {
         ASSERT(state->battlefield, "Cannot build battle action if state->battlefield is missing");
         auto action = state->action.get();
         auto bf = state->battlefield.get();
-        auto astack = bf->astack;
-        auto apos = astack->getPosition();
+        auto astack = bf->astack->cstack;
 
-        auto [x, y] = Hex::CalcXY(apos);
+        ASSERT(bf->astack->attr(StackAttribute::QUEUE_POS) == 0, "expected 0 queue pos");
+        ASSERT(bf->astack->attr(StackAttribute::IS_ACTIVE) == 1, "expected active=1");
+
+        auto [x, y] = Hex::CalcXY(bf->astack->cstack->getPosition());
         auto &hex = bf->hexes.at(y).at(x);
         std::shared_ptr<BattleAction> res = nullptr;
-
-        // std::cout << renderANSI() << "\n";
-        // XXX: if the asserts below fail, it may be due to morale
-        //      (all battles must be fought on cursed ground with no morale)
-        ASSERT(hex->attr(HexAttribute::STACK_QUEUE_POS) == 0, "expected 0 queue pos");
-        ASSERT(hex->attr(HexAttribute::STACK_IS_ACTIVE) == 1, "expected active=1");
 
         if (!state->action->hex) {
             switch(NonHexAction(state->action->action)) {
@@ -168,7 +164,7 @@ namespace MMAI::BAI::V3 {
         // => return errcode (Gym env will raise an exception if errcode > 0)
         auto &bhex = action->hex->bhex;
         auto &cstack = action->hex->cstack;
-        auto mask = HexActMask(action->hex->attr(HexAttribute::HEX_ACTION_MASK_FOR_ACT_STACK));
+        auto mask = HexActMask(action->hex->attr(HexAttribute::ACTION_MASK));
         if (mask.test(EI(action->hexaction))) {
             // Action is VALID
             // XXX: Do minimal asserts to prevent bugs with nullptr deref
@@ -252,7 +248,7 @@ namespace MMAI::BAI::V3 {
             case HexAction::MOVE: {
                 auto a = ainfo.at(action->hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
-                    auto hs = hex->getState();
+                    auto hs = HexState(hex->attr(HexAttribute::STATE));
                     ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, astack, nullptr));
                     state->supdata->errcode = ErrorCode::HEX_BLOCKED;
                     error("Action error: HEX_BLOCKED");
@@ -358,7 +354,7 @@ namespace MMAI::BAI::V3 {
             info << "action->hex->attrs[" << i << "] = " << EI(action->hex->attrs[i]) << "\n";
 
         info << "action->hex->hexactmask = ";
-        info << HexActMask(action->hex->attr(HexAttribute::HEX_ACTION_MASK_FOR_ACT_STACK)).to_string();
+        info << HexActMask(action->hex->attr(HexAttribute::ACTION_MASK)).to_string();
         info << "\n";
 
         auto cstack = action->hex->cstack;
