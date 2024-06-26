@@ -95,26 +95,41 @@ namespace MMAI::BAI {
         Schema::F_GetAction f_getAction;
         Schema::F_GetValue f_getValue;
 
-        void error(const std::string &text) const;
-        void warn(const std::string &text) const;
-        void info(const std::string &text) const;
-        void debug(const std::string &text) const;
-        void trace(const std::string &text) const;
-        void log(ELogLevel::ELogLevel level, const std::string &text) const;
+        /*
+         * Templates defined in the header
+         * Needed to prevent linker errors for calls from derived classes
+         */
 
-        void error(const std::function<std::string()> &cb) const;
-        void warn(const std::function<std::string()> &cb) const;
-        void info(const std::function<std::string()> &cb) const;
-        void debug(const std::function<std::string()> &cb) const;
-        void trace(const std::function<std::string()> &cb) const;
-        void log(ELogLevel::ELogLevel level, const std::function<std::string()> &cb) const;
+        template<typename ... Args> void _log(const ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
+            logAi->log(level, "%s-%s [%s] " + format, name, addrstr, colorname, args...);
+        }
 
-        template<typename ... Args> void error(const std::string &format, Args ... args) const;
-        template<typename ... Args> void warn(const std::string &format, Args ... args) const;
-        template<typename ... Args> void info(const std::string &format, Args ... args) const;
-        template<typename ... Args> void debug(const std::string &format, Args ... args) const;
-        template<typename ... Args> void trace(const std::string &format, Args ... args) const;
-        template<typename ... Args> void log(ELogLevel::ELogLevel level, const std::string &format, Args ... args) const;
-        template<typename ... Args> void _log(const ELogLevel::ELogLevel level, const std::string &format, Args ... args) const;
+        template<typename ... Args> void error(const std::string &format, Args ... args) const { log(ELogLevel::ERROR, format, args...); }
+        template<typename ... Args> void warn(const std::string &format, Args ... args) const { log(ELogLevel::WARN, format, args...); }
+        template<typename ... Args> void info(const std::string &format, Args ... args) const { log(ELogLevel::INFO, format, args...); }
+        template<typename ... Args> void debug(const std::string &format, Args ... args) const { log(ELogLevel::DEBUG, format, args...); }
+        template<typename ... Args> void trace(const std::string &format, Args ... args) const { log(ELogLevel::DEBUG, format, args...); }
+        template<typename ... Args> void log(ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
+            if (logAi->getLevel() <= level) _log(level, format, args...);
+        }
+
+
+        void error(const std::string &text) const { log(ELogLevel::ERROR, text); }
+        void warn(const std::string &text) const { log(ELogLevel::WARN, text); }
+        void info(const std::string &text) const { log(ELogLevel::INFO, text); }
+        void debug(const std::string &text) const { log(ELogLevel::DEBUG, text); }
+        void trace(const std::string &text) const { log(ELogLevel::TRACE, text); }
+        void log(ELogLevel::ELogLevel level, const std::string &text) const {
+            if (logAi->getLevel() <= level) _log(level, "%s", text);
+        }
+
+        void error(const std::function<std::string()> &cb) const { log(ELogLevel::ERROR, cb); }
+        void warn(const std::function<std::string()> &cb) const { log(ELogLevel::WARN, cb); }
+        void info(const std::function<std::string()> &cb) const { log(ELogLevel::INFO, cb); }
+        void debug(const std::function<std::string()> &cb) const { log(ELogLevel::DEBUG, cb); }
+        void trace(const std::function<std::string()> &cb) const { log(ELogLevel::TRACE, cb); }
+        void log(ELogLevel::ELogLevel level, const std::function<std::string()> &cb) const {
+            if (logAi->getLevel() <= level) _log(level, "%s", cb());
+        }
     };
 }

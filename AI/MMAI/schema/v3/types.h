@@ -221,8 +221,7 @@ namespace MMAI::Schema::V3 {
 
     enum class HexState : int {
         FREE,
-        STACK_FRONT,        // alive stack (front hex)
-        STACK_BACK,         // alive stack (back hex)
+        ALIVE_STACK,
         MOAT,
         DESTRUCTIBLE_WALL,
         GATE,
@@ -385,6 +384,7 @@ namespace MMAI::Schema::V3 {
     public:
         virtual const StackAttrs& getAttrs() const = 0;
         virtual int getAttr(StackAttribute) const = 0;
+        virtual char getAlias() const = 0;
         virtual ~IStack() = default;
     };
 
@@ -398,8 +398,8 @@ namespace MMAI::Schema::V3 {
 
     class IAttackLog {
     public:
-        virtual int getAttackerSlot() const = 0;
-        virtual int getDefenderSlot() const = 0;
+        virtual char getAttackerAlias() const = 0;
+        virtual char getDefenderAlias() const = 0;
         virtual int getDefenderSide() const = 0;
         virtual int getDamageDealt() const = 0;
         virtual int getUnitsKilled() const = 0;

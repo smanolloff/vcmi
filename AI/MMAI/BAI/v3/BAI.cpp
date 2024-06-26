@@ -19,6 +19,7 @@
 #include "battle/BattleAction.h"
 
 #include "common.h"
+#include "schema/v3/constants.h"
 #include "schema/v3/types.h"
 
 #include "./BAI.h"
@@ -107,6 +108,16 @@ namespace MMAI::BAI::V3 {
         Base::activeStack(bid, astack);
         state->onActiveStack(astack);
 
+        if (state->battlefield->astack == nullptr) {
+            warn("The current stack is not part of the state. This can happen "
+                    "if there are more than %d alive stacks in the army. "
+                    "Falling back to a wait/defend action.", MAX_STACKS_PER_SIDE);
+            auto fa = astack->waitedThisTurn ? BattleAction::makeDefend(astack) : BattleAction::makeWait(astack);
+            cb->battleMakeUnitAction(bid, fa);
+            return;
+        }
+
+
         while(true) {
             auto a = getNonRenderAction();
             allactions.push_back(a);
@@ -119,7 +130,7 @@ namespace MMAI::BAI::V3 {
             }
 
             state->action = std::make_unique<Action>(a, state->battlefield.get(), colorname);
-            info("Got action: " + std::to_string(a) + " (" + state->action->name() + ")");
+            info("Got action: %d (%s)", a, state->action->name());
             auto ba = buildBattleAction();
 
             if (ba) {

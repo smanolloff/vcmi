@@ -29,6 +29,15 @@ namespace MMAI::BAI::V3 {
     public:
         using Base::Base;
 
+        // Bring thes template functions into the derived class's scope
+        using Base::error;
+        using Base::warn;
+        using Base::info;
+        using Base::debug;
+        using Base::trace;
+        using Base::log;
+        using Base::_log;
+
         void activeStack(const BattleID &bid, const CStack * stack) override;
         void yourTacticPhase(const BattleID &bid, int distance) override;
 

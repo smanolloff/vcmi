@@ -45,6 +45,7 @@ namespace MMAI::BAI::V3 {
     , side(battle_->battleGetMySide())
     , initialArmyValues(GeneralInfo::CalcTotalArmyValues(battle_))
     , nullstack(InitNullStack())
+    , battlefield(Battlefield::Create(battle_, nullptr, initialArmyValues, false))
     {
         bfstate.reserve(Schema::V3::BATTLEFIELD_STATE_SIZE);
         actmask.reserve(Schema::V3::N_ACTIONS);
@@ -161,20 +162,23 @@ namespace MMAI::BAI::V3 {
 
     void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> &bsa) {
         for(auto & elem : bsa) {
-            auto defender = battle->battleGetStackByID(elem.stackAttacked, false);
-            auto attacker = battle->battleGetStackByID(elem.attackerID, false);
+            auto cdefender = battle->battleGetStackByID(elem.stackAttacked, false);
+            auto cattacker = battle->battleGetStackByID(elem.attackerID, false);
 
-            ASSERT(defender, "defender cannot be NULL");
+            ASSERT(cdefender, "defender cannot be NULL");
             // logAi->debug("Attack: %s -> %s (%d dmg, %d died)", attacker->getName(), defender->getName(), elem.damageAmount, elem.killedAmount);
+
+            std::shared_ptr<Stack> defender = battlefield->stackmapping.at(cdefender);
+            std::shared_ptr<Stack> attacker = cattacker ? battlefield->stackmapping.at(cattacker) : nullptr;
 
             attackLogs.push_back(std::make_shared<AttackLog>(
                 // XXX: attacker can be NULL when an effect does dmg (eg. Acid)
-                attacker ? attacker->unitSlot() : SlotID(-1),
-                defender->unitSlot(),
-                defender->unitSide(),
+                attacker ? attacker->alias : '\0',
+                defender->alias,
+                defender->attr(SA::SIDE),
                 elem.damageAmount,
                 elem.killedAmount,
-                elem.killedAmount * defender->unitType()->getAIValue()
+                elem.killedAmount * defender->cstack->unitType()->getAIValue()
             ));
         }
     }

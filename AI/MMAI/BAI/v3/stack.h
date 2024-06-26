@@ -35,6 +35,8 @@ namespace MMAI::BAI::V3 {
         // IStack impl
         const StackAttrs& getAttrs() const override;
         int getAttr(StackAttribute a) const override;
+        char getAlias() const override;
+        char alias;
 
         const CStack* const cstack;
         StackAttrs attrs {};

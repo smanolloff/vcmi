@@ -23,14 +23,14 @@ namespace MMAI::BAI::V3 {
     class AttackLog : public Schema::V3::IAttackLog {
     public:
         AttackLog(
-            SlotID attslot_, SlotID defslot_, int defside_,
+            char attacker_, char defender_, int defside_,
             int dmg_, int units_, int value_
-        ) : attslot(attslot_), defslot(defslot_), defside(defside_),
+        ) : attacker(attacker_), defender(defender_), defside(defside_),
                 dmg(dmg_), units(units_), value(value_) {}
 
         // IAttackLog impl
-        int getAttackerSlot() const override { return attslot; }
-        int getDefenderSlot() const override { return defslot; }
+        char getAttackerAlias() const override { return attacker; }
+        char getDefenderAlias() const override { return defender; }
         int getDefenderSide() const override { return defside; }
         int getDamageDealt() const override { return dmg; }
         int getUnitsKilled() const override { return units; }
@@ -46,8 +46,8 @@ namespace MMAI::BAI::V3 {
          * => store only defender slot
          */
 
-        const SlotID attslot;  // XXX: can be INVALID when dmg is not from creature
-        const SlotID defslot;
+        const char attacker;  // XXX: can be '\0' when dmg is not from creature
+        const char defender;
         const int defside;
         const int dmg;
         const int units;

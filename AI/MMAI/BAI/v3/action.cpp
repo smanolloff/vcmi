@@ -122,10 +122,9 @@ namespace MMAI::BAI::V3 {
         }
 
         if (stack) {
-            auto slot = stack->cstack->unitSlot();
             std::string targetcolor = "\033[31m";  // red
             if (color == "red") targetcolor = "\033[34m"; // blue
-            stackstr = targetcolor + "#" + std::to_string(slot) + "\033[0m";
+            stackstr = targetcolor + "#" + std::to_string(stack->getAlias()) + "\033[0m";
         } else {
             stackstr =  "?";
         }

@@ -1,6 +1,7 @@
 - mapeditor does not detect changes if only army is modified
 - mapeditor does not remove creatures from army if they are set to "", but the count is >0
 - mapeditor army window keyboard navigation (tab) is messed up
+- summoning water elementals on A7.vmap if hero has 3 war machines causes an error
 - summoning demons prevents summon elementals
 - summoning elements causes random creature "cast" animation (manticores)
   (i believe same applies to all spells)

@@ -290,40 +290,4 @@ namespace MMAI::BAI {
             return res;
         });
     }
-
-    /*
-     * private
-     */
-
-    template<typename ... Args> void Base::_log(const ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
-        logAi->log(level, "%s-%s [%s] " + format, name, addrstr, colorname, args...);
-    }
-
-    template<typename ... Args> void Base::error(const std::string &format, Args ... args) const { log(ELogLevel::ERROR, format, args...); }
-    template<typename ... Args> void Base::warn(const std::string &format, Args ... args) const { log(ELogLevel::WARN, format, args...); }
-    template<typename ... Args> void Base::info(const std::string &format, Args ... args) const { log(ELogLevel::INFO, format, args...); }
-    template<typename ... Args> void Base::debug(const std::string &format, Args ... args) const { log(ELogLevel::DEBUG, format, args...); }
-    template<typename ... Args> void Base::trace(const std::string &format, Args ... args) const { log(ELogLevel::DEBUG, format, args...); }
-    template<typename ... Args> void Base::log(ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
-        if (logAi->getLevel() <= level) _log(level, format, args...);
-    }
-
-
-    void Base::error(const std::string &text) const { log(ELogLevel::ERROR, text); }
-    void Base::warn(const std::string &text) const { log(ELogLevel::WARN, text); }
-    void Base::info(const std::string &text) const { log(ELogLevel::INFO, text); }
-    void Base::debug(const std::string &text) const { log(ELogLevel::DEBUG, text); }
-    void Base::trace(const std::string &text) const { log(ELogLevel::TRACE, text); }
-    void Base::log(ELogLevel::ELogLevel level, const std::string &text) const {
-        if (logAi->getLevel() <= level) _log(level, "%s", text);
-    }
-
-    void Base::error(const std::function<std::string()> &cb) const { log(ELogLevel::ERROR, cb); }
-    void Base::warn(const std::function<std::string()> &cb) const { log(ELogLevel::WARN, cb); }
-    void Base::info(const std::function<std::string()> &cb) const { log(ELogLevel::INFO, cb); }
-    void Base::debug(const std::function<std::string()> &cb) const { log(ELogLevel::DEBUG, cb); }
-    void Base::trace(const std::function<std::string()> &cb) const { log(ELogLevel::TRACE, cb); }
-    void Base::log(ELogLevel::ELogLevel level, const std::function<std::string()> &cb) const {
-        if (logAi->getLevel() <= level) _log(level, "%s", cb());
-    }
 }

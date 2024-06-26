@@ -55,7 +55,6 @@ namespace UserAgents {
 
             renders.at(side) = false;
         } else if (!benchmark && !renders.at(side)) {
-            logAi->debug("Side: %d", side);
             renders.at(side) = true;
             // store mask of this result for the next action
             lastmasks.at(side) = s->getActionMask();

@@ -31,6 +31,7 @@
 
 namespace MMAI::BAI::V3 {
     using Stacks = std::array<std::array<std::shared_ptr<Stack>, MAX_STACKS_PER_SIDE>, 2>;
+    using StackMapping = std::map<const CStack*, std::shared_ptr<Stack>>;
     using Hexes = std::array<std::array<std::shared_ptr<Hex>, BF_XMAX>, BF_YMAX>;
     using HexStacks = std::map<BattleHex, const std::shared_ptr<Stack>>;
     using HexObstacles = std::map<BattleHex, std::shared_ptr<const CObstacleInstance>>;
@@ -53,12 +54,14 @@ namespace MMAI::BAI::V3 {
             std::shared_ptr<GeneralInfo> info,
             std::shared_ptr<Hexes> hexes,
             std::shared_ptr<Stacks> stacks,
+            StackMapping mapping,
             const CStack* astack
         );
 
         const std::shared_ptr<GeneralInfo> info;
         const std::shared_ptr<Hexes> hexes;
         const std::shared_ptr<Stacks> stacks; // XXX: may or may not hold hold the active stack
+        const StackMapping stackmapping;
         const CStack* astack;
     private:
 
@@ -91,7 +94,7 @@ namespace MMAI::BAI::V3 {
             const HexObstacles &hexobstacles
         );
 
-        static std::shared_ptr<Stacks> InitStacks(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
+        static std::tuple<std::shared_ptr<Stacks>, StackMapping> InitStacks(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
         static std::shared_ptr<Hexes> InitHexes(const CPlayerBattleCallback* battle, const std::shared_ptr<Stacks> stacks, bool ended);
         static Queue GetQueue(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
         static int BaseMeleeMod(const CPlayerBattleCallback* battle, const CStack* cstack);

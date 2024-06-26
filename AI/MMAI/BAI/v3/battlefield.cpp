@@ -39,10 +39,12 @@ namespace MMAI::BAI::V3 {
         std::shared_ptr<GeneralInfo> info_,
         std::shared_ptr<Hexes> hexes_,
         std::shared_ptr<Stacks> stacks_,
+        StackMapping stackmapping_,
         const CStack* astack_
-    ) : info(std::move(info_))
-      , hexes(std::move(hexes_))
-      , stacks(std::move(stacks_))
+    ) : info(info_)
+      , hexes(hexes_)
+      , stacks(stacks_)
+      , stackmapping(stackmapping_)
       , astack(astack_) {};
 
     // static
@@ -155,10 +157,14 @@ namespace MMAI::BAI::V3 {
             }
         }
         break; case EAccessibility::ALIVE_STACK:
-            ASSERT(h_stack, "accessibility is ALIVE_STACK, but no stack could be found on hex");
-            hex->setattr(HA::STATE, EI(h_stack->cstack->getPosition() == bh ? HexState::STACK_FRONT : HexState::STACK_BACK));
-            hex->setattr(HA::STACK_ID, h_stack->attr(SA::ID));
-            hex->stack = h_stack;
+            hex->setattr(HA::STATE, EI(HexState::ALIVE_STACK));
+
+            // XXX: h_stack can be null if there are >MAX_STACKS_PER_SIDE in the army
+            // ASSERT(h_stack, "accessibility is ALIVE_STACK, but no stack could be found on hex");
+            if (h_stack) {
+                hex->setattr(HA::STACK_ID, h_stack->attr(SA::ID));
+                hex->stack = h_stack;
+            }
         break; case EAccessibility::DESTRUCTIBLE_WALL:
             // XXX: Only for non-destroyed walls.
             // XXX: Destroyed walls become ACCESSIBLE.
@@ -203,12 +209,12 @@ namespace MMAI::BAI::V3 {
         if (astackinfo->canshoot && h_stack && h_stack->cstack->unitSide() != astack->cstack->unitSide())
             hex->permitAction(HexAction::SHOOT);
 
-        // XXX: false if astack is NULL
-        if (IsReachable(bh, astackinfo.get()))
+        if (IsReachable(bh, astackinfo.get())) {
             hex->permitAction(HexAction::MOVE);
-        else {
-            hex->finalizeActionMask();
-            return hex; // nothing else to do
+        } else {
+            // if there is no astack, action mask must remain NULL
+            if (astack) hex->finalizeActionMask();
+            return hex;
         }
 
         const auto &nbhexes = NearbyHexes(hex->bhex);
@@ -257,11 +263,15 @@ namespace MMAI::BAI::V3 {
         const ArmyValues av,
         bool isMorale
     ) {
-        auto stacks = InitStacks(battle, astack, isMorale);
+        auto [stacks, mapping] = InitStacks(battle, astack, isMorale);
         auto hexes = InitHexes(battle, stacks, astack == nullptr);
         auto info = std::make_shared<GeneralInfo>(battle, av);
 
-        return std::make_shared<const Battlefield>(info, hexes, stacks, astack);
+        // the active stack is "invisible" (not fitting into the observation)
+        if (hexes->at(0).at(0)->attr(HexAttribute::ACTION_MASK) == NULL_VALUE_UNENCODED)
+            astack = nullptr;
+
+        return std::make_shared<const Battlefield>(info, hexes, stacks, mapping, astack);
     }
 
     // static
@@ -329,7 +339,15 @@ namespace MMAI::BAI::V3 {
                 battle->getReachability(astack->cstack)
             );
         } else if (!ended) {
-            throw std::runtime_error("No active stack found");
+            auto mystacks = stacks->at(battle->battleGetMySide());
+
+            // XXX: no stack during battle means too many stacks
+            //      i.e. all slots are filled (=MAX_STACKS_PER_SIDE)
+            ASSERT(mystacks.size() == MAX_STACKS_PER_SIDE, "Active stack not found");
+
+            // leaving astack null means there will be no feasible action
+            // for the AI to take => an automatic "defend" action should be
+            // made in this case.
         }
 
         for (int i=0; i<BF_SIZE; i++) {
@@ -341,12 +359,13 @@ namespace MMAI::BAI::V3 {
     };
 
     // static
-    std::shared_ptr<Stacks> Battlefield::InitStacks(
+    std::tuple<std::shared_ptr<Stacks>, StackMapping> Battlefield::InitStacks(
         const CPlayerBattleCallback* battle,
         const CStack* astack,
         bool isMorale
     ) {
-        auto stacks = Stacks{};
+        auto stacks = std::make_shared<Stacks>();
+        auto mapping = StackMapping{};
         auto cstacks = battle->battleGetStacks();
 
         // Sorting needed to ensure ordered insertion of summons/machines
@@ -375,11 +394,13 @@ namespace MMAI::BAI::V3 {
         for (auto& cstack : cstacks) {
             auto slot = cstack->unitSlot();
             auto side = cstack->unitSide();
-            auto &sidestacks = stacks.at(cstack->unitSide());
+            auto &sidestacks = stacks->at(cstack->unitSide());
 
             if (slot >= 0) {
                 used.at(side).set(slot);
-                sidestacks.at(slot) = std::make_shared<Stack>(cstack, slot, queue);
+                auto stack = std::make_shared<Stack>(cstack, slot, queue);
+                sidestacks.at(slot) = stack;
+                mapping.insert({cstack, stack});
             } else if (slot == SlotID::SUMMONED_SLOT_PLACEHOLDER) {
                 summons.at(side).push_back(cstack);
             } else if (slot == SlotID::WAR_MACHINES_SLOT) {
@@ -403,7 +424,7 @@ namespace MMAI::BAI::V3 {
                 if (!sideused.test(i))
                     sideslots.push_back(i);
 
-            auto &sidestacks = stacks.at(side);
+            auto &sidestacks = stacks->at(side);
             auto &sidesummons = summons.at(side);
             auto &sidemachines = machines.at(side);
 
@@ -415,7 +436,9 @@ namespace MMAI::BAI::V3 {
             while (!sideslots.empty() && !extras.empty()) {
                 auto cstack = extras.front();
                 auto slot = sideslots.front();
-                sidestacks.at(slot) = std::make_shared<Stack>(cstack, slot, queue);
+                auto stack = std::make_shared<Stack>(cstack, slot, queue);
+                sidestacks.at(slot) = stack;
+                mapping.insert({cstack, stack});
                 extras.pop_front();
                 sideslots.pop_front();
             }
@@ -423,14 +446,14 @@ namespace MMAI::BAI::V3 {
             ignored += extras.size();
         }
 
-        for (auto &stack : stacks.at(1)) {
+        for (auto &stack : stacks->at(1)) {
             if (stack) stack->attrs.at(EI(SA::ID)) += 10;
         }
 
         if (ignored > 0)
-            logAi->warn("%d summoned and/or machine stacks were excluded from state");
+            logAi->warn("%d war machines and/or summoned stacks were excluded from state", ignored);
 
-        return std::make_shared<Stacks>(std::move(stacks));
+        return {stacks, mapping};
     }
 
 }

@@ -29,10 +29,14 @@ namespace MMAI::BAI::V3 {
     Stack::Stack(const CStack* cstack_, int id, Queue &q)
     : cstack(cstack_)
     {
+        auto id2 = id % MAX_STACKS_PER_SIDE;
+        alias = id2 + (id2 < 7 ? '0' : 'A');
+
         auto [x, y] = Hex::CalcXY(cstack->getPosition());
         auto nomorale = false;
         auto noluck = false;
         auto bonuses = cstack->getAllBonuses(Selector::all, nullptr);
+        auto noretal = false;
 
         for (auto &bonus : *bonuses) {
             switch (bonus->type) {
@@ -72,9 +76,9 @@ namespace MMAI::BAI::V3 {
                 break;
                 };
             break; case BonusType::MAGIC_RESISTANCE:
-                // XXX: apparently, being near a unicorn will not give
-                //      MAGIC_RESISTANCE bonus, must check neighbouring
-                //      hexes manually for unicorn?!
+                // XXX: being near a unicorn does NOT not give MAGIC_RESISTSNCE
+                //      bonus -- must check neighbouring hexes manually and add
+                //      the percentage here -- not worth the effort
                 setattr(A::MAGIC_RESISTANCE, bonus->val);
             break; case BonusType::SPELL_AFTER_ATTACK:
                 switch(bonus->subtype.as<SpellID>()) {
@@ -100,7 +104,7 @@ namespace MMAI::BAI::V3 {
                     addattr(A::LIGHTNING_ATTACK, bonus->val);
                 }
             break; case BonusType::SPELL_RESISTANCE_AURA:
-                setattr(A::SPELL_RESISTANCE_AURA, 1);
+                addattr(A::SPELL_RESISTANCE_AURA, bonus->val);
             break; case BonusType::LEVEL_SPELL_IMMUNITY:
                 setattr(A::LEVEL_SPELL_IMMUNITY, 1);
                 if (bonus->val == 5)
@@ -171,13 +175,15 @@ namespace MMAI::BAI::V3 {
                 setattr(A::NO_DISTANCE_PENALTY, 1);
             break; case BonusType::HYPNOTIZED:
                 setattr(A::HYPNOTIZED, bonus->duration == BonusDuration::PERMANENT ? 100 : bonus->turnsRemain);
+            break; case BonusType::NO_RETALIATION:
+                noretal = true;
             break; case BonusType::MAGIC_MIRROR:
-                    addattr(A::MAGIC_MIRROR, bonus->val);
+                addattr(A::MAGIC_MIRROR, bonus->val);
             break; case BonusType::ATTACKS_NEAREST_CREATURE:
                 setattr(A::ATTACKS_NEAREST_CREATURE, 1);
             // break; case BonusType::FORGETFULL: TODO: check if covered by GENERAL_ATTACK_REDUCTION
             break; case BonusType::NOT_ACTIVE:
-                addattr(A::SLEEPING, bonus->turnsRemain);
+                addattr(A::SLEEPING, (bonus->duration & BonusDuration::PERMANENT).any() ? 100 : bonus->turnsRemain);
             break; case BonusType::NO_LUCK:
                 noluck = true;
             break; case BonusType::NO_MORALE:
@@ -186,7 +192,6 @@ namespace MMAI::BAI::V3 {
                 setattr(A::DEATH_STARE, 1);
             break; case BonusType::POISON:
                 setattr(A::POISON, 1);
-            break; case BonusType::BIND_EFFECT:
             break; case BonusType::ACID_BREATH:
                 setattr(A::ACID_ATTACK, bonus->additionalInfo[0]);
             break; case BonusType::REBIRTH:
@@ -235,16 +240,21 @@ namespace MMAI::BAI::V3 {
             break; case A::SPEED:               v = cstack->getMovementRange();
             break; case A::WAITED:              v = cstack->waitedThisTurn;
             break; case A::QUEUE_POS:           v = qpos;
-            break; case A::RETALIATIONS_LEFT:   v = cstack->counterAttacks.available();
+            break; case A::RETALIATIONS_LEFT:   v = noretal ? 0 : cstack->counterAttacks.available();
             break; case A::IS_WIDE:             v = cstack->doubleWide();
             break; case A::AI_VALUE:            v = cstack->unitType()->getAIValue();
             }
         }
+
         finalize();
     }
 
     const StackAttrs& Stack::getAttrs() const {
         return attrs;
+    }
+
+    char Stack::getAlias() const {
+        return alias;
     }
 
     int Stack::getAttr(StackAttribute a) const {
