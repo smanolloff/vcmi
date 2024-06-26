@@ -37,7 +37,7 @@ namespace MMAI::BAI::V3 {
         auto x = i % BF_XMAX;
 
         // create a new unique_ptr with a copy of Hex
-        return std::make_unique<Hex>(*bf->hexes.at(y).at(x));
+        return std::make_unique<Hex>(*bf->hexes->at(y).at(x));
     }
 
     // static
@@ -86,7 +86,7 @@ namespace MMAI::BAI::V3 {
         auto [x, y] = Hex::CalcXY(nbh);
 
         // create a new unique_ptr with a copy of Hex
-        return std::make_unique<Hex>(*bf->hexes.at(y).at(x));
+        return std::make_unique<Hex>(*bf->hexes->at(y).at(x));
     }
 
     // static
@@ -112,17 +112,17 @@ namespace MMAI::BAI::V3 {
 
         auto ha = HexAction((action - EI(NonHexAction::count)) % EI(HexAction::_count));
         auto res = std::string{};
-        const CStack* cstack = nullptr;
+        std::shared_ptr<const Stack> stack = nullptr;
         std::string stackstr;
 
         if (EI(ha) == EI(HexAction::SHOOT)) {
-            cstack = hex->cstack;
+            stack = hex->stack;
         } else if (aMoveTargetHex) {
-            cstack = aMoveTargetHex->cstack;
+            stack = aMoveTargetHex->stack;
         }
 
-        if (cstack) {
-            auto slot = cstack->unitSlot();
+        if (stack) {
+            auto slot = stack->cstack->unitSlot();
             std::string targetcolor = "\033[31m";  // red
             if (color == "red") targetcolor = "\033[34m"; // blue
             stackstr = targetcolor + "#" + std::to_string(slot) + "\033[0m";
@@ -132,7 +132,7 @@ namespace MMAI::BAI::V3 {
 
         switch (HexAction(ha)) {
         break; case HexAction::MOVE:
-            res = (cstack && hex->bhex == cstack->getPosition() ? "Defend on " : "Move to ") + hex->name();
+            res = (stack && hex->bhex == stack->cstack->getPosition() ? "Defend on " : "Move to ") + hex->name();
         break; case HexAction::AMOVE_TL:  res = "Attack " + stackstr + " from " + hex->name() + " /top-left/";
         break; case HexAction::AMOVE_TR:  res = "Attack " + stackstr + " from " + hex->name() + " /top-right/";
         break; case HexAction::AMOVE_R:   res = "Attack " + stackstr + " from " + hex->name() + " /right/";

@@ -19,6 +19,7 @@
 #include "battle/CBattleInfoEssentials.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "schema/base.h"
+#include "schema/v3/constants.h"
 #include "schema/v3/types.h"
 #include "./supplementary_data.h"
 #include "./battlefield.h"
@@ -50,6 +51,7 @@ namespace MMAI::BAI::V3 {
         // Subsequent versions may override this if they only change
         // the data type of encoded values (i.e. have their own HEX_ENCODING)
         virtual void encodeHex(Hex* hex);
+        virtual void encodeStack(Stack* stack);
         virtual void verify();
 
         const int version_;
@@ -58,12 +60,15 @@ namespace MMAI::BAI::V3 {
         Schema::AttentionMask attnmask = {};
         std::unique_ptr<SupplementaryData> supdata;
         std::vector<std::shared_ptr<AttackLog>> attackLogs = {};
-        std::unique_ptr<const Battlefield> battlefield = nullptr;
+        std::shared_ptr<const Battlefield> battlefield = nullptr;
         std::unique_ptr<Action> action = nullptr;
         const std::string colorname;
         const CPlayerBattleCallback* battle; // survives discard()
         const BattlePerspective::BattlePerspective side;
         const std::pair<int, int> initialArmyValues;
         bool isMorale = false;
+
+        static std::vector<float> InitNullStack();
+        const std::vector<float> nullstack;
     };
 }

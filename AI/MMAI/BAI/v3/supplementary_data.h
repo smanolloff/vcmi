@@ -64,6 +64,7 @@ namespace MMAI::BAI::V3 {
         bool getIsVictorious() const override { return victory; };
 
         const Schema::V3::Hexes getHexes() const override;
+        const Schema::V3::Stacks getStacks() const override;
         const Schema::V3::AttackLogs getAttackLogs() const override;
         const std::string getAnsiRender() const override { return ansiRender; }
 

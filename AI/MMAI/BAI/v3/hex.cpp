@@ -54,10 +54,6 @@ namespace MMAI::BAI::V3 {
         return "(" + std::to_string(attr(A::Y_COORD)) + "," + std::to_string(attr(A::X_COORD)) + ")";
     }
 
-    void Hex::setState(HexState state) {
-        attrs.at(EI(HexAttribute::STATE)) = EI(state);
-    }
-
     void Hex::finalizeActionMask() {
         attrs.at(EI(A::ACTION_MASK)) = hexactmask.to_ulong();
     }

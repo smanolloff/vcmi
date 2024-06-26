@@ -136,13 +136,10 @@ namespace MMAI::BAI::V3 {
         ASSERT(state->battlefield, "Cannot build battle action if state->battlefield is missing");
         auto action = state->action.get();
         auto bf = state->battlefield.get();
-        auto astack = bf->astack->cstack;
+        auto astack = bf->astack;
 
-        ASSERT(bf->astack->attr(StackAttribute::QUEUE_POS) == 0, "expected 0 queue pos");
-        ASSERT(bf->astack->attr(StackAttribute::IS_ACTIVE) == 1, "expected active=1");
-
-        auto [x, y] = Hex::CalcXY(bf->astack->cstack->getPosition());
-        auto &hex = bf->hexes.at(y).at(x);
+        auto [x, y] = Hex::CalcXY(bf->astack->getPosition());
+        auto &hex = bf->hexes->at(y).at(x);
         std::shared_ptr<BattleAction> res = nullptr;
 
         if (!state->action->hex) {
@@ -163,7 +160,7 @@ namespace MMAI::BAI::V3 {
         // However, for manual playing/testing, it's bad to raise exceptions
         // => return errcode (Gym env will raise an exception if errcode > 0)
         auto &bhex = action->hex->bhex;
-        auto &cstack = action->hex->cstack;
+        auto &stack = action->hex->stack;
         auto mask = HexActMask(action->hex->attr(HexAttribute::ACTION_MASK));
         if (mask.test(EI(action->hexaction))) {
             // Action is VALID
@@ -178,8 +175,8 @@ namespace MMAI::BAI::V3 {
             }
             break;
             case HexAction::SHOOT:
-                ASSERT(cstack, "no target to shoot");
-                res = std::make_shared<BattleAction>(BattleAction::makeShotAttack(astack, cstack));
+                ASSERT(stack, "no target to shoot");
+                res = std::make_shared<BattleAction>(BattleAction::makeShotAttack(astack, stack->cstack));
             break;
             case HexAction::AMOVE_TR:
             case HexAction::AMOVE_R:
@@ -312,11 +309,11 @@ namespace MMAI::BAI::V3 {
             }
             break;
             case HexAction::SHOOT:
-                if (!cstack) {
+                if (!stack) {
                     state->supdata->errcode = ErrorCode::STACK_NA;
                     error("Action error: STACK_NA");
                     break;
-                } else if (cstack->unitSide() == astack->unitSide()) {
+                } else if (stack->cstack->unitSide() == astack->unitSide()) {
                     state->supdata->errcode = ErrorCode::FRIENDLY_FIRE;
                     error("Action error: FRIENDLY_FIRE");
                     break;
@@ -357,12 +354,12 @@ namespace MMAI::BAI::V3 {
         info << HexActMask(action->hex->attr(HexAttribute::ACTION_MASK)).to_string();
         info << "\n";
 
-        auto cstack = action->hex->cstack;
-        if (cstack) {
-            info << "cstack->getPosition().hex=" << cstack->getPosition().hex << "\n";
-            info << "cstack->slot=" << cstack->unitSlot() << "\n";
-            info << "cstack->doubleWide=" << cstack->doubleWide() << "\n";
-            info << "cb->battleCanShoot(cstack)=" << battle->battleCanShoot(cstack) << "\n";
+        auto stack = action->hex->stack;
+        if (stack) {
+            info << "stack->cstack->getPosition().hex=" << stack->cstack->getPosition().hex << "\n";
+            info << "stack->cstack->slot=" << stack->cstack->unitSlot() << "\n";
+            info << "stack->cstack->doubleWide=" << stack->cstack->doubleWide() << "\n";
+            info << "cb->battleCanShoot(stack->cstack)=" << battle->battleCanShoot(stack->cstack) << "\n";
         } else {
             info << "cstack: (nullptr)\n";
         }
@@ -377,8 +374,8 @@ namespace MMAI::BAI::V3 {
             info << "ainfo[nbh]=" << EI(ainfo.at(*nbh)) << "\n";
             info << "rinfo.distances[nbh] <= astack->getMovementRange(): " << (rinfo.distances[*nbh] <= astack->getMovementRange()) << "\n";
 
-            if (cstack)
-                info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, cstack, *nbh) << "\n";
+            if (stack)
+                info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, stack->cstack, *nbh) << "\n";
         }
 
         info << "\nACTION TRACE:\n";

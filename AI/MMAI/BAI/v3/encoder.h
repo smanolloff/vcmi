@@ -20,11 +20,14 @@
 
 namespace MMAI::BAI::V3 {
     using HexAttribute = Schema::V3::HexAttribute;
+    using StackAttribute = Schema::V3::StackAttribute;
     using BS = Schema::BattlefieldState;
 
     class Encoder {
     public:
-        static void Encode(const HexAttribute &a, const int v, BS &vec);
+        static void Encode(const HexAttribute a, const int v, BS &vec);
+        static void Encode(const StackAttribute a, const int v, BS &vec);
+        static void Encode(const int a, const Schema::V3::Encoding e, const int n, const int v, const int vmax, BS &vec);
 
         static void EncodeAccumulatingExplicitNull(const int v, const int n, BS &vec);
         static void EncodeAccumulatingImplicitNull(const int v, const int n, BS &vec);

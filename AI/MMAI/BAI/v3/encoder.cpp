@@ -45,9 +45,7 @@ namespace MMAI::BAI::V3 {
             throw std::runtime_error("NULL values are not allowed for strict encoding"); \
         }
 
-    void Encoder::Encode(const HexAttribute &a, const int v, BS &vec) {
-        auto &[_, e, n, vmax] = HEX_ENCODING.at(EI(a));
-
+    void Encoder::Encode(const int a, const Encoding e, const int n, const int v, const int vmax, BS &vec) {
         if (v > vmax)
             THROW_FORMAT("Cannot encode value: %d (vmax=%d, a=%d, n=%d)", v % vmax % EI(a) % n);
 
@@ -73,6 +71,16 @@ namespace MMAI::BAI::V3 {
         break; default:
             THROW_FORMAT("Unexpected Encoding: %d", EI(e));
         }
+    }
+
+    void Encoder::Encode(const StackAttribute a, const int v, BS &vec) {
+        auto &[_, e, n, vmax] = STACK_ENCODING.at(EI(a));
+        Encode(EI(a), e, n, v, vmax, vec);
+    }
+
+    void Encoder::Encode(const HexAttribute a, const int v, BS &vec) {
+        auto &[_, e, n, vmax] = HEX_ENCODING.at(EI(a));
+        Encode(EI(a), e, n, v, vmax, vec);
     }
 
     //

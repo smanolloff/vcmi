@@ -22,12 +22,26 @@ namespace MMAI::BAI::V3 {
         ASSERT(battlefield, "getHexes() called when battlefield is null");
         auto res = Schema::V3::Hexes{};
 
-        for (int y=0; y<battlefield->hexes.size(); ++y) {
-            auto &hexrow = battlefield->hexes.at(y);
+        for (int y=0; y<battlefield->hexes->size(); ++y) {
+            auto &hexrow = battlefield->hexes->at(y);
             auto &resrow = res.at(y);
             for (int x=0; x<hexrow.size(); ++x) {
                 resrow.at(x) = hexrow.at(x).get();
             }
+        }
+
+        return res;
+    }
+
+    const Schema::V3::Stacks SupplementaryData::getStacks() const {
+        ASSERT(battlefield, "getStacks() called when battlefield is null");
+        auto res = Schema::V3::Stacks{};
+
+        for (auto side : {0, 1}) {
+            auto &sidestacks = battlefield->stacks->at(side);
+            auto &sideres = res.at(side);
+            for (int i=0; i<sidestacks.size(); i++)
+                sideres.at(i) = sidestacks.at(i).get();
         }
 
         return res;

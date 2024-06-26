@@ -23,30 +23,27 @@
 
 namespace MMAI::BAI::V3 {
     using namespace Schema::V3;
+    using Queue = std::vector<uint32_t>; // item=unit id
 
     /**
      * A wrapper around CStack
      */
     class Stack : public Schema::V3::IStack {
     public:
-        Stack();
+        Stack(const CStack*, int index, Queue &q);
 
         // IStack impl
         const StackAttrs& getAttrs() const override;
         int getAttr(StackAttribute a) const override;
 
-        const CStack * cstack = nullptr;
-        StackAttrs attrs;
+        const CStack* const cstack;
+        StackAttrs attrs {};
 
         std::string name() const;
-
-        const bool isActive = false;
-
         int attr(StackAttribute a) const;
+    private:
         void setattr(StackAttribute a, int value);
-
-        void finalizeActionMask(bool isActive, bool isRight, int slot);
-        void setAction(bool isActive, bool isRight, int slot, HexAction action);
-        void setCStackAndAttrs(const CStack* cstack_, int qpos);
+        void addattr(StackAttribute a, int value);
+        void finalize();
     };
 }

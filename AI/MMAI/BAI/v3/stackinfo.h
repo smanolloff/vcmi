@@ -24,13 +24,13 @@
 namespace MMAI::BAI::V3 {
 
     struct StackInfo {
-        const Stack* stack;
+        const std::shared_ptr<const Stack> stack;
         const int speed;
         const bool canshoot;
         const std::unique_ptr<ReachabilityInfo> rinfo;
 
         StackInfo(
-            const Stack* stack_,
+            const std::shared_ptr<const Stack> stack_,
             const bool canshoot_,
             const ReachabilityInfo rinfo_
         ) : stack(stack_),

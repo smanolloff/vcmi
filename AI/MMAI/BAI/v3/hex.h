@@ -21,6 +21,7 @@
 
 #include "schema/v3/types.h"
 #include "./hexactmask.h"
+#include "./stack.h"
 
 namespace MMAI::BAI::V3 {
     using namespace Schema::V3;
@@ -43,14 +44,13 @@ namespace MMAI::BAI::V3 {
         int getAttr(HexAttribute a) const override;
 
         BattleHex bhex;
-        const CStack * cstack = nullptr;
+        std::shared_ptr<const Stack> stack = nullptr;
         HexAttrs attrs;
         HexActMask hexactmask; // for active stack only
 
         std::string name() const;
         int attr(HexAttribute a) const;
         void setattr(HexAttribute a, int value);
-        void setState(HexState state);
         void permitAction(HexAction action);
         void finalizeActionMask();
     };

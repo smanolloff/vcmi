@@ -29,11 +29,23 @@
 #include <memory>
 
 namespace MMAI::BAI::V3 {
+    // static
+    std::vector<float> State::InitNullStack() {
+        auto res = std::vector<float> {};
+        res.reserve(BATTLEFIELD_STATE_SIZE_ONE_STACK);
+        for (int i=0; i<EI(StackAttribute::_count); ++i)
+            Encoder::Encode(StackAttribute(i), NULL_VALUE_UNENCODED, res);
+        ASSERT(res.size() == res.capacity(), "incorrectly initialized nullstack");
+        return res;
+    };
+
     State::State(const int version__, const std::string colorname_, const CPlayerBattleCallback* battle_)
     : version_(version__)
     , colorname(colorname_)
     , side(battle_->battleGetMySide())
-    , initialArmyValues(GeneralInfo::CalcTotalArmyValues(battle_)) {
+    , initialArmyValues(GeneralInfo::CalcTotalArmyValues(battle_))
+    , nullstack(InitNullStack())
+    {
         bfstate.reserve(Schema::V3::BATTLEFIELD_STATE_SIZE);
         actmask.reserve(Schema::V3::N_ACTIONS);
         // attnmask.reserve(165 * 165);
@@ -85,31 +97,42 @@ namespace MMAI::BAI::V3 {
         for (int i=0; i<EI(NonHexAction::count); i++) {
             switch (NonHexAction(i)) {
             break; case NonHexAction::RETREAT: actmask.push_back(true);
-            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->cstack->waitedThisTurn);
+            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->waitedThisTurn);
             break; default:
                 THROW_FORMAT("Unexpected NonHexAction: %d", i);
             }
         }
 
-        for (auto &hexrow : battlefield->hexes)
+        for (auto &sidestacks : *battlefield->stacks) {
+            for (auto &stack : sidestacks)
+                encodeStack(stack.get());
+        }
+
+        for (auto &hexrow : *battlefield->hexes)
             for (auto &hex : hexrow)
                 encodeHex(hex.get());
 
         verify();
     }
 
-    void State::encodeHex(Hex* hex) {
-        // Battlefield state
-        for (int i=0; i<EI(HexAttribute::_count); ++i) {
-            auto a = HexAttribute(i);
-            auto v = hex->attrs.at(EI(a));
-            Encoder::Encode(a, v, bfstate);
+    void State::encodeStack(Stack* stack) {
+        if (!stack) {
+            bfstate.insert(bfstate.end(), nullstack.begin(), nullstack.end());
+            return;
         }
 
+        for (int i=0; i<EI(StackAttribute::_count); ++i)
+            Encoder::Encode(StackAttribute(i), stack->attrs.at(i), bfstate);
+    }
+
+    void State::encodeHex(Hex* hex) {
+        // Battlefield state
+        for (int i=0; i<EI(HexAttribute::_count); ++i)
+            Encoder::Encode(HexAttribute(i), hex->attrs.at(i), bfstate);
+
         // Action mask
-        for (int m=0; m<hex->hexactmask.size(); ++m) {
+        for (int m=0; m<hex->hexactmask.size(); ++m)
             actmask.push_back(hex->hexactmask.test(m));
-        }
 
         // // Attention mask
         // // (not used)

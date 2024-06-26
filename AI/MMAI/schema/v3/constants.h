@@ -111,13 +111,14 @@ namespace MMAI::Schema::V3 {
         }
     }
 
-    constexpr int MAX_STACKS = 20;
+    constexpr int MAX_STACKS_PER_SIDE = std::tuple_size<Stacks::value_type>::value;
+    constexpr int MAX_STACKS = 2 * MAX_STACKS_PER_SIDE;
 
     constexpr HexEncoding HEX_ENCODING {
         E4(HA::Y_COORD,     CS, 10),
         E4(HA::X_COORD,     CS, 14),
         E4(HA::STATE,       CS, EI(HexState::_count)-1),
-        E4(HA::ACTION_MASK, BS, (1<<EI(HexAction::_count))-1),
+        E4(HA::ACTION_MASK, BZ, (1<<N_HEX_ACTIONS)-1), // null on battle end
         E4(HA::STACK_ID,    CE, MAX_STACKS-1),
     };
 
@@ -140,7 +141,6 @@ namespace MMAI::Schema::V3 {
         E4(SA::RETALIATIONS_LEFT,         NE, 2),        // inf is truncated to 2 (royal griffin)
         E4(SA::MAGIC_RESISTANCE,          NE, 100),      //
         E4(SA::IS_WIDE,                   NE, 1),
-        E4(SA::IS_ACTIVE,                 NE, 1),
         E4(SA::AI_VALUE,                  NE, 40000),    // azure dragon is 78845, but is damped to 40K (using tanh())
         E4(SA::MORALE,                    NE, 7),        // -3..+3
         E4(SA::LUCK,                      NE, 7),        // -3..+3
@@ -155,6 +155,8 @@ namespace MMAI::Schema::V3 {
         E4(SA::ACID_ATTACK,               NE, 100),      // rust dragon (100)
         E4(SA::BINDING_ATTACK,            NE, 100),      // dendroids (100)
         E4(SA::LIGHTNING_ATTACK,          NE, 100),      // thunderbirds (20)
+
+        E4(SA::AREA_ATTACK,               NE, 2),       // thunderbirds (20)
 
         // Hate (dmg bonus in %)
         E4(SA::HATES_ANGELS,              NE, 100),
@@ -177,28 +179,27 @@ namespace MMAI::Schema::V3 {
         E4(SA::JOUSTING,                  NE, 1),
         E4(SA::SPELL_RESISTANCE_AURA,     NE, 100),      // unicorns, value - resistance bonus in % for adjacent creatures*/
         E4(SA::LEVEL_SPELL_IMMUNITY,      NE, 5),        // levels 1-5
-        E4(SA::FIRE_SPELL_RESISTANCE,     NE, 100),      // 100% = immune
-        E4(SA::WATER_SPELL_RESISTANCE,    NE, 100),
-        E4(SA::AIR_SPELL_RESISTANCE,      NE, 100),
-        E4(SA::EARTH_SPELL_RESISTANCE,    NE, 100),
-        E4(SA::SPELL_DAMAGE_REDUCTION,    NE, 100),
+        E4(SA::FIRE_DAMAGE_REDUCTION,     NE, 100),      // 100% = immune
+        E4(SA::WATER_DAMAGE_REDUCTION,    NE, 100),
+        E4(SA::AIR_DAMAGE_REDUCTION,      NE, 100),
+        E4(SA::EARTH_DAMAGE_REDUCTION,    NE, 100),
         E4(SA::TWO_HEX_ATTACK_BREATH,     NE, 1),
         E4(SA::NO_WALL_PENALTY,           NE, 1),
+        E4(SA::NON_LIVING,                NE, 1),
         E4(SA::BLOCKS_RETALIATION,        NE, 1),
         E4(SA::THREE_HEADED_ATTACK,       NE, 1),
         E4(SA::MIND_IMMUNITY,             NE, 1),
-        E4(SA::FIRE_SHIELD,               NE, 1),
-        E4(SA::LIFE_DRAIN,                NE, 1),
+        E4(SA::FIRE_SHIELD,               NE, 100),
+        E4(SA::LIFE_DRAIN,                NE, 100),
         E4(SA::DOUBLE_DAMAGE_CHANCE,      NE, 100),
         E4(SA::RETURN_AFTER_STRIKE,       NE, 1),
         E4(SA::DEFENSIVE_STANCE,          NE, 1),
         E4(SA::ATTACKS_ALL_ADJACENT,      NE, 1),
         E4(SA::NO_DISTANCE_PENALTY,       NE, 1),
-        E4(SA::HYPNOTIZED,                NE, 1),
-        E4(SA::NO_RETALIATION,            NE, 1),
+        E4(SA::HYPNOTIZED,                NE, 5),  // turns left
         E4(SA::MAGIC_MIRROR,              NE, 100),
         E4(SA::ATTACKS_NEAREST_CREATURE,  NE, 1),
-        E4(SA::SLEEPING,                  NE, 1),
+        E4(SA::SLEEPING,                  NE, 5),  // turns left
         E4(SA::DEATH_STARE,               NE, 1),
         E4(SA::POISON,                    NE, 1),
         E4(SA::REBIRTH,                   NE, 1),

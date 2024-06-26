@@ -272,7 +272,6 @@ namespace MMAI::Schema::V3 {
         RETALIATIONS_LEFT,
         MAGIC_RESISTANCE,
         IS_WIDE,
-        IS_ACTIVE,
         AI_VALUE,
         MORALE,
         LUCK,
@@ -287,6 +286,8 @@ namespace MMAI::Schema::V3 {
         ACID_ATTACK,    // rust dragon
         BINDING_ATTACK, // dendroids
         LIGHTNING_ATTACK, // thunderbirds
+
+        AREA_ATTACK, // 1=magog, 2=lich
 
         // Hate (dmg bonus in %)
         HATES_ANGELS,
@@ -309,31 +310,29 @@ namespace MMAI::Schema::V3 {
 
         SPELL_RESISTANCE_AURA,      /*eg. unicorns, value - resistance bonus in % for adjacent creatures*/
         LEVEL_SPELL_IMMUNITY,       /*creature is immune to all spell with level below or equal to value of this bonus */
-        FIRE_SPELL_RESISTANCE,      // 100% means immunity
-        WATER_SPELL_RESISTANCE,     // 100% means immunity
-        AIR_SPELL_RESISTANCE,       // 100% means immunity
-        EARTH_SPELL_RESISTANCE,     // 100% means immunity
-        SPELL_DAMAGE_REDUCTION,     // golems (only "any" subtype, e.g. "prot. from fire" is ignored)
+        FIRE_DAMAGE_REDUCTION,      // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
+        WATER_DAMAGE_REDUCTION,     // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
+        AIR_DAMAGE_REDUCTION,       // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
+        EARTH_DAMAGE_REDUCTION,     // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
         TWO_HEX_ATTACK_BREATH,      /*eg. dragons*/
         NO_WALL_PENALTY,
-        // NON_LIVING,              // not useful during battle
+        NON_LIVING,                 // indicates immunity to mind spells; UNDEAD included here
         BLOCKS_RETALIATION,         /*eg. naga*/
         THREE_HEADED_ATTACK,        /*eg. cerberus*/
         MIND_IMMUNITY,
         FIRE_SHIELD,
         // UNDEAD,                  // not useful during battle
-        LIFE_DRAIN,
+        LIFE_DRAIN,                 // in %
         DOUBLE_DAMAGE_CHANCE,       /*value in %, eg. dread knight*/
         RETURN_AFTER_STRIKE,
         DEFENSIVE_STANCE,           /* val - bonus to defense while defending */
         ATTACKS_ALL_ADJACENT,       /*eg. hydra*/
         NO_DISTANCE_PENALTY,
-        HYPNOTIZED,
-        NO_RETALIATION,             /*temporary bonus for basilisk, unicorn and scorpicore paralyze*/
+        HYPNOTIZED,                 // turns left
         MAGIC_MIRROR,               /* value - chance of redirecting in %*/
         ATTACKS_NEAREST_CREATURE,   /*while in berserk*/
         // FORGETFULL,              // <=1 is  SHOTS=0, basic sets
-        SLEEPING,                   // a more inuitive name for "NOT_ACTIVE" bonus which gets removed if attacked
+        SLEEPING,                   // turns remaining; a more inuitive name for "NOT_ACTIVE" bonus which gets removed if attacked
         DEATH_STARE,                /*subtype 0 - gorgon, 1 - commander*/
         POISON,                     /*val - max health penalty from poison possible*/
         REBIRTH,                    /* val - percent of life restored, subtype = 0 - regular, 1 - at least one unit (sacred Phoenix) */
@@ -389,14 +388,13 @@ namespace MMAI::Schema::V3 {
         virtual ~IStack() = default;
     };
 
+
     class IHex {
     public:
         virtual const HexAttrs& getAttrs() const = 0;
         virtual int getAttr(HexAttribute) const = 0;
         virtual ~IHex() = default;
     };
-
-    using Hexes = std::array<std::array<IHex*, 15>, 11>;
 
     class IAttackLog {
     public:
@@ -410,6 +408,8 @@ namespace MMAI::Schema::V3 {
     };
 
     using AttackLogs = std::vector<IAttackLog*>;
+    using Hexes = std::array<std::array<IHex*, 15>, 11>;
+    using Stacks = std::array<std::array<IStack*, 10>, 2>;
 
     enum class Side : int {LEFT, RIGHT}; // corresponds to BattleSide::Type
 
@@ -432,6 +432,7 @@ namespace MMAI::Schema::V3 {
         virtual bool getIsBattleEnded() const = 0;
         virtual bool getIsVictorious() const = 0;
         virtual const Hexes getHexes() const = 0;
+        virtual const Stacks getStacks() const = 0;
         virtual const AttackLogs getAttackLogs() const = 0;
         virtual const std::string getAnsiRender() const = 0;
         virtual ~ISupplementaryData() = default;
