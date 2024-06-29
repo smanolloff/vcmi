@@ -117,8 +117,8 @@ namespace MMAI::Schema::V3 {
     constexpr HexEncoding HEX_ENCODING {
         E4(HA::Y_COORD,     CS, 10),
         E4(HA::X_COORD,     CS, 14),
-        E4(HA::STATE,       CS, EI(HexState::_count)-1),
-        E4(HA::ACTION_MASK, BZ, (1<<N_HEX_ACTIONS)-1), // null on battle end
+        E4(HA::STATE_MASK,  BS, (1<<EI(HexState::_count))-1),
+        E4(HA::ACTION_MASK, BZ, (1<<N_HEX_ACTIONS)-1),
         E4(HA::STACK_ID,    CE, MAX_STACKS-1),
     };
 

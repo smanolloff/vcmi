@@ -38,8 +38,8 @@ namespace MMAI::BAI::V3 {
         char getAlias() const override;
         char alias;
 
-        const CStack* const cstack;
-        StackAttrs attrs {};
+        const CStack* cstack;
+        StackAttrs attrs;
 
         std::string name() const;
         int attr(StackAttribute a) const;

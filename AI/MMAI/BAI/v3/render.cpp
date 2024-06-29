@@ -15,7 +15,10 @@
 // =============================================================================
 
 #include "BAI/v3/render.h"
+#include "BAI/v3/hex.h"
 #include "Global.h"
+#include "battle/AccessibilityInfo.h"
+#include "battle/CObstacleInstance.h"
 #include "bonuses/Bonus.h"
 #include "bonuses/BonusCustomTypes.h"
 #include "bonuses/BonusEnum.h"
@@ -26,9 +29,11 @@
 #include "modding/ModScope.h"
 #include "schema/v3/constants.h"
 #include "schema/v3/types.h"
+#include "spells/CSpellHandler.h"
 #include "vcmi/spells/Caster.h"
 #include <algorithm>
 #include <memory>
+#include <sys/errno.h>
 
 namespace MMAI::BAI::V3 {
     std::string PadLeft(const std::string& input, size_t desiredLength, char paddingChar) {
@@ -328,31 +333,51 @@ namespace MMAI::BAI::V3 {
                     expect(v == y, "HEX.Y_COORD: %d != %d", v, y);
                 break; case HA::X_COORD:
                     expect(v == x, "HEX.X_COORD: %d != %d", v, x);
-                break; case HA::STATE:
-                    switch (HexState(v)) {
-                    break; case HexState::OBSTACLE:
-                        expect(!cstack, "HEX.STATE: OBSTACLE, but there's a stack");
-                        expect(aa == EAccessibility::OBSTACLE, "HEX.STATE: OBSTACLE -> %d", aa);
-                    break; case HexState::ALIVE_STACK:
-                        expect(aa == EAccessibility::ALIVE_STACK, "HEX.STATE: ALIVE_STACK -> %d", aa);
+                break; case HA::STATE_MASK: {
+                    auto obstacles = battle->battleGetAllObstaclesOnPos(bh, false);
+                    auto anyobstacle = [&obstacles](std::function<bool(const CObstacleInstance*)> fn) {
+                        return std::any_of(obstacles.begin(), obstacles.end(), [&fn](std::shared_ptr<const CObstacleInstance> obstacle) {
+                            return fn(obstacle.get());
+                        });
+                    };
 
-                        // cstack is obtained from battle->battleGetStacks so
-                        // it's always available (because this is an ALIVE_STACK hex)
-                        expect(cstack, "HEX.STATE: ALIVE_STACK, but there's no stack");
+                    auto mask = HexStateMask(v);
+                    bool side = astack->unitSide();
 
-                        // hex->stack may be null if there are too many stacks
-                        if(hex->stack == nullptr) {
-                            auto stacks = cstack->unitSide() ? r_CStacksAll : l_CStacksAll;
-                            expect(stacks.size() > MAX_STACKS_PER_SIDE, "hex->stack is nullptr, but n_stacks is %d", stacks.size());
-                        } else {
-                            expect(hex->stack->cstack == cstack, "HEX.STATE: ALIVE_STACK, but hex->stack->cstack != cstack");
-                        }
-                    break; case HexState::FREE:
-                        expect(aa == EAccessibility::ACCESSIBLE, "HEX.STATE: FREE -> %d", aa);
-                        expect(!cstack, "HEX.STATE: FREE, but there's a stack");
-                    break; default:
-                        THROW_FORMAT("HEX.STATE: Unexpected HexState: %d", v);
+
+                    if (mask.test(EI(HexState::PASSABLE))) {
+                        expect(
+                            aa == EAccessibility::ACCESSIBLE || (side && aa == EAccessibility::GATE),
+                            "HEX.STATE_MASK: PASSABLE bit is set, but accessibility is %d (side: %d)", EI(aa), side
+                        );
+                    } else {
+                        expect(
+                            aa == EAccessibility::OBSTACLE || aa == EAccessibility::ALIVE_STACK,
+                            "HEX.STATE_MASK: PASSABLE bit not set, but accessibility is %d", EI(aa)
+                        );
                     }
+
+                    if (mask.test(EI(HexState::STOPPING))) {
+                        // auto stopping = std::any_of(obstacles.begin(), obstacles.end(), [](auto obstacle) {
+                        //     return obstacle->stopsMovement();
+                        // });
+                        auto stopping = anyobstacle(std::mem_fn(&CObstacleInstance::stopsMovement));
+                        expect(stopping, "HEX.STATE_MASK: STOPPING bit is set, but no obstacle stops movement");
+                    }
+
+                    if (mask.test(EI(HexState::DAMAGING))) {
+                        auto damaging = anyobstacle([](const CObstacleInstance* o) {
+                            return o->triggersEffects() && o->getTrigger().toSpell()->isDamage();
+                        });
+
+                        expect(damaging, "HEX.STATE_MASK: DAMAGING bit is set, but no obstacle triggers a damaging effect");
+                    }
+
+                    // if (mask.test(EI(HexState::GATE))) {
+                    //     expect(battle->battleGetSiegeLevel(), "HEX.STATE_MASK: GATE bit is set, but there is no fort");
+                    //     expect(bh == BattleHex::GATE_INNER || bh == BattleHex::GATE_OUTER, "HEX.STATE_MASK: GATE bit is set on bhex#%d", bh.hex);
+                    // }
+                }
                 break; case HA::ACTION_MASK: {
                     if (ended) {
                         expect(v == NULL_VALUE_UNENCODED, "HEX.ACTION_MASK: battle ended, but action mask is %d", v);
@@ -802,7 +827,9 @@ namespace MMAI::BAI::V3 {
                         want = has_bonus(BonusType::ATTACKS_NEAREST_CREATURE);
                         ensureStackValueMatch(a, v, want, "STACK.ATTACKS_NEAREST_CREATURE");
                     break; case SA::SLEEPING:
-                        want = get_bonus_duration(BonusType::NOT_ACTIVE);
+                        want = cstack->unitType()->getId() == CreatureID::AMMO_CART
+                            ? 0 : get_bonus_duration(BonusType::NOT_ACTIVE);
+
                         ensureStackValueMatch(a, v, want, "STACK.SLEEPING");
                     break; case SA::DEATH_STARE:
                         want = has_bonus(BonusType::DEATH_STARE);
@@ -877,17 +904,10 @@ namespace MMAI::BAI::V3 {
         std::string nocol = "\033[0m";
         std::string redcol = "\033[31m"; // red
         std::string bluecol = "\033[34m"; // blue
+        std::string darkcol = "\033[90m";
         std::string activemod = "\033[107m\033[7m"; // bold+reversed
 
         std::vector<std::stringstream> lines;
-
-        auto ourcol = redcol;
-        auto enemycol = bluecol;
-
-        if (color != "red") {
-            ourcol = bluecol;
-            enemycol = redcol;
-        }
 
         //
         // 1. Add logs table:
@@ -898,21 +918,21 @@ namespace MMAI::BAI::V3 {
         //
         for (auto &alog : supdata->getAttackLogs()) {
             auto row = std::stringstream();
-            auto col1 = ourcol;
-            auto col2 = enemycol;
+            auto attcol = redcol;
+            auto defcol = bluecol;
 
-            if (alog->getDefenderSide() == EI(supdata->getSide())) {
-                col1 = enemycol;
-                col2 = ourcol;
+            if (alog->getDefender()->getAttr(SA::SIDE) == 0) {
+                attcol = bluecol;
+                defcol = redcol;
             }
 
-            if (alog->getAttackerAlias() != '\0')
-                row << col1 << "#" << alog->getAttackerAlias() << nocol;
+            if (alog->getAttacker())
+                row << attcol << "#" << alog->getAttacker()->getAlias() << nocol;
             else
                 row << "\033[7m" << "FX" << nocol;
 
             row << " attacks ";
-            row << col2 << "#" << alog->getDefenderAlias() << nocol;
+            row << defcol << "#" << alog->getDefender()->getAlias() << nocol;
             row << " for " << alog->getDamageDealt() << " dmg";
             row << " (kills: " << alog->getUnitsKilled() << ", value: " << alog->getValueKilled() << ")";
 
@@ -961,8 +981,6 @@ namespace MMAI::BAI::V3 {
             for (int x=0; x < BF_XMAX; x++) {
                 auto sym = std::string("?");
                 auto &hex = hexes.at(y).at(x);
-                auto amask = HexActMask(hex->getAttr(HA::ACTION_MASK));
-                auto masks = std::array<std::array<HexActMask, 7>, 2> {};
 
                 IStack* stack = nullptr;
 
@@ -970,8 +988,6 @@ namespace MMAI::BAI::V3 {
                     stack = idstacks.at(hex->getAttr(HA::STACK_ID));
                     expect(stack, "stack with ID=%d not found", hex->getAttr(HA::STACK_ID));
                 }
-
-                bool isActive = stack && stack->getAttr(SA::QUEUE_POS) == 0;
 
                 auto &row = (x == 0)
                     ? (lines.emplace_back() << nummap.at(y%10) << "┨" << (y % 2 == 0 ? " " : ""))
@@ -982,51 +998,43 @@ namespace MMAI::BAI::V3 {
 
                 addspace = true;
 
-                // not checkable
-                // // true if any any of the following context attributes is available:
-                // // * (7) neighbouringFriendlyStacks
-                // // * (7) neighbouringEnemyStacks
-                // // * (7) potentialEnemyAttackers
-                // // Expect to be available for FREE_REACHABLE hexes only:
-                // auto anycontext_free_reachable = std::any_of(
-                //     stateu.begin()+ibase+3+EI(StackAttr::count)+14,
-                //     stateu.begin()+ibase+3+EI(StackAttr::count)+14 + 21,
-                //     [](Schema::NValue nv) { return nv.orig != 0; }
-                // );
+                auto smask = HexStateMask(hex->getAttr(HA::STATE_MASK));
+                auto col = nocol;
 
-                switch(HexState(hex->getAttr(HA::STATE))) {
-                break; case HexState::FREE: {
-                    if (!supdata->getIsBattleEnded() && amask.test(EI(HexAction::MOVE)) > 0) {
-                        sym = "○";
+                // First put symbols based on hex state.
+                // If there's a stack on this hex, symbol will be overriden.
+                HexStateMask mpass = 1<<EI(HexState::PASSABLE);
+                HexStateMask mstop = 1<<EI(HexState::STOPPING);
+                HexStateMask mdmg = 1<<EI(HexState::DAMAGING);
+                HexStateMask mdefault = 0; // or mother :)
 
-                        auto emasks = masks.at(!EI(supdata->getSide()));
-                        for (auto &emask : emasks) {
-                            if (emask.test(EI(HexAction::MOVE))) {
-                                sym = "◎";
-                                break;
-                            }
-                        }
-                    } else {
-                        sym = "\033[90m◌\033[0m";
-                    }
-                }
-                break; case HexState::OBSTACLE:
-                    sym = "\033[90m▦\033[0m";
-                break; case HexState::ALIVE_STACK: {
-                    // XXX: stack can be NULL if there are too many stacks in this army
-                    if (!stack) {
-                        sym = "?";
+                std::map<std::string, HexStateMask> symbols {
+                    {"○", mpass},
+                    {"△", mpass|mstop},
+                    {"✶", mpass|mdmg},
+                    {"⨻", mpass|mstop|mdmg},
+                    {"▦",  mdefault}
+                };
+
+                for (auto &pair : symbols) {
+                    auto &[s, m] = pair;
+                    if ((smask & m) == m) {
+                        sym = s;
                         break;
                     }
+                }
 
-                    auto friendly = stack->getAttr(SA::SIDE) == EI(supdata->getSide());
-                    auto col = friendly ? ourcol : enemycol;
+                auto amask = HexActMask(hex->getAttr(HA::ACTION_MASK));
+                if (amask.test(EI(HexAction::MOVE)) <= 0) // || supdata->getIsBattleEnded()
+                    col = darkcol;
 
-                    if (isActive > 0 && !supdata->getIsBattleEnded())
-                        col += activemod;
-
+                if (hex->getAttr(HA::STACK_ID) >= 0) {
                     auto strslot = std::string(1, stack->getAlias());
                     auto seen = seenstacks.test(stack->getAttr(SA::ID));
+                    auto col = stack->getAttr(SA::SIDE) ? bluecol : redcol;
+
+                    if (stack->getAttr(SA::QUEUE_POS) == 0) // && !supdata->getIsBattleEnded()
+                        col += activemod;
 
                     if (stack->getAttr(SA::IS_WIDE) > 0 && !seen) {
                         if (stack->getAttr(SA::SIDE) == 0) {
@@ -1038,11 +1046,7 @@ namespace MMAI::BAI::V3 {
                         }
                     }
 
-                    seenstacks.set(stack->getAttr(SA::ID));
                     sym = col + strslot + nocol;
-                }
-                break; default:
-                    THROW_FORMAT("unexpected HEX_STATE: %d", EI(hex->getAttr(HA::STATE)));
                 }
 
                 row << sym;
@@ -1069,6 +1073,7 @@ namespace MMAI::BAI::V3 {
         for (int i=0; i<=lines.size(); i++) {
             std::string name;
             std::string value;
+            auto side = EI(supdata->getSide());
 
             switch(i) {
             case 1:
@@ -1076,7 +1081,7 @@ namespace MMAI::BAI::V3 {
                 if (supdata->getIsBattleEnded())
                     value = "";
                 else
-                    value = ourcol == redcol ? redcol + "RED" + nocol : bluecol + "BLUE" + nocol;
+                    value = side ? bluecol + "BLUE" + nocol : redcol + "RED" + nocol;
                 break;
             case 2:
                 name = "Last action";
@@ -1089,9 +1094,10 @@ namespace MMAI::BAI::V3 {
             case 7: name = "Units lost"; value = std::to_string(supdata->getUnitsLost()); break;
             case 8: name = "Value lost"; value = std::to_string(supdata->getValueLost()); break;
             case 9: {
+                // XXX: if there's a draw, this text will be incorrect
                 auto restext = supdata->getIsVictorious()
-                    ? (ourcol == redcol ? redcol + "RED WINS" : bluecol + "BLUE WINS")
-                    : (ourcol == redcol ? bluecol + "BLUE WINS" : redcol + "RED WINS");
+                    ? (side ? bluecol + "BLUE WINS" : redcol + "RED WINS")
+                    : (side ? redcol + "RED WINS" : bluecol + "BLUE WINS" );
 
                 name = "Battle result"; value = supdata->getIsBattleEnded() ? (restext + nocol) : "";
                 break;
@@ -1190,7 +1196,7 @@ namespace MMAI::BAI::V3 {
                     std::string value = "";
 
                     if (stack) {
-                        color = (stack->getAttr(SA::SIDE) == EI(supdata->getSide())) ? ourcol : enemycol;
+                        color = stack->getAttr(SA::SIDE) ? bluecol : redcol;
                         value = a == SA::ID
                             ? std::string(1, stack->getAlias())
                             : std::to_string(stack->getAttr(a));

@@ -18,20 +18,19 @@
 
 #include "lib/AI_Base.h"
 #include "schema/v3/types.h"
+#include "./stack.h"
 
 namespace MMAI::BAI::V3 {
     class AttackLog : public Schema::V3::IAttackLog {
     public:
         AttackLog(
-            char attacker_, char defender_, int defside_,
+            Stack* attacker_, Stack* defender_,
             int dmg_, int units_, int value_
-        ) : attacker(attacker_), defender(defender_), defside(defside_),
-                dmg(dmg_), units(units_), value(value_) {}
+        ) : attacker(attacker_), defender(defender_), dmg(dmg_), units(units_), value(value_) {}
 
         // IAttackLog impl
-        char getAttackerAlias() const override { return attacker; }
-        char getDefenderAlias() const override { return defender; }
-        int getDefenderSide() const override { return defside; }
+        Stack* getAttacker() const override { return attacker.get(); }
+        Stack* getDefender() const override { return defender.get(); }
         int getDamageDealt() const override { return dmg; }
         int getUnitsKilled() const override { return units; }
         int getValueKilled() const override { return value; }
@@ -46,9 +45,8 @@ namespace MMAI::BAI::V3 {
          * => store only defender slot
          */
 
-        const char attacker;  // XXX: can be '\0' when dmg is not from creature
-        const char defender;
-        const int defside;
+        const std::shared_ptr<Stack> attacker;  // XXX: can be nullptr if dmg is not from creature
+        const std::shared_ptr<Stack> defender;
         const int dmg;
         const int units;
 

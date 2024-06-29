@@ -1,9 +1,11 @@
-1. check if bonus SHOOTER is same as shots 
-2. check if NOT_ACTIVE bonus is used
 3. check if GENERAL_ATTACK_REDUCTION is affected by FORGETFUL
   (and remove FORGETFUL if so)
 
-4. check if 
+4. check the MOAT obstacle type trigger (is it a SpellID - which?!)
+5. check the firewall obstacle type trigger (is it a SpellID::FIRE_WALL?
+    There is fireWallDamage ability, but no such spell.
+6. check the QUICKSAND and LAND_MINE triggers - are they corresponding spell ids?
+7. check tower moat-mines - are they a SPELL_CREATED obstacle type?
 
 4. (optional) Handle spellcast of LAND MINE - probably there's something
   like a list of affected hexes, and return them with the appropriate

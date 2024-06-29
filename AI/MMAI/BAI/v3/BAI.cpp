@@ -28,6 +28,30 @@
 #include "./render.h"
 
 namespace MMAI::BAI::V3 {
+    // constexpr std::bitset
+    static const std::set<SpellID> GENIE_SPELLS = {
+        SpellID::AIR_SHIELD,
+        SpellID::ANTI_MAGIC,
+        SpellID::BLESS,
+        SpellID::BLOODLUST,
+        SpellID::COUNTERSTRIKE,
+        SpellID::CURE,
+        SpellID::FIRE_SHIELD,
+        SpellID::FORTUNE,
+        SpellID::HASTE,
+        SpellID::MAGIC_MIRROR,
+        SpellID::MIRTH,
+        SpellID::PRAYER,
+        SpellID::PRECISION,
+        SpellID::PROTECTION_FROM_AIR,
+        SpellID::PROTECTION_FROM_EARTH,
+        SpellID::PROTECTION_FROM_FIRE,
+        SpellID::PROTECTION_FROM_WATER,
+        SpellID::SHIELD,
+        SpellID::SLAYER,
+        SpellID::STONE_SKIN
+    };
+
     Schema::Action BAI::getNonRenderAction() {
         // info("getNonRenderAciton called with result type: " + std::to_string(result->type));
         auto s = state.get();
@@ -147,9 +171,9 @@ namespace MMAI::BAI::V3 {
         ASSERT(state->battlefield, "Cannot build battle action if state->battlefield is missing");
         auto action = state->action.get();
         auto bf = state->battlefield.get();
-        auto astack = bf->astack;
+        auto acstack = bf->astack->cstack;
 
-        auto [x, y] = Hex::CalcXY(bf->astack->getPosition());
+        auto [x, y] = Hex::CalcXY(acstack->getPosition());
         auto &hex = bf->hexes->at(y).at(x);
         std::shared_ptr<BattleAction> res = nullptr;
 
@@ -158,8 +182,8 @@ namespace MMAI::BAI::V3 {
             break; case NonHexAction::RETREAT:
                 res = std::make_shared<BattleAction>(BattleAction::makeRetreat(battle->battleGetMySide()));
             break; case NonHexAction::WAIT:
-                ASSERT(!astack->waitedThisTurn, "stack already waited this turn");
-                res = std::make_shared<BattleAction>(BattleAction::makeWait(astack));
+                ASSERT(!acstack->waitedThisTurn, "stack already waited this turn");
+                res = std::make_shared<BattleAction>(BattleAction::makeWait(acstack));
             break; default:
                 THROW_FORMAT("Unexpected non-hex action: %d", state->action->action);
             }
@@ -171,7 +195,7 @@ namespace MMAI::BAI::V3 {
         // However, for manual playing/testing, it's bad to raise exceptions
         // => return errcode (Gym env will raise an exception if errcode > 0)
         auto &bhex = action->hex->bhex;
-        auto &stack = action->hex->stack;
+        auto &stack = action->hex->stack; // may be null
         auto mask = HexActMask(action->hex->attr(HexAttribute::ACTION_MASK));
         if (mask.test(EI(action->hexaction))) {
             // Action is VALID
@@ -179,15 +203,15 @@ namespace MMAI::BAI::V3 {
             //      Server will log any attempted invalid actions otherwise
             switch(action->hexaction) {
             case HexAction::MOVE: {
-                auto ba = (bhex.hex == astack->getPosition().hex)
-                    ? BattleAction::makeDefend(astack)
-                    : BattleAction::makeMove(astack, bhex);
+                auto ba = (bhex == acstack->getPosition())
+                    ? BattleAction::makeDefend(acstack)
+                    : BattleAction::makeMove(acstack, bhex);
                 res = std::make_shared<BattleAction>(ba);
             }
             break;
             case HexAction::SHOOT:
                 ASSERT(stack, "no target to shoot");
-                res = std::make_shared<BattleAction>(BattleAction::makeShotAttack(astack, stack->cstack));
+                res = std::make_shared<BattleAction>(BattleAction::makeShotAttack(acstack, stack->cstack));
             break;
             case HexAction::AMOVE_TR:
             case HexAction::AMOVE_R:
@@ -200,7 +224,7 @@ namespace MMAI::BAI::V3 {
                 ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
                 auto estack = battle->battleGetStackByPos(nbh);
                 ASSERT(estack, "no enemy stack for melee attack");
-                res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(astack, nbh, bhex));
+                res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, bhex));
             }
             break;
             case HexAction::AMOVE_2TR:
@@ -209,16 +233,69 @@ namespace MMAI::BAI::V3 {
             case HexAction::AMOVE_2BL:
             case HexAction::AMOVE_2L:
             case HexAction::AMOVE_2TL: {
-                ASSERT(astack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
+                ASSERT(acstack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
                 auto &edir = AMOVE_TO_EDIR.at(action->hexaction);
-                auto obh = astack->occupiedHex(bhex);
+                auto obh = acstack->occupiedHex(bhex);
                 auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
                 ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.hex));
                 auto estack = battle->battleGetStackByPos(nbh);
                 ASSERT(estack, "no enemy stack for melee attack");
-                res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(astack, nbh, bhex));
+                res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, bhex));
             }
             break;
+            case HexAction::SPECIAL: {
+                auto cid = acstack->creatureId();
+                if (cid == CreatureID::FIRST_AID_TENT) {
+                    ASSERT(stack, "mask allowed heal on a hex without a stack");
+                    ASSERT(stack->cstack->canBeHealed(), "mask allowed heal on a stack which can't be healed");
+                    res = std::make_shared<BattleAction>(BattleAction::makeHeal(acstack, stack->cstack));
+                }
+                // } else if (cid == CreatureID::MASTER_GENIE) {
+
+                // BattleAction::makeCreatureSpellcast() expects:
+                // * source stack
+                // * target stack
+                // * SpellID
+                //
+                // If the caster has RANDOM_SPELLCASTER bonus, the server
+                // ignores the given SpellID and chooses one at random.
+                // See BattleActionProcessor::doUnitSpellAction()
+                //
+                // If the caster has SPELLCASTER bonus for the selected SpellID,
+                // the server casts the spell regardless of the weighted chance
+                // to select it (stored in the bonus's additionalInfo)
+                // i.e. client can always pick the strongest spell.
+                //
+                // XXX: in both cases it does not seem as if
+                //      the LEVEL_SPELL_IMMUNITY is checked ?!
+                //      The UI does not allow to cast creature spells on
+                //      black dragons, so it checks it.
+                //      Also, black and red dragons are not affected by
+                //      spells they are immune to, even if those are AOE spells
+
+                // It seems all cast bonuses are "valid" actions
+                // (see "fairieDragon" (with the typo) in creatures/neutral.json)
+                // So it's whichever the client chooses atm.
+                // logAi->warn("TODO: handle special actions");
+                // hex->permitAction(HexAction::SPECIAL)
+
+
+
+
+                } else if (cid == CreatureID::FAERIE_DRAGON) {
+                } else if (cid == CreatureID::ARCHANGEL) {
+                // } else if (cid == CreatureID::ICE_ELEMENTAL) {
+                // } else if (cid == CreatureID::MAGMA_ELEMENTAL) {
+                // } else if (cid == CreatureID::STORM_ELEMENTAL) {
+                // } else if (cid == CreatureID::ENERGY_ELEMENTAL) {
+                // } else if (cid == CreatureID::PIT_LORD) {
+                } else {
+
+                }
+                // BattleAction::makeCreatureSpellcast(const battle::Unit *stack, const battle::Target &target, const SpellID &spellID)
+
+
+            }
             default:
                 THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
             }
@@ -256,8 +333,8 @@ namespace MMAI::BAI::V3 {
             case HexAction::MOVE: {
                 auto a = ainfo.at(action->hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
-                    auto hs = HexState(hex->attr(HexAttribute::STATE));
-                    ASSERT(hs == HexState::OBSTACLE, "incorrect hex state -- expected OBSTACLE, got: " + std::to_string(EI(hs)) + debugInfo(action, astack, nullptr));
+                    auto statemask = HexStateMask(hex->attr(HexAttribute::STATE_MASK));
+                    ASSERT(!statemask.test(EI(HexState::PASSABLE)), "accessibility is OBSTACLE, but hex state mask has PASSABLE set: " + statemask.to_string() + debugInfo(action, astack, nullptr));
                     state->supdata->errcode = ErrorCode::HEX_BLOCKED;
                     error("Action error: HEX_BLOCKED");
                     break;

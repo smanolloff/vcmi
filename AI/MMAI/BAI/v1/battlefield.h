@@ -42,7 +42,7 @@ namespace MMAI::BAI::V1 {
 
         Battlefield(const CPlayerBattleCallback* battle, const CStack* astack_, int percentValue, bool isMorale);
 
-        const CStack* const astack;
+        const CStack* astack;
         const Hexes hexes;
 
     private:

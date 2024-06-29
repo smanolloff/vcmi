@@ -20,7 +20,7 @@
 
 namespace MMAI::BAI::V3 {
     /**
-     * A list of booleans for a single hex (see HexAction)
+     * A list of flags for a single hex (see HexAction)
      */
     using HexActMask = std::bitset<EI(HexAction::_count)>;
 

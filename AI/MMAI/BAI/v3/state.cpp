@@ -63,7 +63,7 @@ namespace MMAI::BAI::V3 {
 
         for (auto &al : attackLogs) {
             // note: in VCMI there is no excess dmg if stack is killed
-            if (al->defside == side) {
+            if (al->defender->attr(SA::SIDE) == side) {
                 dmgReceived += al->dmg;
                 unitsLost += al->units;
                 valueLost += al->value;
@@ -132,8 +132,8 @@ namespace MMAI::BAI::V3 {
             Encoder::Encode(HexAttribute(i), hex->attrs.at(i), bfstate);
 
         // Action mask
-        for (int m=0; m<hex->hexactmask.size(); ++m)
-            actmask.push_back(hex->hexactmask.test(m));
+        for (int m=0; m<hex->actmask.size(); ++m)
+            actmask.push_back(hex->actmask.test(m));
 
         // // Attention mask
         // // (not used)
@@ -168,14 +168,17 @@ namespace MMAI::BAI::V3 {
             ASSERT(cdefender, "defender cannot be NULL");
             // logAi->debug("Attack: %s -> %s (%d dmg, %d died)", attacker->getName(), defender->getName(), elem.damageAmount, elem.killedAmount);
 
+            if (cattacker && cattacker->unitSlot() == SlotID::ARROW_TOWERS_SLOT)
+                cattacker = nullptr;
+            // TODO: can defender be an arrow tower (e.g. when catapult attacks)?
+
             std::shared_ptr<Stack> defender = battlefield->stackmapping.at(cdefender);
             std::shared_ptr<Stack> attacker = cattacker ? battlefield->stackmapping.at(cattacker) : nullptr;
 
             attackLogs.push_back(std::make_shared<AttackLog>(
                 // XXX: attacker can be NULL when an effect does dmg (eg. Acid)
-                attacker ? attacker->alias : '\0',
-                defender->alias,
-                defender->attr(SA::SIDE),
+                attacker.get(),
+                defender.get(),
                 elem.damageAmount,
                 elem.killedAmount,
                 elem.killedAmount * defender->cstack->unitType()->getAIValue()

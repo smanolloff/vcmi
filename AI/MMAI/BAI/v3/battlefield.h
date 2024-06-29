@@ -23,7 +23,6 @@
 #include "common.h"
 
 #include "./hex.h"
-#include "./stackinfo.h"
 #include "./general_info.h"
 
 #include "schema/base.h"
@@ -32,12 +31,9 @@
 namespace MMAI::BAI::V3 {
     using Stacks = std::array<std::array<std::shared_ptr<Stack>, MAX_STACKS_PER_SIDE>, 2>;
     using StackMapping = std::map<const CStack*, std::shared_ptr<Stack>>;
-    using Hexes = std::array<std::array<std::shared_ptr<Hex>, BF_XMAX>, BF_YMAX>;
-    using HexStacks = std::map<BattleHex, const std::shared_ptr<Stack>>;
-    using HexObstacles = std::map<BattleHex, std::shared_ptr<const CObstacleInstance>>;
+    using Hexes = std::array<std::array<std::unique_ptr<Hex>, BF_XMAX>, BF_YMAX>;
     using XY = std::pair<int, int>;
     using DirHex = std::vector<std::pair<BattleHex::EDir, BattleHex>>;
-    using HexActionHex = std::array<BattleHex, 12>;
 
     constexpr int QSIZE = 15;
 
@@ -55,47 +51,27 @@ namespace MMAI::BAI::V3 {
             std::shared_ptr<Hexes> hexes,
             std::shared_ptr<Stacks> stacks,
             StackMapping mapping,
-            const CStack* astack
+            const Stack* astack
         );
 
         const std::shared_ptr<GeneralInfo> info;
         const std::shared_ptr<Hexes> hexes;
         const std::shared_ptr<Stacks> stacks; // XXX: may or may not hold hold the active stack
         const StackMapping stackmapping;
-        const CStack* astack;
+        const Stack* astack;     // XXX: nullptr on battle start/end, or if army stacks > MAX_STACKS_PER_SIDE
     private:
-
-        static bool IsReachable(
-            const BattleHex &bh,
-            const StackInfo *stackinfo
-        );
-
-        static HexAction HexActionFromHexes(
-            const BattleHex &nbh,
-            const BattleHex &bh,
-            const BattleHex &obh
-        );
-
-        static void ProcessNeighbouringHexes(
-            Hex &hex,
+        static std::tuple<std::shared_ptr<Stacks>, StackMapping> InitStacks(
+            const CPlayerBattleCallback* battle,
             const CStack* astack,
-            const StackInfo &astackinfo,
-            const HexStacks &hexstacks
+            bool isMorale
         );
 
-        static HexActionHex NearbyHexes(BattleHex &bh);
-        static std::pair<DirHex, BattleHex> NearbyHexesForHexAttackableBy(BattleHex &bh, const CStack* cstack);
-
-        static std::shared_ptr<Hex> InitHex(
-            const int id,
-            const AccessibilityInfo &ainfo,
-            const std::shared_ptr<StackInfo> astackinfo,
-            const HexStacks &hexstacks,
-            const HexObstacles &hexobstacles
+        static std::tuple<std::shared_ptr<Hexes>, Stack*> InitHexes(
+            const CPlayerBattleCallback* battle,
+            const CStack* acstack,
+            const std::shared_ptr<Stacks> stacks
         );
 
-        static std::tuple<std::shared_ptr<Stacks>, StackMapping> InitStacks(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
-        static std::shared_ptr<Hexes> InitHexes(const CPlayerBattleCallback* battle, const std::shared_ptr<Stacks> stacks, bool ended);
         static Queue GetQueue(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
         static int BaseMeleeMod(const CPlayerBattleCallback* battle, const CStack* cstack);
         static int BaseRangeMod(const CPlayerBattleCallback* battle, const CStack* cstack);

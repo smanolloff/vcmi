@@ -220,12 +220,11 @@ namespace MMAI::Schema::V3 {
     };
 
     enum class HexState : int {
-        FREE,
-        ALIVE_STACK,
-        MOAT,
-        DESTRUCTIBLE_WALL,
-        GATE,
-        OBSTACLE,
+        // IMPASSABLE,         // obstacle/stack/gate(closed,attacker)
+        PASSABLE,           // empty/mine/firewall/gate(open)/gate(closed,defender), ...
+        STOPPING,           // moat/quicksand
+        DAMAGING,           // moat/mine/firewall
+        // GATE,               // XXX: redundant? Always set during siege (regardless of gate state)
         _count
     };
 
@@ -275,7 +274,7 @@ namespace MMAI::Schema::V3 {
         MORALE,
         LUCK,
 
-        // Spells after attack
+        // Spells after attack - val=chance in %
         BLIND_LIKE_ATTACK, // unicorns, medusas, basilisks, scorpicores
         WEAKENING_ATTACK, // dragon flies, zombies
         DISPELLING_ATTACK, // blind, paralyze, stone gaze
@@ -347,7 +346,7 @@ namespace MMAI::Schema::V3 {
     enum class HexAttribute : int {
         Y_COORD,
         X_COORD,
-        STATE,
+        STATE_MASK,
         ACTION_MASK,
         STACK_ID,
         _count
@@ -398,9 +397,8 @@ namespace MMAI::Schema::V3 {
 
     class IAttackLog {
     public:
-        virtual char getAttackerAlias() const = 0;
-        virtual char getDefenderAlias() const = 0;
-        virtual int getDefenderSide() const = 0;
+        virtual IStack* getAttacker() const = 0;
+        virtual IStack* getDefender() const = 0;
         virtual int getDamageDealt() const = 0;
         virtual int getUnitsKilled() const = 0;
         virtual int getValueKilled() const = 0;

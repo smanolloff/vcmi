@@ -20,6 +20,7 @@
 #include "./hex.h"
 #include "bonuses/BonusCustomTypes.h"
 #include "constants/EntityIdentifiers.h"
+#include "spells/CSpellHandler.h"
 #include "schema/v3/constants.h"
 #include "schema/v3/types.h"
 
@@ -29,8 +30,14 @@ namespace MMAI::BAI::V3 {
     Stack::Stack(const CStack* cstack_, int id, Queue &q)
     : cstack(cstack_)
     {
+        attrs.fill(NULL_VALUE_UNENCODED);
+
         auto id2 = id % MAX_STACKS_PER_SIDE;
-        alias = id2 + (id2 < 7 ? '0' : 'A');
+        alias = id2 + (id2 < 7 ? '0' : 'A'-7);
+
+        // queue pos needs to be set first to determine if stack is active
+        auto qit = std::find(q.begin(), q.end(), cstack->unitId());
+        auto qpos = (qit == q.end()) ? 100 : qit - q.begin();
 
         auto [x, y] = Hex::CalcXY(cstack->getPosition());
         auto nomorale = false;
@@ -38,6 +45,10 @@ namespace MMAI::BAI::V3 {
         auto bonuses = cstack->getAllBonuses(Selector::all, nullptr);
         auto noretal = false;
 
+        // XXX: config/creatures/<faction>.json is misleading
+        //      (for example, no creature has NO_MELEE_PENALTY bonus there)
+        //      The source of truth is the original H3 data files
+        //      (referred to as CRTRAITS.TXT file, see CCreatureHandler::loadLegacyData)
         for (auto &bonus : *bonuses) {
             switch (bonus->type) {
             break; case BonusType::MORALE:
@@ -52,7 +63,7 @@ namespace MMAI::BAI::V3 {
                 setattr(A::SHOOTER, 1);
             // break; case BonusType::CHARGE_IMMUNITY:
             //     setattr(A::CHARGE_IMMUNITY, 1);
-            break; case BonusType::ADDITIONAL_ATTACK:
+            break; case BonusType::ADDITIONAL_ATTACK:  // 4 creatures
                 setattr(A::ADDITIONAL_ATTACK, 1);
             break; case BonusType::NO_MELEE_PENALTY:
                 setattr(A::NO_MELEE_PENALTY, 1);
@@ -106,7 +117,7 @@ namespace MMAI::BAI::V3 {
             break; case BonusType::SPELL_RESISTANCE_AURA:
                 addattr(A::SPELL_RESISTANCE_AURA, bonus->val);
             break; case BonusType::LEVEL_SPELL_IMMUNITY:
-                setattr(A::LEVEL_SPELL_IMMUNITY, 1);
+                setattr(A::LEVEL_SPELL_IMMUNITY, bonus->val);
                 if (bonus->val == 5)
                     addattr(A::MAGIC_RESISTANCE, 100);
             break; case BonusType::TWO_HEX_ATTACK_BREATH:
@@ -124,6 +135,7 @@ namespace MMAI::BAI::V3 {
                 setattr(A::NON_LIVING, 1);
                 setattr(A::MIND_IMMUNITY, 1); // redundant?
                 nomorale = true;
+
             break; case BonusType::BLOCKS_RETALIATION:
                 setattr(A::BLOCKS_RETALIATION, 1);
             break; case BonusType::SPELL_LIKE_ATTACK:
@@ -143,6 +155,9 @@ namespace MMAI::BAI::V3 {
                 setattr(A::DOUBLE_DAMAGE_CHANCE, 1);
             break; case BonusType::RETURN_AFTER_STRIKE:
                 setattr(A::RETURN_AFTER_STRIKE, 1);
+            // spellcasting not supported
+            // break; case BonusType::RANDOM_SPELLCASTER:
+            // break; case BonusType::SPELLCASTER:
             break; case BonusType::ENEMY_DEFENCE_REDUCTION:
                 setattr(A::ENEMY_DEFENCE_REDUCTION, bonus->val);
             break; case BonusType::GENERAL_DAMAGE_REDUCTION: {
@@ -183,7 +198,8 @@ namespace MMAI::BAI::V3 {
                 setattr(A::ATTACKS_NEAREST_CREATURE, 1);
             // break; case BonusType::FORGETFULL: TODO: check if covered by GENERAL_ATTACK_REDUCTION
             break; case BonusType::NOT_ACTIVE:
-                addattr(A::SLEEPING, (bonus->duration & BonusDuration::PERMANENT).any() ? 100 : bonus->turnsRemain);
+                if (cstack->unitType()->getId() != CreatureID::AMMO_CART)
+                    addattr(A::SLEEPING, (bonus->duration & BonusDuration::PERMANENT).any() ? 100 : bonus->turnsRemain);
             break; case BonusType::NO_LUCK:
                 noluck = true;
             break; case BonusType::NO_MORALE:
@@ -216,9 +232,6 @@ namespace MMAI::BAI::V3 {
 
         if (nomorale) setattr(A::MORALE, 0);
         if (noluck) setattr(A::MORALE, 0);
-
-        auto qit = std::find(q.begin(), q.end(), cstack->unitId());
-        auto qpos = (qit == q.end()) ? 100 : qit - q.begin();
 
         for (int i=0; i<EI(A::_count); ++i) {
             auto a = A(i);
