@@ -25,6 +25,7 @@ using Args = std::tuple<
     int,         // randomHeroes
     int,         // randomObstacles
     int,         // townChance
+    int,         // warmachineChance
     int,         // swapSides
     std::string, // loglevelGlobal
     std::string, // loglevelAI

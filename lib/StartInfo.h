@@ -140,6 +140,7 @@ struct DLL_LINKAGE StartInfo
 	int randomHeroes = 0;
 	int randomObstacles = 0;
 	int townChance = 0;
+	int warmachineChance = 0;
 	int swapSides = 0;
 	int statsSampling = 0;
 	int statsPersistFreq = 0;

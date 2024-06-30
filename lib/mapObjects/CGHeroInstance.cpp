@@ -1671,7 +1671,7 @@ void CGHeroInstance::serializeCommonOptions(JsonSerializeFormat & handler)
 
 			if(secondarySkills.getType() == JsonNode::JsonType::DATA_VECTOR)
 			{
-				for(const auto & p : secondarySkills.Vector())								
+				for(const auto & p : secondarySkills.Vector())
 				{
 					auto skillMap = p.Struct();
 					addSkill(skillMap["skill"].String(), skillMap["level"].String());

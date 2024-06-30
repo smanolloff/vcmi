@@ -15,6 +15,7 @@
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
 #include "./stats.h"
+#include "vcmi/spells/Caster.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -67,10 +68,12 @@ public:
 
 	std::vector<const CGHeroInstance*> allheroes;
 	std::vector<const CGTownInstance*> alltowns;
+	std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
 	std::unique_ptr<Stats> stats;
 	std::mt19937 pseudorng;
+	std::random_device truerng;
 	// std::random_device _truerng = std::random_device();
-	bool trueRng = false;
+	bool useTrueRng = false;
 	ui32 lastSeed = 0;
 	int herocounter = 0;
 	int towncounter = 0;
@@ -80,6 +83,7 @@ public:
 	int randomHeroes = 0;
 	int randomObstacles = 0;
 	int townChance = 0;
+	int warmachineChance = 0;
 	int swapSides = 0;
 	int statsPersistFreq = 0;
 	int statsSampling = 0;

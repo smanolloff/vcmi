@@ -545,13 +545,14 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 	randomHeroes = si->randomHeroes;
 	randomObstacles = si->randomObstacles;
 	townChance = si->townChance;
+	warmachineChance = si->warmachineChance;
 	swapSides = si->swapSides;
 	statsMode = si->statsMode;
 	statsStorage = si->statsStorage;
 	statsPersistFreq = si->statsPersistFreq;
 	statsSampling = si->statsSampling;
 	statsScoreVar = si->statsScoreVar;
-	trueRng = si->trueRng;
+	useTrueRng = si->trueRng;
 
 	if (si->seedToBeUsed == 0)
 	{

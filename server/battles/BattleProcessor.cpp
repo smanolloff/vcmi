@@ -7,7 +7,9 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "ArtifactUtils.h"
 #include "GameSettings.h"
+#include "Global.h"
 #include "StdInc.h"
 #include "BattleProcessor.h"
 
@@ -192,9 +194,8 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 			if (gh->herocounter % gh->allheroes.size() == 0) {
 				gh->herocounter = 0;
 
-				// XXX: test with std::random_device()
-				gh->trueRng
-					? std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), std::random_device())
+				gh->useTrueRng
+					? std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->truerng)
 					: std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->pseudorng);
 
 				// for (int i=0; i<gh->allheroes.size(); i++)
@@ -209,6 +210,32 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 			if (gh->battlecounter % gh->randomHeroes == 0)
 				gh->herocounter += 2;
 		}
+
+		// XXX: adding war machines by index of pre-created per-hero artifact instances
+		// 0=ballista, 1=cart, 2=tent
+		auto machineslots = std::map<ArtifactID, ArtifactPosition> {
+			{ArtifactID::BALLISTA, ArtifactPosition::MACH1},
+			{ArtifactID::AMMO_CART, ArtifactPosition::MACH2},
+			{ArtifactID::FIRST_AID_TENT, ArtifactPosition::MACH3},
+		};
+
+		auto dist = std::uniform_int_distribution<>(0, 99);
+		for (auto h : {hero1, hero2}) {
+			for (auto m : gh->allmachines.at(h)) {
+		        auto it = machineslots.find(m->getTypeId());
+		        if (it == machineslots.end())
+		        	throw std::runtime_error("Could not find warmachine");
+
+	            auto apos = it->second;
+				auto roll = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
+				if (roll < gh->warmachineChance) {
+					if (!h->getArt(apos)) const_cast<CGHeroInstance*>(h)->putArtifact(apos, m);
+				} else {
+					if (h->getArt(apos)) const_cast<CGHeroInstance*>(h)->removeArtifact(apos);
+				}
+			}
+		}
+
 	}
 
 	// Set temp owner of both heroes to player0 and player1
@@ -228,14 +255,20 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 void BattleProcessor::startBattleI(const CArmedInstance *army1, const CArmedInstance *army2, int3 tile, bool creatureBank)
 {
 	// TODO: use map->allHeroes instead?
+	// XXX: assuming this is called only ONCE (no smart pointers for warmachines)
 	for (const auto &obj : gameHandler->gameState()->map->objects) {
-		if (obj->ID == Obj::HERO) {
-			gameHandler->allheroes.push_back(dynamic_cast<const CGHeroInstance *>(obj.get()));
-		}
+		if (obj->ID != Obj::HERO) continue;
+
+		auto h = dynamic_cast<const CGHeroInstance *>(obj.get());
+		gameHandler->allheroes.push_back(h);
+		gameHandler->allmachines[h] = {
+			ArtifactUtils::createNewArtifactInstance(ArtifactID::BALLISTA),
+			ArtifactUtils::createNewArtifactInstance(ArtifactID::AMMO_CART),
+			ArtifactUtils::createNewArtifactInstance(ArtifactID::FIRST_AID_TENT)
+		};
 	}
 
 	for (const auto &obj : gameHandler->gameState()->map->towns) {
-		logGlobal->error("adding town ...");
 		gameHandler->alltowns.push_back(obj.get());
 	}
 
@@ -264,28 +297,21 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	auto gh = gameHandler;
 
 	if (gh->randomObstacles > 0 && (gh->battlecounter % gh->randomObstacles == 0)) {
-		gh->lastSeed = gh->trueRng
-			? std::random_device()()
+		gh->lastSeed = gh->useTrueRng
+			? gh->truerng()
 			: gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
 	}
 
-
 	if (gh->townChance > 0) {
 		int roll;
-		auto dist = std::uniform_int_distribution<>(0, 100);
+		auto dist = std::uniform_int_distribution<>(0, 99);
+		roll = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
 
-		if (gh->trueRng) {
-		    std::random_device rd;
-		    roll = dist(rd);
-		} else {
-			roll = dist(gh->pseudorng);
-		}
-
-		if (roll <= gh->townChance) {
+		if (roll < gh->townChance) {
 			if (gh->towncounter % gh->alltowns.size() == 0) {
 				gh->towncounter = 0;
-				gh->trueRng
-					? std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), std::random_device())
+				gh->useTrueRng
+					? std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), gh->truerng)
 					: std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), gh->pseudorng);
 			}
 

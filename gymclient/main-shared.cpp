@@ -73,6 +73,7 @@ Args parse_args(int argc, char * argv[])
     int randomHeroes = 0;
     int randomObstacles = 0;
     int townChance = 0;
+    int warmachineChance = 0;
     int swapSides = 0;
     bool benchmark = false;
     bool interactive = false;
@@ -117,7 +118,9 @@ Args parse_args(int argc, char * argv[])
         ("random-obstacles", po::value<int>()->value_name("<N>"),
             "Place obstacles at random each Nth combat (disabled if 0*)")
         ("town-chance", po::value<int>()->value_name("<N>"),
-            "Chance to have the combat in a town (no town combat if 0*)")
+            "Percent chance to have the combat in a town (no town combat if 0*)")
+        ("warmachine-chance", po::value<int>()->value_name("<N>"),
+            "Percent chance to add ballista/tent/cart in combat (no war machines if 0*)")
         ("swap-sides", po::value<int>()->value_name("<N>"),
             "Swap combat sides each Nth combat (disabled if 0*)")
         ("red-ai", po::value<std::string>()->value_name("<AI>"),
@@ -192,6 +195,9 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("town-chance"))
         townChance = vm.at("town-chance").as<int>();
+
+    if (vm.count("warmachine-chance"))
+        warmachineChance = vm.at("warmachine-chance").as<int>();
 
     if (vm.count("swap-sides"))
         swapSides = vm.at("swap-sides").as<int>();
@@ -271,6 +277,7 @@ Args parse_args(int argc, char * argv[])
         randomHeroes,
         randomObstacles,
         townChance,
+        warmachineChance,
         swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),

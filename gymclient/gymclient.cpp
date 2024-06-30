@@ -287,6 +287,7 @@ void validateArguments(
     int &randomHeroes,
     int &randomObstacles,
     int &townChance,
+    int &warmachineChance,
     int &swapSides,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
@@ -354,6 +355,11 @@ void validateArguments(
 
     if (townChance < 0 || townChance > 100) {
         std::cerr << "Bad value for townChance: expected an integer between 0 and 100, got: " << townChance << "\n";
+        exit(1);
+    }
+
+    if (warmachineChance < 0 || warmachineChance > 100) {
+        std::cerr << "Bad value for warmachineChance: expected an integer between 0 and 100, got: " << warmachineChance << "\n";
         exit(1);
     }
 
@@ -427,6 +433,7 @@ void processArguments(
     int randomHeroes,
     int randomObstacles,
     int townChance,
+    int warmachineChance,
     int swapSides,
     std::string statsMode,
     std::string statsStorage,
@@ -534,6 +541,7 @@ void processArguments(
     Settings(settings.write({"server", "randomHeroes"}))->Integer() = randomHeroes;
     Settings(settings.write({"server", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "townChance"}))->Integer() = townChance;
+    Settings(settings.write({"server", "warmachineChance"}))->Integer() = warmachineChance;
     Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
     Settings(settings.write({"server", "statsMode"}))->String() = statsMode;
     Settings(settings.write({"server", "statsStorage"}))->String() = statsStorage;
@@ -597,6 +605,7 @@ void init_vcmi(
     int randomHeroes,
     int randomObstacles,
     int townChance,
+    int warmachineChance,
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
@@ -629,6 +638,7 @@ void init_vcmi(
         randomHeroes,
         randomObstacles,
         townChance,
+        warmachineChance,
         swapSides,
         loglevelGlobal,
         loglevelAI,
@@ -674,6 +684,7 @@ void init_vcmi(
         randomHeroes,
         randomObstacles,
         townChance,
+        warmachineChance,
         swapSides,
         statsMode,
         statsStorage,
