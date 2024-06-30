@@ -59,5 +59,6 @@ namespace MMAI::BAI::V3 {
         std::string renderANSI();
         std::string debugInfo(Action *action, const CStack *astack, BattleHex *nbh); // DEBUG ONLY
         std::shared_ptr<BattleAction> buildBattleAction();
+        std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack);
     };
 }

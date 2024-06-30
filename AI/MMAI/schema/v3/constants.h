@@ -130,7 +130,7 @@ namespace MMAI::Schema::V3 {
         E4(SA::QUANTITY,                  NE, 2000),
         E4(SA::ATTACK,                    NE, 80),
         E4(SA::DEFENSE,                   NE, 80),       // azure dragon is 60 when defending
-        E4(SA::SHOTS,                     NE, 32),       // sharpshooter is 32; 0 if battleCanShoot() is false
+        E4(SA::SHOTS,                     NE, 32),       // sharpshooter is 32
         E4(SA::DMG_MIN,                   NE, 100),      // azure dragon is 80
         E4(SA::DMG_MAX,                   NE, 100),      // azure dragon is 80
         E4(SA::HP,                        NE, 1300),     // azure dragon + all artifacts is 1254
@@ -139,75 +139,17 @@ namespace MMAI::Schema::V3 {
         E4(SA::WAITED,                    NE, 1),
         E4(SA::QUEUE_POS,                 NE, 15),       // 0..14, 0=active stack
         E4(SA::RETALIATIONS_LEFT,         NE, 2),        // inf is truncated to 2 (royal griffin)
-        E4(SA::MAGIC_RESISTANCE,          NE, 100),      //
         E4(SA::IS_WIDE,                   NE, 1),
         E4(SA::AI_VALUE,                  NE, 40000),    // azure dragon is 78845, but is damped to 40K (using tanh())
         E4(SA::MORALE,                    NE, 7),        // -3..+3
         E4(SA::LUCK,                      NE, 7),        // -3..+3
-
-        // Spells after attack (chance to cast in %)
-        E4(SA::BLIND_LIKE_ATTACK,         NE, 100),      // unicorns (20), medusas (20), basilisks (20), scorpicores (20)
-        E4(SA::WEAKENING_ATTACK,          NE, 100),      // dragon flies (100), zombies (20)
-        E4(SA::DISPELLING_ATTACK,         NE, 100),      // serpent flies (100)
-        E4(SA::POISONOUS_ATTACK,          NE, 100),      // wyverns (50)
-        E4(SA::CURSING_ATTACK,            NE, 100),      // mummies (50), black knights (20)
-        E4(SA::AGING_ATTACK,              NE, 100),      // ghost dragon (20)
-        E4(SA::ACID_ATTACK,               NE, 100),      // rust dragon (100)
-        E4(SA::BINDING_ATTACK,            NE, 100),      // dendroids (100)
-        E4(SA::LIGHTNING_ATTACK,          NE, 100),      // thunderbirds (20)
-
-        E4(SA::AREA_ATTACK,               NE, 2),       // thunderbirds (20)
-
-        // Hate (dmg bonus in %)
-        E4(SA::HATES_ANGELS,              NE, 100),
-        E4(SA::HATES_DEVILS,              NE, 100),
-        E4(SA::HATES_TITANS,              NE, 100),
-        E4(SA::HATES_BLACK_DRAGONS,       NE, 100),
-        E4(SA::HATES_GENIES,              NE, 100),
-        E4(SA::HATES_EFREET,              NE, 100),
-        E4(SA::HATES_AIR_ELEMENTALS,      NE, 100),
-        E4(SA::HATES_EARTH_ELEMENTALS,    NE, 100),
-        E4(SA::HATES_WATER_ELEMENTALS,    NE, 100),
-        E4(SA::HATES_FIRE_ELEMENTALS,     NE, 100),
-
-        // Passives
-        E4(SA::FREE_SHOOTING,             NE, 1),
         E4(SA::FLYING,                    NE, 1),
-        E4(SA::SHOOTER,                   NE, 1),
+        E4(SA::BLIND_LIKE_ATTACK,         NE, 100),      // cast chance for unicorns (20), medusas (20), basilisks (20), scorpicores (20)
         E4(SA::ADDITIONAL_ATTACK,         NE, 1),
         E4(SA::NO_MELEE_PENALTY,          NE, 1),
-        E4(SA::JOUSTING,                  NE, 1),
-        E4(SA::SPELL_RESISTANCE_AURA,     NE, 100),      // unicorns, value - resistance bonus in % for adjacent creatures*/
-        E4(SA::LEVEL_SPELL_IMMUNITY,      NE, 5),        // levels 1-5
-        E4(SA::FIRE_DAMAGE_REDUCTION,     NE, 100),      // 100% = immune
-        E4(SA::WATER_DAMAGE_REDUCTION,    NE, 100),
-        E4(SA::AIR_DAMAGE_REDUCTION,      NE, 100),
-        E4(SA::EARTH_DAMAGE_REDUCTION,    NE, 100),
         E4(SA::TWO_HEX_ATTACK_BREATH,     NE, 1),
-        E4(SA::NO_WALL_PENALTY,           NE, 1),
         E4(SA::NON_LIVING,                NE, 1),
         E4(SA::BLOCKS_RETALIATION,        NE, 1),
-        E4(SA::THREE_HEADED_ATTACK,       NE, 1),
-        E4(SA::MIND_IMMUNITY,             NE, 1),
-        E4(SA::FIRE_SHIELD,               NE, 100),
-        E4(SA::LIFE_DRAIN,                NE, 100),
-        E4(SA::DOUBLE_DAMAGE_CHANCE,      NE, 100),
-        E4(SA::RETURN_AFTER_STRIKE,       NE, 1),
-        E4(SA::DEFENSIVE_STANCE,          NE, 1),
-        E4(SA::ATTACKS_ALL_ADJACENT,      NE, 1),
-        E4(SA::NO_DISTANCE_PENALTY,       NE, 1),
-        E4(SA::HYPNOTIZED,                NE, 5),  // turns left
-        E4(SA::MAGIC_MIRROR,              NE, 100),
-        E4(SA::ATTACKS_NEAREST_CREATURE,  NE, 1),
-        E4(SA::SLEEPING,                  NE, 5),  // turns left
-        E4(SA::DEATH_STARE,               NE, 1),
-        E4(SA::POISON,                    NE, 1),
-        E4(SA::REBIRTH,                   NE, 1),
-        E4(SA::ENEMY_DEFENCE_REDUCTION,   NE, 100),
-        E4(SA::MELEE_DAMAGE_REDUCTION,    NE, 100),
-        E4(SA::RANGED_DAMAGE_REDUCTION,   NE, 100),
-        E4(SA::MELEE_ATTACK_REDUCTION,    NE, 100),
-        E4(SA::RANGED_ATTACK_REDUCTION,   NE, 100),
     };
 
     // Dedining encodings for each attribute by hand is error-prone

@@ -32,6 +32,7 @@
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 #include "../../lib/CPlayerState.h"
 #include "constants/EntityIdentifiers.h"
+#include "mapObjects/CGTownInstance.h"
 
 BattleProcessor::BattleProcessor(CGameHandler * gameHandler)
 	: gameHandler(gameHandler)
@@ -192,11 +193,9 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 				gh->herocounter = 0;
 
 				// XXX: test with std::random_device()
-				if (gh->trueRng) {
-					std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), std::random_device());
-				} else {
-					std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->pseudorng);
-				}
+				gh->trueRng
+					? std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), std::random_device())
+					: std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->pseudorng);
 
 				// for (int i=0; i<gh->allheroes.size(); i++)
 				// 	printf("gh->allheroes[%d] = %s\n", i, gh->allheroes.at(i)->getNameTextID().c_str());
@@ -228,10 +227,16 @@ void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArme
 
 void BattleProcessor::startBattleI(const CArmedInstance *army1, const CArmedInstance *army2, int3 tile, bool creatureBank)
 {
+	// TODO: use map->allHeroes instead?
 	for (const auto &obj : gameHandler->gameState()->map->objects) {
 		if (obj->ID == Obj::HERO) {
 			gameHandler->allheroes.push_back(dynamic_cast<const CGHeroInstance *>(obj.get()));
 		}
+	}
+
+	for (const auto &obj : gameHandler->gameState()->map->towns) {
+		logGlobal->error("adding town ...");
+		gameHandler->alltowns.push_back(obj.get());
 	}
 
 	startBattlePrimary(army1, army2, tile,
@@ -259,10 +264,36 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	auto gh = gameHandler;
 
 	if (gh->randomObstacles > 0 && (gh->battlecounter % gh->randomObstacles == 0)) {
-		if (gh->trueRng)
-			gh->lastSeed = std::random_device()();
-		else
-			gh->lastSeed = gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+		gh->lastSeed = gh->trueRng
+			? std::random_device()()
+			: gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+	}
+
+
+	if (gh->townChance > 0) {
+		int roll;
+		auto dist = std::uniform_int_distribution<>(0, 100);
+
+		if (gh->trueRng) {
+		    std::random_device rd;
+		    roll = dist(rd);
+		} else {
+			roll = dist(gh->pseudorng);
+		}
+
+		if (roll <= gh->townChance) {
+			if (gh->towncounter % gh->alltowns.size() == 0) {
+				gh->towncounter = 0;
+				gh->trueRng
+					? std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), std::random_device())
+					: std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), gh->pseudorng);
+			}
+
+			town = gh->alltowns.at(gh->towncounter);
+			++gh->towncounter;
+		} else {
+			town = nullptr;
+		}
 	}
 
 	//send info about battles

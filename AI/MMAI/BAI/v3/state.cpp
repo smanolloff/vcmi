@@ -98,7 +98,7 @@ namespace MMAI::BAI::V3 {
         for (int i=0; i<EI(NonHexAction::count); i++) {
             switch (NonHexAction(i)) {
             break; case NonHexAction::RETREAT: actmask.push_back(true);
-            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->waitedThisTurn);
+            break; case NonHexAction::WAIT: actmask.push_back(battlefield->astack && !battlefield->astack->cstack->waitedThisTurn);
             break; default:
                 THROW_FORMAT("Unexpected NonHexAction: %d", i);
             }
@@ -170,15 +170,17 @@ namespace MMAI::BAI::V3 {
 
             if (cattacker && cattacker->unitSlot() == SlotID::ARROW_TOWERS_SLOT)
                 cattacker = nullptr;
-            // TODO: can defender be an arrow tower (e.g. when catapult attacks)?
 
-            std::shared_ptr<Stack> defender = battlefield->stackmapping.at(cdefender);
-            std::shared_ptr<Stack> attacker = cattacker ? battlefield->stackmapping.at(cattacker) : nullptr;
+            // TODO: can defender be an arrow tower (e.g. when catapult attacks)?
+            auto defender = battlefield->stackmapping.at(cdefender);
+            auto attacker = cattacker ? battlefield->stackmapping.at(cattacker) : nullptr;
 
             attackLogs.push_back(std::make_shared<AttackLog>(
                 // XXX: attacker can be NULL when an effect does dmg (eg. Acid)
-                attacker.get(),
-                defender.get(),
+                // XXX: attacker can be NULL if it can't fit in obs
+                attacker,
+                // XXX: defender can be NULL if it can't fit in obs
+                defender,
                 elem.damageAmount,
                 elem.killedAmount,
                 elem.killedAmount * defender->cstack->unitType()->getAIValue()

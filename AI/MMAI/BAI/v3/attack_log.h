@@ -24,7 +24,7 @@ namespace MMAI::BAI::V3 {
     class AttackLog : public Schema::V3::IAttackLog {
     public:
         AttackLog(
-            Stack* attacker_, Stack* defender_,
+            std::shared_ptr<Stack> attacker_, std::shared_ptr<Stack> defender_,
             int dmg_, int units_, int value_
         ) : attacker(attacker_), defender(defender_), dmg(dmg_), units(units_), value(value_) {}
 

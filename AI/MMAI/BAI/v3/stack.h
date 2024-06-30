@@ -43,6 +43,7 @@ namespace MMAI::BAI::V3 {
 
         std::string name() const;
         int attr(StackAttribute a) const;
+        int shots;
     private:
         void setattr(StackAttribute a, int value);
         void addattr(StackAttribute a, int value);

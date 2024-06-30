@@ -544,6 +544,7 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 	maxBattles = si->maxBattles;
 	randomHeroes = si->randomHeroes;
 	randomObstacles = si->randomObstacles;
+	townChance = si->townChance;
 	swapSides = si->swapSides;
 	statsMode = si->statsMode;
 	statsStorage = si->statsStorage;

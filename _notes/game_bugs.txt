@@ -1,4 +1,5 @@
 - if hero has picked up an artifact on A7.vmap, game crashes on battle start
+- makeHeal can target ballista, although UI does not allow to heal it
 - mapeditor does not detect changes if only army is modified
 - mapeditor does not remove creatures from army if they are set to "", but the count is >0
 - mapeditor army window keyboard navigation (tab) is messed up

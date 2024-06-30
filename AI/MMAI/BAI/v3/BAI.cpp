@@ -128,8 +128,61 @@ namespace MMAI::BAI::V3 {
         cb->battleMakeTacticAction(bid, BattleAction::makeEndOFTacticPhase(battle->battleGetTacticsSide()));
     }
 
+    std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack *astack) {
+        if (astack->creatureId() == CreatureID::FIRST_AID_TENT) {
+            const CStack* target = nullptr;
+            auto maxdmg = 0;
+            for (auto stack : battle->battleGetStacks(CBattleInfoEssentials::ONLY_MINE)) {
+                auto dmg = stack->getMaxHealth() - stack->getFirstHPleft();
+                if(dmg <= maxdmg) continue;
+                maxdmg = dmg;
+                target = stack;
+            }
+
+            if (target) {
+                return std::make_shared<BattleAction>(BattleAction::makeHeal(astack, target));
+            }
+        } else if (astack->creatureId() == CreatureID::CATAPULT) {
+            auto ba = std::make_shared<BattleAction>();
+            ba->side = astack->unitSide();
+            ba->stackNumber = astack->unitId();
+            ba->actionType = EActionType::CATAPULT;
+
+            if(battle->battleGetGateState() == EGateState::CLOSED) {
+                ba->aimToHex(battle->wallPartToBattleHex(EWallPart::GATE));
+                return ba;
+            }
+
+            using WP = EWallPart;
+            auto wallparts = {
+                WP::KEEP, WP::BOTTOM_TOWER, WP::UPPER_TOWER,
+                WP::BELOW_GATE, WP::OVER_GATE, WP::BOTTOM_WALL, WP::UPPER_WALL
+            };
+
+            for (auto wp : wallparts) {
+                using WS = EWallState;
+                auto ws = battle->battleGetWallState(wp);
+                if(ws == WS::REINFORCED || ws == WS::INTACT || ws == WS::DAMAGED) {
+                    ba->aimToHex(battle->wallPartToBattleHex(wp));
+                    return ba;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
     void BAI::activeStack(const BattleID &bid, const CStack *astack) {
         Base::activeStack(bid, astack);
+
+        auto ba = maybeBuildAutoAction(astack);
+
+        if (ba) {
+            info("Making automatic action with stack %s", astack->getDescription());
+            cb->battleMakeUnitAction(bid, *ba);
+            return;
+        }
+
         state->onActiveStack(astack);
 
         if (state->battlefield->astack == nullptr) {
@@ -243,59 +296,6 @@ namespace MMAI::BAI::V3 {
                 res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, bhex));
             }
             break;
-            case HexAction::SPECIAL: {
-                auto cid = acstack->creatureId();
-                if (cid == CreatureID::FIRST_AID_TENT) {
-                    ASSERT(stack, "mask allowed heal on a hex without a stack");
-                    ASSERT(stack->cstack->canBeHealed(), "mask allowed heal on a stack which can't be healed");
-                    res = std::make_shared<BattleAction>(BattleAction::makeHeal(acstack, stack->cstack));
-                }
-                // } else if (cid == CreatureID::MASTER_GENIE) {
-
-                // BattleAction::makeCreatureSpellcast() expects:
-                // * source stack
-                // * target stack
-                // * SpellID
-                //
-                // If the caster has RANDOM_SPELLCASTER bonus, the server
-                // ignores the given SpellID and chooses one at random.
-                // See BattleActionProcessor::doUnitSpellAction()
-                //
-                // If the caster has SPELLCASTER bonus for the selected SpellID,
-                // the server casts the spell regardless of the weighted chance
-                // to select it (stored in the bonus's additionalInfo)
-                // i.e. client can always pick the strongest spell.
-                //
-                // XXX: in both cases it does not seem as if
-                //      the LEVEL_SPELL_IMMUNITY is checked ?!
-                //      The UI does not allow to cast creature spells on
-                //      black dragons, so it checks it.
-                //      Also, black and red dragons are not affected by
-                //      spells they are immune to, even if those are AOE spells
-
-                // It seems all cast bonuses are "valid" actions
-                // (see "fairieDragon" (with the typo) in creatures/neutral.json)
-                // So it's whichever the client chooses atm.
-                // logAi->warn("TODO: handle special actions");
-                // hex->permitAction(HexAction::SPECIAL)
-
-
-
-
-                } else if (cid == CreatureID::FAERIE_DRAGON) {
-                } else if (cid == CreatureID::ARCHANGEL) {
-                // } else if (cid == CreatureID::ICE_ELEMENTAL) {
-                // } else if (cid == CreatureID::MAGMA_ELEMENTAL) {
-                // } else if (cid == CreatureID::STORM_ELEMENTAL) {
-                // } else if (cid == CreatureID::ENERGY_ELEMENTAL) {
-                // } else if (cid == CreatureID::PIT_LORD) {
-                } else {
-
-                }
-                // BattleAction::makeCreatureSpellcast(const battle::Unit *stack, const battle::Target &target, const SpellID &spellID)
-
-
-            }
             default:
                 THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
             }
@@ -314,7 +314,7 @@ namespace MMAI::BAI::V3 {
         // => *throw* errors here only if the mask SHOULD HAVE ALLOWED it
         //    and *set* regular, non-throw errors otherwise
         //
-        auto rinfo = battle->getReachability(astack);
+        auto rinfo = battle->getReachability(acstack);
         auto ainfo = battle->getAccesibility();
 
         switch(state->action->hexaction) {
@@ -334,19 +334,19 @@ namespace MMAI::BAI::V3 {
                 auto a = ainfo.at(action->hex->bhex);
                 if (a == EAccessibility::OBSTACLE) {
                     auto statemask = HexStateMask(hex->attr(HexAttribute::STATE_MASK));
-                    ASSERT(!statemask.test(EI(HexState::PASSABLE)), "accessibility is OBSTACLE, but hex state mask has PASSABLE set: " + statemask.to_string() + debugInfo(action, astack, nullptr));
+                    ASSERT(!statemask.test(EI(HexState::PASSABLE)), "accessibility is OBSTACLE, but hex state mask has PASSABLE set: " + statemask.to_string() + debugInfo(action, acstack, nullptr));
                     state->supdata->errcode = ErrorCode::HEX_BLOCKED;
                     error("Action error: HEX_BLOCKED");
                     break;
                 } else if (a == EAccessibility::ALIVE_STACK) {
                     auto bh = action->hex->bhex;
-                    if (bh.hex == astack->getPosition().hex) {
+                    if (bh.hex == acstack->getPosition().hex) {
                         // means we want to defend (moving to self)
                         // or attack from same hex we're currently at
                         // this should always be allowed
-                        ASSERT(false, "mask prevented (A)MOVE to own hex" + debugInfo(action, astack, nullptr));
-                    } else if (bh.hex == astack->occupiedHex().hex) {
-                        ASSERT(rinfo.distances.at(bh) == ReachabilityInfo::INFINITE_DIST, "mask prevented (A)MOVE to self-occupied hex" + debugInfo(action, astack, nullptr));
+                        ASSERT(false, "mask prevented (A)MOVE to own hex" + debugInfo(action, acstack, nullptr));
+                    } else if (bh.hex == acstack->occupiedHex().hex) {
+                        ASSERT(rinfo.distances.at(bh) == ReachabilityInfo::INFINITE_DIST, "mask prevented (A)MOVE to self-occupied hex" + debugInfo(action, acstack, nullptr));
                         // means we can't fit on our own back hex
                     }
 
@@ -365,14 +365,14 @@ namespace MMAI::BAI::V3 {
                     auto edir = AMOVE_TO_EDIR.at(action->hexaction);
                     nbh = bhex.cloneInDirection(edir, false);
                 } else {
-                    if (!astack->doubleWide()) {
+                    if (!acstack->doubleWide()) {
                         state->supdata->errcode = ErrorCode::INVALID_DIR;
                         error("Action error: INVALID_DIR");
                         break;
                     }
 
                     auto edir = AMOVE_TO_EDIR.at(action->hexaction);
-                    nbh = astack->occupiedHex().cloneInDirection(edir, false);
+                    nbh = acstack->occupiedHex().cloneInDirection(edir, false);
                 }
 
                 if (!nbh.isAvailable()) {
@@ -389,7 +389,7 @@ namespace MMAI::BAI::V3 {
                     break;
                 }
 
-                if (estack->unitSide() == astack->unitSide()) {
+                if (estack->unitSide() == acstack->unitSide()) {
                     state->supdata->errcode = ErrorCode::FRIENDLY_FIRE;
                     error("Action error: FRIENDLY_FIRE");
                     break;
@@ -401,12 +401,12 @@ namespace MMAI::BAI::V3 {
                     state->supdata->errcode = ErrorCode::STACK_NA;
                     error("Action error: STACK_NA");
                     break;
-                } else if (stack->cstack->unitSide() == astack->unitSide()) {
+                } else if (stack->cstack->unitSide() == acstack->unitSide()) {
                     state->supdata->errcode = ErrorCode::FRIENDLY_FIRE;
                     error("Action error: FRIENDLY_FIRE");
                     break;
                 } else {
-                    ASSERT(!battle->battleCanShoot(astack, bhex), "mask prevented SHOOT at a shootable bhex " + action->hex->name());
+                    ASSERT(!battle->battleCanShoot(acstack, bhex), "mask prevented SHOOT at a shootable bhex " + action->hex->name());
                     state->supdata->errcode = ErrorCode::CANNOT_SHOOT;
                     error("Action error: CANNOT_SHOOT");
                     break;
@@ -416,7 +416,7 @@ namespace MMAI::BAI::V3 {
                 THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
             }
 
-        ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, astack, nullptr));
+        ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, acstack, nullptr));
 
         return res;
     }

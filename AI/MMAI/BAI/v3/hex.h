@@ -36,12 +36,12 @@ namespace MMAI::BAI::V3 {
     using HexActionHex = std::array<BattleHex, 12>;
 
     struct ActiveStackInfo {
-        const std::shared_ptr<Stack> stack;
+        const Stack* stack;
         const bool canshoot;
         const std::shared_ptr<ReachabilityInfo> rinfo;
 
         ActiveStackInfo(
-            const std::shared_ptr<Stack> stack_,
+            const Stack* stack_,
             const bool canshoot_,
             const std::shared_ptr<ReachabilityInfo> rinfo_
         ) : stack(stack_), canshoot(canshoot_), rinfo(rinfo_) {};
@@ -74,15 +74,13 @@ namespace MMAI::BAI::V3 {
         const BattleHex bhex;
         std::shared_ptr<const Stack> stack;
         HexAttrs attrs;
-        HexActionMask actmask;   // for active stack only
-        HexStateMask statemask;  //
+        HexActionMask actmask = 0;   // for active stack only
+        HexStateMask statemask = 0;  //
 
         std::string name() const;
         int attr(HexAttribute a) const;
     private:
         void setattr(HexAttribute a, int value);
-        void addAction(HexAction action);
-        void addState(HexState state);
         void finalize();
 
         void setStateMask(

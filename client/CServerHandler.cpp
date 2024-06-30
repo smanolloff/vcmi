@@ -247,6 +247,7 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	si->seedToBeUsed = settings["server"]["seed"].Integer();
 	si->randomHeroes = settings["server"]["randomHeroes"].Integer();
 	si->randomObstacles = settings["server"]["randomObstacles"].Integer();
+	si->townChance = settings["server"]["townChance"].Integer();
 	si->swapSides = settings["server"]["swapSides"].Integer();
 	si->statsSampling = settings["server"]["statsSampling"].Integer();
 	si->statsPersistFreq = settings["server"]["statsPersistFreq"].Integer();

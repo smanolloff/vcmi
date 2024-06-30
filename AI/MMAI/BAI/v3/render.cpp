@@ -15,6 +15,7 @@
 // =============================================================================
 
 #include "BAI/v3/render.h"
+#include "AI/VCAI/AIUtility.h"
 #include "BAI/v3/hex.h"
 #include "Global.h"
 #include "battle/AccessibilityInfo.h"
@@ -25,6 +26,7 @@
 #include "bonuses/BonusList.h"
 #include "bonuses/BonusSelector.h"
 #include "constants/EntityIdentifiers.h"
+#include "mapObjects/CGTownInstance.h"
 #include "modding/IdentifierStorage.h"
 #include "modding/ModScope.h"
 #include "schema/v3/constants.h"
@@ -172,7 +174,7 @@ namespace MMAI::BAI::V3 {
         };
 
         // as opposed to ensureHexShootableOrNA, this hexattr works with a mask
-        // values are 0 or 1 (not 0..2) and this check requires a valid target
+        // values are 0 or 1 and this check requires a valid target
         auto ensureShootability = [=](BattleHex bh, int v, const CStack* cstack, const char* attrname) {
             auto canshoot = battle->battleCanShoot(cstack);
             auto estacks = getAllStacksForSide(!cstack->unitSide());
@@ -342,8 +344,7 @@ namespace MMAI::BAI::V3 {
                     };
 
                     auto mask = HexStateMask(v);
-                    bool side = astack->unitSide();
-
+                    bool side = astack ? astack->unitSide() : 0; // XXX: Hex defaults to 0 if there is no astack
 
                     if (mask.test(EI(HexState::PASSABLE))) {
                         expect(
@@ -351,25 +352,44 @@ namespace MMAI::BAI::V3 {
                             "HEX.STATE_MASK: PASSABLE bit is set, but accessibility is %d (side: %d)", EI(aa), side
                         );
                     } else {
-                        expect(
-                            aa == EAccessibility::OBSTACLE || aa == EAccessibility::ALIVE_STACK,
-                            "HEX.STATE_MASK: PASSABLE bit not set, but accessibility is %d", EI(aa)
-                        );
+                        if (aa == EAccessibility::OBSTACLE || aa == EAccessibility::ALIVE_STACK)
+                            break;
+
+                        if (battle->battleGetSiegeLevel() == CGTownInstance::NONE)
+                            throw std::runtime_error("HEX.STATE_MASK: PASSABLE bit not set, but accessibility is neither OBSTACLE nor ALIVE_STACK (no siege)");
+
+                        expect(aa == EAccessibility::DESTRUCTIBLE_WALL || aa == EAccessibility::GATE || aa == EAccessibility::UNAVAILABLE,
+                            "HEX.STATE_MASK: PASSABLE bit not set (siege), but accessibility is %d", EI(aa));
                     }
 
                     if (mask.test(EI(HexState::STOPPING))) {
-                        // auto stopping = std::any_of(obstacles.begin(), obstacles.end(), [](auto obstacle) {
-                        //     return obstacle->stopsMovement();
-                        // });
                         auto stopping = anyobstacle(std::mem_fn(&CObstacleInstance::stopsMovement));
                         expect(stopping, "HEX.STATE_MASK: STOPPING bit is set, but no obstacle stops movement");
                     }
 
-                    if (mask.test(EI(HexState::DAMAGING))) {
-                        auto damaging = anyobstacle([](const CObstacleInstance* o) {
-                            return o->triggersEffects() && o->getTrigger().toSpell()->isDamage();
+                    if (mask.test(EI(HexState::DAMAGING_L))) {
+                        auto damaging = anyobstacle([side](const CObstacleInstance* o) {
+                            if (o->obstacleType == CObstacleInstance::MOAT) return true;
+                            if (!o->triggersEffects()) return false;
+                            auto s = SpellID(o->ID);
+                            if (s == SpellID::FIRE_WALL) return true;
+                            if (s != SpellID::LAND_MINE) return false;
+                            auto so = dynamic_cast<const SpellCreatedObstacle *>(o);
+                            return (side == so->casterSide) ? side : !side;
                         });
+                        expect(damaging, "HEX.STATE_MASK: DAMAGING bit is set, but no obstacle triggers a damaging effect");
+                    }
 
+                    if (mask.test(EI(HexState::DAMAGING_R))) {
+                        auto damaging = anyobstacle([side](const CObstacleInstance* o) {
+                            if (o->obstacleType == CObstacleInstance::MOAT) return true;
+                            if (!o->triggersEffects()) return false;
+                            auto s = SpellID(o->ID);
+                            if (s == SpellID::FIRE_WALL) return true;
+                            if (s != SpellID::LAND_MINE) return false;
+                            auto so = dynamic_cast<const SpellCreatedObstacle *>(o);
+                            return (side == so->casterSide) ? !side : side;
+                        });
                         expect(damaging, "HEX.STATE_MASK: DAMAGING bit is set, but no obstacle triggers a damaging effect");
                     }
 
@@ -379,14 +399,14 @@ namespace MMAI::BAI::V3 {
                     // }
                 }
                 break; case HA::ACTION_MASK: {
-                    if (ended) {
-                        expect(v == NULL_VALUE_UNENCODED, "HEX.ACTION_MASK: battle ended, but action mask is %d", v);
-                    } else if(v == NULL_VALUE_UNENCODED) {
+                    if(v == NULL_VALUE_UNENCODED) {
                         // NULL action mask happens if there are too many stacks
                         // and the active stack is one of the ignored stacks
                         // XXX: cstack may be null here (this may be a blank hex)
                         auto stacks = battle->battleGetMySide() ? r_CStacksAll : l_CStacksAll;
                         expect(stacks.size() > MAX_STACKS_PER_SIDE, "HEX.ACTION_MASK: is null and hex->stack is null, but n_stacks is %d", stacks.size());
+                    } else if (ended) {
+                        expect(v == 0, "HEX.ACTION_MASK: battle ended, but action mask is %d", v);
                     } else {
                         ensureCorrectMaskOrNA(bh, v, astack, "HEX.ACTION_MASK");
                     }
@@ -541,47 +561,35 @@ namespace MMAI::BAI::V3 {
                 // See docs/modders/Game_Identifiers.md
                 auto hate_bonuses = BonusList();
                 bonuses->getBonuses(hate_bonuses, Selector::type()(BonusType::HATE), nullptr);
-                auto hatevalue = [&hate_bonuses](std::vector<std::string> creaturenames) {
-                    int res = 0;
-                    for (auto &bonus : hate_bonuses) {
-                        auto st = bonus->subtype;
-                        for (auto name : creaturenames) {
-                            auto cid = VLC->identifiers()->getIdentifier(ModScope::scopeGame(), "creature", name, false);
-                            if (cid)
-                                if (st == CreatureID(cid.value())) res += bonus->val;
-                        }
-                    }
-                    return res;
-                };
 
                 auto find_bonus = [&bonuses](BonusType t) {
                     return bonuses->getFirst(Selector::type()(t));
                 };
 
-                auto find_bonus2 = [&bonuses](BonusType t1, BonusSubtypeID t2) {
-                    return bonuses->getFirst(Selector::typeSubtype(t1, t2));
-                };
+                // auto find_bonus2 = [&bonuses](BonusType t1, BonusSubtypeID t2) {
+                //     return bonuses->getFirst(Selector::typeSubtype(t1, t2));
+                // };
 
                 auto has_bonus = [&find_bonus](BonusType t) {
                     return !!find_bonus(t);
                 };
 
-                auto has_bonus2 = [&find_bonus2](BonusType t1, BonusSubtypeID t2) {
-                    return !!find_bonus2(t1, t2);
-                };
+                // auto has_bonus2 = [&find_bonus2](BonusType t1, BonusSubtypeID t2) {
+                //     return !!find_bonus2(t1, t2);
+                // };
 
-                auto get_bonus_duration = [&find_bonus](BonusType t) {
-                    auto b = find_bonus(t);
-                    if (!b)
-                        return 0;
+                // auto get_bonus_duration = [&find_bonus](BonusType t) {
+                //     auto b = find_bonus(t);
+                //     if (!b)
+                //         return 0;
 
-                    if ((b->duration & BonusDuration::PERMANENT).any())
-                        return 100;
-                    if ((b->duration & BonusDuration::N_TURNS).any())
-                        return static_cast<int>(b->turnsRemain);
+                //     if ((b->duration & BonusDuration::PERMANENT).any())
+                //         return 100;
+                //     if ((b->duration & BonusDuration::N_TURNS).any())
+                //         return static_cast<int>(b->turnsRemain);
 
-                    return 0;
-                };
+                //     return 0;
+                // };
 
 
                 // Now validate all attributes...
@@ -636,16 +644,8 @@ namespace MMAI::BAI::V3 {
                             expect(!cstack->ableToRetaliate(), "STACK.RETALIATIONS_LEFT: =0 but ableToRetaliate=true");
                         else
                             expect(cstack->ableToRetaliate(), "STACK.RETALIATIONS_LEFT: =%d but ableToRetaliate=false", v);
-                    break; case SA::MAGIC_RESISTANCE:
-                        // XXX: being near a unicorn does NOT not give MAGIC_RESISTSNCE
-                        //      bonus -- cstack->magicResistance() checks neighbouring
-                        //      hexes manually and adds the percentage, but that is not
-                        //      done when building the state (too expensive operation)
-                        // ensureStackValueMatch(a, v, cstack->magicResistance(), "STACK.MAGIC_RESISTANCE");
-                        want = cstack->valOfBonuses(BonusType::MAGIC_RESISTANCE);
-                        ensureStackValueMatch(a, v, want, "STACK.MAGIC_RESISTANCE");
                     break; case SA::IS_WIDE:
-                        ensureStackValueMatch(a, v, cstack->doubleWide(), "STACK.IS_WIDE");
+                        ensureStackValueMatch(a, v, cstack->occupiedHex().isAvailable(), "STACK.IS_WIDE");
                     break; case SA::AI_VALUE:
                         ensureStackValueMatch(a, v, cstack->unitType()->getAIValue(), "STACK.AI_VALUE");
                     break; case SA::MORALE:
@@ -655,130 +655,18 @@ namespace MMAI::BAI::V3 {
                     break; case SA::BLIND_LIKE_ATTACK:
                         want = castchance({SpellID::BLIND, SpellID::STONE_GAZE, SpellID::PARALYZE});
                         ensureStackValueMatch(a, v, want, "STACK.BLIND_LIKE_ATTACK");
-                    break; case SA::WEAKENING_ATTACK:
-                        want = castchance({SpellID::WEAKNESS, SpellID::DISEASE});
-                        ensureStackValueMatch(a, v, want, "STACK.WEAKENING_ATTACK");
-                    break; case SA::DISPELLING_ATTACK:
-                        want = castchance({SpellID::DISPEL, SpellID::DISPEL_HELPFUL_SPELLS});
-                        ensureStackValueMatch(a, v, want, "STACK.DISPELLING_ATTACK");
-                    break; case SA::POISONOUS_ATTACK:
-                        want = castchance({SpellID::POISON});
-                        ensureStackValueMatch(a, v, want, "STACK.POISONOUS_ATTACK");
-                    break; case SA::CURSING_ATTACK:
-                        want = castchance({SpellID::CURSE});
-                        ensureStackValueMatch(a, v, want, "STACK.CURSING_ATTACK");
-                    break; case SA::AGING_ATTACK:
-                        want = castchance({SpellID::AGE});
-                        ensureStackValueMatch(a, v, want, "STACK.AGING_ATTACK");
-                    break; case SA::ACID_ATTACK: {
-                        auto b = find_bonus(BonusType::ACID_BREATH);
-                        want = b ? b->additionalInfo[0] : 0;
-                        ensureStackValueMatch(a, v, want, "STACK.ACID_ATTACK");
-                    }
-                    break; case SA::BINDING_ATTACK:
-                        want = castchance({SpellID::BIND});
-                        ensureStackValueMatch(a, v, want, "STACK.BINDING_ATTACK");
-                    break; case SA::LIGHTNING_ATTACK:
-                        want = castchance({SpellID::THUNDERBOLT});
-                        ensureStackValueMatch(a, v, want, "STACK.LIGHTNING_ATTACK");
-                    break; case SA::AREA_ATTACK:
-                        if (has_bonus2(BonusType::SPELL_LIKE_ATTACK, BonusCustomSubtype(SpellID::LIGHTNING_BOLT)))
-                            want = 2;
-                        if (has_bonus2(BonusType::SPELL_LIKE_ATTACK, BonusCustomSubtype(SpellID::FIREBALL)))
-                            want = 1;
-                        else
-                            want = 0;
-                        ensureStackValueMatch(a, v, want, "STACK.AREA_ATTACK");
-                    break; case SA::HATES_ANGELS:
-                        want = hatevalue({"angel"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_ANGELS");
-                    break; case SA::HATES_DEVILS:
-                        want = hatevalue({"devil"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_DEVILS");
-                    break; case SA::HATES_TITANS:
-                        want = hatevalue({"titan"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_TITANS");
-                    break; case SA::HATES_BLACK_DRAGONS:
-                        want = hatevalue({"blackDragon"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_BLACK_DRAGONS");
-                    break; case SA::HATES_GENIES:
-                        want = hatevalue({"genie"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_GENIES");
-                    break; case SA::HATES_EFREET:
-                        want = hatevalue({"efreet"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_EFREET");
-                    break; case SA::HATES_AIR_ELEMENTALS:
-                        want = hatevalue({"airElemental"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_AIR_ELEMENTALS");
-                    break; case SA::HATES_EARTH_ELEMENTALS:
-                        want = hatevalue({"earthElemental"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_EARTH_ELEMENTALS");
-                    break; case SA::HATES_WATER_ELEMENTALS:
-                        want = hatevalue({"waterElemental"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_WATER_ELEMENTALS");
-                    break; case SA::HATES_FIRE_ELEMENTALS:
-                        want = hatevalue({"fireElemental"});
-                        ensureStackValueMatch(a, v, want, "STACK.HATES_FIRE_ELEMENTALS");
-                    break; case SA::FREE_SHOOTING:
-                        want = has_bonus(BonusType::FREE_SHOOTING);
-                        ensureStackValueMatch(a, v, want, "STACK.FREE_SHOOTING");
                     break; case SA::FLYING:
                         want = has_bonus(BonusType::FLYING);
                         ensureStackValueMatch(a, v, want, "STACK.FLYING");
-                    break; case SA::SHOOTER:
-                        want = has_bonus(BonusType::SHOOTER);
-                        ensureStackValueMatch(a, v, want, "STACK.SHOOTER");
-                        if (v > 0)
-                            expect(cstack->shots.canUse(), "STACK.SHOOTER: v=%d, but stack->shots.canUse() is false", v);
                     break; case SA::ADDITIONAL_ATTACK:
                         want = has_bonus(BonusType::ADDITIONAL_ATTACK);
                         ensureStackValueMatch(a, v, want, "STACK.ADDITIONAL_ATTACK");
                     break; case SA::NO_MELEE_PENALTY:
                         want = has_bonus(BonusType::NO_MELEE_PENALTY);
                         ensureStackValueMatch(a, v, want, "STACK.NO_MELEE_PENALTY");
-                    break; case SA::JOUSTING:
-                        want = has_bonus(BonusType::JOUSTING);
-                        ensureStackValueMatch(a, v, want, "STACK.JOUSTING");
-                    break; case SA::SPELL_RESISTANCE_AURA:
-                        want = cstack->valOfBonuses(BonusType::SPELL_RESISTANCE_AURA);
-                        ensureStackValueMatch(a, v, want, "STACK.SPELL_RESISTANCE_AURA");
-                    break; case SA::LEVEL_SPELL_IMMUNITY:
-                        want = cstack->valOfBonuses(BonusType::LEVEL_SPELL_IMMUNITY);
-                        ensureStackValueMatch(a, v, want, "STACK.LEVEL_SPELL_IMMUNITY");
-                    break; case SA::FIRE_DAMAGE_REDUCTION:
-                        want = 0;
-                        if (has_bonus2(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::FIRE)))
-                            want += 100;
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::FIRE);
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::ANY);
-                        ensureStackValueMatch(a, v, want, "STACK.FIRE_DAMAGE_REDUCTION");
-                    break; case SA::WATER_DAMAGE_REDUCTION:
-                        want = 0;
-                        if (has_bonus2(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::WATER)))
-                            want += 100;
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::WATER);
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::ANY);
-                        ensureStackValueMatch(a, v, want, "STACK.WATER_DAMAGE_REDUCTION");
-                    break; case SA::AIR_DAMAGE_REDUCTION:
-                        want = 0;
-                        if (has_bonus2(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::AIR)))
-                            want += 100;
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::AIR);
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::ANY);
-                        ensureStackValueMatch(a, v, want, "STACK.AIR_DAMAGE_REDUCTION");
-                    break; case SA::EARTH_DAMAGE_REDUCTION:
-                        want = 0;
-                        if (has_bonus2(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::EARTH)))
-                            want += 100;
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::EARTH);
-                        want += cstack->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, SpellSchool::ANY);
-                        ensureStackValueMatch(a, v, want, "STACK.EARTH_DAMAGE_REDUCTION");
                     break; case SA::TWO_HEX_ATTACK_BREATH:
                         want = has_bonus(BonusType::TWO_HEX_ATTACK_BREATH);
                         ensureStackValueMatch(a, v, want, "STACK.TWO_HEX_ATTACK_BREATH");
-                    break; case SA::NO_WALL_PENALTY:
-                        want = has_bonus(BonusType::NO_WALL_PENALTY);
-                        ensureStackValueMatch(a, v, want, "STACK.NO_WALL_PENALTY");
                     break; case SA::NON_LIVING:
                         want = has_bonus(BonusType::UNDEAD) \
                                 || has_bonus(BonusType::NON_LIVING)
@@ -787,85 +675,12 @@ namespace MMAI::BAI::V3 {
                     break; case SA::BLOCKS_RETALIATION:
                         want = has_bonus(BonusType::BLOCKS_RETALIATION);
                         ensureStackValueMatch(a, v, want, "STACK.BLOCKS_RETALIATION");
-                    break; case SA::THREE_HEADED_ATTACK:
-                        want = has_bonus(BonusType::THREE_HEADED_ATTACK);
-                        ensureStackValueMatch(a, v, want, "STACK.THREE_HEADED_ATTACK");
-                    break; case SA::MIND_IMMUNITY:
-                        want = has_bonus(BonusType::MIND_IMMUNITY)
-                                || has_bonus(BonusType::UNDEAD)
-                                || has_bonus(BonusType::NON_LIVING)
-                                || has_bonus(BonusType::SIEGE_WEAPON);
-                        ensureStackValueMatch(a, v, want, "STACK.MIND_IMMUNITY");
-                    break; case SA::FIRE_SHIELD:
-                        want = has_bonus(BonusType::FIRE_SHIELD);
-                        ensureStackValueMatch(a, v, want, "STACK.FIRE_SHIELD");
-                    break; case SA::LIFE_DRAIN:
-                        want = cstack->valOfBonuses(BonusType::LIFE_DRAIN);
-                        ensureStackValueMatch(a, v, want, "STACK.LIFE_DRAIN");
-                    break; case SA::DOUBLE_DAMAGE_CHANCE:
-                        want = cstack->valOfBonuses(BonusType::DOUBLE_DAMAGE_CHANCE);
-                        ensureStackValueMatch(a, v, want, "STACK.DOUBLE_DAMAGE_CHANCE");
-                    break; case SA::RETURN_AFTER_STRIKE:
-                        want = has_bonus(BonusType::RETURN_AFTER_STRIKE);
-                        ensureStackValueMatch(a, v, want, "STACK.RETURN_AFTER_STRIKE");
-                    break; case SA::DEFENSIVE_STANCE:
-                        want = has_bonus(BonusType::DEFENSIVE_STANCE);
-                        ensureStackValueMatch(a, v, want, "STACK.DEFENSIVE_STANCE");
-                    break; case SA::ATTACKS_ALL_ADJACENT:
-                        want = has_bonus(BonusType::ATTACKS_ALL_ADJACENT);
-                        ensureStackValueMatch(a, v, want, "STACK.ATTACKS_ALL_ADJACENT");
-                    break; case SA::NO_DISTANCE_PENALTY:
-                        want = has_bonus(BonusType::NO_DISTANCE_PENALTY);
-                        ensureStackValueMatch(a, v, want, "STACK.NO_DISTANCE_PENALTY");
-                    break; case SA::HYPNOTIZED:
-                        want = get_bonus_duration(BonusType::HYPNOTIZED);
-                        ensureStackValueMatch(a, v, want, "STACK.HYPNOTIZED");
-                    break; case SA::MAGIC_MIRROR:
-                        want = cstack->valOfBonuses(BonusType::MAGIC_MIRROR);
-                        ensureStackValueMatch(a, v, want, "STACK.MAGIC_MIRROR");
-                    break; case SA::ATTACKS_NEAREST_CREATURE:
-                        want = has_bonus(BonusType::ATTACKS_NEAREST_CREATURE);
-                        ensureStackValueMatch(a, v, want, "STACK.ATTACKS_NEAREST_CREATURE");
-                    break; case SA::SLEEPING:
-                        want = cstack->unitType()->getId() == CreatureID::AMMO_CART
-                            ? 0 : get_bonus_duration(BonusType::NOT_ACTIVE);
-
-                        ensureStackValueMatch(a, v, want, "STACK.SLEEPING");
-                    break; case SA::DEATH_STARE:
-                        want = has_bonus(BonusType::DEATH_STARE);
-                        ensureStackValueMatch(a, v, want, "STACK.DEATH_STARE");
-                    break; case SA::POISON:
-                        want = has_bonus(BonusType::POISON);
-                        ensureStackValueMatch(a, v, want, "STACK.POISON");
-                    break; case SA::REBIRTH:
-                        want = has_bonus(BonusType::REBIRTH);
-                        ensureStackValueMatch(a, v, want, "STACK.REBIRTH");
-                    break; case SA::ENEMY_DEFENCE_REDUCTION:
-                        want = cstack->valOfBonuses(BonusType::ENEMY_DEFENCE_REDUCTION);
-                        ensureStackValueMatch(a, v, want, "STACK.ENEMY_DEFENCE_REDUCTION");
-                    break; case SA::MELEE_DAMAGE_REDUCTION:
-                        want = cstack->valOfBonuses(BonusType::GENERAL_DAMAGE_REDUCTION, BonusCustomSubtype::damageTypeAll);
-                        want += cstack->valOfBonuses(BonusType::GENERAL_DAMAGE_REDUCTION, BonusCustomSubtype::damageTypeMelee);
-                        ensureStackValueMatch(a, v, want, "STACK.MELEE_DAMAGE_REDUCTION");
-                    break; case SA::RANGED_DAMAGE_REDUCTION:
-                        want = cstack->valOfBonuses(BonusType::GENERAL_DAMAGE_REDUCTION, BonusCustomSubtype::damageTypeAll);
-                        want += cstack->valOfBonuses(BonusType::GENERAL_DAMAGE_REDUCTION, BonusCustomSubtype::damageTypeRanged);
-                        ensureStackValueMatch(a, v, want, "STACK.RANGED_DAMAGE_REDUCTION");
-                    break; case SA::MELEE_ATTACK_REDUCTION:
-                        want = cstack->valOfBonuses(BonusType::GENERAL_ATTACK_REDUCTION, BonusCustomSubtype::damageTypeAll);
-                        want += cstack->valOfBonuses(BonusType::GENERAL_ATTACK_REDUCTION, BonusCustomSubtype::damageTypeMelee);
-                        ensureStackValueMatch(a, v, want, "STACK.MELEE_ATTACK_REDUCTION");
-                    break; case SA::RANGED_ATTACK_REDUCTION:
-                        want = cstack->valOfBonuses(BonusType::GENERAL_ATTACK_REDUCTION, BonusCustomSubtype::damageTypeAll);
-                        want += cstack->valOfBonuses(BonusType::GENERAL_ATTACK_REDUCTION, BonusCustomSubtype::damageTypeRanged);
-                        ensureStackValueMatch(a, v, want, "STACK.RANGED_ATTACK_REDUCTION");
                     break; default:
                         THROW_FORMAT("Unexpected StackAttribute: %d", EI(a));
                     }
                 }
             }
         }
-
         // TODO: validate global state
     }
 
@@ -891,7 +706,8 @@ namespace MMAI::BAI::V3 {
                 if (stack) {
                     idstacks.at(stack->getAttr(SA::ID)) = stack;
                     if (stack->getAttr(SA::QUEUE_POS) == 0) {
-                        expect(!astack, "two active stacks found");
+                        // can be same stack (2-hex)
+                        expect(astack != stack, "two active stacks found");
                         astack = stack;
                     }
                 }
@@ -962,13 +778,30 @@ namespace MMAI::BAI::V3 {
         //   ▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕⁵▕
         //
 
+        //     ₀▏₁▏₂▏₃▏₄▏₅▏₆▏₇▏₈▏₉▏₀▏₁▏₂▏₃▏₄
+        //  ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃          Player: RED
+        // ₀┨  0▏0▏○▏○▏✶▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○ ┠₀    Last action: 
+        // ₁┨ ○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○  ┠₁      DMG dealt: 0
+        // ₂┨  1▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○ ┠₂   Units killed: 0
+        // ₃┨ ✶▕○▕▦▕▦▕▦▕▦▕▦▕○▕○▕○▕○▕○▕○▕○▕○  ┠₃   Value killed: 0
+        // ₄┨  2▏2▏○▏○▏○▏○▏▦▏▦▏▦▏○▏○▏○▏○▏○▏○ ┠₄   DMG received: 0
+        // ₅┨ 3▕3▕○▕○▕○▕○▕○▕○▕○▕▦▕○▕○▕○▕3▕3  ┠₅     Units lost: 0
+        // ₆┨  4▏4▏○▏○▏○▏○▏○▏○▏✶▏▦▏▦▏○▏○▏○▏○ ┠₆     Value lost: 0
+        // ₇┨ ○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕▦▕○▕○▕○  ┠₇  Battle result: 
+        // ₈┨  5▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○ ┠₈
+        // ₉┨ ○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○▕○  ┠₉
+        // ₀┨  6▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏○▏✶▏○ ┠₀
+        //  ┃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┃
+        //   ▕⁰▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕
+
+
         // s=special; can be any number, slot is always 7 (SPECIAL), visualized A,B,C...
 
         static_assert(MAX_STACKS == 20, "code assumes 20 stacks");
 
         auto tablestartrow = lines.size();
 
-        lines.emplace_back() << "  ▕₀▕₁▕₂▕₃▕₄▕₅▕₆▕₇▕₈▕₉▕₀▕₁▕₂▕₃▕₄▕";
+        lines.emplace_back() << "    ₀▏₁▏₂▏₃▏₄▏₅▏₆▏₇▏₈▏₉▏₀▏₁▏₂▏₃▏₄";
         lines.emplace_back() << " ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃ ";
 
         static std::array<std::string, 10> nummap{"₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"};
@@ -976,6 +809,10 @@ namespace MMAI::BAI::V3 {
         bool addspace = true;
 
         auto seenstacks = std::bitset<MAX_STACKS>(0);
+        bool divlines = true;
+
+        // y even "▏"
+        // y odd "▕"
 
         for (int y=0; y < BF_YMAX; y++) {
             for (int x=0; x < BF_XMAX; x++) {
@@ -993,8 +830,13 @@ namespace MMAI::BAI::V3 {
                     ? (lines.emplace_back() << nummap.at(y%10) << "┨" << (y % 2 == 0 ? " " : ""))
                     : lines.back();
 
-                if (addspace)
-                    row << " ";
+                if (addspace) {
+                    if (divlines && (x != 0)) {
+                        row << darkcol << (y % 2 == 0 ? "▏" : "▕") << nocol;
+                    } else {
+                        row << " ";
+                    }
+                }
 
                 addspace = true;
 
@@ -1005,51 +847,57 @@ namespace MMAI::BAI::V3 {
                 // If there's a stack on this hex, symbol will be overriden.
                 HexStateMask mpass = 1<<EI(HexState::PASSABLE);
                 HexStateMask mstop = 1<<EI(HexState::STOPPING);
-                HexStateMask mdmg = 1<<EI(HexState::DAMAGING);
+                HexStateMask mdmgl = 1<<EI(HexState::DAMAGING_L);
+                HexStateMask mdmgr = 1<<EI(HexState::DAMAGING_R);
                 HexStateMask mdefault = 0; // or mother :)
 
-                std::map<std::string, HexStateMask> symbols {
-                    {"○", mpass},
-                    {"△", mpass|mstop},
-                    {"✶", mpass|mdmg},
-                    {"⨻", mpass|mstop|mdmg},
-                    {"▦",  mdefault}
+                std::vector<std::tuple<std::string, std::string, HexStateMask>> symbols {
+                    {"⨻", bluecol, mpass|mstop|mdmgl},
+                    {"⨻", redcol, mpass|mstop|mdmgr},
+                    {"✶", bluecol, mpass|mdmgl},
+                    {"✶", redcol, mpass|mdmgr},
+                    {"△", nocol, mpass|mstop},
+                    {"○", nocol, mpass}, // changed to "◌" if unreachable
+                    {"◼",  nocol, mdefault}
                 };
 
-                for (auto &pair : symbols) {
-                    auto &[s, m] = pair;
+                for (auto &tuple : symbols) {
+                    auto &[s, c, m] = tuple;
                     if ((smask & m) == m) {
                         sym = s;
+                        col = c;
                         break;
                     }
                 }
 
                 auto amask = HexActMask(hex->getAttr(HA::ACTION_MASK));
-                if (amask.test(EI(HexAction::MOVE)) <= 0) // || supdata->getIsBattleEnded()
+                if (col == nocol && amask.test(EI(HexAction::MOVE)) <= 0) { // || supdata->getIsBattleEnded()
                     col = darkcol;
+                    sym = sym == "○" ? "◌" : sym;
+                }
 
                 if (hex->getAttr(HA::STACK_ID) >= 0) {
-                    auto strslot = std::string(1, stack->getAlias());
                     auto seen = seenstacks.test(stack->getAttr(SA::ID));
-                    auto col = stack->getAttr(SA::SIDE) ? bluecol : redcol;
+                    sym = std::string(1, stack->getAlias());
+                    col = stack->getAttr(SA::SIDE) ? bluecol : redcol;
 
                     if (stack->getAttr(SA::QUEUE_POS) == 0) // && !supdata->getIsBattleEnded()
                         col += activemod;
 
                     if (stack->getAttr(SA::IS_WIDE) > 0 && !seen) {
                         if (stack->getAttr(SA::SIDE) == 0) {
-                            strslot += "↠";
+                            sym += "↠";
                             addspace = false;
                         } else if(stack->getAttr(SA::SIDE) == 1 && hex->getAttr(HA::X_COORD) < 14) {
-                            strslot += "↞";
+                            sym += "↞";
                             addspace = false;
                         }
                     }
 
-                    sym = col + strslot + nocol;
+                    seenstacks.set(stack->getAttr(SA::ID));
                 }
 
-                row << sym;
+                row << (col + sym + nocol);
 
                 if (x == BF_XMAX-1) {
                     row << (y % 2 == 0 ? " " : "  ") << "┠" << nummap.at(y % 10);
@@ -1058,7 +906,7 @@ namespace MMAI::BAI::V3 {
         }
 
         lines.emplace_back() << " ┃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┃";
-        lines.emplace_back() << "  ▕⁰▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴▕";
+        lines.emplace_back() << "   ⁰▕¹▕²▕³▕⁴▕⁵▕⁶▕⁷▕⁸▕⁹▕⁰▕¹▕²▕³▕⁴";
 
         //
         // 3. Add side table stuff
@@ -1130,7 +978,7 @@ namespace MMAI::BAI::V3 {
         // All cell text is aligned right
         auto colwidths = std::array<int, 4 + MAX_STACKS>{};
         colwidths.fill(4); // default col width
-        colwidths.at(0) = 10; // header col
+        colwidths.at(0) = 11; // header col
 
         // Divider column indexes
         auto divcolids = {1, MAX_STACKS_PER_SIDE+2, MAX_STACKS+3};

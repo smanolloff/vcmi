@@ -221,9 +221,10 @@ namespace MMAI::Schema::V3 {
 
     enum class HexState : int {
         // IMPASSABLE,         // obstacle/stack/gate(closed,attacker)
-        PASSABLE,           // empty/mine/firewall/gate(open)/gate(closed,defender), ...
-        STOPPING,           // moat/quicksand
-        DAMAGING,           // moat/mine/firewall
+        PASSABLE,       // empty/mine/firewall/gate(open)/gate(closed,defender), ...
+        STOPPING,       // moat/quicksand
+        DAMAGING_L,     // moat/mine/firewall
+        DAMAGING_R,     // moat/mine/firewall
         // GATE,               // XXX: redundant? Always set during siege (regardless of gate state)
         _count
     };
@@ -243,7 +244,6 @@ namespace MMAI::Schema::V3 {
         AMOVE_2TL,  //  . . . . . . . . 9 3 2 . . . .
         MOVE,       // = Move to (defend if current hex)
         SHOOT,      // = shoot at
-        SPECIAL,    // creature cast/tent heal/?catapult attack?
         _count
     };
 
@@ -268,77 +268,18 @@ namespace MMAI::Schema::V3 {
         WAITED,
         QUEUE_POS,
         RETALIATIONS_LEFT,
-        MAGIC_RESISTANCE,
         IS_WIDE,
         AI_VALUE,
         MORALE,
         LUCK,
-
-        // Spells after attack - val=chance in %
-        BLIND_LIKE_ATTACK, // unicorns, medusas, basilisks, scorpicores
-        WEAKENING_ATTACK, // dragon flies, zombies
-        DISPELLING_ATTACK, // blind, paralyze, stone gaze
-        POISONOUS_ATTACK, // wyverns
-        CURSING_ATTACK, // mummies, black knights
-        AGING_ATTACK,   // ghost dragon
-        ACID_ATTACK,    // rust dragon
-        BINDING_ATTACK, // dendroids
-        LIGHTNING_ATTACK, // thunderbirds
-
-        AREA_ATTACK, // 1=magog, 2=lich
-
-        // Hate (dmg bonus in %)
-        HATES_ANGELS,
-        HATES_DEVILS,
-        HATES_TITANS,
-        HATES_BLACK_DRAGONS,
-        HATES_GENIES,
-        HATES_EFREET,
-        HATES_AIR_ELEMENTALS,
-        HATES_EARTH_ELEMENTALS,
-        HATES_WATER_ELEMENTALS,
-        HATES_FIRE_ELEMENTALS,
-
-        FREE_SHOOTING,              /*stacks can shoot even if otherwise blocked (sharpshooter's bow effect)*/
         FLYING,
-        SHOOTER,
+        BLIND_LIKE_ATTACK,          // % chance for unicorns, medusas, basilisks, scorpicores
         ADDITIONAL_ATTACK,          /*val: number of additional attacks to perform*/
         NO_MELEE_PENALTY,
-        JOUSTING,                   /*for champions*/
-
-        SPELL_RESISTANCE_AURA,      /*eg. unicorns, value - resistance bonus in % for adjacent creatures*/
-        LEVEL_SPELL_IMMUNITY,       /*creature is immune to all spell with level below or equal to value of this bonus */
-        FIRE_DAMAGE_REDUCTION,      // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
-        WATER_DAMAGE_REDUCTION,     // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
-        AIR_DAMAGE_REDUCTION,       // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
-        EARTH_DAMAGE_REDUCTION,     // 100% means immunity; SPELL_DAMAGE_REDUCTION included here
         TWO_HEX_ATTACK_BREATH,      /*eg. dragons*/
-        NO_WALL_PENALTY,
         NON_LIVING,                 // indicates immunity to mind spells; UNDEAD included here
         BLOCKS_RETALIATION,         /*eg. naga*/
-        THREE_HEADED_ATTACK,        /*eg. cerberus*/
-        MIND_IMMUNITY,
-        FIRE_SHIELD,
-        // UNDEAD,                  // not useful during battle
-        LIFE_DRAIN,                 // in %
-        DOUBLE_DAMAGE_CHANCE,       /*value in %, eg. dread knight*/
-        RETURN_AFTER_STRIKE,
-        DEFENSIVE_STANCE,           /* val - bonus to defense while defending */
-        ATTACKS_ALL_ADJACENT,       /*eg. hydra*/
-        NO_DISTANCE_PENALTY,
-        HYPNOTIZED,                 // turns left
-        MAGIC_MIRROR,               /* value - chance of redirecting in %*/
-        ATTACKS_NEAREST_CREATURE,   /*while in berserk*/
-        // FORGETFULL,              // <=1 is  SHOTS=0, basic sets
-        SLEEPING,                   // turns remaining; a more inuitive name for "NOT_ACTIVE" bonus which gets removed if attacked
-        DEATH_STARE,                /*subtype 0 - gorgon, 1 - commander*/
-        POISON,                     /*val - max health penalty from poison possible*/
-        REBIRTH,                    /* val - percent of life restored, subtype = 0 - regular, 1 - at least one unit (sacred Phoenix) */
-        ENEMY_DEFENCE_REDUCTION,    /*in % (value) eg. behemots*/
-        MELEE_DAMAGE_REDUCTION,     // armor bonus (melee - e.g. shield, armorer skill, etc.)
-        RANGED_DAMAGE_REDUCTION,    // armor bonus (ranged - e.g. air shield, etc.)
-        MELEE_ATTACK_REDUCTION,     // attack penalty (melee - e.g. blind retaliation)
-        RANGED_ATTACK_REDUCTION,    // attack penalty (ranged - e.g. shooting while forgetful)
+
         _count
     };
 

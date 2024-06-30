@@ -45,6 +45,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     int seed,
     int randomHeroes,
     int randomObstacles,
+    int townChance,
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,

@@ -72,6 +72,7 @@ Args parse_args(int argc, char * argv[])
     int seed = 0;
     int randomHeroes = 0;
     int randomObstacles = 0;
+    int townChance = 0;
     int swapSides = 0;
     bool benchmark = false;
     bool interactive = false;
@@ -87,8 +88,8 @@ Args parse_args(int argc, char * argv[])
     auto omap = std::map<std::string, std::string> {
         {"map", "gym/A1.vmap"},
         {"loglevel-global", "error"},
-        {"loglevel-ai", "error"},
-        {"loglevel-stats", "error"},
+        {"loglevel-ai", "warn"},
+        {"loglevel-stats", "warn"},
         {"red-ai", AI_MMAI_USER},
         {"blue-ai", AI_STUPIDAI},
         {"red-model", "AI/MMAI/models/model.zip"},
@@ -115,6 +116,8 @@ Args parse_args(int argc, char * argv[])
             "Pick heroes at random each Nth combat (disabled if 0*)")
         ("random-obstacles", po::value<int>()->value_name("<N>"),
             "Place obstacles at random each Nth combat (disabled if 0*)")
+        ("town-chance", po::value<int>()->value_name("<N>"),
+            "Chance to have the combat in a town (no town combat if 0*)")
         ("swap-sides", po::value<int>()->value_name("<N>"),
             "Swap combat sides each Nth combat (disabled if 0*)")
         ("red-ai", po::value<std::string>()->value_name("<AI>"),
@@ -140,7 +143,7 @@ Args parse_args(int argc, char * argv[])
         ("print-predictions", po::bool_switch(&printModelPredictions),
             "Print MMAI model predictions (no effect for other AIs)")
         ("true-rng", po::bool_switch(&trueRng),
-            "Use std::random_device() instead of std::mt19937 hero & obstacle randomization")
+            "Use std::random_device() instead of std::mt19937 for hero, obstacle & town randomization")
         ("stats-mode", po::value<std::string>()->value_name("<MODE>"),
             ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
         ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
@@ -186,6 +189,9 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("random-obstacles"))
         randomObstacles = vm.at("random-obstacles").as<int>();
+
+    if (vm.count("town-chance"))
+        townChance = vm.at("town-chance").as<int>();
 
     if (vm.count("swap-sides"))
         swapSides = vm.at("swap-sides").as<int>();
@@ -264,6 +270,7 @@ Args parse_args(int argc, char * argv[])
         seed,
         randomHeroes,
         randomObstacles,
+        townChance,
         swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),

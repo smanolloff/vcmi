@@ -66,17 +66,20 @@ public:
 	std::unique_ptr<TurnTimerHandler> turnTimerHandler;
 
 	std::vector<const CGHeroInstance*> allheroes;
+	std::vector<const CGTownInstance*> alltowns;
 	std::unique_ptr<Stats> stats;
 	std::mt19937 pseudorng;
 	// std::random_device _truerng = std::random_device();
 	bool trueRng = false;
 	ui32 lastSeed = 0;
 	int herocounter = 0;
+	int towncounter = 0;
 	int battlecounter = 0;
 	int redside = 0;
 	int maxBattles = 0;
 	int randomHeroes = 0;
 	int randomObstacles = 0;
+	int townChance = 0;
 	int swapSides = 0;
 	int statsPersistFreq = 0;
 	int statsSampling = 0;

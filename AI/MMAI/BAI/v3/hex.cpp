@@ -18,6 +18,9 @@
 #include "./hexactmask.h"
 #include "Global.h"
 #include "schema/v3/constants.h"
+#include "spells/CSpellHandler.h"
+#include "vcmi/spells/Service.h"
+#include "vcmi/spells/Spell.h"
 #include <mach/vm_region.h>
 
 namespace MMAI::BAI::V3 {
@@ -27,8 +30,9 @@ namespace MMAI::BAI::V3 {
 
     constexpr HexStateMask S_PASSABLE = 1<<EI(HexState::PASSABLE);
     constexpr HexStateMask S_STOPPING = 1<<EI(HexState::STOPPING);
-    constexpr HexStateMask S_DAMAGING = 1<<EI(HexState::DAMAGING);
-    // constexpr HexStateMask S_GATE = 1<<EI(HexState::GATE);
+    constexpr HexStateMask S_DAMAGING_L = 1<<EI(HexState::DAMAGING_L);
+    constexpr HexStateMask S_DAMAGING_R = 1<<EI(HexState::DAMAGING_R);
+    constexpr HexStateMask S_DAMAGING_ALL = 1<<EI(HexState::DAMAGING_L) | 1<<EI(HexState::DAMAGING_R);
 
     // static
     int Hex::CalcId(const BattleHex &bh) {
@@ -149,14 +153,6 @@ namespace MMAI::BAI::V3 {
         attrs.at(EI(A::STATE_MASK)) = statemask.to_ulong();
     }
 
-    void Hex::addAction(HexAction action) {
-        actmask.set(EI(action));
-    }
-
-    void Hex::addState(HexState state) {
-        statemask.set(EI(state));
-    }
-
     // private
 
     void Hex::setStateMask(
@@ -177,19 +173,30 @@ namespace MMAI::BAI::V3 {
         //      Ref: Moat::placeObstacles()
         //           BattleEvaluator::goTowardsNearest() // var triggerAbility
         //
+
         for (auto &obstacle : obstacles) {
             switch (obstacle->obstacleType) {
-            break; case CObstacleInstance::USUAL:               statemask &= ~S_PASSABLE; // impassable
-            break; case CObstacleInstance::ABSOLUTE_OBSTACLE:   statemask &= ~S_PASSABLE;
-            break; case CObstacleInstance::MOAT:                statemask |= S_STOPPING | S_DAMAGING;
+            break; case CObstacleInstance::USUAL:
+                   case CObstacleInstance::ABSOLUTE_OBSTACLE:
+                statemask &= ~S_PASSABLE;
+            break; case CObstacleInstance::MOAT:
+                statemask |= (S_STOPPING | S_DAMAGING_ALL);
             break; case CObstacleInstance::SPELL_CREATED:
-                switch(obstacle->getTrigger()) {
-                break; case SpellID::FORCE_FIELD:   statemask &= ~S_PASSABLE;
-                break; case SpellID::QUICKSAND:     statemask |= S_STOPPING;
-                break; case SpellID::FIRE_WALL:     statemask |= S_DAMAGING;
-                break; case SpellID::LAND_MINE:     statemask |= S_DAMAGING;
-                break; default:
-                    logAi->warn("Unexpected obstacle trigger: %d", EI(obstacle->getTrigger()));
+                // XXX: the public Obstacle / Spell API does not seem to expose
+                //      any useful methods for checking if friendly creatures
+                //      would get damaged by an obstacle.
+                switch(SpellID(obstacle->ID)) {
+                break; case SpellID::QUICKSAND:
+                    statemask |= S_STOPPING;
+                break; case SpellID::LAND_MINE:
+                    auto casterside = dynamic_cast<const SpellCreatedObstacle *>(obstacle.get())->casterSide;
+                    // XXX: in practice, there is no situation where enemy
+                    //      mines are visible as the UI simply does not allow
+                    //      to cast the spell in this case (e.g. if there is a
+                    //      terrain-native stack in the enemy army).
+                    statemask |= (side == casterside)
+                        ? (side ? S_DAMAGING_L : S_DAMAGING_R)
+                        : (side ? S_DAMAGING_R : S_DAMAGING_L);
                 }
             break; default:
                 THROW_FORMAT("Unexpected obstacle type: %d", EI(obstacle->obstacleType));
@@ -204,7 +211,8 @@ namespace MMAI::BAI::V3 {
             ASSERT(!stack, "accessibility is OBSTACLE, but a stack was found on hex");
             statemask &= ~S_PASSABLE;
         break; case EAccessibility::ALIVE_STACK:
-            ASSERT(stack, "accessibility is ALIVE_STACK, but no stack was found on hex");
+            // XXX: stack can be NULL if it was left out of the observation
+            // ASSERT(stack, "accessibility is ALIVE_STACK, but no stack was found on hex");
             statemask &= ~S_PASSABLE;
         break; case EAccessibility::DESTRUCTIBLE_WALL:
             // XXX: Destroyed walls become ACCESSIBLE.
@@ -244,37 +252,18 @@ namespace MMAI::BAI::V3 {
     ) {
         auto astack = astackinfo->stack;
 
+        if (astackinfo->canshoot && stack && stack->attr(SA::SIDE) != astack->attr(SA::SIDE))
+            actmask.set(EI(HexAction::SHOOT));
+
         // XXX: ReachabilityInfo::isReachable() must not be used as it
         //      returns true even if speed is insufficient => use distances.
         // NOTE: distances is 0 for the stack's main hex and 1 for its rear hex
         //       (100000 if it can't fit there)
         if (astackinfo->rinfo->distances.at(bhex) <= astack->attr(SA::SPEED))
             actmask.set(EI(HexAction::MOVE));
-
-        // It seems spellcaster spells are selected client-side
-        // (with a TODO for server-side selection)
-        //
-        // * In UI interface:
-        //      BattleActionsController::tryActivateStackSpellcasting
-        //      ^ populates `creatureSpells`
-        //      > BattleActionsController::getPossibleActionsForStack
-        //        ^ populates `data.creatureSpellsToCast`
-        //        > CBattleInfoCallback::getClientActionsForStack
-        //
-        // * In BattleAI:
-        //      BattleEvaluator::findBestCreatureSpell
-        //
-        // * ?
-        //      CBattleInfoCallback::getClientActionsForStack
-        //
-        // It seems all cast bonuses are "valid" actions
-        // (see "fairieDragon" (with the typo) in creatures/neutral.json)
-        // So it's whichever the client chooses atm.
-        // logAi->warn("TODO: handle special actions");
-        // hex->permitAction(HexAction::SPECIAL)
-        if (astack->attr(SA::SHOOTER) && stack && stack->attr(SA::SIDE) != astack->attr(SA::SIDE))
-            actmask.set(EI(HexAction::SHOOT));
-
+        else
+            // astack can't MOVE here => AMOVE_* will never be possible
+            return;
 
         const auto &nbhexes = NearbyBattleHexes(bhex);
         const auto a_cstack = astack->cstack;
@@ -311,5 +300,4 @@ namespace MMAI::BAI::V3 {
             }
         }
     }
-
 }

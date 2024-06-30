@@ -1,3 +1,10 @@
+1. Check stack overflow with attack logs
+  can defender be null?
+
+
+
+
+
 3. check if GENERAL_ATTACK_REDUCTION is affected by FORGETFUL
   (and remove FORGETFUL if so)
 

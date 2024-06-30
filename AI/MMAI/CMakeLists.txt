@@ -53,7 +53,6 @@ set(MMAI_FILES
   BAI/v3/render.h
   BAI/v3/stack.cpp
   BAI/v3/stack.h
-  BAI/v3/stackinfo.h
   BAI/v3/state.cpp
   BAI/v3/state.h
   BAI/v3/supplementary_data.cpp

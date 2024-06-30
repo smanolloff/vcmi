@@ -30,7 +30,8 @@ namespace MMAI::BAI::V3 {
     Stack::Stack(const CStack* cstack_, int id, Queue &q)
     : cstack(cstack_)
     {
-        attrs.fill(NULL_VALUE_UNENCODED);
+        // XXX: NULL attrs are used only for non-existing stacks
+        // => don't fill with null here (as opposed to attrs in Hex)
 
         auto id2 = id % MAX_STACKS_PER_SIDE;
         alias = id2 + (id2 < 7 ? '0' : 'A'-7);
@@ -51,187 +52,226 @@ namespace MMAI::BAI::V3 {
         //      (referred to as CRTRAITS.TXT file, see CCreatureHandler::loadLegacyData)
         for (auto &bonus : *bonuses) {
             switch (bonus->type) {
-            break; case BonusType::MORALE:
-                addattr(A::MORALE, bonus->val);
-            break; case BonusType::LUCK:
-                addattr(A::LUCK, bonus->val);
-            break; case BonusType::FREE_SHOOTING:
-                setattr(A::FREE_SHOOTING, 1);
-            break; case BonusType::FLYING:
-                setattr(A::FLYING, 1);
-            break; case BonusType::SHOOTER:
-                setattr(A::SHOOTER, 1);
-            // break; case BonusType::CHARGE_IMMUNITY:
-            //     setattr(A::CHARGE_IMMUNITY, 1);
-            break; case BonusType::ADDITIONAL_ATTACK:  // 4 creatures
-                setattr(A::ADDITIONAL_ATTACK, 1);
-            break; case BonusType::NO_MELEE_PENALTY:
-                setattr(A::NO_MELEE_PENALTY, 1);
-            break; case BonusType::JOUSTING:
-                setattr(A::JOUSTING, 1);
-            break; case BonusType::HATE:
-                // XXX: for dual-hate (where upgraded version is also hated)
-                //      we don't have separate attribute
-                //      => add only un-upgraded for those (to prevent summing)
-                switch(bonus->subtype.as<CreatureID>()) {
-                break; case CreatureID::ANGEL: addattr(A::HATES_ANGELS, bonus->val);
-                break; case CreatureID::GENIE: addattr(A::HATES_GENIES, bonus->val);
-                break; case CreatureID::TITAN: addattr(A::HATES_TITANS, bonus->val);
-                break; case CreatureID::EFREETI: addattr(A::HATES_EFREET, bonus->val);
-                break; case CreatureID::DEVIL: addattr(A::HATES_DEVILS, bonus->val);
-                break; case CreatureID::BLACK_DRAGON: addattr(A::HATES_BLACK_DRAGONS, bonus->val);
-                break; case CreatureID::AIR_ELEMENTAL: addattr(A::HATES_AIR_ELEMENTALS, bonus->val);
-                break; case CreatureID::EARTH_ELEMENTAL: addattr(A::HATES_EARTH_ELEMENTALS, bonus->val);
-                break; case CreatureID::FIRE_ELEMENTAL: addattr(A::HATES_FIRE_ELEMENTALS, bonus->val);
-                break; case CreatureID::WATER_ELEMENTAL: addattr(A::HATES_WATER_ELEMENTALS, bonus->val);
-                break;
-                };
-            break; case BonusType::MAGIC_RESISTANCE:
-                // XXX: being near a unicorn does NOT not give MAGIC_RESISTSNCE
-                //      bonus -- must check neighbouring hexes manually and add
-                //      the percentage here -- not worth the effort
-                setattr(A::MAGIC_RESISTANCE, bonus->val);
+            /* 100% */
+            break; case BonusType::LUCK: addattr(A::LUCK, bonus->val);
+            break; case BonusType::NO_LUCK: noluck = true;
+
+            /* 86% (127 creatures) */
+            break; case BonusType::MORALE: addattr(A::MORALE, bonus->val);
+            break; case BonusType::NO_MORALE: nomorale = true;
+
+            /* 28% (42 creatures) */
+            break; case BonusType::FLYING: setattr(A::FLYING, 1);
+
+            /* 20% (29 creatures), but overlaps with SHOTS */
+            // break; case BonusType::SHOOTER: setattr(A::SHOOTER, 1);
+
+            /* 10% (15 creatures) undead */
+            /* +4% (6 creatures) unliving */
+            /* +all war machines */
+            break; case BonusType::UNDEAD: setattr(A::NON_LIVING, 2); nomorale = true;
+            break; case BonusType::NON_LIVING: setattr(A::NON_LIVING, 1); nomorale = true;
+            break; case BonusType::SIEGE_WEAPON: setattr(A::NON_LIVING, 2); nomorale = true;
+
+            /* 8.8% (13 creatures) */
+            break; case BonusType::BLOCKS_RETALIATION: setattr(A::BLOCKS_RETALIATION, 1);
+
+            /* 5.4% (8 creatures) */
+            break; case BonusType::NO_MELEE_PENALTY: setattr(A::NO_MELEE_PENALTY, 1);
+
+            /* 5.4% (8 creatures) */
+            break; case BonusType::TWO_HEX_ATTACK_BREATH: setattr(A::TWO_HEX_ATTACK_BREATH, 1);
+
+            /* 2.7% (4 creatures) */
+            break; case BonusType::ADDITIONAL_ATTACK: setattr(A::ADDITIONAL_ATTACK, 1);
+
             break; case BonusType::SPELL_AFTER_ATTACK:
                 switch(bonus->subtype.as<SpellID>()) {
+                /* 1.4% (2 creatures) blind */
+                /* +2.7% (4 creatures) petrify */
+                /* +0.7% (1 creature) paralyze */
                 break; case SpellID::BLIND:
                        case SpellID::STONE_GAZE:
                        case SpellID::PARALYZE:
                     addattr(A::BLIND_LIKE_ATTACK, bonus->val);
-                break; case SpellID::WEAKNESS:
-                       case SpellID::DISEASE:
-                    addattr(A::WEAKENING_ATTACK, bonus->val);
-                break; case SpellID::DISPEL:
-                       case SpellID::DISPEL_HELPFUL_SPELLS:
-                    addattr(A::DISPELLING_ATTACK, bonus->val);
-                break; case SpellID::POISON:
-                    addattr(A::POISONOUS_ATTACK, bonus->val);
-                break; case SpellID::CURSE:
-                    addattr(A::CURSING_ATTACK, bonus->val);
-                break; case SpellID::AGE:
-                    addattr(A::AGING_ATTACK, bonus->val);
-                break; case SpellID::BIND:
-                    addattr(A::BINDING_ATTACK, bonus->val);
-                break; case SpellID::THUNDERBOLT:
-                    addattr(A::LIGHTNING_ATTACK, bonus->val);
-                }
-            break; case BonusType::SPELL_RESISTANCE_AURA:
-                addattr(A::SPELL_RESISTANCE_AURA, bonus->val);
-            break; case BonusType::LEVEL_SPELL_IMMUNITY:
-                setattr(A::LEVEL_SPELL_IMMUNITY, bonus->val);
-                if (bonus->val == 5)
-                    addattr(A::MAGIC_RESISTANCE, 100);
-            break; case BonusType::TWO_HEX_ATTACK_BREATH:
-                setattr(A::TWO_HEX_ATTACK_BREATH, 1);
-            break; case BonusType::SPELL_DAMAGE_REDUCTION:
-                addattr(A::FIRE_DAMAGE_REDUCTION, bonus->val);
-                addattr(A::WATER_DAMAGE_REDUCTION, bonus->val);
-                addattr(A::EARTH_DAMAGE_REDUCTION, bonus->val);
-                addattr(A::AIR_DAMAGE_REDUCTION, bonus->val);
-            break; case BonusType::NO_WALL_PENALTY:
-                setattr(A::NO_WALL_PENALTY, 1);
-            break; case BonusType::NON_LIVING:
-                   case BonusType::UNDEAD:
-                   case BonusType::SIEGE_WEAPON:
-                setattr(A::NON_LIVING, 1);
-                setattr(A::MIND_IMMUNITY, 1); // redundant?
-                nomorale = true;
 
-            break; case BonusType::BLOCKS_RETALIATION:
-                setattr(A::BLOCKS_RETALIATION, 1);
-            break; case BonusType::SPELL_LIKE_ATTACK:
-                switch(bonus->subtype.as<SpellID>()) {
-                break; case SpellID::FIREBALL: addattr(A::AREA_ATTACK, 1);
-                break; case SpellID::DEATH_CLOUD: setattr(A::AREA_ATTACK, 2);
+                /* 1.4% (2 creatures) */
+                // break; case SpellID::WEAKNESS:
+
+                /* 1.4% (2 creatures) */
+                // break; case SpellID::DISEASE:
+
+                /* 1.4% (2 creatures) */
+                // break; case SpellID::DISPEL:
+
+                /* 0.7% (1 creature) */
+                // break; case SpellID::POISON:
+
+                /* 2% (3 creatures) */
+                // break; case SpellID::CURSE:
+
+                /* 0.7% (1 creature) */
+                // break; case SpellID::AGE:
+
+                /* 0.7% (1 creature) */
+                // break; case SpellID::THUNDERBOLT:
                 }
-            break; case BonusType::THREE_HEADED_ATTACK:
-                setattr(A::THREE_HEADED_ATTACK, 1);
-            break; case BonusType::MIND_IMMUNITY:
-                setattr(A::MIND_IMMUNITY, 1);
-            break; case BonusType::FIRE_SHIELD:
-                addattr(A::FIRE_SHIELD, bonus->val);
-            break; case BonusType::LIFE_DRAIN:
-                setattr(A::LIFE_DRAIN, bonus->val);
-            break; case BonusType::DOUBLE_DAMAGE_CHANCE:
-                setattr(A::DOUBLE_DAMAGE_CHANCE, 1);
-            break; case BonusType::RETURN_AFTER_STRIKE:
-                setattr(A::RETURN_AFTER_STRIKE, 1);
-            // spellcasting not supported
-            // break; case BonusType::RANDOM_SPELLCASTER:
+
+            /* 4% (6 creatures); but requires extra "cast" action */
             // break; case BonusType::SPELLCASTER:
-            break; case BonusType::ENEMY_DEFENCE_REDUCTION:
-                setattr(A::ENEMY_DEFENCE_REDUCTION, bonus->val);
-            break; case BonusType::GENERAL_DAMAGE_REDUCTION: {
-                auto st = bonus->subtype.as<BonusCustomSubtype>();
-                if (st == BonusCustomSubtype::damageTypeAll) {
-                    addattr(A::MELEE_DAMAGE_REDUCTION, bonus->val);
-                    addattr(A::RANGED_DAMAGE_REDUCTION, bonus->val);
-                } else if (st == BonusCustomSubtype::damageTypeRanged) {
-                    addattr(A::RANGED_DAMAGE_REDUCTION, bonus->val);
-                } else if (st == BonusCustomSubtype::damageTypeMelee) {
-                    addattr(A::MELEE_DAMAGE_REDUCTION, bonus->val);
-                }
-            }
-            break; case BonusType::GENERAL_ATTACK_REDUCTION: {
-                auto st = bonus->subtype.as<BonusCustomSubtype>();
-                if (st == BonusCustomSubtype::damageTypeAll) {
-                    addattr(A::MELEE_ATTACK_REDUCTION, bonus->val);
-                    addattr(A::RANGED_ATTACK_REDUCTION, bonus->val);
-                } else if (st == BonusCustomSubtype::damageTypeRanged) {
-                    addattr(A::RANGED_ATTACK_REDUCTION, bonus->val);
-                } else if (st == BonusCustomSubtype::damageTypeMelee) {
-                    addattr(A::MELEE_ATTACK_REDUCTION, bonus->val);
-                }
-            }
-            break; case BonusType::DEFENSIVE_STANCE:
-                setattr(A::DEFENSIVE_STANCE, 1);
-            break; case BonusType::ATTACKS_ALL_ADJACENT:
-                setattr(A::ATTACKS_ALL_ADJACENT, 1);
-            break; case BonusType::NO_DISTANCE_PENALTY:
-                setattr(A::NO_DISTANCE_PENALTY, 1);
-            break; case BonusType::HYPNOTIZED:
-                setattr(A::HYPNOTIZED, bonus->duration == BonusDuration::PERMANENT ? 100 : bonus->turnsRemain);
-            break; case BonusType::NO_RETALIATION:
-                noretal = true;
-            break; case BonusType::MAGIC_MIRROR:
-                addattr(A::MAGIC_MIRROR, bonus->val);
-            break; case BonusType::ATTACKS_NEAREST_CREATURE:
-                setattr(A::ATTACKS_NEAREST_CREATURE, 1);
-            // break; case BonusType::FORGETFULL: TODO: check if covered by GENERAL_ATTACK_REDUCTION
-            break; case BonusType::NOT_ACTIVE:
-                if (cstack->unitType()->getId() != CreatureID::AMMO_CART)
-                    addattr(A::SLEEPING, (bonus->duration & BonusDuration::PERMANENT).any() ? 100 : bonus->turnsRemain);
-            break; case BonusType::NO_LUCK:
-                noluck = true;
-            break; case BonusType::NO_MORALE:
-                nomorale = true;
-            break; case BonusType::DEATH_STARE:
-                setattr(A::DEATH_STARE, 1);
-            break; case BonusType::POISON:
-                setattr(A::POISON, 1);
-            break; case BonusType::ACID_BREATH:
-                setattr(A::ACID_ATTACK, bonus->additionalInfo[0]);
-            break; case BonusType::REBIRTH:
-                setattr(A::REBIRTH, cstack->canCast());
-            // break; case BonusType::PERCENTAGE_DAMAGE_BOOST:
-            break; case BonusType::SPELL_SCHOOL_IMMUNITY: {
-                auto st = bonus->subtype.as<SpellSchool>();
-                if (st == SpellSchool::ANY) {
-                    addattr(A::AIR_DAMAGE_REDUCTION, 100);
-                    addattr(A::WATER_DAMAGE_REDUCTION, 100);
-                    addattr(A::FIRE_DAMAGE_REDUCTION, 100);
-                    addattr(A::EARTH_DAMAGE_REDUCTION, 100);
-                }
-                else if (st == SpellSchool::AIR) addattr(A::AIR_DAMAGE_REDUCTION, 100);
-                else if (st == SpellSchool::WATER) addattr(A::WATER_DAMAGE_REDUCTION, 100);
-                else if (st == SpellSchool::FIRE) addattr(A::FIRE_DAMAGE_REDUCTION, 100);
-                else if (st == SpellSchool::EARTH) addattr(A::EARTH_DAMAGE_REDUCTION, 100);
-            }
+
+            /* 2% (3 creatures) */
+            // break; case BonusType::SPELL_LIKE_ATTACK:
+            //     switch(bonus->subtype.as<SpellID>()) {
+            //     break; case SpellID::FIREBALL: addattr(A::AREA_ATTACK, 1);
+            //     break; case SpellID::DEATH_CLOUD: setattr(A::AREA_ATTACK, 2);
+            //     }
+
+            /* 2% (3 creatures) */
+            // XXX: being near a unicorn does NOT not give MAGIC_RESISTSNCE
+            //      bonus -- must check neighbouring hexes manually and add
+            //      the percentage here -- not worth the effort
+            // break; case BonusType::MAGIC_RESISTANCE:
+
+            /* 1.4% (2 creatures) all-around attack */
+            /* +0.7% (1 creature) 3-headed attack */
+            // break; case BonusType::THREE_HEADED_ATTACK: setattr(A::ATTACKS_ADJACENT, 1);
+            //        case BonusType::ATTACKS_ALL_ADJACENT: setattr(A::ATTACKS_ADJACENT, 2);
+
+            /* 1.4% (2 creatures) */
+            // break; case BonusType::CHARGE_IMMUNITY:
+
+            /* 1.4% (2 creatures) */
+            // break; case BonusType::JOUSTING:
+
+            /* 1.4% (2 creatures) */
+            // break; case BonusType::NO_WALL_PENALTY:
+
+            /* 1.4% (2 creatures) */
+            // break; case BonusType::RETURN_AFTER_STRIKE:
+
+            /* 0.02% (2 creatures per hate (1.4%) but only vs. 2 specific creatures (1.4%)) */
+            // break; case BonusType::HATE:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::FREE_SHOOTING:
+
+            /* 0.3% (4 creatures (2.7%) but only vs. 18 caster creatures (12%)) */
+            // break; case BonusType::SPELL_RESISTANCE_AURA:
+
+            /* 0.5% (6 creatures (4%) but only vs. 18 caster creatures (12%)) */
+            // break; case BonusType::LEVEL_SPELL_IMMUNITY:
+
+            /* <0.1% (4 creatures (2.7%) but only vs. 2 dmg-casting creatures (1.4%)) */
+            // break; case BonusType::SPELL_DAMAGE_REDUCTION:
+
+            /* <0.1% (2 creatures (1.4%) but only vs 2 mind-casting creatures (1.4%)) */
+            // break; case BonusType::MIND_IMMUNITY:
+
+            /* 1.4% (2 creatures) */
+            // break; case BonusType::ENEMY_DEFENCE_REDUCTION:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::FIRE_SHIELD:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::LIFE_DRAIN:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::DOUBLE_DAMAGE_CHANCE:
+
+            /* 0.7% (1 creature); but requires extra "cast" action */
+            // break; case BonusType::RANDOM_SPELLCASTER:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::NO_DISTANCE_PENALTY:
+
+            /* 0.1% (7 creatures can cast this spell with a 20% chance). Overlaps with QUEUE_POS */
+            // break; case BonusType::NOT_ACTIVE:
+            //     if (cstack->unitType()->getId() != CreatureID::AMMO_CART)
+            //         addattr(A::SLEEPING, (bonus->duration & BonusDuration::PERMANENT).any() ? 100 : bonus->turnsRemain);
+
+            /* <1% (petrified units, but only 2 other creatures may cast petrify wuth a small chance)) */
+            /* + <0.1% (shielded units, but only 1 other creature may cast shield with a small chance)) */
+            /* ? commanding hero with armorer skill */
+            // break; case BonusType::GENERAL_DAMAGE_REDUCTION: {
+            //     auto st = bonus->subtype.as<BonusCustomSubtype>();
+            //     if (st == BonusCustomSubtype::damageTypeAll) {
+            //         addattr(A::MELEE_DAMAGE_REDUCTION, bonus->val);
+            //         addattr(A::RANGED_DAMAGE_REDUCTION, bonus->val);
+            //     } else if (st == BonusCustomSubtype::damageTypeRanged) {
+            //         addattr(A::RANGED_DAMAGE_REDUCTION, bonus->val);
+            //     } else if (st == BonusCustomSubtype::damageTypeMelee) {
+            //         addattr(A::MELEE_DAMAGE_REDUCTION, bonus->val);
+            //     }
+            // }
+
+            /* <1% (blinded/paralyzed units, but only 3 other creature may cast petrify with a small chance)) */
+            /* <0.1% (shielded units, but only 1 other creature may cast (air) shield with a small chance)) */
+            // break; case BonusType::GENERAL_ATTACK_REDUCTION: {
+            //     auto st = bonus->subtype.as<BonusCustomSubtype>();
+            //     if (st == BonusCustomSubtype::damageTypeAll) {
+            //         addattr(A::MELEE_ATTACK_REDUCTION, bonus->val);
+            //         addattr(A::RANGED_ATTACK_REDUCTION, bonus->val);
+            //     } else if (st == BonusCustomSubtype::damageTypeRanged) {
+            //         addattr(A::RANGED_ATTACK_REDUCTION, bonus->val);
+            //     } else if (st == BonusCustomSubtype::damageTypeMelee) {
+            //         addattr(A::MELEE_ATTACK_REDUCTION, bonus->val);
+            //     }
+            // }
+
+            /* ? any defending unit, but it's mostly overlapping with defense skill */
+            // break; case BonusType::DEFENSIVE_STANCE:
+
+            /* no creature casts this spell */
+            // break; case BonusType::HYPNOTIZED:
+
+            /* <1% (blinded/paralyzed units, but only 3 other creatures may cast petrify with a small chance)) */
+            // break; case BonusType::NO_RETALIATION:
+
+            /* <1% only 1 creature may cast this spell with a small chance */
+            // break; case BonusType::MAGIC_MIRROR:
+
+            /* no creature casts this spell (berserk) */
+            // break; case BonusType::ATTACKS_NEAREST_CREATURE:
+
+            /* no creature casts this spell */
+            // break; case BonusType::FORGETFULL:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::DEATH_STARE:
+
+            /* <0.1% only 1 creature may cast this spell with a small chance */
+            // break; case BonusType::POISON:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::ACID_BREATH:
+
+            /* 0.7% (1 creature) */
+            // break; case BonusType::REBIRTH:
+
+            /* 0.1% (<5% per school, but only vs. <5 caster creatures per scoll) */
+            // break; case BonusType::SPELL_SCHOOL_IMMUNITY: {
+            //     auto st = bonus->subtype.as<SpellSchool>();
+            //     if (st == SpellSchool::ANY) {
+            //         addattr(A::AIR_DAMAGE_REDUCTION, 100);
+            //         addattr(A::WATER_DAMAGE_REDUCTION, 100);
+            //         addattr(A::FIRE_DAMAGE_REDUCTION, 100);
+            //         addattr(A::EARTH_DAMAGE_REDUCTION, 100);
+            //     }
+            //     else if (st == SpellSchool::AIR) addattr(A::AIR_DAMAGE_REDUCTION, 100);
+            //     else if (st == SpellSchool::WATER) addattr(A::WATER_DAMAGE_REDUCTION, 100);
+            //     else if (st == SpellSchool::FIRE) addattr(A::FIRE_DAMAGE_REDUCTION, 100);
+            //     else if (st == SpellSchool::EARTH) addattr(A::EARTH_DAMAGE_REDUCTION, 100);
+            // }
             break;
           }
         }
 
         if (nomorale) setattr(A::MORALE, 0);
-        if (noluck) setattr(A::MORALE, 0);
+        if (noluck) setattr(A::LUCK, 0);
+
+        shots = cstack->shots.available();
 
         for (int i=0; i<EI(A::_count); ++i) {
             auto a = A(i);
@@ -243,18 +283,18 @@ namespace MMAI::BAI::V3 {
             break; case A::X_COORD:             v = x;
             break; case A::SIDE:                v = cstack->unitSide();
             break; case A::QUANTITY:            v = cstack->getCount();
-            break; case A::ATTACK:              v = cstack->getAttack(attr(A::SHOOTER));
+            break; case A::ATTACK:              v = cstack->getAttack(shots > 0);
             break; case A::DEFENSE:             v = cstack->getDefense(false);
             break; case A::SHOTS:               v = cstack->shots.available();
-            break; case A::DMG_MIN:             v = cstack->getMinDamage(attr(A::SHOOTER));
-            break; case A::DMG_MAX:             v = cstack->getMaxDamage(attr(A::SHOOTER));
+            break; case A::DMG_MIN:             v = cstack->getMinDamage(shots > 0);
+            break; case A::DMG_MAX:             v = cstack->getMaxDamage(shots > 0);
             break; case A::HP:                  v = cstack->getMaxHealth();
             break; case A::HP_LEFT:             v = cstack->getFirstHPleft();
             break; case A::SPEED:               v = cstack->getMovementRange();
             break; case A::WAITED:              v = cstack->waitedThisTurn;
             break; case A::QUEUE_POS:           v = qpos;
             break; case A::RETALIATIONS_LEFT:   v = noretal ? 0 : cstack->counterAttacks.available();
-            break; case A::IS_WIDE:             v = cstack->doubleWide();
+            break; case A::IS_WIDE:             v = cstack->occupiedHex().isAvailable();
             break; case A::AI_VALUE:            v = cstack->unitType()->getAIValue();
             }
         }

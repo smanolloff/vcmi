@@ -19,17 +19,13 @@
 #include <stdexcept>
 #include <limits>
 
-#include "BAI/v3/encoder.h"
 #include "BAI/v3/hex.h"
 #include "Global.h"
-#include "battle/AccessibilityInfo.h"
 #include "battle/ReachabilityInfo.h"
 #include "common.h"
 #include "schema/base.h"
 #include "schema/v3/types.h"
 #include "schema/v3/constants.h"
-#include "./hexaction.h"
-#include "./hexactmask.h"
 #include "./battlefield.h"
 
 
