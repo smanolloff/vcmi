@@ -14,7 +14,6 @@
 #include "../lib/IGameCallback.h"
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
-#include "./stats.h"
 #include "vcmi/spells/Caster.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -65,31 +64,6 @@ public:
 	std::unique_ptr<QueriesProcessor> queries;
 	std::unique_ptr<TurnOrderProcessor> turnOrder;
 	std::unique_ptr<TurnTimerHandler> turnTimerHandler;
-
-	std::vector<const CGHeroInstance*> allheroes;
-	std::vector<const CGTownInstance*> alltowns;
-	std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
-	std::unique_ptr<Stats> stats;
-	std::mt19937 pseudorng;
-	std::random_device truerng;
-	// std::random_device _truerng = std::random_device();
-	bool useTrueRng = false;
-	ui32 lastSeed = 0;
-	int herocounter = 0;
-	int towncounter = 0;
-	int battlecounter = 0;
-	int redside = 0;
-	int maxBattles = 0;
-	int randomHeroes = 0;
-	int randomObstacles = 0;
-	int townChance = 0;
-	int warmachineChance = 0;
-	int swapSides = 0;
-	int statsPersistFreq = 0;
-	int statsSampling = 0;
-	std::string statsMode = "disabled";
-	std::string statsStorage = "-";
-	float statsScoreVar = 0.4;
 
 	//use enums as parameters, because doMove(sth, true, false, true) is not readable
 	enum EGuardLook {CHECK_FOR_GUARDS, IGNORE_GUARDS};

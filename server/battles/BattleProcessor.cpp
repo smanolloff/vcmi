@@ -7,9 +7,6 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
-#include "ArtifactUtils.h"
-#include "GameSettings.h"
-#include "Global.h"
 #include "StdInc.h"
 #include "BattleProcessor.h"
 
@@ -33,8 +30,6 @@
 #include "../../lib/networkPacks/PacksForClient.h"
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 #include "../../lib/CPlayerState.h"
-#include "constants/EntityIdentifiers.h"
-#include "mapObjects/CGTownInstance.h"
 
 BattleProcessor::BattleProcessor(CGameHandler * gameHandler)
 	: gameHandler(gameHandler)
@@ -88,9 +83,11 @@ void BattleProcessor::restartBattlePrimary(const BattleID & battleID, const CArm
 
 		lastBattleQuery->result = std::nullopt;
 
-		// swapping armies between battle replayes causes these asserts to fail
-		//assert(lastBattleQuery->belligerents[0] == battle->sides[0].armyObject);
-		//assert(lastBattleQuery->belligerents[1] == battle->sides[1].armyObject);
+#ifndef ENABLE_GYM
+		// gym's army swapping hack causes these asserts to fail
+		assert(lastBattleQuery->belligerents[0] == battle->sides[0].armyObject);
+		assert(lastBattleQuery->belligerents[1] == battle->sides[1].armyObject);
+#endif
 	}
 
 	BattleCancelled bc;
@@ -107,14 +104,15 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
 
-	const CArmedInstance *armies[2];
-	const CGHeroInstance *heroes[2];
+#ifdef ENABLE_GYM
+	gymplugin.startBattleHook(army1, army2, hero1, hero2);
+#endif
 
-	// std::tie(army1, army2, hero1, hero2) = gymPreBattleHook(army1, army2, hero1, hero2);
-	gymPreBattleHook(army1, army2, hero1, hero2);
+	const CArmedInstance *armies[2];
 
 	armies[0] = army1;
 	armies[1] = army2;
+	const CGHeroInstance*heroes[2];
 	heroes[0] = hero1;
 	heroes[1] = hero2;
 
@@ -153,125 +151,21 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 			if(heroes[i])
 				newBattleQuery->initialHeroMana[i] = heroes[i]->mana;
 
+#ifdef ENABLE_GYM
+			// TODO
+			gymplugin.startBattleHook2(newBattleQuery);
+#endif
+
 		gameHandler->queries->addQuery(newBattleQuery);
+
 	}
+
 
 	flowProcessor->onBattleStarted(*battle);
 }
 
-void BattleProcessor::gymPreBattleHook(const CArmedInstance *&army1, const CArmedInstance *&army2, const CGHeroInstance *&hero1, const CGHeroInstance *&hero2) {
-	auto gh = gameHandler;
-	bool swappingSides = (gh->swapSides > 0 && (gh->battlecounter % gh->swapSides) == 0);
-	// printf("battlecounter: %d, swapSides: %d, rem: %d\n", gh->battlecounter, gh->swapSides, gh->battlecounter % gh->swapSides);
-
-	gh->battlecounter++;
-
-	if (!gh->stats && gh->statsMode != "disabled") {
-		gh->stats = std::make_unique<Stats>(
-			gh->allheroes.size(),
-			gh->statsStorage,
-			gh->statsPersistFreq,
-			gh->statsSampling,
-			gh->statsScoreVar
-		);
-	}
-
-	if (swappingSides)
-		gh->redside = !gameHandler->redside;
-
-	// printf("gh->randomHeroes = %d\n", gh->randomHeroes);
-
-	if (gh->randomHeroes > 0) {
-		if (gh->stats && gh->statsSampling) {
-			auto [id1, id2] = gh->stats->sample2(gh->statsMode == "red" ? gh->redside : !gh->redside);
-			hero1 = gh->allheroes.at(id1);
-			hero2 = gh->allheroes.at(id2);
-			// printf("sampled: hero1: %d, hero2: %d (perspective: %s)\n", id1, id2, gh->statsMode.c_str());
-		} else {
-			if (gh->allheroes.size() % 2 != 0)
-				throw std::runtime_error("Heroes size must be even");
-
-			if (gh->herocounter % gh->allheroes.size() == 0) {
-				gh->herocounter = 0;
-
-				gh->useTrueRng
-					? std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->truerng)
-					: std::shuffle(gh->allheroes.begin(), gh->allheroes.end(), gh->pseudorng);
-
-				// for (int i=0; i<gh->allheroes.size(); i++)
-				// 	printf("gh->allheroes[%d] = %s\n", i, gh->allheroes.at(i)->getNameTextID().c_str());
-			}
-			// printf("gh->herocounter = %d\n", gh->herocounter);
-
-			// XXX: heroes must be different (objects must have different tempOwner)
-			hero1 = gh->allheroes.at(gh->herocounter);
-			hero2 = gh->allheroes.at(gh->herocounter+1);
-
-			if (gh->battlecounter % gh->randomHeroes == 0)
-				gh->herocounter += 2;
-		}
-
-		// XXX: adding war machines by index of pre-created per-hero artifact instances
-		// 0=ballista, 1=cart, 2=tent
-		auto machineslots = std::map<ArtifactID, ArtifactPosition> {
-			{ArtifactID::BALLISTA, ArtifactPosition::MACH1},
-			{ArtifactID::AMMO_CART, ArtifactPosition::MACH2},
-			{ArtifactID::FIRST_AID_TENT, ArtifactPosition::MACH3},
-		};
-
-		auto dist = std::uniform_int_distribution<>(0, 99);
-		for (auto h : {hero1, hero2}) {
-			for (auto m : gh->allmachines.at(h)) {
-		        auto it = machineslots.find(m->getTypeId());
-		        if (it == machineslots.end())
-		        	throw std::runtime_error("Could not find warmachine");
-
-	            auto apos = it->second;
-				auto roll = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
-				if (roll < gh->warmachineChance) {
-					if (!h->getArt(apos)) const_cast<CGHeroInstance*>(h)->putArtifact(apos, m);
-				} else {
-					if (h->getArt(apos)) const_cast<CGHeroInstance*>(h)->removeArtifact(apos);
-				}
-			}
-		}
-
-	}
-
-	// Set temp owner of both heroes to player0 and player1
-	// XXX: causes UB after battle, unless it is replayed (ok for training)
-	// XXX: if redside=1 (right), hero2 should have owner=0 (red)
-	//      if redside=0 (left), hero1 should have owner=0 (red)
-	const_cast<CGHeroInstance*>(hero1)->tempOwner = PlayerColor(gh->redside);
-	const_cast<CGHeroInstance*>(hero2)->tempOwner = PlayerColor(!gh->redside);
-
-	// printf("swappingSides: %d, redside: %d, hero1->tmpOwner: %d, hero2->tmpOwner: %d\n", swappingSides, gh->redside, hero1->tempOwner.getNum(), hero2->tempOwner.getNum());
-
-	// modification by reference
-	army1 = static_cast<const CArmedInstance*>(hero1);
-	army2 = static_cast<const CArmedInstance*>(hero2);
-}
-
 void BattleProcessor::startBattleI(const CArmedInstance *army1, const CArmedInstance *army2, int3 tile, bool creatureBank)
 {
-	// TODO: use map->allHeroes instead?
-	// XXX: assuming this is called only ONCE (no smart pointers for warmachines)
-	for (const auto &obj : gameHandler->gameState()->map->objects) {
-		if (obj->ID != Obj::HERO) continue;
-
-		auto h = dynamic_cast<const CGHeroInstance *>(obj.get());
-		gameHandler->allheroes.push_back(h);
-		gameHandler->allmachines[h] = {
-			ArtifactUtils::createNewArtifactInstance(ArtifactID::BALLISTA),
-			ArtifactUtils::createNewArtifactInstance(ArtifactID::AMMO_CART),
-			ArtifactUtils::createNewArtifactInstance(ArtifactID::FIRST_AID_TENT)
-		};
-	}
-
-	for (const auto &obj : gameHandler->gameState()->map->towns) {
-		gameHandler->alltowns.push_back(obj.get());
-	}
-
 	startBattlePrimary(army1, army2, tile,
 		army1->ID == Obj::HERO ? static_cast<const CGHeroInstance*>(army1) : nullptr,
 		army2->ID == Obj::HERO ? static_cast<const CGHeroInstance*>(army2) : nullptr,
@@ -294,36 +188,15 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	if (heroes[0] && heroes[0]->boat && heroes[1] && heroes[1]->boat)
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
-	auto gh = gameHandler;
+	ui32 seed = 0;
 
-	if (gh->randomObstacles > 0 && (gh->battlecounter % gh->randomObstacles == 0)) {
-		gh->lastSeed = gh->useTrueRng
-			? gh->truerng()
-			: gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-	}
-
-	if (gh->townChance > 0) {
-		auto dist = std::uniform_int_distribution<>(0, 99);
-		auto roll = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
-
-		if (roll < gh->townChance) {
-			if (gh->towncounter % gh->alltowns.size() == 0) {
-				gh->towncounter = 0;
-				gh->useTrueRng
-					? std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), gh->truerng)
-					: std::shuffle(gh->alltowns.begin(), gh->alltowns.end(), gh->pseudorng);
-			}
-
-			town = gh->alltowns.at(gh->towncounter);
-			++gh->towncounter;
-		} else {
-			town = nullptr;
-		}
-	}
+#ifdef ENABLE_GYM
+	gymplugin.gymSetupBattleHook(town, seed);
+#endif
 
 	//send info about battles
 	BattleStart bs;
-	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, creatureBank, town, gh->lastSeed);
+	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, creatureBank, town, seed);
 	bs.battleID = gameHandler->gameState()->nextBattleID;
 
 	engageIntoBattle(bs.info->sides[0].color);
@@ -337,10 +210,11 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
 
-	if (VLC->settings()->getBoolean(EGameSettings::COMBAT_INFINITE_QUICK_COMBAT_REPLAYS))
-		bs.info->replayAllowed = true;
-	else
-		bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
+#ifdef ENABLE_GYM
+    bs.info->replayAllowed = true;
+#else
+    bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
+#endif
 
 	gameHandler->sendAndApply(&bs);
 

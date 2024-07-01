@@ -541,25 +541,11 @@ void CGameHandler::reinitScripting()
 
 void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTracking)
 {
-	maxBattles = si->maxBattles;
-	randomHeroes = si->randomHeroes;
-	randomObstacles = si->randomObstacles;
-	townChance = si->townChance;
-	warmachineChance = si->warmachineChance;
-	swapSides = si->swapSides;
-	statsMode = si->statsMode;
-	statsStorage = si->statsStorage;
-	statsPersistFreq = si->statsPersistFreq;
-	statsSampling = si->statsSampling;
-	statsScoreVar = si->statsScoreVar;
-	useTrueRng = si->trueRng;
-
 	if (si->seedToBeUsed == 0)
 	{
 		si->seedToBeUsed = CRandomGenerator::getDefault().nextInt();
 	}
 
-	pseudorng = std::mt19937(si->seedToBeUsed);
 	CMapService mapService;
 	gs = new CGameState();
 	gs->preInit(VLC, this);

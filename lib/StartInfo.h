@@ -136,18 +136,9 @@ struct DLL_LINKAGE StartInfo
 
 	std::shared_ptr<CampaignState> campState;
 
-	int maxBattles = 0;
-	int randomHeroes = 0;
-	int randomObstacles = 0;
-	int townChance = 0;
-	int warmachineChance = 0;
-	int swapSides = 0;
-	int statsSampling = 0;
-	int statsPersistFreq = 0;
-	std::string statsStorage = "-";
-	std::string statsMode = "red";
-	float statsScoreVar = 0.4;
-	bool trueRng = false;
+	#ifdef ENABLE_GYM
+	Gym::GymInfo gyminfo;
+	#endif
 
 	PlayerSettings & getIthPlayersSettings(const PlayerColor & no);
 	const PlayerSettings & getIthPlayersSettings(const PlayerColor & no) const;

@@ -686,8 +686,10 @@ if(ENABLE_TEST)
 	add_subdirectory(test)
 endif()
 
-if(ENABLE_GYMCLIENT)
-	add_subdirectory(gymclient)
+if(ENABLE_GYM)
+	add_definitions(-DENABLE_GYM)
+	add_subdirectory(client/gym)
+	add_subdirectory(server/gym)
 endif()
 
 #######################################

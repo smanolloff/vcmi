@@ -243,19 +243,9 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
 
-	si->maxBattles = settings["server"]["maxBattles"].Integer();
-	si->seedToBeUsed = settings["server"]["seed"].Integer();
-	si->randomHeroes = settings["server"]["randomHeroes"].Integer();
-	si->randomObstacles = settings["server"]["randomObstacles"].Integer();
-	si->townChance = settings["server"]["townChance"].Integer();
-	si->warmachineChance = settings["server"]["warmachineChance"].Integer();
-	si->swapSides = settings["server"]["swapSides"].Integer();
-	si->statsSampling = settings["server"]["statsSampling"].Integer();
-	si->statsPersistFreq = settings["server"]["statsPersistFreq"].Integer();
-	si->statsStorage = settings["server"]["statsStorage"].String();
-	si->statsMode = settings["server"]["statsMode"].String();
-	si->statsScoreVar = settings["server"]["statsScoreVar"].Float();
-	si->trueRng = settings["server"]["trueRng"].Bool();
+#ifdef ENABLE_GYM
+	si->gyminfo.init(settings);
+#endif
 
 	logNetwork->trace("\tStarting local server");
 	auto srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
