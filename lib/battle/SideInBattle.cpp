@@ -27,7 +27,7 @@ void SideInBattle::init(const CGHeroInstance * Hero, const CArmedInstance * Army
 			color = PlayerColor::NEUTRAL;
 			break;
 		default:
-			color = armyObject->getOwner();
+			color = armyObject->tempOwner;
 	}
 
 	if(color == PlayerColor::UNFLAGGABLE)

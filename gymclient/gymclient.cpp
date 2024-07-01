@@ -494,6 +494,9 @@ void processArguments(
         baggage->f_getActionRed = getaction;
         baggage->f_getValueRed = getvalue;
         baggage->versionRed = version;
+    } else if (redAI == AI_MMAI_SCRIPTED_SUMMONER) {
+        baggage->battleAINameRed = "MMAI";
+        baggage->versionRed = MMAI_RESERVED_VERSION_SUMMONER;
     } else if (redAI == AI_STUPIDAI) {
         baggage->battleAINameRed = "StupidAI";
     } else if (redAI == AI_BATTLEAI) {
@@ -521,6 +524,9 @@ void processArguments(
         baggage->f_getActionBlue = getaction;
         baggage->f_getValueBlue = getvalue;
         baggage->versionBlue = version;
+    } else if (blueAI == AI_MMAI_SCRIPTED_SUMMONER) {
+        baggage->battleAINameBlue = "MMAI";
+        baggage->versionBlue = MMAI_RESERVED_VERSION_SUMMONER;
     } else if (blueAI == AI_STUPIDAI) {
         baggage->battleAINameBlue = "StupidAI";
     } else if (blueAI == AI_BATTLEAI) {

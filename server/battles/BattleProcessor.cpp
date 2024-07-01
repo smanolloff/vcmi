@@ -303,9 +303,8 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	}
 
 	if (gh->townChance > 0) {
-		int roll;
 		auto dist = std::uniform_int_distribution<>(0, 99);
-		roll = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
+		auto roll = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
 
 		if (roll < gh->townChance) {
 			if (gh->towncounter % gh->alltowns.size() == 0) {

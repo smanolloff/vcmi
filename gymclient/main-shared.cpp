@@ -229,10 +229,10 @@ Args parse_args(int argc, char * argv[])
 
     if (benchmark) {
         if (
-            (omap.at("red-ai") == "StupidAI" && omap.at("blue-ai") == "StupidAI") ||
-            (omap.at("red-ai") == "StupidAI" && omap.at("blue-ai") == "BattleAI") ||
-            (omap.at("red-ai") == "BattleAI" && omap.at("blue-ai") == "StupidAI") ||
-            (omap.at("red-ai") == "BattleAI" && omap.at("blue-ai") == "BattleAI")
+            omap.at("red-ai") != "MMAI_USER" &&
+            omap.at("red-ai") != "MMAI_MODEL" &&
+            omap.at("blue-ai") != "MMAI_USER" &&
+            omap.at("blue-ai") != "MMAI_MODEL"
         ) {
             printf("--benchmark requires at least one AI of type MMAI_USER or MMAI_MODEL.\n");
             exit(1);

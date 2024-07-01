@@ -83,6 +83,11 @@ namespace MMAI::AAI {
             info("Will play with " + hero->getNameTextID() + " on the right side (DEFENDER) in this battle");
         }
 
+        // tempOwner is changed server-side to enable army swaps
+        // => update tempOwner here as well (each side is responsible to do that)
+        // This prevents issues like battle->playerToSide() returning the wrong side
+        const_cast<CGHeroInstance*>(hero)->tempOwner = PlayerColor(side);
+
         // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON
         //      The gym maps use the hero's experience as a unique ref
         // debug("(battleStart) hero1->tempOwner: " + std::to_string(hero1->tempOwner));

@@ -2,10 +2,14 @@ set(MMAI_FILES
   AAI/AAI.cpp
   AAI/AAI.h
 
+
   BAI/base.cpp
   BAI/base.h
   BAI/router.cpp
   BAI/router.h
+  BAI/scripted/summoner.cpp
+  BAI/scripted/summoner.h
+
   BAI/v1/BAI.cpp
   BAI/v1/BAI.h
   BAI/v1/action.cpp

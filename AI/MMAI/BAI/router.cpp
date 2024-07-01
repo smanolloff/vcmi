@@ -19,6 +19,7 @@
 #include "BAI/router.h"
 #include "BAI/base.h"
 #include "common.h"
+#include "scripted/summoner.h"
 
 namespace MMAI::BAI {
     Router::Router() {
@@ -38,7 +39,16 @@ namespace MMAI::BAI {
         ASSERT(baggage_.has_value(), "baggage has no value");
         ASSERT(baggage_.type() == typeid(Schema::Baggage*), "baggage of unexpected type");
         auto baggage = std::any_cast<Schema::Baggage*>(baggage_);
-        bai = Base::Create(colorname, baggage, ENV, CB);
+
+        auto version = colorname == "red" ? baggage->versionRed : baggage->versionBlue;
+
+        switch (version) {
+        break; case MMAI_RESERVED_VERSION_SUMMONER:
+            bai = std::make_unique<Scripted::Summoner>();
+            bai->initBattleInterface(ENV, CB);
+        break; default:
+            bai = Base::Create(colorname, baggage, ENV, CB);
+        }
     }
 
     void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) {

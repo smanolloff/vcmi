@@ -48,6 +48,8 @@
 #  define MMAI_LINKAGE MMAI_IMPORT
 #endif
 
+#define MMAI_RESERVED_VERSION_SUMMONER -1
+
 namespace MMAI::Schema {
     #define EI(enum_value) static_cast<int>(enum_value)
 

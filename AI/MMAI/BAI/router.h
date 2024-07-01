@@ -26,7 +26,7 @@ namespace MMAI::BAI {
         Router();
         ~Router() override;
 
-        std::unique_ptr<Base> bai;  // calls will be delegated to this object
+        std::unique_ptr<CBattleGameInterface> bai;  // calls will be delegated to this object
 
         /*
          * Handled locally (not delegated)
