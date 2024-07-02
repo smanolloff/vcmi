@@ -3,15 +3,17 @@
 #include "Global.h"
 #include "GymInfo.h"
 #include "lib/mapObjects/CArmedInstance.h"
-#include "mapObjects/CGTownInstance.h"
-#include "stats.h"
+#include "lib/mapObjects/CGHeroInstance.h"
+#include "lib/mapObjects/CGTownInstance.h"
+#include "server/queries/BattleQueries.h"
+#include "Stats.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
 namespace Gym {
-    class ServerPlugin {
+    class DLL_LINKAGE ServerPlugin {
     public:
-        ServerPlugin(CGameHandler * gh, GymInfo & gi);
+        ServerPlugin(CGameState * gs, GymInfo & gi);
 
         void setupBattleHook(const CGTownInstance *& town, ui32 & seed);
 
@@ -22,6 +24,14 @@ namespace Gym {
             const CGHeroInstance *&hero2
         );
 
+        void startBattleHook2(const CGHeroInstance* heroes[2], std::shared_ptr<CBattleQuery> q);
+
+        void endBattleHook(
+            BattleResult * br,
+            const CGHeroInstance * heroAttacker,
+            const CGHeroInstance * heroDefender
+        );
+
         // void preBattleHook1(
         //     const CArmedInstance *& army1,
         //     const CArmedInstance *& army2,
@@ -30,23 +40,19 @@ namespace Gym {
         // );
 
     private:
-        CGameHandler* gh;
+        CGameState * gs;
         const GymInfo gi;
-        const std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes;
-        const std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
-        const std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
-        const std::unique_ptr<Stats> stats;
-        const std::mt19937 pseudorng;
+        std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes;
+        std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
+        std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
+        std::unique_ptr<Stats> stats;
+        std::mt19937 pseudorng;
         std::random_device truerng;
 
-        ui32 lastSeed = 0;
         int herocounter = 0;
         int towncounter = 0;
         int battlecounter = 0;
         int redside = 0;
-        std::string statsMode = "disabled";
-        std::string statsStorage = "-";
-        float statsScoreVar = 0.4;
     };
 }
 

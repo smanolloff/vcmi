@@ -20,13 +20,15 @@ class VCMI(ConanFile):
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
         "llvm-openmp/17.0.6",
-        "sqlite3/[~3.45.3]"
     ]
     _nullkillerAIRequires = [
         "onetbb/[^2021.3]",
     ]
+    _gymRequires = [
+        "sqlite3/[~3.45.3]"
+    ]
 
-    requires = list(set(_libRequires + _clientRequires + _nullkillerAIRequires))
+    requires = list(set(_libRequires + _clientRequires + _nullkillerAIRequires + _gymRequires))
 
     options = {
         "default_options_of_requirements": [True, False],

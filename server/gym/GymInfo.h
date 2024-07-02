@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CConfigHandler.h"
+#include "StdInc.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -21,6 +22,9 @@ namespace Gym {
             statsMode = settings["server"]["statsMode"].String();
             statsScoreVar = settings["server"]["statsScoreVar"].Float();
             trueRng = settings["server"]["trueRng"].Bool();
+            minMana = settings["server"]["minMana"].Integer(); // TODO
+            maxMana = settings["server"]["maxMana"].Integer(); // TODO
+
         }
 
         int maxBattles = 0;
@@ -36,6 +40,8 @@ namespace Gym {
         std::string statsMode = "red";
         float statsScoreVar = 0.4;
         bool trueRng = false;
+        int minMana = 0;
+        int maxMana = 0;
     };
 }
 

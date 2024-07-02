@@ -22,8 +22,6 @@ set(vcmiservercommon_SRCS
 		NetPacksServer.cpp
 		NetPacksLobbyServer.cpp
 		TurnTimerHandler.cpp
-
-		stats.cpp
 )
 
 set(vcmiservercommon_HEADERS
@@ -50,8 +48,6 @@ set(vcmiservercommon_HEADERS
 		LobbyNetPackVisitors.h
 		ServerNetPackVisitors.h
 		TurnTimerHandler.h
-
-		stats.h
 )
 
 find_package(SQLite3 REQUIRED)
@@ -64,6 +60,11 @@ set(vcmiservercommon_LIBS vcmi)
 
 if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	set(vcmiservercommon_LIBS execinfo ${vcmiservercommon_LIBS})
+endif()
+
+if(ENABLE_GYM)
+	add_dependencies(vcmiservercommon gymserverplugin)
+	set(vcmiservercommon_LIBS gymserverplugin ${vcmiservercommon_LIBS})
 endif()
 
 target_link_libraries(vcmiservercommon PRIVATE ${vcmiservercommon_LIBS} minizip::minizip SQLite::SQLite3)

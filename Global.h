@@ -102,6 +102,15 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 #  define STRONG_INLINE inline
 #endif
 
+/* ---------------------------------------------------------------------------- */
+/* A macro which expands to nothing if ENABLE_GYM is not set */
+/* ---------------------------------------------------------------------------- */
+#ifdef ENABLE_GYM
+#define GYM(statement) statement
+#else
+#define GYM(statement)
+#endif
+
 #define _USE_MATH_DEFINES
 
 #include <algorithm>

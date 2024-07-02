@@ -16,6 +16,8 @@
 #include "../lib/ScriptHandler.h"
 #include "vcmi/spells/Caster.h"
 
+#include GYM("server/gym/ServerPlugin.h")
+
 VCMI_LIB_NAMESPACE_BEGIN
 
 struct SideInBattle;
@@ -85,6 +87,8 @@ public:
 	vstd::CLoggerBase * logger() const override;
 	events::EventBus * eventBus() const override;
 	CVCMIServer * gameLobby() const;
+
+	GYM(std::shared_ptr<Gym::ServerPlugin> gymplugin);
 
 	bool isValidObject(const CGObjectInstance *obj) const;
 	bool isBlockedByQueries(const CPack *pack, PlayerColor player);

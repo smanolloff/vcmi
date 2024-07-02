@@ -4,11 +4,12 @@
 #include <vector>
 #include <map>
 #include <sqlite3.h>
+#include "StdInc.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
 namespace Gym {
-    class Stats {
+    class DLL_LINKAGE Stats {
     public:
         using N_WINS = int;
         using N_GAMES = int;

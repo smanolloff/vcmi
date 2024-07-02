@@ -14,7 +14,7 @@
 // limitations under the License.
 // =============================================================================
 
-#include "gymclient/gymclient.h"
+#include "gymclient.h"
 #include "main.h"
 
 int main(int argc, char * argv[]) {

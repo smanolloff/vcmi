@@ -104,9 +104,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
 
-#ifdef ENABLE_GYM
-	gymplugin.startBattleHook(army1, army2, hero1, hero2);
-#endif
+	GYM(gameHandler->gymplugin->startBattleHook1(army1, army2, hero1, hero2));
 
 	const CArmedInstance *armies[2];
 
@@ -151,11 +149,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 			if(heroes[i])
 				newBattleQuery->initialHeroMana[i] = heroes[i]->mana;
 
-#ifdef ENABLE_GYM
-			// TODO
-			gymplugin.startBattleHook2(newBattleQuery);
-#endif
-
+		GYM(gameHandler->gymplugin->startBattleHook2(heroes, newBattleQuery));
 		gameHandler->queries->addQuery(newBattleQuery);
 
 	}
@@ -190,9 +184,7 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 
 	ui32 seed = 0;
 
-#ifdef ENABLE_GYM
-	gymplugin.gymSetupBattleHook(town, seed);
-#endif
+	GYM(gameHandler->gymplugin->setupBattleHook(town, seed));
 
 	//send info about battles
 	BattleStart bs;
@@ -210,11 +202,8 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
 
-#ifdef ENABLE_GYM
-    bs.info->replayAllowed = true;
-#else
-    bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
-#endif
+	bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
+	GYM(bs.info->replayAllowed = true);
 
 	gameHandler->sendAndApply(&bs);
 

@@ -16,6 +16,8 @@
 #include "ExtraOptionsInfo.h"
 #include "campaign/CampaignConstants.h"
 
+#include GYM("server/gym/ServerPlugin.h")
+
 VCMI_LIB_NAMESPACE_BEGIN
 
 class CMapGenOptions;
@@ -136,9 +138,7 @@ struct DLL_LINKAGE StartInfo
 
 	std::shared_ptr<CampaignState> campState;
 
-	#ifdef ENABLE_GYM
-	Gym::GymInfo gyminfo;
-	#endif
+	GYM(Gym::GymInfo gyminfo);
 
 	PlayerSettings & getIthPlayersSettings(const PlayerColor & no);
 	const PlayerSettings & getIthPlayersSettings(const PlayerColor & no) const;

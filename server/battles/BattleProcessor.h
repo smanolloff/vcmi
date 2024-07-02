@@ -40,10 +40,6 @@ class BattleProcessor : boost::noncopyable
 	std::unique_ptr<BattleFlowProcessor> flowProcessor;
 	std::unique_ptr<BattleResultProcessor> resultProcessor;
 
-#ifdef ENABLE_GYM
-	Gym::ServerPlugin gymplugin;
-#endif
-
 	void updateGateState(const CBattleInfoCallback & battle);
 	void engageIntoBattle(PlayerColor player);
 

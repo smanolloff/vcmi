@@ -15,6 +15,7 @@
 #include "ServerNetPackVisitors.h"
 #include "ServerSpellCastEnvironment.h"
 #include "battles/BattleProcessor.h"
+#include "gym/ServerPlugin.h"
 #include "processors/HeroPoolProcessor.h"
 #include "processors/PlayerMessageProcessor.h"
 #include "processors/TurnOrderProcessor.h"
@@ -564,6 +565,8 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 		if(elem)
 			heroPool->getHeroSkillsRandomGenerator(elem->getHeroType()); // init RMG seed
 	}
+
+	GYM(gymplugin = std::make_unique<Gym::ServerPlugin>(gs, si->gyminfo));
 
 	reinitScripting();
 }

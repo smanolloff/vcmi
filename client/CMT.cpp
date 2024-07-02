@@ -106,7 +106,7 @@ static void prog_help(const po::options_description &opts)
 	std::cout << opts;
 }
 
-#ifdef ENABLE_GYMCLIENT
+#ifdef ENABLE_GYM
 int nomain(int argc, char * argv[])
 #elif defined(VCMI_WINDOWS) && !defined(__GNUC__) && defined(VCMI_WITH_DEBUG_CONSOLE)
 int wmain(int argc, wchar_t* argv[])

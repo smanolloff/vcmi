@@ -1,20 +1,20 @@
-#pragma once
-
 #include "ServerPlugin.h"
 #include "ArtifactUtils.h"
-#include "CGameHandler.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
 #include "mapObjects/CGTownInstance.h"
 #include "mapping/CMap.h"
+#include "networkPacks/PacksForClientBattle.h"
+#include "server/CGameHandler.h"
+#include "server/CVCMIServer.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
 namespace Gym {
     // static
-    std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameHandler * gh) {
+    std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
-        for (const auto &h : gh->gameState()->map->heroesOnMap) {
+        for (const auto &h : gs->map->heroesOnMap) {
             res.insert({h, {
                 ArtifactUtils::createNewArtifactInstance(ArtifactID::BALLISTA),
                 ArtifactUtils::createNewArtifactInstance(ArtifactID::AMMO_CART),
@@ -25,9 +25,9 @@ namespace Gym {
     }
 
     // static
-    std::unique_ptr<Stats> InitStats(CGameHandler * gh, GymInfo gi) {
+    std::unique_ptr<Stats> InitStats(CGameState * gs, GymInfo gi) {
         return gi.statsMode == "disabled" ? nullptr : std::make_unique<Stats>(
-            gh->gameState()->map->heroesOnMap.size(),
+            gs->map->heroesOnMap.size(),
             gi.statsStorage,
             gi.statsPersistFreq,
             gi.statsSampling,
@@ -35,14 +35,14 @@ namespace Gym {
         );
     }
 
-    ServerPlugin::ServerPlugin(CGameHandler * gh_, GymInfo & gi_)
-    : gh(gh_)
-    , gi(gi_)
-    , allheroes(gh_->gameState()->map->heroesOnMap)
-    , alltowns(gh_->gameState()->map->towns)
-    , allmachines(InitWarMachines(gh_))
-    , stats(InitStats(gh_, gi))
-    , pseudorng(std::mt19937(gi_.seed))
+    ServerPlugin::ServerPlugin(CGameState * gs, GymInfo & gi)
+    : gs(gs)
+    , gi(gi)
+    , allheroes(gs->map->heroesOnMap)
+    , alltowns(gs->map->towns)
+    , allmachines(InitWarMachines(gs))
+    , stats(InitStats(gs, gi))
+    , pseudorng(std::mt19937(gi.seed))
     , truerng(std::random_device())
     {}
 
@@ -50,7 +50,7 @@ namespace Gym {
         if (gi.randomObstacles > 0 && (battlecounter % gi.randomObstacles == 0)) {
             seed = gi.trueRng // modification by reference
                 ? truerng()
-                : gh->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+                : gs->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
         }
 
         if (gi.townChance > 0) {
@@ -170,20 +170,39 @@ namespace Gym {
 
 
 
-    // startBattleIHook
-    //
-    // for (const auto &h : gameHandler->gameState()->map->heroesOnMap) {
-    //     gameHandler->allheroes.push_back(h);
-    //     gameHandler->allmachines[h] = {
-    //         ArtifactUtils::createNewArtifactInstance(ArtifactID::BALLISTA),
-    //         ArtifactUtils::createNewArtifactInstance(ArtifactID::AMMO_CART),
-    //         ArtifactUtils::createNewArtifactInstance(ArtifactID::FIRST_AID_TENT)
-    //     };
-    // }
+    void ServerPlugin::startBattleHook2(const CGHeroInstance* heroes[2], std::shared_ptr<CBattleQuery> q) {
+        auto dist = std::uniform_int_distribution<>(gi.minMana, gi.maxMana);
 
-    // for (const auto &obj : gameHandler->gameState()->map->towns) {
-    //     gameHandler->alltowns.push_back(obj.get());
-    // }
+        for(int i : {0, 1}) {
+            if(heroes[i]) {
+                auto roll = gi.trueRng ? dist(truerng) : dist(pseudorng);
+                q->initialHeroMana[i] = roll;
+            }
+        }
+    }
+
+    void ServerPlugin::endBattleHook(
+        BattleResult * br,
+        const CGHeroInstance * heroAttacker,
+        const CGHeroInstance * heroDefender
+    ) {
+        // don't record stats for retreats (i.e. env resets)
+        if (stats && br->result == EBattleResult::NORMAL) {
+            stats->dataadd(
+                redside,
+                br->winner == BattleSide::ATTACKER,
+                heroAttacker->exp,  // training map is designed such that exp = hero ID
+                heroDefender->exp
+            );
+        }
+
+        if (gi.maxBattles && battlecounter >= gi.maxBattles) {
+            std::cout << "Hit battle limit of " << gi.maxBattles << ", will quit now...\n";
+            if (stats) stats->dbpersist();
+            exit(0); // FIXME: this causes OS errors (abrupt program termination)
+            return;
+        }
+    }
 
 }
 

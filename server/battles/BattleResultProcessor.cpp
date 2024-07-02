@@ -256,29 +256,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	if(heroDefender)
 		battleResult->exp[1] = heroDefender->calculateXp(battleResult->exp[1]);
 
-	// if(heroAttacker)
-	// 	logGlobal->error("ATTACKER tmpOwner was: " + std::to_string(heroAttacker->tempOwner));
-	// if(heroDefender)
-	// 	logGlobal->error("DEFENDER tmpOwner was: " + std::to_string(heroDefender->tempOwner));
-	// logGlobal->error("redside was: " + std::to_string(redside));
-
-	// don't record stats for retreats (i.e. env resets)
-	if (gameHandler->stats && battleResult->result == EBattleResult::NORMAL) {
-		gameHandler->stats->dataadd(
-			gameHandler->redside,
-			battleResult->winner == BattleSide::ATTACKER,
-			heroAttacker->exp,  // training map is designed such that exp = hero ID
-			heroDefender->exp
-		);
-	}
-
-	if (gameHandler->maxBattles && gameHandler->battlecounter >= gameHandler->maxBattles) {
-		std::cout << "Hit battle limit of " << gameHandler->maxBattles << ", will quit now...\n";
-		if (gameHandler->stats) gameHandler->stats->dbpersist();
-		gameHandler->gameLobby()->setState(EServerState::SHUTDOWN);
-		exit(0); // FIXME
-		return;
-	}
+	GYM(gameHandler->gymplugin->endBattleHook(battleResult, heroAttacker, heroDefender));
 
 	auto battleQuery = std::dynamic_pointer_cast<CBattleQuery>(gameHandler->queries->topQuery(battle.sideToPlayer(0)));
 	if(!battleQuery)

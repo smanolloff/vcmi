@@ -243,9 +243,7 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
 
-#ifdef ENABLE_GYM
-	si->gyminfo.init(settings);
-#endif
+	GYM(si->gyminfo.init(settings));
 
 	logNetwork->trace("\tStarting local server");
 	auto srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
