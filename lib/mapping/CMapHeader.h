@@ -207,13 +207,13 @@ class __attribute__((visibility("default"))) CMapHeader
 	void setupEvents();
 public:
 
-	inline static const int MAP_SIZE_SMALL = 36;
-	inline static const int MAP_SIZE_MIDDLE = 72;
-	inline static const int MAP_SIZE_LARGE = 108;
-	inline static const int MAP_SIZE_XLARGE = 144;
-	inline static const int MAP_SIZE_HUGE = 180;
-	inline static const int MAP_SIZE_XHUGE = 216;
-	inline static const int MAP_SIZE_GIANT = 252;
+	static constexpr int MAP_SIZE_SMALL = 36;
+	static constexpr int MAP_SIZE_MIDDLE = 72;
+	static constexpr int MAP_SIZE_LARGE = 108;
+	static constexpr int MAP_SIZE_XLARGE = 144;
+	static constexpr int MAP_SIZE_HUGE = 180;
+	static constexpr int MAP_SIZE_XHUGE = 216;
+	static constexpr int MAP_SIZE_GIANT = 252;
 
 	CMapHeader();
 	virtual ~CMapHeader();

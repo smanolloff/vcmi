@@ -434,14 +434,15 @@ CLevelWindow::CLevelWindow(const CGHeroInstance * hero, PrimarySkill pskill, std
 	skillValue = std::make_shared<CLabel>(192, 253, FONT_MEDIUM, ETextAlignment::CENTER, Colors::WHITE, CGI->generaltexth->primarySkillNames[static_cast<int>(pskill)] + " +1");
 }
 
-
-CLevelWindow::~CLevelWindow()
+void CLevelWindow::close()
 {
 	//FIXME: call callback if there was nothing to select?
 	if (box && box->selectedIndex() != -1)
 		cb(box->selectedIndex());
 
 	LOCPLINT->showingDialog->setFree();
+
+	CWindowObject::close();
 }
 
 CTavernWindow::CTavernWindow(const CGObjectInstance * TavernObj, const std::function<void()> & onWindowClosed)
@@ -490,14 +491,21 @@ CTavernWindow::CTavernWindow(const CGObjectInstance * TavernObj, const std::func
 	}
 	else if(LOCPLINT->cb->howManyHeroes(true) >= CGI->settings()->getInteger(EGameSettings::HEROES_PER_PLAYER_TOTAL_CAP))
 	{
+		MetaString message;
+		message.appendTextID("core.tvrninfo.1");
+		message.replaceNumber(LOCPLINT->cb->howManyHeroes(true));
+
 		//Cannot recruit. You already have %d Heroes.
-		recruit->addHoverText(EButtonState::NORMAL, boost::str(boost::format(CGI->generaltexth->tavernInfo[1]) % LOCPLINT->cb->howManyHeroes(true)));
+		recruit->addHoverText(EButtonState::NORMAL, message.toString());
 		recruit->block(true);
 	}
 	else if(LOCPLINT->cb->howManyHeroes(false) >= CGI->settings()->getInteger(EGameSettings::HEROES_PER_PLAYER_ON_MAP_CAP))
 	{
-		//Cannot recruit. You already have %d Heroes.
-		recruit->addHoverText(EButtonState::NORMAL, boost::str(boost::format(CGI->generaltexth->tavernInfo[1]) % LOCPLINT->cb->howManyHeroes(false)));
+		MetaString message;
+		message.appendTextID("core.tvrninfo.1");
+		message.replaceNumber(LOCPLINT->cb->howManyHeroes(false));
+
+		recruit->addHoverText(EButtonState::NORMAL, message.toString());
 		recruit->block(true);
 	}
 	else if(dynamic_cast<const CGTownInstance *>(TavernObj) && dynamic_cast<const CGTownInstance *>(TavernObj)->visitingHero)
