@@ -17,10 +17,7 @@
 #pragma once
 #include <string>
 #include <functional>
-
-#ifndef MMAI_EXPORT_LOADED
 #include "AI/MMAI/schema/schema.h"
-#endif
 
 constexpr auto AI_STUPIDAI = "StupidAI";
 constexpr auto AI_BATTLEAI = "BattleAI";

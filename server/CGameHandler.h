@@ -15,7 +15,7 @@
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
 
-#include GYM("server/gym/ServerPlugin.h")
+#include ML("server/ML/ServerPlugin.h")
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -80,7 +80,7 @@ public:
 
 	SpellCastEnvironment * spellEnv;
 
-	GYM(std::shared_ptr<Gym::ServerPlugin> gymplugin);
+	ML(std::shared_ptr<ML::ServerPlugin> mlplugin);
 
 	const Services * services() const override;
 	const BattleCb * battle(const BattleID & battleID) const override;

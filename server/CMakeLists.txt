@@ -59,9 +59,9 @@ if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	set(vcmiservercommon_LIBS execinfo ${vcmiservercommon_LIBS})
 endif()
 
-if(ENABLE_GYM)
-	add_dependencies(vcmiservercommon gymserverplugin)
-	set(vcmiservercommon_LIBS gymserverplugin ${vcmiservercommon_LIBS})
+if(ENABLE_ML)
+	add_dependencies(vcmiservercommon mlserverplugin)
+	set(vcmiservercommon_LIBS mlserverplugin ${vcmiservercommon_LIBS})
 endif()
 
 target_link_libraries(vcmiservercommon PRIVATE ${vcmiservercommon_LIBS} minizip::minizip)

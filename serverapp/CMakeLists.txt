@@ -15,8 +15,8 @@ if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	set(serverapp_LIBS execinfo ${serverapp_LIBS})
 endif()
 
-if(ENABLE_GYM)
-	set(serverapp_LIBS gymserverplugin ${serverapp_LIBS})
+if(ENABLE_ML)
+	set(serverapp_LIBS mlserverplugin ${serverapp_LIBS})
 endif()
 
 target_link_libraries(vcmiserver PRIVATE ${serverapp_LIBS} minizip::minizip vcmiservercommon)

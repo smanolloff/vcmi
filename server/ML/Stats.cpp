@@ -9,7 +9,7 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-namespace Gym {
+namespace ML {
     void Stats::Error(const char* format, ...) {
         constexpr int bufferSize = 2048; // Adjust this size according to your needs
         char buffer[bufferSize];

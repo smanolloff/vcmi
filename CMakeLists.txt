@@ -82,7 +82,8 @@ if(APPLE_IOS OR ANDROID)
 	set(ENABLE_LOBBY OFF)
 	set(ENABLE_SERVER OFF)
 	set(COPY_CONFIG_ON_BUILD OFF)
-	set(ENABLE_GYM OFF)
+	set(ENABLE_DEV_BUILD OFF)
+	set(ENABLE_ML OFF)
 	set(ENABLE_READONLY_MODE OFF)
 else()
 	option(ENABLE_MONOLITHIC_INSTALL "Install everything in single directory on Linux and Mac" OFF) # Used for Snap packages and also useful for debugging
@@ -92,9 +93,10 @@ else()
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and launcher as single executable" OFF)
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
-	option(ENABLE_GYM "Enable compilation of vcmi-gym related libraries (for AI training)")
-	option(ENABLE_READONLY_MODE "Prevent disk writes")
-	option(ENABLE_DEV_BUILD "set to true in order to run binaries directly from build dir" OFF)
+	option(ENABLE_DEV_BUILD "Run binaries directly from build dir" OFF)
+	option(ENABLE_READONLY_MODE "Prevent disk writes" OFF)
+	option(ENABLE_ML "Enable extensions needed for AI training" OFF)
+	option(ENABLE_MMAI "Enable compilation of MMAI and leverage pre-trained ML models" OFF)
 endif()
 
 # ERM depends on LUA implicitly
@@ -269,12 +271,17 @@ if(ENABLE_READONLY_MODE)
 	add_definitions(-DENABLE_READONLY_MODE)
 endif()
 
-if(ENABLE_GYM)
-	add_definitions(-DENABLE_GYM)
-endif()
-
 if(ENABLE_DEV_BUILD)
 	add_definitions(-DDEV_BUILD=1)
+endif()
+
+if(ENABLE_ML)
+	add_definitions(-DENABLE_ML)
+	set(ENABLE_MMAI ON)
+endif()
+
+if(ENABLE_MMAI)
+	add_definitions(-DENABLE_MMAI)
 endif()
 
 if(APPLE_IOS)
@@ -704,9 +711,9 @@ if(ENABLE_TEST)
 	add_subdirectory(test)
 endif()
 
-if(ENABLE_GYM)
-	add_subdirectory(client/gym)
-	add_subdirectory(server/gym)
+if(ENABLE_ML)
+	add_subdirectory(client/ML)
+	add_subdirectory(server/ML)
 endif()
 
 #######################################

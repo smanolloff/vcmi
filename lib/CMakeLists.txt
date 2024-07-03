@@ -716,10 +716,12 @@ if(ENABLE_STATIC_LIBS AND ENABLE_CLIENT)
 		EmptyAI
 		StupidAI
 		VCAI
-		MMAI  # TODO (simo): based on compile flag (not ENABLE_GYM)
 	)
 	if(ENABLE_NULLKILLER_AI)
 		target_link_libraries(vcmi PRIVATE Nullkiller)
+	endif()
+	if(ENABLE_MMAI)
+		target_link_libraries(vcmi PRIVATE MMAI)
 	endif()
 endif()
 

@@ -10,7 +10,7 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-namespace Gym {
+namespace ML {
     // static
     std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
@@ -25,7 +25,7 @@ namespace Gym {
     }
 
     // static
-    std::unique_ptr<Stats> InitStats(CGameState * gs, GymInfo gi) {
+    std::unique_ptr<Stats> InitStats(CGameState * gs, Config gi) {
         return gi.statsMode == "disabled" ? nullptr : std::make_unique<Stats>(
             gs->map->heroesOnMap.size(),
             gi.statsStorage,
@@ -35,7 +35,7 @@ namespace Gym {
         );
     }
 
-    ServerPlugin::ServerPlugin(CGameState * gs, GymInfo & gi)
+    ServerPlugin::ServerPlugin(CGameState * gs, Config & gi)
     : gs(gs)
     , gi(gi)
     , allheroes(gs->map->heroesOnMap)

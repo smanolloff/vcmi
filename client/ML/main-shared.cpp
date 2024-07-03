@@ -25,7 +25,7 @@
 #include "AI/MMAI/common.h"
 #include "AI/MMAI/schema/base.h"
 #include "main.h"
-#include "gymclient.h"
+#include "MLClient.h"
 
 #include "AI/MMAI/schema/schema.h"
 #include "AI/MMAI/schema/v1/types.h"

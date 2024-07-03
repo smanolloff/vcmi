@@ -83,7 +83,7 @@ void BattleProcessor::restartBattlePrimary(const BattleID & battleID, const CArm
 
 		lastBattleQuery->result = std::nullopt;
 
-#ifndef ENABLE_GYM // gym's side swapping hack violates these asserts
+#ifndef ENABLE_ML // side swapping for ML violates these asserts
 		assert(lastBattleQuery->belligerents[0] == battle->sides[0].armyObject);
 		assert(lastBattleQuery->belligerents[1] == battle->sides[1].armyObject);
 #endif
@@ -102,7 +102,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
-	GYM(gameHandler->gymplugin->startBattleHook1(army1, army2, hero1, hero2));
+	ML(gameHandler->mlplugin->startBattleHook1(army1, army2, hero1, hero2));
 
 	const CArmedInstance *armies[2];
 	armies[0] = army1;
@@ -146,7 +146,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 			if(heroes[i])
 				newBattleQuery->initialHeroMana[i] = heroes[i]->mana;
 
-		GYM(gameHandler->gymplugin->startBattleHook2(heroes, newBattleQuery));
+		ML(gameHandler->mlplugin->startBattleHook2(heroes, newBattleQuery));
 		gameHandler->queries->addQuery(newBattleQuery);
 	}
 
@@ -178,7 +178,7 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
 	ui32 seed = 0;
-	GYM(gameHandler->gymplugin->setupBattleHook(town, seed));
+	ML(gameHandler->mlplugin->setupBattleHook(town, seed));
 
 	//send info about battles
 	BattleStart bs;
@@ -196,7 +196,7 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
 	bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
-	GYM(bs.info->replayAllowed = true);
+	ML(bs.info->replayAllowed = true);
 
 	gameHandler->sendAndApply(&bs);
 

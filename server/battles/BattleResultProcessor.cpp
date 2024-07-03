@@ -256,7 +256,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	if(heroDefender)
 		battleResult->exp[1] = heroDefender->calculateXp(battleResult->exp[1]);
 
-	GYM(gameHandler->gymplugin->endBattleHook(battleResult, heroAttacker, heroDefender));
+	ML(gameHandler->mlplugin->endBattleHook(battleResult, heroAttacker, heroDefender));
 
 	auto battleQuery = std::dynamic_pointer_cast<CBattleQuery>(gameHandler->queries->topQuery(battle.sideToPlayer(0)));
 	if(!battleQuery)

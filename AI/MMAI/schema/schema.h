@@ -23,8 +23,6 @@
  *
  */
 
-#define MMAI_EXPORT_LOADED 1
-
 #include "base.h"
 #include "v1/schema.h"
 #include "v2/schema.h"

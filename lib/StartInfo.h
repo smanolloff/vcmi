@@ -16,7 +16,7 @@
 #include "ExtraOptionsInfo.h"
 #include "campaign/CampaignConstants.h"
 
-#include GYM("server/gym/ServerPlugin.h")
+#include ML("server/ML/ServerPlugin.h")
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -138,7 +138,7 @@ struct DLL_LINKAGE StartInfo
 
 	std::shared_ptr<CampaignState> campState;
 
-	GYM(Gym::GymInfo gyminfo);
+	ML(ML::Config mlconfig);
 
 	PlayerSettings & getIthPlayersSettings(const PlayerColor & no);
 	const PlayerSettings & getIthPlayersSettings(const PlayerColor & no) const;

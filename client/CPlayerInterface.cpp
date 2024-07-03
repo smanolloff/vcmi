@@ -806,15 +806,15 @@ void CPlayerInterface::activeStack(const BattleID & battleID, const CStack * sta
 void CPlayerInterface::battleEnd(const BattleID & battleID, const BattleResult *br, QueryID queryID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	if(isAutoFightOn || autofightingAI || IFGYM(true, false))
+	if(isAutoFightOn || autofightingAI || IFML(true, false))
 	{
 		isAutoFightOn = false;
 		cb->unregisterBattleInterface(autofightingAI);
 		autofightingAI.reset();
 
-		if(!battleInt || IFGYM(true, false))
+		if(!battleInt || IFML(true, false))
 		{
-			bool allowManualReplay = queryID != QueryID::NONE && (!isAutoFightEndBattle || IFGYM(true, false));
+			bool allowManualReplay = queryID != QueryID::NONE && (!isAutoFightEndBattle || IFML(true, false));
 
 			auto wnd = std::make_shared<BattleResultWindow>(*br, *this, allowManualReplay);
 

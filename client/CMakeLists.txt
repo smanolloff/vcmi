@@ -393,8 +393,8 @@ endif()
 
 assign_source_group(${client_SRCS} ${client_HEADERS} VCMI_client.rc)
 
-if(ENABLE_GYM)
-	# gymclient must link against vcmiclient => compile it as a lib
+if(ENABLE_ML)
+	# mlclient must link against vcmiclient => compile vcmiclient as a lib
 	# TODO (simo):
 	# 	separate vcmiclient into vcmiclientcommon (lib) and vcmiclient (exe)
 	# 	(similar to vcmiserver)
@@ -412,9 +412,6 @@ else()
 endif()
 
 if(NOT ENABLE_STATIC_LIBS)
-	# TODO (simo):
-	# 	add MMAI to static libs based on compile flags
-	#		(not ENABLE_GYM -- it is for training. ENABLE_MMAI?)
 	add_dependencies(vcmiclient
 		BattleAI
 		EmptyAI
@@ -423,6 +420,9 @@ if(NOT ENABLE_STATIC_LIBS)
 	)
 	if(ENABLE_NULLKILLER_AI)
 		add_dependencies(vcmiclient Nullkiller)
+	endif()
+	if(ENABLE_MMAI)
+		add_dependencies(vcmiclient MMAI)
 	endif()
 endif()
 if(APPLE_IOS)

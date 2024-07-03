@@ -103,14 +103,14 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 #endif
 
 /* ---------------------------------------------------------------------------- */
-/* A macro which expands to nothing if ENABLE_GYM is not set */
+/* A macro which expands to nothing unless ENABLE_ML compile flag set */
 /* ---------------------------------------------------------------------------- */
-#ifdef ENABLE_GYM
-#define GYM(STMT) STMT
-#define IFGYM(STMT_TRUE, STMT_FALSE) STMT_TRUE
+#ifdef ENABLE_ML
+#define ML(STMT) STMT
+#define IFML(STMT_TRUE, STMT_FALSE) STMT_TRUE
 #else
-#define GYM(STMT)
-#define IFGYM(STMT_TRUE, STMT_FALSE) STMT_FALSE
+#define ML(STMT)
+#define IFML(STMT_TRUE, STMT_FALSE) STMT_FALSE
 #endif
 
 #define _USE_MATH_DEFINES

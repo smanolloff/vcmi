@@ -26,10 +26,10 @@ class VCMI(ConanFile):
     _MMAIRequires = [
         "llvm-openmp/17.0.6",
     ]
-    _gymRequires = [
+    _MLRequires = [
         "sqlite3/[~3.45.3]",
     ]
-    requires = _libRequires + _clientRequires + _nullkillerAIRequires + _MMAIRequires + _gymRequires
+    requires = _libRequires + _clientRequires + _nullkillerAIRequires + _MMAIRequires + _MLRequires
 
     options = {
         "default_options_of_requirements": [True, False],

@@ -239,7 +239,7 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	si->difficulty = lastDifficulty.Integer();
 	si->seedToBeUsed = settings["server"]["seed"].Integer();
 
-	GYM(si->gyminfo.init(settings));
+	ML(si->mlconfig.init(settings));
 
 	logNetwork->trace("\tStarting local server");
 	auto srvport = serverRunner->start(getLocalPort(), connectToLobby, si);

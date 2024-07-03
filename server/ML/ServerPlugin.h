@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Global.h"
-#include "GymInfo.h"
+#include "Config.h"
 #include "lib/mapObjects/CArmedInstance.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapObjects/CGTownInstance.h"
@@ -10,10 +10,10 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-namespace Gym {
+namespace ML {
     class DLL_LINKAGE ServerPlugin {
     public:
-        ServerPlugin(CGameState * gs, GymInfo & gi);
+        ServerPlugin(CGameState * gs, Config & gi);
 
         void setupBattleHook(const CGTownInstance *& town, ui32 & seed);
 
@@ -41,7 +41,7 @@ namespace Gym {
 
     private:
         CGameState * gs;
-        const GymInfo gi;
+        const Config gi;
         std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;

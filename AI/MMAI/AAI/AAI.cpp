@@ -88,8 +88,8 @@ namespace MMAI::AAI {
         // This prevents issues like battle->playerToSide() returning the wrong side
         const_cast<CGHeroInstance*>(hero)->tempOwner = PlayerColor(side);
 
-        // XXX: VCMI's hero IDs do cannot be inferred by the map's JSON
-        //      The gym maps use the hero's experience as a unique ref
+        // XXX: VCMI's hero IDs is assigned at runtime and is not part of the map data
+        //      The ML maps use the hero's experience as a unique ref
         // debug("(battleStart) hero1->tempOwner: " + std::to_string(hero1->tempOwner));
         // debug("(battleStart) hero2->tempOwner: " + std::to_string(hero2->tempOwner));
         // debug("(battleStart) hero(army)->tempOwner: " + std::to_string(hero->tempOwner));
@@ -165,7 +165,7 @@ namespace MMAI::AAI {
             // Maps and everything basically assumes red human player attacking blue human player
             // Swapping armies and sides still uses only RED and BLUE as players
             // Other players should never be asked to lead a battle
-            // However, gymclient sets settings["server"]["playerAI"] = "MMAI"
+            // However, mlclient sets settings["server"]["playerAI"] = "MMAI"
             // => all players get initialized with MMAI::AAI
             // We must make sure the getBattleAI never gets called on them
             battleAiName = "-";

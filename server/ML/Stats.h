@@ -8,7 +8,7 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-namespace Gym {
+namespace ML {
     class DLL_LINKAGE Stats {
     public:
         using N_WINS = int;

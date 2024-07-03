@@ -22,7 +22,9 @@
 # include "AI/BattleAI/BattleAI.h"
 # include "AI/StupidAI/StupidAI.h"
 # include "AI/EmptyAI/CEmptyAI.h"
-# include "AI/MMAI/MMAI.h"
+# ifdef ENABLE_MMAI
+#  include "AI/MMAI/MMAI.h"
+# endif // ENABLE_MMAI
 #else
 # ifdef VCMI_WINDOWS
 #  include <windows.h> //for .dll libs
@@ -107,9 +109,11 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 {
 	if(libpath.stem() == "libNullkiller") {
 		return std::make_shared<NKAI::AIGateway>();
+#ifdef ENABLE_MMAI
 	} else if(libpath.stem() == "libMMAI") {
-		return std::make_shared<MMAI::BAI::Router>();
+		return std::make_shared<MMAI::AAI>();
 	}
+#endif
 	else{
 		return std::make_shared<VCAI>();
 	}
@@ -122,8 +126,10 @@ std::shared_ptr<CBattleGameInterface> createAny(const boost::filesystem::path & 
 		return std::make_shared<CBattleAI>();
 	else if(libpath.stem() == "libStupidAI")
 		return std::make_shared<CStupidAI>();
+#ifdef ENABLE_MMAI
 	else if(libpath.stem() == "libMMAI")
-		return std::make_shared<MMAI::CMyBattleAI>();
+		return std::make_shared<MMAI::BAI::Router>();
+#endif
 	return std::make_shared<CEmptyAI>();
 }
 

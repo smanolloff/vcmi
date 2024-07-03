@@ -47,11 +47,13 @@ endif()
 #        Add subdirectories           #
 #######################################
 
-add_subdirectory(MMAI)
 add_subdirectory(BattleAI)
 add_subdirectory(VCAI)
 add_subdirectory(StupidAI)
 add_subdirectory(EmptyAI)
 if(ENABLE_NULLKILLER_AI)
 	add_subdirectory(Nullkiller)
+endif()
+if(ENABLE_MMAI)
+	add_subdirectory(MMAI)
 endif()

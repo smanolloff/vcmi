@@ -5,8 +5,8 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-namespace Gym {
-    class GymInfo {
+namespace ML {
+    class Config {
     public:
         void init(SettingsStorage &settings) {
             maxBattles = settings["server"]["maxBattles"].Integer();

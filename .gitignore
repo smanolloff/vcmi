@@ -74,11 +74,9 @@ fuzzylite.pc
 # CLion
 .idea/
 
-# vcmi-gym
-h3.zip
-h3/
-rel
+# ML
 .cmake
 *.sqlite3
 .venv
-gymclient/libtorch
+MLClient/libtorch
+rel/
