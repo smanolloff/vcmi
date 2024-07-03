@@ -13,7 +13,7 @@ VCMI_LIB_NAMESPACE_BEGIN
 namespace ML {
     class DLL_LINKAGE ServerPlugin {
     public:
-        ServerPlugin(CGameState * gs, Config & gi);
+        ServerPlugin(CGameState * gs, Config & config);
 
         void setupBattleHook(const CGTownInstance *& town, ui32 & seed);
 
@@ -41,7 +41,7 @@ namespace ML {
 
     private:
         CGameState * gs;
-        const Config gi;
+        const Config config;
         std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;

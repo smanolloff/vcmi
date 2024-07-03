@@ -1,0 +1,10 @@
+====
+training maps with duplicate hero types ("core:sylvia") are not properly
+(de-)serialized as only the hero type ID is serialized.
+Since gs->allheroes keeps a single record per hero type (a total of 165),
+this ID corresponds to the first hero of this type.
+The client deserializes it and, as a result, client side's battle info
+contains the wrong CGHeroInstance objects. This is not critical (for now) as
+some client-side checks like "can cast spell" throw warnings, but everything
+ultimately works OK on the server side.
+HOWEVER, the CGArmyInstances are properly deserialized.

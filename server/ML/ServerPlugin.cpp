@@ -25,42 +25,42 @@ namespace ML {
     }
 
     // static
-    std::unique_ptr<Stats> InitStats(CGameState * gs, Config gi) {
-        return gi.statsMode == "disabled" ? nullptr : std::make_unique<Stats>(
+    std::unique_ptr<Stats> InitStats(CGameState * gs, Config config) {
+        return config.statsMode == "disabled" ? nullptr : std::make_unique<Stats>(
             gs->map->heroesOnMap.size(),
-            gi.statsStorage,
-            gi.statsPersistFreq,
-            gi.statsSampling,
-            gi.statsScoreVar
+            config.statsStorage,
+            config.statsPersistFreq,
+            config.statsSampling,
+            config.statsScoreVar
         );
     }
 
-    ServerPlugin::ServerPlugin(CGameState * gs, Config & gi)
+    ServerPlugin::ServerPlugin(CGameState * gs, Config & config)
     : gs(gs)
-    , gi(gi)
+    , config(config)
     , allheroes(gs->map->heroesOnMap)
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
-    , stats(InitStats(gs, gi))
-    , pseudorng(std::mt19937(gi.seed))
+    , stats(InitStats(gs, config))
+    , pseudorng(std::mt19937(config.seed))
     , truerng(std::random_device())
     {}
 
     void ServerPlugin::setupBattleHook(const CGTownInstance *& town, ui32 & seed) {
-        if (gi.randomObstacles > 0 && (battlecounter % gi.randomObstacles == 0)) {
-            seed = gi.trueRng // modification by reference
+        if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
+            seed = config.trueRng // modification by reference
                 ? truerng()
                 : gs->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
         }
 
-        if (gi.townChance > 0) {
+        if (config.townChance > 0) {
             auto dist = std::uniform_int_distribution<>(0, 99);
-            auto roll = gi.trueRng ? dist(truerng) : dist(pseudorng);
+            auto roll = config.trueRng ? dist(truerng) : dist(pseudorng);
 
-            if (roll < gi.townChance) {
+            if (roll < config.townChance) {
                 if (towncounter % alltowns.size() == 0) {
                     towncounter = 0;
-                    gi.trueRng
+                    config.trueRng
                         ? std::shuffle(alltowns.begin(), alltowns.end(), truerng)
                         : std::shuffle(alltowns.begin(), alltowns.end(), pseudorng);
                 }
@@ -79,19 +79,19 @@ namespace ML {
         const CGHeroInstance *&hero1,
         const CGHeroInstance *&hero2
     ) {
-        bool swappingSides = (gi.swapSides > 0 && (battlecounter % gi.swapSides) == 0);
-        // printf("battlecounter: %d, swapSides: %d, rem: %d\n", battlecounter, gi.swapSides, battlecounter % gi.swapSides);
+        bool swappingSides = (config.swapSides > 0 && (battlecounter % config.swapSides) == 0);
+        // printf("battlecounter: %d, swapSides: %d, rem: %d\n", battlecounter, config.swapSides, battlecounter % config.swapSides);
 
         battlecounter++;
 
         if (swappingSides)
             redside = !redside;
 
-        // printf("gi.randomHeroes = %d\n", gi.randomHeroes);
+        // printf("config.randomHeroes = %d\n", config.randomHeroes);
 
-        if (gi.randomHeroes > 0) {
-            if (stats && gi.statsSampling) {
-                auto [id1, id2] = stats->sample2(gi.statsMode == "red" ? redside : !redside);
+        if (config.randomHeroes > 0) {
+            if (stats && config.statsSampling) {
+                auto [id1, id2] = stats->sample2(config.statsMode == "red" ? redside : !redside);
                 hero1 = allheroes.at(id1);
                 hero2 = allheroes.at(id2);
                 // printf("sampled: hero1: %d, hero2: %d (perspective: %s)\n", id1, id2, gh->statsMode.c_str());
@@ -102,7 +102,7 @@ namespace ML {
                 if (herocounter % allheroes.size() == 0) {
                     herocounter = 0;
 
-                    gi.trueRng
+                    config.trueRng
                         ? std::shuffle(allheroes.begin(), allheroes.end(), truerng)
                         : std::shuffle(allheroes.begin(), allheroes.end(), pseudorng);
 
@@ -116,12 +116,12 @@ namespace ML {
                 hero1 = allheroes.at(herocounter);
                 hero2 = allheroes.at(herocounter+1);
 
-                if (battlecounter % gi.randomHeroes == 0)
+                if (battlecounter % config.randomHeroes == 0)
                     herocounter += 2;
             }
         }
 
-        if (gi.warmachineChance > 0) {
+        if (config.warmachineChance > 0) {
             // XXX: adding war machines by index of pre-created per-hero artifact instances
             // 0=ballista, 1=cart, 2=tent
             auto machineslots = std::map<ArtifactID, ArtifactPosition> {
@@ -138,8 +138,8 @@ namespace ML {
                         throw std::runtime_error("Could not find warmachine");
 
                     auto apos = it->second;
-                    auto roll = gi.trueRng ? dist(truerng) : dist(pseudorng);
-                    if (roll < gi.warmachineChance) {
+                    auto roll = config.trueRng ? dist(truerng) : dist(pseudorng);
+                    if (roll < config.warmachineChance) {
                         if (!h->getArt(apos)) const_cast<CGHeroInstance*>(h)->putArtifact(apos, m);
                     } else {
                         if (h->getArt(apos)) const_cast<CGHeroInstance*>(h)->removeArtifact(apos);
@@ -155,7 +155,6 @@ namespace ML {
         //  }
         // }
 
-
         // Set temp owner of both heroes to player0 and player1
         // XXX: causes UB after battle, unless it is replayed (ok for training)
         // XXX: if redside=1 (right), hero2 should have owner=0 (red)
@@ -168,14 +167,12 @@ namespace ML {
         army2 = static_cast<const CArmedInstance*>(hero2);
     }
 
-
-
     void ServerPlugin::startBattleHook2(const CGHeroInstance* heroes[2], std::shared_ptr<CBattleQuery> q) {
-        auto dist = std::uniform_int_distribution<>(gi.minMana, gi.maxMana);
+        auto dist = std::uniform_int_distribution<>(config.minMana, config.maxMana);
 
         for(int i : {0, 1}) {
             if(heroes[i]) {
-                auto roll = gi.trueRng ? dist(truerng) : dist(pseudorng);
+                auto roll = config.trueRng ? dist(truerng) : dist(pseudorng);
                 q->initialHeroMana[i] = roll;
             }
         }
@@ -196,8 +193,8 @@ namespace ML {
             );
         }
 
-        if (gi.maxBattles && battlecounter >= gi.maxBattles) {
-            std::cout << "Hit battle limit of " << gi.maxBattles << ", will quit now...\n";
+        if (config.maxBattles && battlecounter >= config.maxBattles) {
+            std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";
             if (stats) stats->dbpersist();
             exit(0); // FIXME: this causes OS errors (abrupt program termination)
             return;

@@ -9,22 +9,22 @@ namespace ML {
     class Config {
     public:
         void init(SettingsStorage &settings) {
-            maxBattles = settings["server"]["maxBattles"].Integer();
-            seed = settings["server"]["seed"].Integer();
-            randomHeroes = settings["server"]["randomHeroes"].Integer();
-            randomObstacles = settings["server"]["randomObstacles"].Integer();
-            townChance = settings["server"]["townChance"].Integer();
-            warmachineChance = settings["server"]["warmachineChance"].Integer();
-            swapSides = settings["server"]["swapSides"].Integer();
-            trueRng = settings["server"]["trueRng"].Bool();
-            minMana = settings["server"]["minMana"].Integer(); // TODO (simo)
-            maxMana = settings["server"]["maxMana"].Integer(); // TODO (simo)
+            maxBattles = settings["server"]["ML"]["maxBattles"].Integer();
+            seed = settings["server"]["ML"]["seed"].Integer();
+            randomHeroes = settings["server"]["ML"]["randomHeroes"].Integer();
+            randomObstacles = settings["server"]["ML"]["randomObstacles"].Integer();
+            townChance = settings["server"]["ML"]["townChance"].Integer();
+            warmachineChance = settings["server"]["ML"]["warmachineChance"].Integer();
+            swapSides = settings["server"]["ML"]["swapSides"].Integer();
+            trueRng = settings["server"]["ML"]["trueRng"].Bool();
+            minMana = settings["server"]["ML"]["minMana"].Integer();
+            maxMana = settings["server"]["ML"]["maxMana"].Integer();
 
-            statsSampling = settings["server"]["statsSampling"].Integer();
-            statsPersistFreq = settings["server"]["statsPersistFreq"].Integer();
-            statsStorage = settings["server"]["statsStorage"].String();
-            statsMode = settings["server"]["statsMode"].String();
-            statsScoreVar = settings["server"]["statsScoreVar"].Float();
+            statsSampling = settings["server"]["ML"]["statsSampling"].Integer();
+            statsPersistFreq = settings["server"]["ML"]["statsPersistFreq"].Integer();
+            statsStorage = settings["server"]["ML"]["statsStorage"].String();
+            statsMode = settings["server"]["ML"]["statsMode"].String();
+            statsScoreVar = settings["server"]["ML"]["statsScoreVar"].Float();
         }
 
         int maxBattles = 0;

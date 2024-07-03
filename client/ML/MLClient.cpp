@@ -542,20 +542,23 @@ void processArguments(
     Settings(settings.write({"session", "headless"}))->Bool() = headless;
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
-    Settings(settings.write({"server", "maxBattles"}))->Integer() = maxBattles;
-    Settings(settings.write({"server", "seed"}))->Integer() = seed;
-    Settings(settings.write({"server", "randomHeroes"}))->Integer() = randomHeroes;
-    Settings(settings.write({"server", "randomObstacles"}))->Integer() = randomObstacles;
-    Settings(settings.write({"server", "townChance"}))->Integer() = townChance;
-    Settings(settings.write({"server", "warmachineChance"}))->Integer() = warmachineChance;
-    Settings(settings.write({"server", "swapSides"}))->Integer() = swapSides;
-    Settings(settings.write({"server", "statsMode"}))->String() = statsMode;
-    Settings(settings.write({"server", "statsStorage"}))->String() = statsStorage;
-    Settings(settings.write({"server", "statsPersistFreq"}))->Integer() = statsPersistFreq;
-    Settings(settings.write({"server", "statsSampling"}))->Integer() = statsSampling;
-    Settings(settings.write({"server", "statsScoreVar"}))->Float() = statsScoreVar;
-    Settings(settings.write({"server", "statsLoglevel"}))->String() = loglevelStats;
-    Settings(settings.write({"server", "trueRng"}))->Bool() = trueRng;
+
+    Settings(settings.write({"server", "ML", "maxBattles"}))->Integer() = maxBattles;
+    Settings(settings.write({"server", "ML", "seed"}))->Integer() = seed;
+    Settings(settings.write({"server", "ML", "randomHeroes"}))->Integer() = randomHeroes;
+    Settings(settings.write({"server", "ML", "randomObstacles"}))->Integer() = randomObstacles;
+    Settings(settings.write({"server", "ML", "townChance"}))->Integer() = townChance;
+    Settings(settings.write({"server", "ML", "warmachineChance"}))->Integer() = warmachineChance;
+    Settings(settings.write({"server", "ML", "swapSides"}))->Integer() = swapSides;
+    Settings(settings.write({"server", "ML", "statsMode"}))->String() = statsMode;
+    Settings(settings.write({"server", "ML", "statsStorage"}))->String() = statsStorage;
+    Settings(settings.write({"server", "ML", "statsPersistFreq"}))->Integer() = statsPersistFreq;
+    Settings(settings.write({"server", "ML", "statsSampling"}))->Integer() = statsSampling;
+    Settings(settings.write({"server", "ML", "statsScoreVar"}))->Float() = statsScoreVar;
+    Settings(settings.write({"server", "ML", "statsLoglevel"}))->String() = loglevelStats;
+    Settings(settings.write({"server", "ML", "trueRng"}))->Bool() = trueRng;
+    Settings(settings.write({"server", "ML", "minMana"}))->Integer() = 0;   // maybe make a cmdline arg?
+    Settings(settings.write({"server", "ML", "maxMana"}))->Integer() = 100; //
 
     Settings(settings.write({"server", "localPort"}))->Integer() = 0;
     Settings(settings.write({"server", "useProcess"}))->Bool() = false;
@@ -578,7 +581,22 @@ void processArguments(
     //
     // Configure logging
     //
+    auto getloglevel = [](std::string domain){
+        for (auto logger : settings["logging"]["loggers"].Vector())
+            if (logger["domain"].String() == domain)
+                return logger["level"].String();
 
+        return std::string("warn");
+    };
+
+    auto loglevelRng = getloglevel("rng");
+    auto loglevelNetwork = getloglevel("network");
+    auto loglevelMod = getloglevel("mod");
+    auto loglevelAnimation = getloglevel("animation");
+    auto loglevelBonus = getloglevel("bonus");
+
+    // I could not find a way to edit a specific logger's level
+    // => clear and re-add all loggers
     Settings loggers = settings.write["logging"]["loggers"];
     loggers->Vector().clear();
 
@@ -593,11 +611,11 @@ void processArguments(
     conflog("global", loglevelGlobal);
     conflog("ai", loglevelAI);
     conflog("stats", loglevelStats);
-    conflog("rng", "info");
-    conflog("network", "error");
-    conflog("mod", "error");
-    conflog("animation", "error");
-    conflog("bonus", "error");
+    conflog("rng", loglevelRng);
+    conflog("network", loglevelNetwork);
+    conflog("mod", loglevelMod);
+    conflog("animation", loglevelAnimation);
+    conflog("bonus", loglevelBonus);
 }
 
 

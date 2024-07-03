@@ -96,7 +96,7 @@
 		"loggers" : [
 			{
 				"domain" : "global",
-				"level" : "error"
+				"level" : "warn"
 			},
 			{
 				"domain" : "stats",
@@ -104,7 +104,27 @@
 			},
 			{
 				"domain" : "ai",
-				"level" : "error"
+				"level" : "warn"
+			},
+			{
+				"domain": "rng",
+				"level": "warn"
+			},
+			{
+				"domain": "network",
+				"level": "warn"
+			},
+			{
+				"domain": "mod",
+				"level": "warn"
+			},
+			{
+				"domain": "animation",
+				"level": "warn"
+			},
+			{
+				"domain": "bonus",
+				"level": "error"
 			}
 		]
 	},

@@ -312,16 +312,19 @@ namespace MMAI::BAI::Scripted {
         auto roll = dist(rng);
         if (roll < spells.size()) {
             spellToCast = spells.at(roll).toSpell();
-            if (spellToCast->canBeCast(battle.get(), spells::Mode::HERO, battle->battleGetMyHero())) {
+
+            if (spellToCast->canBeCast(battle.get(), spells::Mode::HERO, hero)) {
                 // can get lower if enemy magic dampers die, which could (very rarely)
                 // result in 1 more cast, but better to avoid checking it on each turn
                 spellCost = battle->battleGetSpellCost(spellToCast, battle->battleGetMyHero());
+                print("Can cast " + spellToCast->identifier);
             } else {
+                print("Can NOT cast " + spellToCast->identifier);
                 spellToCast = nullptr;
             }
         }
 
-        print(std::string("Will cast ") + (spellToCast ? spellToCast->getNameTextID() : "no spells") + " this combat.");
+        print("Starting mana: " + std::to_string(hero->mana) + ", will cast " + (spellToCast ? spellToCast->identifier : "no spells") + " this combat.");
     }
 
     void Summoner::battleCatapultAttacked(const BattleID & battleID, const CatapultAttack & ca)
