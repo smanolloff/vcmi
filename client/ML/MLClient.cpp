@@ -287,6 +287,8 @@ void validateArguments(
     int &randomHeroes,
     int &randomObstacles,
     int &townChance,
+    int &manaMin,
+    int &manaMax,
     int &warmachineChance,
     int &swapSides,
     std::string &loglevelGlobal,
@@ -355,6 +357,16 @@ void validateArguments(
 
     if (townChance < 0 || townChance > 100) {
         std::cerr << "Bad value for townChance: expected an integer between 0 and 100, got: " << townChance << "\n";
+        exit(1);
+    }
+
+    if (manaMin < 0 || manaMin > 500) {
+        std::cerr << "Bad value for manaMin: expected an integer between 0 and 500, got: " << manaMin << "\n";
+        exit(1);
+    }
+
+    if (manaMax < manaMin || manaMax > 500) {
+        std::cerr << "Bad value for manaMax: expected an integer between " << manaMin << " and 500, got: " << manaMax << "\n";
         exit(1);
     }
 
@@ -433,6 +445,8 @@ void processArguments(
     int randomHeroes,
     int randomObstacles,
     int townChance,
+    int manaMin,
+    int manaMax,
     int warmachineChance,
     int swapSides,
     std::string statsMode,
@@ -549,6 +563,8 @@ void processArguments(
     Settings(settings.write({"server", "ML", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "ML", "townChance"}))->Integer() = townChance;
     Settings(settings.write({"server", "ML", "warmachineChance"}))->Integer() = warmachineChance;
+    Settings(settings.write({"server", "ML", "manaMin"}))->Integer() = manaMin;
+    Settings(settings.write({"server", "ML", "manaMax"}))->Integer() = manaMax;
     Settings(settings.write({"server", "ML", "swapSides"}))->Integer() = swapSides;
     Settings(settings.write({"server", "ML", "statsMode"}))->String() = statsMode;
     Settings(settings.write({"server", "ML", "statsStorage"}))->String() = statsStorage;
@@ -557,8 +573,6 @@ void processArguments(
     Settings(settings.write({"server", "ML", "statsScoreVar"}))->Float() = statsScoreVar;
     Settings(settings.write({"server", "ML", "statsLoglevel"}))->String() = loglevelStats;
     Settings(settings.write({"server", "ML", "trueRng"}))->Bool() = trueRng;
-    Settings(settings.write({"server", "ML", "minMana"}))->Integer() = 0;   // maybe make a cmdline arg?
-    Settings(settings.write({"server", "ML", "maxMana"}))->Integer() = 100; //
 
     Settings(settings.write({"server", "localPort"}))->Integer() = 0;
     Settings(settings.write({"server", "useProcess"}))->Bool() = false;
@@ -626,6 +640,8 @@ void init_vcmi(
     int randomHeroes,
     int randomObstacles,
     int townChance,
+    int manaMin,
+    int manaMax,
     int warmachineChance,
     int swapSides,
     std::string loglevelGlobal,
@@ -659,6 +675,8 @@ void init_vcmi(
         randomHeroes,
         randomObstacles,
         townChance,
+        manaMin,
+        manaMax,
         warmachineChance,
         swapSides,
         loglevelGlobal,
@@ -705,6 +723,8 @@ void init_vcmi(
         randomHeroes,
         randomObstacles,
         townChance,
+        manaMin,
+        manaMax,
         warmachineChance,
         swapSides,
         statsMode,

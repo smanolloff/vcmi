@@ -22,6 +22,25 @@
 #include "./attack_log.h"
 
 namespace MMAI::BAI::V3 {
+    class Stats : public Schema::V3::IStats {
+    public:
+        Stats(const Battlefield* bf)
+        : initialArmyValueLeft(std::get<0>(bf->info->initialArmyValues))
+        , initialArmyValueRight(std::get<1>(bf->info->initialArmyValues))
+        , currentArmyValueLeft(std::get<0>(bf->info->currentArmyValues))
+        , currentArmyValueRight(std::get<1>(bf->info->currentArmyValues)) {}
+
+        int getInitialArmyValueLeft() const override { return initialArmyValueLeft; }
+        int getInitialArmyValueRight() const override { return initialArmyValueRight; }
+        int getCurrentArmyValueLeft() const override { return currentArmyValueLeft; }
+        int getCurrentArmyValueRight() const override { return currentArmyValueRight; }
+
+        const int initialArmyValueLeft;
+        const int initialArmyValueRight;
+        const int currentArmyValueLeft;
+        const int currentArmyValueRight;
+    };
+
     class SupplementaryData : public Schema::V3::ISupplementaryData {
     public:
         SupplementaryData() = delete;
@@ -47,6 +66,7 @@ namespace MMAI::BAI::V3 {
             valueLost(valueLost_),
             valueKilled(valueKilled_),
             battlefield(battlefield_),
+            stats(std::make_unique<Stats>(battlefield_)),
             attackLogs(attackLogs_) {};
 
         // impl ISupplementaryData
@@ -66,6 +86,7 @@ namespace MMAI::BAI::V3 {
         const Schema::V3::Hexes getHexes() const override;
         const Schema::V3::Stacks getStacks() const override;
         const Schema::V3::AttackLogs getAttackLogs() const override;
+        const Schema::V3::IStats* getStats() const override { return stats.get(); }
         const std::string getAnsiRender() const override { return ansiRender; }
 
         const std::string colorname;
@@ -77,6 +98,7 @@ namespace MMAI::BAI::V3 {
         const int valueLost;
         const int valueKilled;
         const Battlefield* battlefield;
+        const std::unique_ptr<Stats> stats;
         const std::vector<std::shared_ptr<AttackLog>> attackLogs;
 
         // Optionally modified (on battlEnd only)

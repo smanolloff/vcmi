@@ -370,6 +370,7 @@ namespace MMAI::Schema::V3 {
         virtual int getValueKilled() const = 0;
         virtual bool getIsBattleEnded() const = 0;
         virtual bool getIsVictorious() const = 0;
+        virtual const IStats* getStats() const = 0;
         virtual const Hexes getHexes() const = 0;
         virtual const Stacks getStacks() const = 0;
         virtual const AttackLogs getAttackLogs() const = 0;

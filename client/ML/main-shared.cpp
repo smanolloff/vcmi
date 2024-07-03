@@ -74,6 +74,8 @@ Args parse_args(int argc, char * argv[])
     int randomObstacles = 0;
     int townChance = 0;
     int warmachineChance = 0;
+    int manaMin = 0;
+    int manaMax = 0;
     int swapSides = 0;
     bool benchmark = false;
     bool interactive = false;
@@ -121,6 +123,10 @@ Args parse_args(int argc, char * argv[])
             "Percent chance to have the combat in a town (no town combat if 0*)")
         ("warmachine-chance", po::value<int>()->value_name("<N>"),
             "Percent chance to add ballista/tent/cart in combat (no war machines if 0*)")
+        ("mana-min", po::value<int>()->value_name("<N>"),
+            "Minimum mana to give to give each hero at the start of combat (default 0*)")
+        ("mana-max", po::value<int>()->value_name("<N>"),
+            "Maximum mana to give to give each hero at the start of combat (default 100*)")
         ("swap-sides", po::value<int>()->value_name("<N>"),
             "Swap combat sides each Nth combat (disabled if 0*)")
         ("red-ai", po::value<std::string>()->value_name("<AI>"),
@@ -198,6 +204,12 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("warmachine-chance"))
         warmachineChance = vm.at("warmachine-chance").as<int>();
+
+    if (vm.count("mana-min"))
+        manaMin = vm.at("mana-min").as<int>();
+
+    if (vm.count("mana-max"))
+        manaMax = vm.at("mana-max").as<int>();
 
     if (vm.count("swap-sides"))
         swapSides = vm.at("swap-sides").as<int>();
@@ -278,6 +290,8 @@ Args parse_args(int argc, char * argv[])
         randomObstacles,
         townChance,
         warmachineChance,
+        manaMin,
+        manaMax,
         swapSides,
         omap.at("loglevel-global"),
         omap.at("loglevel-ai"),

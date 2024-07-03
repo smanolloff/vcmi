@@ -17,8 +17,8 @@ namespace ML {
             warmachineChance = settings["server"]["ML"]["warmachineChance"].Integer();
             swapSides = settings["server"]["ML"]["swapSides"].Integer();
             trueRng = settings["server"]["ML"]["trueRng"].Bool();
-            minMana = settings["server"]["ML"]["minMana"].Integer();
-            maxMana = settings["server"]["ML"]["maxMana"].Integer();
+            manaMin = settings["server"]["ML"]["manaMin"].Integer();
+            manaMax = settings["server"]["ML"]["manaMax"].Integer();
 
             statsSampling = settings["server"]["ML"]["statsSampling"].Integer();
             statsPersistFreq = settings["server"]["ML"]["statsPersistFreq"].Integer();
@@ -35,8 +35,8 @@ namespace ML {
         int warmachineChance = 0;
         int swapSides = 0;
         bool trueRng = false;
-        int minMana = 0;
-        int maxMana = 0;
+        int manaMin = 0;
+        int manaMax = 0;
 
         int statsSampling = 0;
         int statsPersistFreq = 0;

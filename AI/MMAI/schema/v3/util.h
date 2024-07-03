@@ -93,6 +93,8 @@ namespace MMAI::Schema::V3 {
         break; case Encoding::BINARY_MASKING_NULL:  return ((1<<n) - 1 - vmax);
         break; case Encoding::BINARY_STRICT_NULL:   return ((1<<n) - 1 - vmax);
         break; case Encoding::BINARY_ZERO_NULL:     return ((1<<n) - 1 - vmax);
+        default:
+            return 0;
         }
         return 0;
     }
@@ -127,7 +129,7 @@ namespace MMAI::Schema::V3 {
      * Compile-time calculation for the encoded size of hexes and stacks
      */
     template <typename T>
-    constexpr int StateSizeOneElement(T elems) {
+    constexpr int EncodedSize(T elems) {
         using E4Type = typename T::value_type;
         using EnumType = typename std::tuple_element<0, E4Type>::type;
         int ret = 0;

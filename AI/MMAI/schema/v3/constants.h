@@ -163,9 +163,10 @@ namespace MMAI::Schema::V3 {
     static_assert(MiscalculatedBinaryAttributeUnusedValues(HEX_ENCODING) == 0, "Number of unused values in the binary attribute is not 0");
     static_assert(MiscalculatedBinaryAttributeUnusedValues(STACK_ENCODING) == 0, "Number of unused values in the binary attribute is not 0");
 
-    constexpr int BATTLEFIELD_STATE_SIZE_ONE_HEX = StateSizeOneElement(HEX_ENCODING);
-    constexpr int BATTLEFIELD_STATE_SIZE_ALL_HEXES = 165 * BATTLEFIELD_STATE_SIZE_ONE_HEX;
-    constexpr int BATTLEFIELD_STATE_SIZE_ONE_STACK = StateSizeOneElement(STACK_ENCODING);
+    // constexpr int BATTLEFIELD_STATE_SIZE_OTHER = EncodedSize(GENERAL_ENCODING);
+    constexpr int BATTLEFIELD_STATE_SIZE_ONE_STACK = EncodedSize(STACK_ENCODING);
     constexpr int BATTLEFIELD_STATE_SIZE_ALL_STACKS = MAX_STACKS * BATTLEFIELD_STATE_SIZE_ONE_STACK;
-    constexpr int BATTLEFIELD_STATE_SIZE = BATTLEFIELD_STATE_SIZE_ALL_HEXES + BATTLEFIELD_STATE_SIZE_ALL_STACKS;
+    constexpr int BATTLEFIELD_STATE_SIZE_ONE_HEX = EncodedSize(HEX_ENCODING);
+    constexpr int BATTLEFIELD_STATE_SIZE_ALL_HEXES = 165 * BATTLEFIELD_STATE_SIZE_ONE_HEX;
+    constexpr int BATTLEFIELD_STATE_SIZE = BATTLEFIELD_STATE_SIZE_ALL_STACKS + BATTLEFIELD_STATE_SIZE_ALL_HEXES;
 }

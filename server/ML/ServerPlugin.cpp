@@ -168,7 +168,7 @@ namespace ML {
     }
 
     void ServerPlugin::startBattleHook2(const CGHeroInstance* heroes[2], std::shared_ptr<CBattleQuery> q) {
-        auto dist = std::uniform_int_distribution<>(config.minMana, config.maxMana);
+        auto dist = std::uniform_int_distribution<>(config.manaMin, config.manaMax);
 
         for(int i : {0, 1}) {
             if(heroes[i]) {
