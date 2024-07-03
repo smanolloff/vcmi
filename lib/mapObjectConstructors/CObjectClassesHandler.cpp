@@ -237,7 +237,7 @@ TObjectTypeHandler CObjectClassesHandler::loadSubObjectFromJson(const std::strin
 	}
 	legacyTemplates.erase(range.first, range.second);
 
-	// logGlobal->debug("Loaded object %s(%d)::%s(%d)", obj->getJsonKey(), obj->id, identifier, index);
+	logGlobal->trace("Loaded object %s(%d)::%s(%d)", obj->getJsonKey(), obj->id, identifier, index);
 
 	return createdObject;
 }
@@ -446,8 +446,8 @@ void CObjectClassesHandler::afterLoadFinalization()
 				continue;
 
 			obj->afterLoadFinalization();
-			// if(obj->getTemplates().empty())
-			// 	logGlobal->warn("No templates found for %s:%s", entry->getJsonKey(), obj->getJsonKey());
+			if(obj->getTemplates().empty())
+				logGlobal->warn("No templates found for %s:%s", entry->getJsonKey(), obj->getJsonKey());
 		}
 	}
 }

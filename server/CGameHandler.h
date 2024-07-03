@@ -14,7 +14,6 @@
 #include "../lib/IGameCallback.h"
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
-#include "vcmi/spells/Caster.h"
 
 #include GYM("server/gym/ServerPlugin.h")
 
@@ -81,14 +80,14 @@ public:
 
 	SpellCastEnvironment * spellEnv;
 
+	GYM(std::shared_ptr<Gym::ServerPlugin> gymplugin);
+
 	const Services * services() const override;
 	const BattleCb * battle(const BattleID & battleID) const override;
 	const GameCb * game() const override;
 	vstd::CLoggerBase * logger() const override;
 	events::EventBus * eventBus() const override;
 	CVCMIServer * gameLobby() const;
-
-	GYM(std::shared_ptr<Gym::ServerPlugin> gymplugin);
 
 	bool isValidObject(const CGObjectInstance *obj) const;
 	bool isBlockedByQueries(const CPack *pack, PlayerColor player);

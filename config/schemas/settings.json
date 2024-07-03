@@ -50,11 +50,11 @@
 				},
 				"music" : {
 					"type" : "number",
-					"default" : 40
+					"default" : 88
 				},
 				"sound" : {
 					"type" : "number",
-					"default" : 40
+					"default" : 88
 				},
 				"saveRandomMaps" : {
 					"type" : "boolean",
@@ -474,6 +474,10 @@
 				"enemyAI" : {
 					"type" : "string",
 					"default" : "BattleAI"
+				},
+				"seed" : {
+					"type": "integer",
+					"default": 0 // 0 = no seed
 				}
 			}
 		},
@@ -494,11 +498,11 @@
 						},
 						"threshold" : {
 							"$ref" : "#/definitions/logLevelEnum",
-							"default" : "trace"
+							"default" : "info"
 						},
 						"coloredOutputEnabled" : {
 							"type" : "boolean",
-							"default" : false
+							"default" : true
 						},
 						"colorMapping" : {
 							"type" : "array",
@@ -537,7 +541,7 @@
 				},
 				"loggers" : {
 					"type" : "array",
-					"default" : [ { "domain" : "global", "level" : "info" } ],
+					"default" : [ { "domain" : "global", "level" : "trace" } ],
 					"items" : {
 						"type" : "object",
 						"additionalProperties" : false,

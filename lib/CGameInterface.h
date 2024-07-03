@@ -14,8 +14,6 @@
 
 #include "spells/ViewSpellInt.h"
 
-#include <stdexcept>
-
 class CBattleCallback;
 class CCallback;
 

@@ -510,9 +510,10 @@ void CModHandler::afterLoad(bool onlyEssential)
 
 	if(!onlyEssential)
 	{
-		// prevent writing to disk
-		// std::fstream file(CResourceHandler::get()->getResourceName(ResourcePath("config/modSettings.json"))->c_str(), std::ofstream::out | std::ofstream::trunc);
-		// file << modSettings.toString();
+#ifndef ENABLE_READONLY_MODE
+		std::fstream file(CResourceHandler::get()->getResourceName(ResourcePath("config/modSettings.json"))->c_str(), std::ofstream::out | std::ofstream::trunc);
+		file << modSettings.toString();
+#endif
 	}
 }
 

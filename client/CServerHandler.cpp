@@ -7,7 +7,6 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
-#include "CVCMIServer.h"
 #include "StdInc.h"
 
 #include "CServerHandler.h"
@@ -22,7 +21,6 @@
 #include "globalLobby/GlobalLobbyClient.h"
 #include "lobby/CSelectionBase.h"
 #include "lobby/CLobbyScreen.h"
-#include "network/NetworkServer.h"
 #include "windows/InfoWindows.h"
 
 #include "mainmenu/CMainMenu.h"
@@ -56,9 +54,6 @@
 #include "LobbyClientNetPackVisitors.h"
 
 #include <vcmi/events/EventBus.h>
-
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <string>
 
 template<typename T> class CApplyOnLobby;
 
@@ -242,6 +237,7 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
+	si->seedToBeUsed = settings["server"]["seed"].Integer();
 
 	GYM(si->gyminfo.init(settings));
 
@@ -594,7 +590,7 @@ void CServerHandler::sendGuiAction(ui8 action) const
 void CServerHandler::sendRestartGame() const
 {
 	GH.windows().createAndPushWindow<CLoadingScreen>();
-
+	
 	LobbyRestartGame endGame;
 	sendLobbyPack(endGame);
 }
@@ -638,7 +634,7 @@ void CServerHandler::sendStartGame(bool allowOnlyAI) const
 
 	if(!settings["session"]["headless"].Bool())
 		GH.windows().createAndPushWindow<CLoadingScreen>();
-
+	
 	LobbyPrepareStartGame lpsg;
 	sendLobbyPack(lpsg);
 
@@ -811,7 +807,7 @@ void CServerHandler::showServerError(const std::string & txt) const
 {
 	if(auto w = GH.windows().topWindow<CLoadingScreen>())
 		GH.windows().popWindow(w);
-
+	
 	CInfoWindow::showInfoDialog(txt, {});
 }
 

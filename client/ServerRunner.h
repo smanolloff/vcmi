@@ -20,7 +20,7 @@ class CVCMIServer;
 class IServerRunner
 {
 public:
-	virtual uint16_t start(uint16_t port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) = 0;
+	virtual ui16 start(ui16 port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) = 0;
 	virtual void shutdown() = 0;
 	virtual void wait() = 0;
 	virtual int exitCode() = 0;
@@ -35,7 +35,7 @@ class ServerThreadRunner : public IServerRunner, boost::noncopyable
 	boost::thread threadRunLocalServer;
 public:
 	CVCMIServer* getServer();
-	uint16_t start(uint16_t port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) override;
+	ui16 start(ui16 port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) override;
 	void shutdown() override;
 	void wait() override;
 	int exitCode() override;
@@ -57,7 +57,7 @@ class ServerProcessRunner : public IServerRunner, boost::noncopyable
 	std::unique_ptr<boost::process::child> child;
 
 public:
-	uint16_t start(uint16_t port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) override;
+	ui16 start(ui16 port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) override;
 	void shutdown() override;
 	void wait() override;
 	int exitCode() override;

@@ -36,7 +36,6 @@
 #include "../lib/pathfinder/CGPathNode.h"
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/registerTypes/RegisterTypesClientPacks.h"
-#include "mapping/CMap.h"
 
 #include <memory>
 #include <vcmi/events/EventBus.h>
@@ -175,12 +174,6 @@ void CClient::newGame(CGameState * initializedGameState)
 	gs = initializedGameState;
 	gs->preInit(VLC, this);
 	logNetwork->trace("\tCreating gamestate: %i", CSH->th->getDiff());
-	if(!initializedGameState)
-	{
-		Load::ProgressAccumulator progressTracking;
-		gs->init(&mapService, CSH->si.get(), progressTracking, settings["general"]["saveRandomMaps"].Bool());
-	}
-	logNetwork->trace("Initializing GameState (together): %d ms", CSH->th->getDiff());
 
 	initMapHandler();
 	reinitScripting();
@@ -511,11 +504,7 @@ void CClient::installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInte
 	logGlobal->trace("\tInitializing the interface for player %s", color.toString());
 	auto cb = std::make_shared<CCallback>(gs, color, this);
 	battleCallbacks[color] = cb;
-	if (aiBaggage.has_value()) {
-		gameInterface->initGameInterface(playerEnvironments.at(color), cb, aiBaggage);
-	} else {
-		gameInterface->initGameInterface(playerEnvironments.at(color), cb);
-	}
+	gameInterface->initGameInterface(playerEnvironments.at(color), cb, aiBaggage);
 
 	installNewBattleInterface(gameInterface, color, battlecb);
 }

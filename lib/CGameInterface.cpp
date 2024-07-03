@@ -108,7 +108,7 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 	if(libpath.stem() == "libNullkiller") {
 		return std::make_shared<NKAI::AIGateway>();
 	} else if(libpath.stem() == "libMMAI") {
-		return std::make_shared<MMAI::BAI>();
+		return std::make_shared<MMAI::BAI::Router>();
 	}
 	else{
 		return std::make_shared<VCAI>();

@@ -202,7 +202,7 @@ enum class EMapDifficulty : uint8_t
 };
 
 /// The map header holds information about loss/victory condition,map format, version, players, height, width,...
-class __attribute__((visibility("default"))) CMapHeader
+class DLL_LINKAGE CMapHeader
 {
 	void setupEvents();
 public:

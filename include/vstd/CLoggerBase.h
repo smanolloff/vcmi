@@ -61,9 +61,10 @@ public:
 
 	/// Returns true if a debug/trace log message will be logged, false if not.
 	/// Useful if performance is important and concatenating the log message is a expensive task.
-	virtual ELogLevel::ELogLevel getLevel() const = 0;
 	virtual bool isDebugEnabled() const = 0;
 	virtual bool isTraceEnabled() const = 0;
+
+	virtual ELogLevel::ELogLevel getLevel() const = 0;
 
 	template<typename T, typename ... Args>
 	void log(ELogLevel::ELogLevel level, const std::string & format, T t, Args ... args) const

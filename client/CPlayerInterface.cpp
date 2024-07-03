@@ -631,11 +631,10 @@ void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatur
 	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
 	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
 
-	if (aiBaggage.has_value()) {
-		autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getPlayerID()->toString());
-	} else {
-		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
-	}
+	aiBaggage.has_value()
+		? autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getPlayerID()->toString())
+		: autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+
 	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
 	isAutoFightOn = true;
 	cb->registerBattleInterface(autofightingAI);
@@ -807,15 +806,15 @@ void CPlayerInterface::activeStack(const BattleID & battleID, const CStack * sta
 void CPlayerInterface::battleEnd(const BattleID & battleID, const BattleResult *br, QueryID queryID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	if(isAutoFightOn || autofightingAI)
+	if(isAutoFightOn || autofightingAI || IFGYM(true, false))
 	{
 		isAutoFightOn = false;
 		cb->unregisterBattleInterface(autofightingAI);
 		autofightingAI.reset();
 
-		if(!battleInt)
+		if(!battleInt || IFGYM(true, false))
 		{
-			bool allowManualReplay = queryID != QueryID::NONE && !isAutoFightEndBattle;
+			bool allowManualReplay = queryID != QueryID::NONE && (!isAutoFightEndBattle || IFGYM(true, false));
 
 			auto wnd = std::make_shared<BattleResultWindow>(*br, *this, allowManualReplay);
 
@@ -833,6 +832,10 @@ void CPlayerInterface::battleEnd(const BattleID & battleID, const BattleResult *
 			// #1490 - during AI turn when quick combat is on, we need to display the message and wait for user to close it.
 			// Otherwise NewTurn causes freeze.
 			waitWhileDialog();
+
+			if (battleInt)
+				CPlayerInterface::battleInt.reset();
+
 			return;
 		}
 	}

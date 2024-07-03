@@ -15,6 +15,7 @@ VCMI_LIB_NAMESPACE_BEGIN
 
 CRandomGenerator::CRandomGenerator()
 {
+	logRng->debug("** RNG ** constructor **");
 	resetSeed();
 }
 

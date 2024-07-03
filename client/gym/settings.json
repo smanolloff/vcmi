@@ -12,6 +12,7 @@
 	},
 	"logging" : {
 		"console" : {
+		"threshold": "trace",
 		"coloredOutputEnabled": true,
 			"colorMapping" : [
 				{
@@ -99,7 +100,7 @@
 			},
 			{
 				"domain" : "stats",
-				"level" : "info"
+				"level" : "trace"
 			},
 			{
 				"domain" : "ai",

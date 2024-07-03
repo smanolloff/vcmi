@@ -13,22 +13,23 @@ class VCMI(ConanFile):
     _libRequires = [
         "boost/[^1.69]",
         "minizip/[~1.2.12]",
+        "onetbb/[^2021.3]",
     ]
     _clientRequires = [
         "sdl/[~2.26.1 || >=2.0.20 <=2.22.0]", # versions in between have broken sound
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-        "llvm-openmp/17.0.6",
     ]
     _nullkillerAIRequires = [
-        "onetbb/[^2021.3]",
+    ]
+    _MMAIRequires = [
+        "llvm-openmp/17.0.6",
     ]
     _gymRequires = [
-        "sqlite3/[~3.45.3]"
+        "sqlite3/[~3.45.3]",
     ]
-
-    requires = list(set(_libRequires + _clientRequires + _nullkillerAIRequires + _gymRequires))
+    requires = _libRequires + _clientRequires + _nullkillerAIRequires + _MMAIRequires + _gymRequires
 
     options = {
         "default_options_of_requirements": [True, False],

@@ -7,7 +7,6 @@
 #include "lib/battle/BattleAction.h"
 #include "lib/battle/BattleInfo.h"
 #include "lib/spells/CSpellHandler.h"
-#include "lib/CRandomGenerator.h"
 #include "battle/ReachabilityInfo.h"
 #include "vcmi/Environment.h"
 #include <algorithm>
@@ -145,15 +144,35 @@ namespace MMAI::BAI::Scripted {
         if(stack->creatureId() == CreatureID::CATAPULT)
         {
             BattleAction attack;
-            static const std::vector<int> wallHexes = {50, 183, 182, 130, 78, 29, 12, 95};
-            auto seletectedHex = *RandomGeneratorUtil::nextItem(wallHexes, CRandomGenerator::getDefault());
-            attack.aimToHex(seletectedHex);
-            attack.actionType = EActionType::CATAPULT;
-            attack.side = side;
+            attack.side = stack->unitSide();
             attack.stackNumber = stack->unitId();
+            attack.actionType = EActionType::CATAPULT;
 
-            cb->battleMakeUnitAction(battleID, attack);
+            if(battle->battleGetGateState() == EGateState::CLOSED) {
+                attack.aimToHex(battle->wallPartToBattleHex(EWallPart::GATE));
+                cb->battleMakeUnitAction(battleID, attack);
+                return;
+            }
+
+            using WP = EWallPart;
+            auto wallparts = {
+                WP::KEEP, WP::BOTTOM_TOWER, WP::UPPER_TOWER,
+                WP::BELOW_GATE, WP::OVER_GATE, WP::BOTTOM_WALL, WP::UPPER_WALL
+            };
+
+            for (auto wp : wallparts) {
+                using WS = EWallState;
+                auto ws = battle->battleGetWallState(wp);
+                if(ws == WS::REINFORCED || ws == WS::INTACT || ws == WS::DAMAGED) {
+                    attack.aimToHex(battle->wallPartToBattleHex(wp));
+                    cb->battleMakeUnitAction(battleID, attack);
+                    return;
+                }
+            }
+
+            cb->battleMakeUnitAction(battleID, BattleAction::makeDefend(stack));
             return;
+
         }
         else if(stack->hasBonusOfType(BonusType::SIEGE_WEAPON))
         {
@@ -289,7 +308,7 @@ namespace MMAI::BAI::Scripted {
         };
 
         auto dist = std::uniform_int_distribution<>(0, 3);
-        auto rng = std::random_device();
+        auto rng = std::mt19937(hero1->exp);
         auto roll = dist(rng);
         if (roll < spells.size()) {
             spellToCast = spells.at(roll).toSpell();

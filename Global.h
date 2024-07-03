@@ -106,9 +106,11 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 /* A macro which expands to nothing if ENABLE_GYM is not set */
 /* ---------------------------------------------------------------------------- */
 #ifdef ENABLE_GYM
-#define GYM(statement) statement
+#define GYM(STMT) STMT
+#define IFGYM(STMT_TRUE, STMT_FALSE) STMT_TRUE
 #else
-#define GYM(statement)
+#define GYM(STMT)
+#define IFGYM(STMT_TRUE, STMT_FALSE) STMT_FALSE
 #endif
 
 #define _USE_MATH_DEFINES

@@ -55,7 +55,7 @@ protected:
 public:
 	/// Appearance modifiers
 	void setPlayerColor(PlayerColor player);
-	void setImage(const AnimationPath defName, bool playerColoredButton = false);
+	void setImage(const AnimationPath & defName, bool playerColoredButton = false);
 	void setConfigurable(const JsonPath & jsonName, bool playerColoredButton = false);
 	void setImageOrder(int state1, int state2, int state3, int state4);
 

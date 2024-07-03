@@ -82,6 +82,8 @@ if(APPLE_IOS OR ANDROID)
 	set(ENABLE_LOBBY OFF)
 	set(ENABLE_SERVER OFF)
 	set(COPY_CONFIG_ON_BUILD OFF)
+	set(ENABLE_GYM OFF)
+	set(ENABLE_READONLY_MODE OFF)
 else()
 	option(ENABLE_MONOLITHIC_INSTALL "Install everything in single directory on Linux and Mac" OFF) # Used for Snap packages and also useful for debugging
 	option(COPY_CONFIG_ON_BUILD "Copies config folder into output directory at building phase" ON)
@@ -91,6 +93,7 @@ else()
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
 	option(ENABLE_GYM "Enable compilation of vcmi-gym related libraries (for AI training)")
+	option(ENABLE_READONLY_MODE "Prevent disk writes")
 	option(ENABLE_DEV_BUILD "set to true in order to run binaries directly from build dir" OFF)
 endif()
 
@@ -260,6 +263,10 @@ endif()
 
 if(ENABLE_GOLDMASTER)
 	add_definitions(-DENABLE_GOLDMASTER)
+endif()
+
+if(ENABLE_READONLY_MODE)
+	add_definitions(-DENABLE_READONLY_MODE)
 endif()
 
 if(ENABLE_GYM)

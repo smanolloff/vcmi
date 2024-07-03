@@ -15,7 +15,6 @@
 #include "ServerNetPackVisitors.h"
 #include "ServerSpellCastEnvironment.h"
 #include "battles/BattleProcessor.h"
-#include "gym/ServerPlugin.h"
 #include "processors/HeroPoolProcessor.h"
 #include "processors/PlayerMessageProcessor.h"
 #include "processors/TurnOrderProcessor.h"
@@ -546,16 +545,12 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 	{
 		si->seedToBeUsed = CRandomGenerator::getDefault().nextInt();
 	}
-
 	CMapService mapService;
 	gs = new CGameState();
 	gs->preInit(VLC, this);
 	logGlobal->info("Gamestate created!");
 	gs->init(&mapService, si, progressTracking);
 	logGlobal->info("Gamestate initialized!");
-
-	// reset seed, so that clients can't predict any following random values
-	getRandomGenerator().resetSeed();
 
 	for (auto & elem : gs->players)
 		turnOrder->addPlayer(elem.first);
@@ -3321,7 +3316,7 @@ bool CGameHandler::queryReply(QueryID qid, std::optional<int32_t> answer, Player
 		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer())
 			currentQuery->setReply(answer);
 
-		COMPLAIN_RET("This player top query (" + topQuery->toString() + ") has ID != " + std::to_string(qid)); //topQuery->queryID != qid
+		COMPLAIN_RETF("This player top query has different ID: want: %d, have: %d", static_cast<int>(qid) % static_cast<int>(topQuery->queryID)); //topQuery->queryID != qid
 	}
 	COMPLAIN_RET_FALSE_IF(!topQuery->endsByPlayerAnswer(), "This query cannot be ended by player's answer!");
 

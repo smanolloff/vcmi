@@ -133,10 +133,6 @@ namespace MMAI::AAI {
     private:
         std::any baggage;
 
-        // XXX: those mess up the regular log colors => leave blank
-        std::string ansicolor = "";
-        std::string ansireset = "";
-
         std::string color = "?";
         std::string addrstr = "?";
         std::string battleAiName;

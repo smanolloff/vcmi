@@ -401,7 +401,7 @@ void validateArguments(
     if (!baggage)
         throw std::runtime_error("baggage is required");
 
-    // XXX: this might blow up since preinitDLL is not yet called here
+    // XXX: can this blow given preinitDLL is not yet called here?
     validateFile("map", baggage->map, VCMIDirs::get().userDataPath() / "Maps");
 
     if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), loglevelAI) == LOGLEVELS.end()) {
@@ -592,11 +592,8 @@ void processArguments(
 
     conflog("global", loglevelGlobal);
     conflog("ai", loglevelAI);
-
-    // XXX: stats logger can't be set here (client) as it runs on the server
-    //      where it's configured via Settings in CVCMIServer.cpp#create
-    // conflog("stats", "info");
-
+    conflog("stats", loglevelStats);
+    conflog("rng", "info");
     conflog("network", "error");
     conflog("mod", "error");
     conflog("animation", "error");

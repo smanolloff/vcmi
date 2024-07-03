@@ -83,8 +83,7 @@ void BattleProcessor::restartBattlePrimary(const BattleID & battleID, const CArm
 
 		lastBattleQuery->result = std::nullopt;
 
-#ifndef ENABLE_GYM
-		// gym's army swapping hack causes these asserts to fail
+#ifndef ENABLE_GYM // gym's side swapping hack violates these asserts
 		assert(lastBattleQuery->belligerents[0] == battle->sides[0].armyObject);
 		assert(lastBattleQuery->belligerents[1] == battle->sides[1].armyObject);
 #endif
@@ -103,11 +102,9 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
-
 	GYM(gameHandler->gymplugin->startBattleHook1(army1, army2, hero1, hero2));
 
 	const CArmedInstance *armies[2];
-
 	armies[0] = army1;
 	armies[1] = army2;
 	const CGHeroInstance*heroes[2];
@@ -118,7 +115,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 
 	const auto * battle = gameHandler->gameState()->getBattle(battleID);
 	assert(battle);
-
+	
 	//add battle bonuses based from player state only when attacks neutral creatures
 	const auto * attackerInfo = gameHandler->getPlayerState(army1->getOwner(), false);
 	if(attackerInfo && !army2->getOwner().isValidPlayer())
@@ -151,9 +148,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 
 		GYM(gameHandler->gymplugin->startBattleHook2(heroes, newBattleQuery));
 		gameHandler->queries->addQuery(newBattleQuery);
-
 	}
-
 
 	flowProcessor->onBattleStarted(*battle);
 }
@@ -183,7 +178,6 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
 	ui32 seed = 0;
-
 	GYM(gameHandler->gymplugin->setupBattleHook(town, seed));
 
 	//send info about battles
@@ -201,7 +195,6 @@ BattleID BattleProcessor::setupBattle(int3 tile, const CArmedInstance *armies[2]
 	bool isAttackerHuman = gameHandler->getPlayerState(bs.info->sides[0].color)->isHuman();
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
-
 	bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
 	GYM(bs.info->replayAllowed = true);
 

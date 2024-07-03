@@ -89,9 +89,10 @@ void SettingsStorage::invalidateNode(const std::vector<std::string> &changedPath
 	if(!schema.empty())
 		JsonUtils::minimize(savedConf, schema);
 
-	// prevent writing to disk
-	// std::fstream file(CResourceHandler::get()->getResourceName(JsonPath::builtin(dataFilename))->c_str(), std::ofstream::out | std::ofstream::trunc);
-	// file << savedConf.toString();
+#ifndef ENABLE_READONLY_MODE
+	std::fstream file(CResourceHandler::get()->getResourceName(JsonPath::builtin(dataFilename))->c_str(), std::ofstream::out | std::ofstream::trunc);
+	file << savedConf.toString();
+#endif
 }
 
 JsonNode & SettingsStorage::getNode(const std::vector<std::string> & path)

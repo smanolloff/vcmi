@@ -260,7 +260,7 @@ zlib_filefunc64_def CProxyROIOApi::getApiStructure()
 
 CInputStream * CProxyROIOApi::openFile(const boost::filesystem::path& filename, int mode)
 {
-	// logGlobal->trace("CProxyROIOApi: stream opened for %s with mode %d", filename.string(), mode);
+	logGlobal->trace("CProxyROIOApi: stream opened for %s with mode %d", filename.string(), mode);
 
 	data->seek(0);
 	return data;

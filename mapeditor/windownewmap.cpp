@@ -32,14 +32,6 @@ WindowNewMap::WindowNewMap(QWidget *parent) :
 {
 	ui->setupUi(this);
 
-	printf("MAP_SIZE_HUGE: %d\n", CMap::MAP_SIZE_HUGE);
-	printf("MAP_SIZE_GIANT: %d\n", CMap::MAP_SIZE_GIANT);
-	printf("MAP_SIZE_LARGE: %d\n", CMap::MAP_SIZE_LARGE);
-	printf("MAP_SIZE_SMALL: %d\n", CMap::MAP_SIZE_SMALL);
-	printf("MAP_SIZE_XHUGE: %d\n", CMap::MAP_SIZE_XHUGE);
-	printf("MAP_SIZE_MIDDLE: %d\n", CMap::MAP_SIZE_MIDDLE);
-	printf("MAP_SIZE_XLARGE: %d\n", CMap::MAP_SIZE_XLARGE);
-
 	setAttribute(Qt::WA_DeleteOnClose);
 
 	setWindowModality(Qt::ApplicationModal);

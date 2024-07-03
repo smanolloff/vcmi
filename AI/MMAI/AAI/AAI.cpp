@@ -158,10 +158,8 @@ namespace MMAI::AAI {
         ASSERT(baggage__, "baggage contains a nullptr");
 
         if (color == "red") {
-            // ansicolor = "\033[41m";  // red background
             battleAiName = baggage__->battleAINameRed;
         } else if (color == "blue") {
-            // ansicolor = "\033[44m";  // blue background
             battleAiName = baggage__->battleAINameBlue;
         } else {
             // Maps and everything basically assumes red human player attacking blue human player
@@ -532,7 +530,7 @@ namespace MMAI::AAI {
      */
 
     template<typename ... Args> void AAI::_log(const ELogLevel::ELogLevel level, const std::string &format, Args ... args) const {
-        logAi->log(level, "AAI-%s [%s%s%s] " + format, addrstr, ansicolor, color, ansireset, args...);
+        logAi->log(level, "AAI-%s [%s] " + format, addrstr, color, args...);
     }
 
     template<typename ... Args> void AAI::error(const std::string &format, Args ... args) const { log(ELogLevel::ERROR, format, args...); }

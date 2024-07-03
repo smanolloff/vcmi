@@ -76,12 +76,10 @@ namespace MMAI::BAI {
         cb->unlockGsWhenWaiting = false;
 
         if (colorname == "red") {
-            // ansicolor = "\033[41m";  // red background
             f_getAction = baggage->f_getActionRed;
             f_getValue = baggage->f_getValueRed;
             debug("using f_getActionRed");
         } else if (colorname == "blue") {
-            // ansicolor = "\033[44m";  // blue background
             f_getAction = baggage->f_getActionBlue;
             f_getValue = baggage->f_getValueBlue;
             debug("using f_getActionBlue");
