@@ -100,7 +100,7 @@ Args parse_args(int argc, char * argv[])
     };
 
     auto usage = std::stringstream();
-    usage << "Usage: " << argv[0] << " [options] <MAP>\n\n";
+    usage << "Usage: " << argv[0] << " [options]\n\n";
     usage << "Available options (* denotes default value)";
 
     auto opts = po::options_description(usage.str(), 0);

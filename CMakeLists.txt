@@ -84,6 +84,7 @@ if(APPLE_IOS OR ANDROID)
 	set(COPY_CONFIG_ON_BUILD OFF)
 	set(ENABLE_DEV_BUILD OFF)
 	set(ENABLE_ML OFF)
+	set(ENABLE_MMAI OFF)
 	set(ENABLE_READONLY_MODE OFF)
 else()
 	option(ENABLE_MONOLITHIC_INSTALL "Install everything in single directory on Linux and Mac" OFF) # Used for Snap packages and also useful for debugging
