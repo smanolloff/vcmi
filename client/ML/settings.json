@@ -96,31 +96,31 @@
 		"loggers" : [
 			{
 				"domain" : "global",
-				"level" : "warn"
+				"level" : "error"
 			},
 			{
 				"domain" : "stats",
-				"level" : "trace"
+				"level" : "debug"
 			},
 			{
 				"domain" : "ai",
-				"level" : "warn"
+				"level" : "error"
 			},
 			{
 				"domain": "rng",
-				"level": "warn"
+				"level": "error"
 			},
 			{
 				"domain": "network",
-				"level": "warn"
+				"level": "error"
 			},
 			{
 				"domain": "mod",
-				"level": "warn"
+				"level": "error"
 			},
 			{
 				"domain": "animation",
-				"level": "warn"
+				"level": "error"
 			},
 			{
 				"domain": "bonus",

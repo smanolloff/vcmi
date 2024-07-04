@@ -287,9 +287,9 @@ void validateArguments(
     int &randomHeroes,
     int &randomObstacles,
     int &townChance,
+    int &warmachineChance,
     int &manaMin,
     int &manaMax,
-    int &warmachineChance,
     int &swapSides,
     std::string &loglevelGlobal,
     std::string &loglevelAI,
@@ -445,9 +445,9 @@ void processArguments(
     int randomHeroes,
     int randomObstacles,
     int townChance,
+    int warmachineChance,
     int manaMin,
     int manaMax,
-    int warmachineChance,
     int swapSides,
     std::string statsMode,
     std::string statsStorage,
@@ -529,8 +529,8 @@ void processArguments(
     //
     if (blueAI == AI_MMAI_USER) {
         baggage->battleAINameBlue = "MMAI";
-        if (baggage->versionRed < MIN_SCHEMA_VERSION || baggage->versionBlue > MAX_SCHEMA_VERSION)
-            throw std::runtime_error("Unsupported schema version for blue: " + std::to_string(baggage->versionRed));
+        if (baggage->versionBlue < MIN_SCHEMA_VERSION || baggage->versionBlue > MAX_SCHEMA_VERSION)
+            throw std::runtime_error("Unsupported schema version for blue: " + std::to_string(baggage->versionBlue));
     } else if (blueAI == AI_MMAI_MODEL) {
         baggage->battleAINameBlue = "MMAI";
         // Same as above, but with replaced "getAction" for defender
@@ -640,9 +640,9 @@ void init_vcmi(
     int randomHeroes,
     int randomObstacles,
     int townChance,
+    int warmachineChance,
     int manaMin,
     int manaMax,
-    int warmachineChance,
     int swapSides,
     std::string loglevelGlobal,
     std::string loglevelAI,
@@ -675,9 +675,9 @@ void init_vcmi(
         randomHeroes,
         randomObstacles,
         townChance,
+        warmachineChance,
         manaMin,
         manaMax,
-        warmachineChance,
         swapSides,
         loglevelGlobal,
         loglevelAI,
