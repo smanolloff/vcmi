@@ -58,7 +58,7 @@ namespace MMAI::BAI::V3 {
         const std::shared_ptr<Hexes> hexes;
         const std::shared_ptr<Stacks> stacks; // XXX: may or may not hold hold the active stack
         const StackMapping stackmapping;
-        const Stack* astack;     // XXX: nullptr on battle start/end, or if army stacks > MAX_STACKS_PER_SIDE
+        const Stack* const astack;     // XXX: nullptr on battle start/end, or if army stacks > MAX_STACKS_PER_SIDE
     private:
         static std::tuple<std::shared_ptr<Stacks>, StackMapping> InitStacks(
             const CPlayerBattleCallback* battle,

@@ -42,6 +42,7 @@ namespace MMAI::BAI::V3 {
     State::State(const int version__, const std::string colorname_, const CPlayerBattleCallback* battle_)
     : version_(version__)
     , colorname(colorname_)
+    , battle(battle_)
     , side(battle_->battleGetMySide())
     , initialArmyValues(GeneralInfo::CalcTotalArmyValues(battle_))
     , nullstack(InitNullStack())
@@ -50,7 +51,6 @@ namespace MMAI::BAI::V3 {
         bfstate.reserve(Schema::V3::BATTLEFIELD_STATE_SIZE);
         actmask.reserve(Schema::V3::N_ACTIONS);
         // attnmask.reserve(165 * 165);
-        battle = battle_;
     }
 
     void State::onActiveStack(const CStack* astack) {

@@ -97,7 +97,7 @@ namespace MMAI::BAI::V3 {
         const int unitsKilled;
         const int valueLost;
         const int valueKilled;
-        const Battlefield* battlefield;
+        const Battlefield* const battlefield;
         const std::unique_ptr<Stats> stats;
         const std::vector<std::shared_ptr<AttackLog>> attackLogs;
 

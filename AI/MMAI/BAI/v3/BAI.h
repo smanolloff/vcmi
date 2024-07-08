@@ -50,11 +50,11 @@ namespace MMAI::BAI::V3 {
     protected:
         // Subsequent versions may override this with subclasses of State
         virtual std::unique_ptr<State> initState(const CPlayerBattleCallback* battle);
-        std::unique_ptr<State> state;
+        std::unique_ptr<State> state = nullptr;
 
         bool resetting = false;
-        std::vector<Schema::Action> allactions; // DEBUG ONLY
-        std::shared_ptr<CPlayerBattleCallback> battle;
+        std::vector<Schema::Action> allactions = {}; // DEBUG ONLY
+        std::shared_ptr<CPlayerBattleCallback> battle = nullptr;
 
         std::string renderANSI();
         std::string debugInfo(Action *action, const CStack *astack, BattleHex *nbh); // DEBUG ONLY

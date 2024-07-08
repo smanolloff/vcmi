@@ -72,8 +72,8 @@ namespace MMAI::BAI::V3 {
         int getAttr(HexAttribute a) const override;
 
         const BattleHex bhex;
-        std::shared_ptr<const Stack> stack;
-        HexAttrs attrs;
+        std::shared_ptr<const Stack> stack = nullptr;
+        HexAttrs attrs = {};
         HexActionMask actmask = 0;   // for active stack only
         HexStateMask statemask = 0;  //
 
