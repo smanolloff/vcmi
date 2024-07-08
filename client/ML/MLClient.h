@@ -62,7 +62,6 @@ void __attribute__((visibility("default"))) init_vcmi(
     int statsSampling,
     float statsScoreVar,
     bool printModelPredictions,
-    bool trueRng,
     bool headless
 );
 

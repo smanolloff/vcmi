@@ -46,8 +46,7 @@ namespace ML {
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         std::unique_ptr<Stats> stats;
-        std::mt19937 pseudorng;
-        std::random_device truerng;
+        std::mt19937 rng;
 
         int herocounter = 0;
         int towncounter = 0;

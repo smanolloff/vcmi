@@ -84,7 +84,6 @@ Args parse_args(int argc, char * argv[])
     int statsPersistFreq = 0;
     int schemaVersion = 1;
     bool printModelPredictions = false;
-    bool trueRng = false;
     float statsScoreVar = 0.4;
 
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
@@ -151,8 +150,6 @@ Args parse_args(int argc, char * argv[])
             "Measure performance")
         ("print-predictions", po::bool_switch(&printModelPredictions),
             "Print MMAI model predictions (no effect for other AIs)")
-        ("true-rng", po::bool_switch(&trueRng),
-            "Use std::random_device() instead of std::mt19937 for hero, obstacle & town randomization")
         ("stats-mode", po::value<std::string>()->value_name("<MODE>"),
             ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
         ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
@@ -305,7 +302,6 @@ Args parse_args(int argc, char * argv[])
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
-        printModelPredictions,
-        trueRng,
+        printModelPredictions
     };
 }

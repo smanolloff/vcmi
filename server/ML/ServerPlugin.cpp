@@ -42,27 +42,23 @@ namespace ML {
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config))
-    , pseudorng(std::mt19937(config.seed))
-    , truerng(std::random_device())
+    , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, (1<<(8*sizeof(int)-1)) - 1))) // 2^31-1
     {}
 
     void ServerPlugin::setupBattleHook(const CGTownInstance *& town, ui32 & seed) {
         if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
-            seed = config.trueRng // modification by reference
-                ? truerng()
-                : gs->getRandomGenerator().nextInt(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+            // modification by reference
+            seed = gs->getRandomGenerator().nextInt(0, (1<<(8*sizeof(int)-1)) - 1);
         }
 
         if (config.townChance > 0) {
             auto dist = std::uniform_int_distribution<>(0, 99);
-            auto roll = config.trueRng ? dist(truerng) : dist(pseudorng);
+            auto roll = dist(rng);
 
             if (roll < config.townChance) {
                 if (towncounter % alltowns.size() == 0) {
                     towncounter = 0;
-                    config.trueRng
-                        ? std::shuffle(alltowns.begin(), alltowns.end(), truerng)
-                        : std::shuffle(alltowns.begin(), alltowns.end(), pseudorng);
+                    std::shuffle(alltowns.begin(), alltowns.end(), rng);
                 }
 
                 town = alltowns.at(towncounter); // modification by reference
@@ -102,9 +98,7 @@ namespace ML {
                 if (herocounter % allheroes.size() == 0) {
                     herocounter = 0;
 
-                    config.trueRng
-                        ? std::shuffle(allheroes.begin(), allheroes.end(), truerng)
-                        : std::shuffle(allheroes.begin(), allheroes.end(), pseudorng);
+                    std::shuffle(allheroes.begin(), allheroes.end(), rng);
 
                     // for (int i=0; i<allheroes.size(); i++)
                     //  printf("allheroes[%d] = %s\n", i, allheroes.at(i)->getNameTextID().c_str());
@@ -138,7 +132,7 @@ namespace ML {
                         throw std::runtime_error("Could not find warmachine");
 
                     auto apos = it->second;
-                    auto roll = config.trueRng ? dist(truerng) : dist(pseudorng);
+                    auto roll = dist(rng);
                     if (roll < config.warmachineChance) {
                         if (!h->getArt(apos)) const_cast<CGHeroInstance*>(h)->putArtifact(apos, m);
                     } else {
@@ -147,13 +141,6 @@ namespace ML {
                 }
             }
         }
-
-        // if (gh->manaMin != gh->manaMax) {
-        //  auto dist = std::uniform_int_distribution<>(manaMin, manaMax);
-        //  for (auto h : {hero1, hero2}) {
-        //      auto mana = gh->useTrueRng ? dist(gh->truerng) : dist(gh->pseudorng);
-        //  }
-        // }
 
         // Set temp owner of both heroes to player0 and player1
         // XXX: causes UB after battle, unless it is replayed (ok for training)
@@ -172,7 +159,7 @@ namespace ML {
 
         for(int i : {0, 1}) {
             if(heroes[i]) {
-                auto roll = config.trueRng ? dist(truerng) : dist(pseudorng);
+                auto roll = dist(rng);
                 q->initialHeroMana[i] = roll;
             }
         }

@@ -303,8 +303,7 @@ void validateArguments(
     int &statsPersistFreq,
     int &statsSampling,
     float &statsScoreVar,
-    bool &_printModelPredictions,
-    bool &_trueRng
+    bool &_printModelPredictions
 ) {
     auto wd = boost::filesystem::current_path();
 
@@ -454,8 +453,7 @@ void processArguments(
     int statsPersistFreq,
     int statsSampling,
     float statsScoreVar,
-    bool printModelPredictions,
-    bool trueRng
+    bool printModelPredictions
 ) {
     // Notes on AI creation
     //
@@ -557,8 +555,8 @@ void processArguments(
     Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
     Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
 
+    Settings(settings.write({"server", "seed"}))->Integer() = seed;
     Settings(settings.write({"server", "ML", "maxBattles"}))->Integer() = maxBattles;
-    Settings(settings.write({"server", "ML", "seed"}))->Integer() = seed;
     Settings(settings.write({"server", "ML", "randomHeroes"}))->Integer() = randomHeroes;
     Settings(settings.write({"server", "ML", "randomObstacles"}))->Integer() = randomObstacles;
     Settings(settings.write({"server", "ML", "townChance"}))->Integer() = townChance;
@@ -572,7 +570,6 @@ void processArguments(
     Settings(settings.write({"server", "ML", "statsSampling"}))->Integer() = statsSampling;
     Settings(settings.write({"server", "ML", "statsScoreVar"}))->Float() = statsScoreVar;
     Settings(settings.write({"server", "ML", "statsLoglevel"}))->String() = loglevelStats;
-    Settings(settings.write({"server", "ML", "trueRng"}))->Bool() = trueRng;
 
     Settings(settings.write({"server", "localPort"}))->Integer() = 0;
     Settings(settings.write({"server", "useProcess"}))->Bool() = false;
@@ -657,7 +654,6 @@ void init_vcmi(
     int statsSampling,
     float statsScoreVar,
     bool printModelPredictions,
-    bool trueRng,
     bool headless_
 ) {
     // SIGSEGV errors if this is not global
@@ -691,8 +687,7 @@ void init_vcmi(
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
-        printModelPredictions,
-        trueRng
+        printModelPredictions
     );
 
     auto wd = boost::filesystem::current_path();
@@ -732,8 +727,7 @@ void init_vcmi(
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
-        printModelPredictions,
-        trueRng
+        printModelPredictions
     );
 
     // chdir needed for VCMI init
