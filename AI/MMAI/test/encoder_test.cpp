@@ -2,6 +2,7 @@
 #include "schema/v3/constants.h"
 #include "schema/v3/types.h"
 #include "test/googletest/googletest/include/gtest/gtest.h"
+#include <stdexcept>
 
 using Encoder = MMAI::BAI::V3::Encoder;
 using namespace MMAI::Schema::V3;

@@ -39,36 +39,44 @@ with `pip` (see `requirements.txt` in vcmi-gym).
 1. Compile VCMI with `-D ENABLE_LIBTORCH=1`. Recommended if you want to play
 VCMI against pre-trained AI models, OR if you want ot train new AI models on
 CPU only. Requirements: you have installed the CPU-only cxx11 ABI torch
-package with `pip` (see `requirements.txt` in vcmi-gym).
+package with `pip` (see `requirements.txt` in vcmi-gym; see also the
+libtorch-related comments in `client/ML/CMakeLists.txt`).
 
 ```bash
 $ cmake -S . -B rel -Wno-dev \
     -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_EXPORT_COMPILE_COMMANDS=0 \
     -D ENABLE_SINGLE_APP_BUILD=1 \
     -D ENABLE_CCACHE=1 \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
-    -D ENABLE_GYMCLIENT=1 \
-    -D ENABLE_DEV_BUILD=0 \
+    -D ENABLE_READONLY_MODE=1 \
+    -D ENABLE_DEV_BUILD=1 \
     -D ENABLE_LIBTORCH=0 \
-    -D CMAKE_EXPORT_COMPILE_COMMANDS=0
+    -D ENABLE_ML=1 \
+    -D ENABLE_MMAI=1 \
+    -D ENABLE_MMAI_TEST=0
+
 
 $ cmake --build rel/
 ```
 
-_(Optional)_ Compile a debug binary:
+_(Optional)_ For a debug build with IDE support and tests:
 
 ```bash
 $ cmake -S . -B build -Wno-dev \
-      -D CMAKE_BUILD_TYPE=Debug \
-      -D ENABLE_SINGLE_APP_BUILD=1 \
-      -D ENABLE_CCACHE=1 \
-      -D ENABLE_NULLKILLER_AI=0 \
-      -D ENABLE_LAUNCHER=0 \
-      -D ENABLE_GYMCLIENT=1 \
-      -D ENABLE_DEV_BUILD=1 \
-      -D ENABLE_LIBTORCH=1 \
-      -D CMAKE_EXPORT_COMPILE_COMMANDS=1
+    -D CMAKE_BUILD_TYPE=Debug \
+    -D CMAKE_EXPORT_COMPILE_COMMANDS=1 \
+    -D ENABLE_SINGLE_APP_BUILD=1 \
+    -D ENABLE_CCACHE=1 \
+    -D ENABLE_NULLKILLER_AI=0 \
+    -D ENABLE_LAUNCHER=0 \
+    -D ENABLE_READONLY_MODE=1 \
+    -D ENABLE_DEV_BUILD=1 \
+    -D ENABLE_LIBTORCH=0 \
+    -D ENABLE_ML=1 \
+    -D ENABLE_MMAI=1 \
+    -D ENABLE_MMAI_TEST=1
 
 $ cmake --build build/
 ```
@@ -87,7 +95,7 @@ the appropriate settings for vcmi-gym:
 
 ```bash
 $ mkdir "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
-$ ln -s "$PWD"/gymclient/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
+$ ln -s "$PWD"/client/ML/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
 ```
 
 ### Manual test

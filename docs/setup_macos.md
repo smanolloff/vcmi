@@ -36,47 +36,55 @@ In case the above command fails with a qt-related error, apply
 patch to `~/.conan/data/qt/5.15.11/_/_/source/qt5/qtbase/mkspecs/features/mac/toolchain.prf`
 (exact qt version may vary), then repeat the `conan install` command.
 
-To be able to load AI models in VCMI, a dependency to libtorch was added.
-
-For development purposes, VCMI should use the same libtorch as the one
-used by vcmi-gym and installed by pip. Create these symlinks:
+To be able to load AI models in VCMI, libtorch is needed. VCMI should use the
+same libtorch as the one used by vcmi-gym and installed by pip. Create this
+symlink (python version may vary):
 
 ```bash
-$ ln -s ../../.venv/lib/python3.10/site-packages/torch gymclient/libtorch
+$ ln -s ../../../.venv/lib/python3.10/site-packages/torch client/ML/libtorch
 ```
 
 ### Compile VCMI
 
+Before proceeding, make sure you have the `libtorch` symlink properly
+set up (see the libtorch-related comments in `client/ML/CMakeLists.txt`).
+
 ```bash
-$ cmake --fresh -S . -B build -Wno-dev \
-        -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
-        -D CMAKE_BUILD_TYPE=Release \
-        -D ENABLE_SINGLE_APP_BUILD=1 \
-        -D ENABLE_CCACHE=1 \
-        -D ENABLE_NULLKILLER_AI=0 \
-        -D ENABLE_LAUNCHER=0 \
-        -D ENABLE_GYMCLIENT=1 \
-        -D ENABLE_DEV_BUILD=1 \
-        -D ENABLE_LIBTORCH=1 \
-        -D CMAKE_EXPORT_COMPILE_COMMANDS=0
+$ cmake -S . -B rel -Wno-dev \
+    -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_EXPORT_COMPILE_COMMANDS=0 \
+    -D ENABLE_SINGLE_APP_BUILD=1 \
+    -D ENABLE_CCACHE=1 \
+    -D ENABLE_NULLKILLER_AI=0 \
+    -D ENABLE_LAUNCHER=0 \
+    -D ENABLE_READONLY_MODE=1 \
+    -D ENABLE_DEV_BUILD=1 \
+    -D ENABLE_LIBTORCH=1 \
+    -D ENABLE_ML=1 \
+    -D ENABLE_MMAI=1 \
+    -D ENABLE_MMAI_TEST=0
 
 $ cmake --build rel/
 ```
 
-_(Optional)_ Compile a debug binary:
+_(Optional)_ For a debug build with IDE support and tests:
 
 ```bash
 $ cmake -S . -B build -Wno-dev \
     -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
     -D CMAKE_BUILD_TYPE=Debug \
+    -D CMAKE_EXPORT_COMPILE_COMMANDS=1 \
     -D ENABLE_SINGLE_APP_BUILD=1 \
     -D ENABLE_CCACHE=1 \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
-    -D ENABLE_GYMCLIENT=1 \
+    -D ENABLE_READONLY_MODE=1 \
     -D ENABLE_DEV_BUILD=1 \
     -D ENABLE_LIBTORCH=1 \
-    -D CMAKE_EXPORT_COMPILE_COMMANDS=1
+    -D ENABLE_ML=1 \
+    -D ENABLE_MMAI=1 \
+    -D ENABLE_MMAI_TEST=1
 
 $ cmake --build build/
 ```
@@ -110,7 +118,7 @@ Instead, symbolic links must be manually created to files which contain
 the appropriate settings for vcmi-gym:
 
 ```bash
-$ ln -s "$PWD"/gymclient/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
+$ ln -s "$PWD"/client/ML/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
 ```
 
 ### Manual test
@@ -118,13 +126,13 @@ $ ln -s "$PWD"/gymclient/{settings,modSettings,persistentStorage}.json "$HOME/Li
 Start a new game on the specified map (with GUI):
 
 ```bash
-$ rel/bin/gymclient-gui --map gym/A1.vmap
+$ rel/bin/mlclient-gui --map gym/A1.vmap
 ```
 
 ### Benchmark
 
 ```
-$ rel/bin/gymclient-headless --map gym/A1.vmap --loglevel-ai error --benchmark
+$ rel/bin/mlclient-headless --map gym/A1.vmap --loglevel-ai error --benchmark
 ```
 
 This will run the game in headless mode and directly engage in a battle
@@ -137,7 +145,7 @@ the process is interrupted. The output looks something like this:
 
 ```
 Benchmark:
-* Map: ai/generated/A1.vmap
+* Map: gym/A1.vmap
 * Attacker AI: MMAI_USER
 * Defender AI: StupidAI
 
@@ -149,7 +157,7 @@ Benchmark:
 
 > [!TIP]
 > If you also compiled the debug binary, you can benchmark it by running
-> `build/bin/gymclient-headless` with the same arguments and
+> `build/bin/mlclient-headless` with the same arguments and
 > observe the performance difference for yourself.
 
 ### Loading AI models
@@ -157,7 +165,7 @@ Benchmark:
 Launch the game and replace the default VCMI scripted AI with a pre-trained *real* AI:
 
 ```bash
-rel/bin/gymclient-gui --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
+rel/bin/mlclient-gui --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
 ```
 
 where `/path/to/model.pt` is a pre-trained Torch JIT model. If you don't have
