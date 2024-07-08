@@ -20,6 +20,7 @@
 #include <functional>
 #include <vector>
 #include <string>
+#include <stdexcept>
 
 // Import + Export macro declarations
 #ifdef VCMI_WINDOWS

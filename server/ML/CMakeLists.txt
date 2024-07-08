@@ -12,9 +12,6 @@ add_library(mlserverplugin SHARED
   StdInc.h
 )
 
-# linux/debian builds need this IIRC -- need to confirm
-set_target_properties(mlserverplugin PROPERTIES COMPILE_FLAGS "-fPIC")
-
 add_dependencies(mlserverplugin vcmi)
 target_link_libraries(mlserverplugin PRIVATE vcmi SQLite::SQLite3)
 vcmi_set_output_dir(mlserverplugin "")

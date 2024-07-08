@@ -55,11 +55,13 @@ assign_source_group(${vcmiservercommon_SRCS} ${vcmiservercommon_HEADERS})
 add_library(vcmiservercommon STATIC ${vcmiservercommon_SRCS} ${vcmiservercommon_HEADERS})
 set(vcmiservercommon_LIBS vcmi)
 
+
 if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	set(vcmiservercommon_LIBS execinfo ${vcmiservercommon_LIBS})
 endif()
 
 if(ENABLE_ML)
+  set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
 	add_dependencies(vcmiservercommon mlserverplugin)
 	set(vcmiservercommon_LIBS mlserverplugin ${vcmiservercommon_LIBS})
 endif()

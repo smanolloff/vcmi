@@ -21,7 +21,6 @@
 #include "spells/CSpellHandler.h"
 #include "vcmi/spells/Service.h"
 #include "vcmi/spells/Spell.h"
-#include <mach/vm_region.h>
 
 namespace MMAI::BAI::V3 {
     using A = Schema::V3::HexAttribute;

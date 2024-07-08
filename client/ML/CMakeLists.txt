@@ -24,7 +24,6 @@ add_dependencies(mlclient vcmiclient)
 add_dependencies(mlclient-gui mlclient)
 add_dependencies(mlclient-headless mlclient)
 
-
 if(ENABLE_LIBTORCH)
   add_definitions(-DENABLE_LIBTORCH=1)
 
