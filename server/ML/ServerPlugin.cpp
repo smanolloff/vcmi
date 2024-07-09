@@ -29,6 +29,7 @@ namespace ML {
         return config.statsMode == "disabled" ? nullptr : std::make_unique<Stats>(
             gs->map->heroesOnMap.size(),
             config.statsStorage,
+            config.statsLockdb,
             config.statsPersistFreq,
             config.statsSampling,
             config.statsScoreVar

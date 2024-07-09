@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <sstream>
 #include <stdexcept>
+#include <thread>
 
 #include "Stats.h"
 
@@ -22,23 +23,28 @@ namespace ML {
         throw std::runtime_error(buffer);
     }
 
-    Stats::Stats(int nheroes_, std::string dbpath_, int persistfreq_, int redistfreq_, float scorevar_)
-    : gen(rd()),
-      nheroes(nheroes_),
-      dbpath(dbpath_),
-      persistfreq(persistfreq_),
-      redistfreq(redistfreq_),
-      scorevar(scorevar_)
+    Stats::Stats(
+        int nheroes_,
+        std::string dbpath_,
+        std::string lockdbpath_,
+        int persistfreq_,
+        int redistfreq_,
+        float scorevar_
+    ) : gen(rd())
+      , nheroes(nheroes_)
+      , dbpath(dbpath_)
+      , lockdbpath(lockdbpath_)
+      , persistfreq(persistfreq_)
+      , redistfreq(redistfreq_)
+      , scorevar(scorevar_)
+      , minscore(0.5 - scorevar_)
+      , maxscore(0.5 + scorevar_)
+      , persistcounter(persistfreq)
+      , redistcounters({redistfreq, redistfreq})
     {
-        assert(nheroes > 1);
-
         // comparing with 0.1 and 0.4 wont work for floats
         assert(scorevar > 0 && scorevar < 0.5);
-
-        persistcounter = persistfreq;
-        redistcounters = {redistfreq, redistfreq};
-        minscore = 0.5 - scorevar;
-        maxscore = 0.5 + scorevar;
+        assert(nheroes > 1);
 
         // redistfreq is *2 as there are separate redistcounters for each side
         updatebuffers.at(0).reserve(std::max<int>(persistfreq, redistfreq));
@@ -67,6 +73,16 @@ namespace ML {
         } else {
             dbinit(nheroes);
             dbpersist();
+        }
+
+        if (!lockdbpath.empty()) {
+            // Prevent UB due to race conditions
+            if (!std::filesystem::is_regular_file(std::filesystem::path(lockdbpath))) {
+                Error("lockdb error: file not found: %s, create an empty file manually", lockdbpath.c_str());
+            }
+
+            // test lockdb
+            with_lock([]() { return; });
         }
 
         dataload(nheroes);
@@ -133,19 +149,76 @@ namespace ML {
         sqlite3_close(filedb);
     }
 
+    void Stats::with_lock(std::function<void()> callback) {
+        if (lockdbpath.empty()) {
+            callback();
+            return;
+        }
+
+        sqlite3* lockdb;
+        if (sqlite3_open(lockdbpath.c_str(), &lockdb))
+            Error("lockdb sqlite3_open error: %s", sqlite3_errmsg(lockdb));
+
+        try {
+            char* err = nullptr;
+            const char* sql = "BEGIN IMMEDIATE TRANSACTION";
+            int i=0;
+
+            while (true) {
+                logStats->trace("Obtaining lock");
+                auto res = sqlite3_exec(lockdb, sql, nullptr, nullptr, &err);
+
+                if (res == SQLITE_OK) {
+                    logStats->trace("Lock obtained");
+                    break;
+                }
+
+                if (res == SQLITE_BUSY) {
+                    ++i;
+                    auto loglvl = ELogLevel::DEBUG;
+
+                    // XXX: order here is important
+                    if (i % 5 == 0) loglvl = ELogLevel::INFO;
+                    if (i % 10 == 0) loglvl = ELogLevel::WARN;
+                    if (i == 0) loglvl = ELogLevel::DEBUG;
+
+                    logStats->log(loglvl, "Could not obtain lock: %s. Retrying in 5s... (%d)", err, i);
+                    sqlite3_free(err);
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    continue;
+                }
+
+                std::string error = "with_lock sqlite3_exec error: " + std::string(err);
+                sqlite3_free(err);
+                throw std::runtime_error(error);
+            }
+
+            callback();
+        } catch (const std::exception& e) {
+            std::cerr << "with_filedb callback error: " << e.what() << std::endl;
+            sqlite3_close(lockdb);
+            throw;
+        }
+
+        logStats->trace("Releasing lock");
+        sqlite3_close(lockdb);
+    }
+
     void Stats::dbrestore() {
         logStats->info("Restoring in-memory database from %s", dbpath);
 
-        with_filedb([this](sqlite3* filedb) {
-            auto backup = sqlite3_backup_init(memdb, "main", filedb, "main");
-            if (!backup)
-                Error("dbrestore sqlite3_backup_init error: %s", sqlite3_errmsg(filedb));
+        with_lock([this]{
+            with_filedb([this](sqlite3* filedb) {
+                auto backup = sqlite3_backup_init(memdb, "main", filedb, "main");
+                if (!backup)
+                    Error("dbrestore sqlite3_backup_init error: %s", sqlite3_errmsg(filedb));
 
-            if (sqlite3_backup_step(backup, -1) != SQLITE_DONE)
-                Error("dbrestore sqlite3_backup_step error: %s", sqlite3_errmsg(filedb));
+                if (sqlite3_backup_step(backup, -1) != SQLITE_DONE)
+                    Error("dbrestore sqlite3_backup_step error: %s", sqlite3_errmsg(filedb));
 
-            if (sqlite3_backup_finish(backup) != SQLITE_OK)
-                Error("dbrestore sqlite3_backup_finish error: %s", sqlite3_errmsg(filedb));
+                if (sqlite3_backup_finish(backup) != SQLITE_OK)
+                    Error("dbrestore sqlite3_backup_finish error: %s", sqlite3_errmsg(filedb));
+            });
         });
     }
 
@@ -159,16 +232,23 @@ namespace ML {
 
         logStats->info("Persisting in-memory database to %s", dbpath);
 
-        with_filedb([this](sqlite3* filedb) {
-            auto backup = sqlite3_backup_init(filedb, "main", memdb, "main");
-            if (!backup)
-                Error("dbpersist sqlite3_backup_init error: %s", sqlite3_errmsg(filedb));
+        with_lock([this]{
+            // Preemptively deleting the dest file speeds-up the backup
+            std::filesystem::remove(std::filesystem::path(dbpath));
 
-            if (sqlite3_backup_step(backup, -1) != SQLITE_DONE)
-                Error("dbpersist sqlite3_backup_step error: %s", sqlite3_errmsg(filedb));
+            with_filedb([this](sqlite3* filedb) {
+                auto backup = sqlite3_backup_init(filedb, "main", memdb, "main");
+                if (!backup)
+                    Error("dbpersist sqlite3_backup_init error: %s", sqlite3_errmsg(filedb));
 
-            if (sqlite3_backup_finish(backup) != SQLITE_OK)
-                Error("dbpersist sqlite3_backup_finish error: %s", sqlite3_errmsg(filedb));
+                if (sqlite3_backup_step(backup, -1) != SQLITE_DONE)
+                    Error("dbpersist sqlite3_backup_step error: %s", sqlite3_errmsg(filedb));
+
+                if (sqlite3_backup_finish(backup) != SQLITE_OK)
+                    Error("dbpersist sqlite3_backup_finish error: %s", sqlite3_errmsg(filedb));
+            });
+
+            std::this_thread::sleep_for(std::chrono::seconds(20));
         });
     }
 
@@ -301,7 +381,7 @@ namespace ML {
         auto &buffer = updatebuffers.at(side);
         if (buffer.size() == 0) return;
 
-        logStats->info("Flushing %d updates in data buffer for side %s", buffer.size(), side ? "blue" : "red");
+        logStats->info("Flushing %d updates in data buffer for side %s to memdb", buffer.size(), side ? "blue" : "red");
 
         auto &scores2 = side ? scores2R : scores2L;
         auto &db_to_local_refs = side ? db_to_local_refs_R : db_to_local_refs_L;

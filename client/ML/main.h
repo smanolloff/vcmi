@@ -38,6 +38,7 @@ using Args = std::tuple<
     std::string, // blueModel
     std::string, // statsMode
     std::string, // statsStorage
+    std::string, // statsLockdb
     int,         // statsPersistFreq
     int,         // statsSampling
     float,       // statsScoreVar

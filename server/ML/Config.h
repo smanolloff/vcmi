@@ -21,6 +21,7 @@ namespace ML {
             statsSampling = settings["server"]["ML"]["statsSampling"].Integer();
             statsPersistFreq = settings["server"]["ML"]["statsPersistFreq"].Integer();
             statsStorage = settings["server"]["ML"]["statsStorage"].String();
+            statsLockdb = settings["server"]["ML"]["statsLockdb"].String();
             statsMode = settings["server"]["ML"]["statsMode"].String();
             statsScoreVar = settings["server"]["ML"]["statsScoreVar"].Float();
         }
@@ -37,6 +38,7 @@ namespace ML {
         int statsSampling = 0;
         int statsPersistFreq = 0;
         std::string statsStorage = "-";
+        std::string statsLockdb = "";
         std::string statsMode = "red";
         float statsScoreVar = 0.4;
     };

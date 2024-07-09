@@ -300,6 +300,7 @@ void validateArguments(
     std::string &blueModel,
     std::string &statsMode,
     std::string &statsStorage,
+    std::string &statsLockdb,
     int &statsPersistFreq,
     int &statsSampling,
     float &statsScoreVar,
@@ -335,6 +336,14 @@ void validateArguments(
         auto dir = std::filesystem::path(statsStorage).parent_path();
         if (!std::filesystem::is_directory(dir)) {
             std::cerr << "Bad value for statsStorage: parent is not a directory: " << dir << "\n";
+            exit(1);
+        }
+    }
+
+    if (!statsLockdb.empty()) {
+        statsLockdb = std::filesystem::absolute(std::filesystem::path(statsLockdb)).string();
+        if (!std::filesystem::is_regular_file(std::filesystem::path(statsLockdb))) {
+            std::cerr << "Bad value for statsLockdb: file does not exist: " << statsLockdb << " (create an empti file manually)\n";
             exit(1);
         }
     }
@@ -450,6 +459,7 @@ void processArguments(
     int swapSides,
     std::string statsMode,
     std::string statsStorage,
+    std::string statsLockdb,
     int statsPersistFreq,
     int statsSampling,
     float statsScoreVar,
@@ -566,6 +576,7 @@ void processArguments(
     Settings(settings.write({"server", "ML", "swapSides"}))->Integer() = swapSides;
     Settings(settings.write({"server", "ML", "statsMode"}))->String() = statsMode;
     Settings(settings.write({"server", "ML", "statsStorage"}))->String() = statsStorage;
+    Settings(settings.write({"server", "ML", "statsLockdb"}))->String() = "simolocks";
     Settings(settings.write({"server", "ML", "statsPersistFreq"}))->Integer() = statsPersistFreq;
     Settings(settings.write({"server", "ML", "statsSampling"}))->Integer() = statsSampling;
     Settings(settings.write({"server", "ML", "statsScoreVar"}))->Float() = statsScoreVar;
@@ -650,6 +661,7 @@ void init_vcmi(
     std::string blueModel,
     std::string statsMode,
     std::string statsStorage,
+    std::string statsLockdb,
     int statsPersistFreq,
     int statsSampling,
     float statsScoreVar,
@@ -684,6 +696,7 @@ void init_vcmi(
         blueModel,
         statsMode,
         statsStorage,
+        statsLockdb,
         statsPersistFreq,
         statsSampling,
         statsScoreVar,
@@ -724,6 +737,7 @@ void init_vcmi(
         swapSides,
         statsMode,
         statsStorage,
+        statsLockdb,
         statsPersistFreq,
         statsSampling,
         statsScoreVar,

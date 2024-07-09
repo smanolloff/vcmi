@@ -100,7 +100,7 @@
 			},
 			{
 				"domain" : "stats",
-				"level" : "debug"
+				"level" : "info"
 			},
 			{
 				"domain" : "ai",

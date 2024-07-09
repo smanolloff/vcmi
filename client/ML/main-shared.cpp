@@ -97,7 +97,8 @@ Args parse_args(int argc, char * argv[])
         {"red-model", "AI/MMAI/models/model.zip"},
         {"blue-model", "AI/MMAI/models/model.zip"},
         {"stats-mode", "disabled"},
-        {"stats-storage", "-"}
+        {"stats-storage", "-"},
+        {"stats-lockdb", ""}
     };
 
     auto usage = std::stringstream();
@@ -154,6 +155,8 @@ Args parse_args(int argc, char * argv[])
             ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
         ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
             "File path to read and persist stats to (use -* for in-memory)")
+        ("stats-lockdb", po::value<std::string>()->value_name("<PATH>"),
+            "File path to an use as a lock DB when persisting the stats (no locking if \"\"*)")
         ("stats-persist-freq", po::value<int>()->value_name("<N>"),
             "Persist stats to storage file every N battles (read only if 0*)")
         ("stats-sampling", po::value<int>()->value_name("<N>"),
@@ -299,6 +302,7 @@ Args parse_args(int argc, char * argv[])
         omap.at("blue-model"),
         omap.at("stats-mode"),
         omap.at("stats-storage"),
+        omap.at("stats-lockdb"),
         statsPersistFreq,
         statsSampling,
         statsScoreVar,

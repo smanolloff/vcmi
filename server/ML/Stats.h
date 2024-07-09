@@ -16,7 +16,14 @@ namespace ML {
         using STAT = std::tuple<N_WINS, N_GAMES>;
 
         // XXX: dbpath must be unuque for agent, map and perspective
-        Stats(int nheroes, std::string dbpath, int persistfreq, int redistfreq, float scorevar);
+        Stats(
+            int nheroes,
+            std::string dbpath,
+            std::string lockdbpath,
+            int persistfreq,
+            int redistfreq,
+            float scorevar
+        );
         ~Stats();
 
         void dbpersist(); // memdb -> filedb
@@ -62,26 +69,27 @@ namespace ML {
         std::discrete_distribution<> dist1R;
         std::discrete_distribution<> dist2L;
         std::discrete_distribution<> dist2R;
-        std::string dbpath;
-        int nheroes;
+        const std::string dbpath;
+        const std::string lockdbpath;
+        const int nheroes;
 
         // Persist entire DB to disk once every N `dataadd` calls (i.e. N battles)
         // On mac this takes ~2s for 4096-hero map (33M records). On pc - untested
         // On mac there are 1~3 battles/sec
         // => 300 battles = 100~300sec => 2s save will be a <2% slowdown
-        int persistfreq;
+        const int persistfreq;
         int persistcounter;
 
         // Redistribute scores into discrete distributions
         // On mac this takes ~1s for 4096-hero map. On pc - untested
-        int redistfreq;
+        const int redistfreq;
         std::array<int, 2> redistcounters;
 
         // Keep data to update in-memory and do an actual SQL update in a single
         // transaction only at dbpersist() or redistribute()
         std::array<std::vector<std::tuple<int, int, int>>, 2> updatebuffers {};
 
-        float scorevar;
+        const float scorevar;
         float minscore;
         float maxscore;
 
@@ -99,6 +107,7 @@ namespace ML {
         void dbexec(const char* sql);
         void with_filedb(std::function<void(sqlite3*)> callback);
         void with_stmt(const char *sql, std::function<void(sqlite3_stmt*)> callback);
+        void with_lock(std::function<void()> callback);
         void flushbuffers(int side);
     };
 }
