@@ -159,8 +159,18 @@ namespace ML {
         if (sqlite3_open(lockdbpath.c_str(), &lockdb))
             Error("lockdb sqlite3_open error: %s", sqlite3_errmsg(lockdb));
 
+        auto timeout = 300000; // ms
+        auto sqlstr = std::string("PRAGMA busy_timeout = ") + std::to_string(timeout);
+
+        char* err = nullptr;
+        const char* sql = sqlstr.c_str(); // 2min
+        if (sqlite3_exec(lockdb, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+            std::string error = "with_lock sqlite3_exec error: " + std::string(err);
+            sqlite3_free(err);
+            throw std::runtime_error(error);
+        }
+
         try {
-            char* err = nullptr;
             const char* sql = "BEGIN IMMEDIATE TRANSACTION";
             int i=0;
 
@@ -175,16 +185,9 @@ namespace ML {
 
                 if (res == SQLITE_BUSY) {
                     ++i;
-                    auto loglvl = ELogLevel::DEBUG;
-
-                    // XXX: order here is important
-                    if (i % 5 == 0) loglvl = ELogLevel::INFO;
-                    if (i % 10 == 0) loglvl = ELogLevel::WARN;
-                    if (i == 0) loglvl = ELogLevel::DEBUG;
-
-                    logStats->log(loglvl, "Could not obtain lock: %s. Retrying in 5s... (%d)", err, i);
+                    logStats->warn("Could not obtain lock after after %dms: %s. Retrying in 5s... (%d)", timeout, err, i);
                     sqlite3_free(err);
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    std::this_thread::sleep_for(std::chrono::seconds(5));
                     continue;
                 }
 
@@ -247,8 +250,6 @@ namespace ML {
                 if (sqlite3_backup_finish(backup) != SQLITE_OK)
                     Error("dbpersist sqlite3_backup_finish error: %s", sqlite3_errmsg(filedb));
             });
-
-            std::this_thread::sleep_for(std::chrono::seconds(20));
         });
     }
 
