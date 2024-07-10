@@ -150,83 +150,84 @@ namespace ML {
     }
 
     void Stats::dbupdate() {
-        MEASURE_START(dbupdate_both);
+        MEASURE_START(dbupdate);
+        logStats->info("Updating database at %s", dbpath.c_str());
 
-        MEASURE_START(dbupdate_mem);
-        logStats->info("Filling memory database");
-        sqlite3* memdb;
-        if (sqlite3_open(":memory:", &memdb))
-            Error("dbupdate: memdb: sqlite3_open: %s", sqlite3_errmsg(memdb));
+        sqlite3* db;
+        if (sqlite3_open(dbpath.c_str(), &db))
+            Error("dbupdate: sqlite3_open: %s", sqlite3_errmsg(db));
 
-        ExecSQL(memdb,
-            "CREATE TABLE memstats ("
-                "id INTEGER primary key,"
-                "lhero INTEGER NOT NULL,"
-                "rhero INTEGER NOT NULL,"
-                "wins INTEGER NOT NULL,"
-                "games INTEGER NOT NULL"
-            ")"
-        );
-        ExecSQL(memdb, "BEGIN IMMEDIATE TRANSACTION");
+        try {
+            withinTransaction(db, true, [this, db] {
+                sqlite3_stmt* stmt;
 
-        const char* sql =
-            "INSERT INTO memstats (lhero, rhero, wins, games)"
-            "VALUES (?, ?, ?, ?)";
+                // XXX:
+                // INSERT .. ON CONFLICT (...) DO UPDATE ...
+                // is slower than a plain UPDATE
+                // => all rows must preemptively be inserted into the DB
+                //    (use sql/seed.sql)
 
-        sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(memdb, sql, -1, &stmt, nullptr) != SQLITE_OK)
-            Error("dbupdate: memdb: sqlite3_prepare_v2: %s", sqlite3_errmsg(memdb));
+                // const char* sql =
+                //     "INSERT INTO stats (lhero, rhero, wins, games) "
+                //     "VALUES (?, ?, ?, ?, ?) "
+                //     "ON CONFLICT(lhero, rhero) "
+                //     "DO UPDATE SET wins = excluded.wins + wins, games = excluded.games + games";
 
-        logStats->trace("Prepared: %s", sql);
+                const char* sql =
+                    "UPDATE stats "
+                    "SET wins=wins+?, games=games+? "
+                    "WHERE lhero=? AND rhero=? "
+                    "RETURNING id";
 
-        for (auto &[k, v] : buffer) {
-            auto [lhero, rhero] = k;
-            auto [wins, games] = v;
-            sqlite3_bind_int(stmt, 1, lhero);
-            sqlite3_bind_int(stmt, 2, rhero);
-            sqlite3_bind_int(stmt, 3, wins);
-            sqlite3_bind_int(stmt, 4, games);
+                if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+                    Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
 
-            // logStats->trace("Bindings: %d %d %d %d", wins, games, lhero, rhero);
-            auto rc = sqlite3_step(stmt);
-            // auto dbid = sqlite3_column_int(stmt, 0);
+                logStats->trace("Prepared: %s", sql);
 
-            // there should be no more rows returned
-            rc = sqlite3_step(stmt);
-            if (rc != SQLITE_DONE)
-                Error("dbupdate: memdb: sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(memdb));
+                for (auto &[k, v] : buffer) {
+                    auto [lhero, rhero] = k;
+                    auto [wins, games] = v;
+                    sqlite3_bind_int(stmt, 1, wins);
+                    sqlite3_bind_int(stmt, 2, games);
+                    sqlite3_bind_int(stmt, 3, lhero);
+                    sqlite3_bind_int(stmt, 4, rhero);
 
-            rc = sqlite3_reset(stmt);
+                    logStats->trace("Bindings: %d %d %d %d", wins, games, lhero, rhero);
+
+                    auto rc = sqlite3_step(stmt);
+                    if (rc != SQLITE_ROW)
+                        Error("sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(db));
+
+                    // auto dbid = sqlite3_column_int(stmt, 0);
+
+                    // there should be no more rows returned
+                    rc = sqlite3_step(stmt);
+                    if (rc != SQLITE_DONE)
+                        Error("sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(db));
+
+                    rc = sqlite3_reset(stmt);
+                    if (rc != SQLITE_OK)
+                        Error("sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+                }
+
+                auto rc = sqlite3_finalize(stmt);
+                if (rc != SQLITE_OK)
+                    Error("sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+                buffer.clear();
+            });
+        } catch (const std::exception& e) {
+            std::cerr << "dbupdate: " << e.what() << std::endl;
+            auto rc = sqlite3_close(db);
             if (rc != SQLITE_OK)
-                Error("dbupdate: memdb: sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(memdb));
+                logStats->error("sqlite3_close: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+            throw;
         }
 
-        auto rc = sqlite3_finalize(stmt);
+        auto rc = sqlite3_close(db);
         if (rc != SQLITE_OK)
-            Error("dbupdate: memdb: sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(memdb));
+            Error("sqlite3_close: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
 
-        ExecSQL(memdb, "COMMIT");
-        MEASURE_END(dbupdate_mem, 5000);
-
-        auto sqlstr = std::string("ATTACH DATABASE '") + dbpath + "' AS diskdb";
-        ExecSQL(memdb, sqlstr.c_str());
-
-        MEASURE_START(dbupdate_disk);
-        logStats->info("Updating database at %s", dbpath.c_str());
-        withinTransaction(memdb, true, [memdb] {
-            ExecSQL(memdb,
-                "UPDATE diskdb.stats "
-                "SET wins = diskdb.stats.wins + memstats.wins, "
-                    "games = diskdb.stats.games + memstats.games "
-                "FROM memstats "
-                "WHERE memstats.lhero = diskdb.stats.lhero "
-                "  AND memstats.rhero = diskdb.stats.rhero"
-            );
-        });
-
-        ExecSQL(memdb, "DETACH DATABASE diskdb'");
-        MEASURE_END(dbupdate_disk, 5000);
-        MEASURE_END(dbupdate_both, 5000);
+        MEASURE_END(dbupdate, 5000);
     }
 
     void Stats::dataadd(bool victory, int heroL, int heroR) {
