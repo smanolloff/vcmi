@@ -101,7 +101,9 @@ namespace ML {
       , persistcounter(persistfreq_)
     {
         buffer.reserve(maxbattles);
-        verify(side);
+
+        // TODO: make parameter to optionally skip
+        // verify(side);
     }
 
     void Stats::verify(int side) {
