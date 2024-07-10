@@ -570,6 +570,7 @@ namespace MMAI::BAI::V1 {
                     if (isNA(v, cstack, "STACK_WAITED")) break;
                     ensureValueMatch(cstack, v, cstack->waitedThisTurn, "STACK_WAITED");
                 break; case A::STACK_QUEUE_POS:
+                    if (ended) break;
                     if (isNA(v, cstack, "STACK_QUEUE_POS")) break;
                     if (v == 0)
                         expect(isActive, "STACK_QUEUE_POS: =0 but isActive=false");
@@ -595,6 +596,7 @@ namespace MMAI::BAI::V1 {
                     if (isNA(v, cstack, "STACK_AI_VALUE_TENTH")) break;
                     ensureValueMatch(cstack, v, cstack->creatureId().toCreature()->getAIValue() / 10, "STACK_AI_VALUE_TENTH");
                 break; case A::STACK_IS_ACTIVE:
+                    if (ended) break;
                     if (isNA(v, cstack, "STACK_IS_ACTIVE")) break;
                     ensureValueMatch(cstack, v, isActive, "STACK_IS_ACTIVE");
                 break; case A::STACK_IS_WIDE:

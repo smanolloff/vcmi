@@ -81,3 +81,4 @@ fuzzylite.pc
 .venv
 MLClient/libtorch
 rel/
+actions.txt
