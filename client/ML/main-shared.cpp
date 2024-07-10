@@ -80,11 +80,9 @@ Args parse_args(int argc, char * argv[])
     bool benchmark = false;
     bool interactive = false;
     bool prerecorded = false;
-    int statsSampling = 0;
     int statsPersistFreq = 0;
     int schemaVersion = 1;
     bool printModelPredictions = false;
-    float statsScoreVar = 0.4;
 
     // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
     auto omap = std::map<std::string, std::string> {
@@ -97,8 +95,7 @@ Args parse_args(int argc, char * argv[])
         {"red-model", "AI/MMAI/models/model.zip"},
         {"blue-model", "AI/MMAI/models/model.zip"},
         {"stats-mode", "disabled"},
-        {"stats-storage", "-"},
-        {"stats-lockdb", ""}
+        {"stats-storage", "-"}
     };
 
     auto usage = std::stringstream();
@@ -155,14 +152,8 @@ Args parse_args(int argc, char * argv[])
             ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
         ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
             "File path to read and persist stats to (use -* for in-memory)")
-        ("stats-lockdb", po::value<std::string>()->value_name("<PATH>"),
-            "File path to an use as a lock DB when persisting the stats (no locking if \"\"*)")
         ("stats-persist-freq", po::value<int>()->value_name("<N>"),
             "Persist stats to storage file every N battles (read only if 0*)")
-        ("stats-sampling", po::value<int>()->value_name("<N>"),
-            "Sample random heroes from stats, redistributing every Nth combat (disabled if 0*)")
-        ("stats-score-var", po::value<float>()->value_name("<F>"),
-            "Limit score variance to a float between 0.1 and 0.4*")
         ("schema-version", po::value<int>()->value_name("<V>"),
             "Use specified encoding schema version (defaults to 1*)");
 
@@ -216,12 +207,6 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("stats-persist-freq"))
         statsPersistFreq = vm.at("stats-persist-freq").as<int>();
-
-    if (vm.count("stats-sampling"))
-        statsSampling = vm.at("stats-sampling").as<int>();
-
-    if (vm.count("stats-score-var"))
-        statsScoreVar = vm.at("stats-score-var").as<float>();
 
     if (vm.count("schema-version"))
         schemaVersion = vm.at("schema-version").as<int>();
@@ -302,10 +287,7 @@ Args parse_args(int argc, char * argv[])
         omap.at("blue-model"),
         omap.at("stats-mode"),
         omap.at("stats-storage"),
-        omap.at("stats-lockdb"),
         statsPersistFreq,
-        statsSampling,
-        statsScoreVar,
         printModelPredictions
     };
 }

@@ -5,6 +5,7 @@
 #include "lib/mapObjects/CArmedInstance.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapObjects/CGTownInstance.h"
+#include "server/ML/Stats.h"
 #include "server/queries/BattleQueries.h"
 #include "Stats.h"
 

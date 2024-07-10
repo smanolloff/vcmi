@@ -38,10 +38,7 @@ int main(int argc, char * argv[]) {
         blueModel,
         statsMode,
         statsStorage,
-        statsLockdb,
         statsPersistFreq,
-        statsSampling,
-        statsScoreVar,
         printModelPredictions
     ] = parse_args(argc, argv);
 
@@ -65,10 +62,7 @@ int main(int argc, char * argv[]) {
         blueModel,
         statsMode,
         statsStorage,
-        statsLockdb,
         statsPersistFreq,
-        statsSampling,
-        statsScoreVar,
         printModelPredictions,
         true
     );

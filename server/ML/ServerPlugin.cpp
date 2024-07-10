@@ -7,6 +7,7 @@
 #include "networkPacks/PacksForClientBattle.h"
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
+#include <stdexcept>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -26,14 +27,10 @@ namespace ML {
 
     // static
     std::unique_ptr<Stats> InitStats(CGameState * gs, Config config) {
-        return config.statsMode == "disabled" ? nullptr : std::make_unique<Stats>(
-            gs->map->heroesOnMap.size(),
-            config.statsStorage,
-            config.statsLockdb,
-            config.statsPersistFreq,
-            config.statsSampling,
-            config.statsScoreVar
-        );
+        if (config.statsMode == "disabled")
+            return nullptr;
+
+        return std::make_unique<Stats>(config.statsStorage, config.statsPersistFreq, config.maxBattles);
     }
 
     ServerPlugin::ServerPlugin(CGameState * gs, Config & config)
@@ -87,33 +84,26 @@ namespace ML {
         // printf("config.randomHeroes = %d\n", config.randomHeroes);
 
         if (config.randomHeroes > 0) {
-            if (stats && config.statsSampling) {
-                auto [id1, id2] = stats->sample2(config.statsMode == "red" ? redside : !redside);
-                hero1 = allheroes.at(id1);
-                hero2 = allheroes.at(id2);
-                // printf("sampled: hero1: %d, hero2: %d (perspective: %s)\n", id1, id2, gh->statsMode.c_str());
-            } else {
-                if (allheroes.size() % 2 != 0)
-                    throw std::runtime_error("Heroes size must be even");
+            if (allheroes.size() % 2 != 0)
+                throw std::runtime_error("Heroes size must be even");
 
-                if (herocounter % allheroes.size() == 0) {
-                    herocounter = 0;
+            if (herocounter % allheroes.size() == 0) {
+                herocounter = 0;
 
-                    std::shuffle(allheroes.begin(), allheroes.end(), rng);
+                std::shuffle(allheroes.begin(), allheroes.end(), rng);
 
-                    // for (int i=0; i<allheroes.size(); i++)
-                    //  printf("allheroes[%d] = %s\n", i, allheroes.at(i)->getNameTextID().c_str());
-                }
-                // printf("herocounter = %d\n", herocounter);
-
-                // XXX: heroes must be different (objects must have different tempOwner)
-                // modification by reference
-                hero1 = allheroes.at(herocounter);
-                hero2 = allheroes.at(herocounter+1);
-
-                if (battlecounter % config.randomHeroes == 0)
-                    herocounter += 2;
+                // for (int i=0; i<allheroes.size(); i++)
+                //  printf("allheroes[%d] = %s\n", i, allheroes.at(i)->getNameTextID().c_str());
             }
+            // printf("herocounter = %d\n", herocounter);
+
+            // XXX: heroes must be different (objects must have different tempOwner)
+            // modification by reference
+            hero1 = allheroes.at(herocounter);
+            hero2 = allheroes.at(herocounter+1);
+
+            if (battlecounter % config.randomHeroes == 0)
+                herocounter += 2;
         }
 
         if (config.warmachineChance > 0) {
@@ -173,17 +163,32 @@ namespace ML {
     ) {
         // don't record stats for retreats (i.e. env resets)
         if (stats && br->result == EBattleResult::NORMAL) {
-            stats->dataadd(
-                redside,
-                br->winner == BattleSide::ATTACKER,
-                heroAttacker->exp,  // training map is designed such that exp = hero ID
-                heroDefender->exp
-            );
+            auto extractHeroID = [](std::string name) {
+                auto pos = name.find('_');
+                if (pos == std::string::npos)
+                    throw std::runtime_error("No underscore found in hero name: " + name);
+                auto num_str = name.substr(pos + 1);
+                auto num = -1;
+
+                try {
+                    num = std::stoi(num_str);
+                } catch (const std::exception e) {
+                    throw std::runtime_error("Could not extract hero ID from name: " + name + ": " + e.what());
+                }
+
+                return num;
+            };
+
+            auto attackerID = extractHeroID(heroAttacker->nameCustomTextId);
+            auto defenderID = extractHeroID(heroDefender->nameCustomTextId);
+            auto statside = (config.statsMode == "red") ? redside : !redside;
+            auto victory = br->winner == statside;
+            stats->dataadd(redside, victory, attackerID, defenderID);
         }
 
         if (config.maxBattles && battlecounter >= config.maxBattles) {
             std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";
-            if (stats) stats->dbpersist();
+            if (stats) stats->dbupdate();
             exit(0); // FIXME: this causes OS errors (abrupt program termination)
             return;
         }

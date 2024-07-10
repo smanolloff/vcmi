@@ -18,12 +18,9 @@ namespace ML {
             manaMin = settings["server"]["ML"]["manaMin"].Integer();
             manaMax = settings["server"]["ML"]["manaMax"].Integer();
 
-            statsSampling = settings["server"]["ML"]["statsSampling"].Integer();
             statsPersistFreq = settings["server"]["ML"]["statsPersistFreq"].Integer();
             statsStorage = settings["server"]["ML"]["statsStorage"].String();
-            statsLockdb = settings["server"]["ML"]["statsLockdb"].String();
             statsMode = settings["server"]["ML"]["statsMode"].String();
-            statsScoreVar = settings["server"]["ML"]["statsScoreVar"].Float();
         }
 
         int maxBattles = 0;
@@ -35,12 +32,9 @@ namespace ML {
         int manaMin = 0;
         int manaMax = 0;
 
-        int statsSampling = 0;
         int statsPersistFreq = 0;
         std::string statsStorage = "-";
-        std::string statsLockdb = "";
         std::string statsMode = "red";
-        float statsScoreVar = 0.4;
     };
 }
 
