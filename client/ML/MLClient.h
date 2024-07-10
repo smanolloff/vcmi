@@ -58,6 +58,7 @@ void __attribute__((visibility("default"))) init_vcmi(
     std::string blueModel,
     std::string statsMode,
     std::string statsStorage,
+    int statsTimeout,
     int statsPersistFreq,
     bool printModelPredictions,
     bool headless

@@ -80,6 +80,7 @@ Args parse_args(int argc, char * argv[])
     bool benchmark = false;
     bool interactive = false;
     bool prerecorded = false;
+    int statsTimeout = 60000;
     int statsPersistFreq = 0;
     int schemaVersion = 1;
     bool printModelPredictions = false;
@@ -152,6 +153,8 @@ Args parse_args(int argc, char * argv[])
             ("Stats collection mode. " + values(STATPERSPECTIVES, omap.at("stats-mode"))).c_str())
         ("stats-storage", po::value<std::string>()->value_name("<PATH>"),
             "File path to read and persist stats to (use -* for in-memory)")
+        ("stats-timeout", po::value<int>()->value_name("<N>"),
+            "Timeout in ms for obtaining a DB lock in stats storage (default 60000*)")
         ("stats-persist-freq", po::value<int>()->value_name("<N>"),
             "Persist stats to storage file every N battles (read only if 0*)")
         ("schema-version", po::value<int>()->value_name("<V>"),
@@ -204,6 +207,9 @@ Args parse_args(int argc, char * argv[])
 
     if (vm.count("swap-sides"))
         swapSides = vm.at("swap-sides").as<int>();
+
+    if (vm.count("stats-timeout"))
+        statsTimeout = vm.at("stats-timeout").as<int>();
 
     if (vm.count("stats-persist-freq"))
         statsPersistFreq = vm.at("stats-persist-freq").as<int>();
@@ -287,6 +293,7 @@ Args parse_args(int argc, char * argv[])
         omap.at("blue-model"),
         omap.at("stats-mode"),
         omap.at("stats-storage"),
+        statsTimeout,
         statsPersistFreq,
         printModelPredictions
     };

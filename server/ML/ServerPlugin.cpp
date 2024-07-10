@@ -35,7 +35,13 @@ namespace ML {
             THROW_FORMAT("Cannot track stats for %s when swapping sides", config.statsMode);
         }
 
-        return std::make_unique<Stats>(config.statsStorage, config.statsMode == "blue", config.statsPersistFreq, config.maxBattles);
+        return std::make_unique<Stats>(
+            config.statsStorage,
+            config.statsTimeout,
+            config.statsMode == "blue",
+            config.statsPersistFreq,
+            config.maxBattles
+        );
     }
 
     ServerPlugin::ServerPlugin(CGameState * gs, Config & config)

@@ -1,4 +1,5 @@
 #include <boost/chrono/time_point.hpp>
+#include <chrono>
 #include <random>
 #include <cassert>
 #include <sqlite3.h>
@@ -47,24 +48,54 @@ namespace ML {
     }
 
     // function for executing SQL string literals
-    void ExecSQL(sqlite3* db, const char* sql) {
+    std::pair<int, std::string> TryExecSQL(sqlite3* db, const char* sql) {
         MEASURE_START2(ExecSQL, sql);
         char* err = nullptr;
-        if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
-            std::string error = "dbexec: sqlite3_exec: " + std::string(err);
-            sqlite3_free(err);
+        auto rc = sqlite3_exec(db, sql, nullptr, nullptr, &err);
+        MEASURE_END(ExecSQL, 1000);
+        auto errstr = err ? std::string(err) : "";
+        sqlite3_free(err);
+        return {rc, errstr};
+    }
+
+    // function for executing SQL string literals
+    void ExecSQL(sqlite3* db, const char* sql) {
+        auto [rc, err] = TryExecSQL(db, sql);
+        if (rc != SQLITE_OK) {
+            std::string error = "dbexec: sqlite3_exec: " + err;
             logStats->error(error);
             throw std::runtime_error(error);
         }
-        MEASURE_END(ExecSQL, 1000);
+    }
+
+    void Stats::withinTransaction(sqlite3* db, bool commit, std::function<void()> func) {
+        auto sqlstr = std::string("PRAGMA busy_timeout = ") + std::to_string(timeout);
+        ExecSQL(db, sqlstr.c_str());
+
+        while (true) {
+            auto [rc, err] = TryExecSQL(db, "BEGIN IMMEDIATE TRANSACTION");
+            if (rc == SQLITE_BUSY) {
+                logStats->warn("Failed to obtain DB lock within %dms, retrying in 5s...", timeout);
+                std::this_thread::sleep_for(std::chrono::seconds(5));
+                continue;
+            }
+            func();
+
+            if (commit)
+                ExecSQL(db, "COMMIT");
+
+            break;
+        }
     }
 
     Stats::Stats(
         std::string dbpath_,
         int side,
+        int timeout_,
         int persistfreq_,
         int maxbattles_
     ) : dbpath(dbpath_)
+      , timeout(timeout_)
       , persistfreq(persistfreq_)
       , maxbattles(maxbattles_)
       , persistcounter(persistfreq_)
@@ -80,38 +111,39 @@ namespace ML {
         if (sqlite3_open(dbpath.c_str(), &db))
             Error("sqlite3_open: %s", sqlite3_errmsg(db));
 
-        ExecSQL(db, "BEGIN");
-        ExecSQL(db, "INSERT INTO stats (lhero, rhero, wins, games) VALUES (0,0,0,0)");
+        withinTransaction(db, false, [db, side] {
+            ExecSQL(db, "INSERT INTO stats (lhero, rhero, wins, games) VALUES (0,0,0,0)");
 
-        sqlite3_stmt* stmt;
-        const char* sql = "SELECT side FROM stats_md";
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
-            Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
+            sqlite3_stmt* stmt;
+            const char* sql = "SELECT side FROM stats_md";
+            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+                Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
 
-        auto rc = sqlite3_step(stmt);
-        if (rc == SQLITE_DONE)
-            Error("init: side check failed: no rows found in stats_md table");
-        else if (rc != SQLITE_ROW)
-            Error("init: side check failed: bad status: want: %d, have: %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(db));
+            auto rc = sqlite3_step(stmt);
+            if (rc == SQLITE_DONE)
+                Error("init: side check failed: no rows found in stats_md table");
+            else if (rc != SQLITE_ROW)
+                Error("init: side check failed: bad status: want: %d, have: %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(db));
 
-        auto dbside = sqlite3_column_int(stmt, 0);
+            auto dbside = sqlite3_column_int(stmt, 0);
 
-        if (dbside != side)
-            Error("init: side check failed: side in DB is %d", dbside, side);
+            if (dbside != side)
+                Error("init: side check failed: side in DB is %d", dbside, side);
 
-        rc = sqlite3_step(stmt);
-        if (rc != SQLITE_DONE)
-            Error("init: side check failed: extra rows found in stats_md table", SQLITE_DONE, rc, sqlite3_errmsg(db));
+            rc = sqlite3_step(stmt);
+            if (rc != SQLITE_DONE)
+                Error("init: side check failed: extra rows found in stats_md table", SQLITE_DONE, rc, sqlite3_errmsg(db));
 
-        rc = sqlite3_reset(stmt);
-        if (rc != SQLITE_OK)
-            Error("init: sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+            rc = sqlite3_reset(stmt);
+            if (rc != SQLITE_OK)
+                Error("init: sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
 
-        rc = sqlite3_finalize(stmt);
-        if (rc != SQLITE_OK)
-            Error("init: sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+            rc = sqlite3_finalize(stmt);
+            if (rc != SQLITE_OK)
+                Error("init: sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
 
-        ExecSQL(db, "ROLLBACK");
+            ExecSQL(db, "ROLLBACK");
+        });
 
         if (sqlite3_close(db))
             Error("sqlite3_close: %s", sqlite3_errmsg(db));
@@ -126,65 +158,63 @@ namespace ML {
             Error("dbupdate: sqlite3_open: %s", sqlite3_errmsg(db));
 
         try {
-            ExecSQL(db, "PRAGMA busy_timeout = 60000");
-            ExecSQL(db, "BEGIN");
-            sqlite3_stmt* stmt;
+            withinTransaction(db, true, [this, db] {
+                sqlite3_stmt* stmt;
 
-            // XXX:
-            // INSERT .. ON CONFLICT (...) DO UPDATE ...
-            // is slower than a plain UPDATE
-            // => all rows must preemptively be inserted into the DB
-            //    (use sql/seed.sql)
+                // XXX:
+                // INSERT .. ON CONFLICT (...) DO UPDATE ...
+                // is slower than a plain UPDATE
+                // => all rows must preemptively be inserted into the DB
+                //    (use sql/seed.sql)
 
-            // const char* sql =
-            //     "INSERT INTO stats (lhero, rhero, wins, games) "
-            //     "VALUES (?, ?, ?, ?, ?) "
-            //     "ON CONFLICT(lhero, rhero) "
-            //     "DO UPDATE SET wins = excluded.wins + wins, games = excluded.games + games";
+                // const char* sql =
+                //     "INSERT INTO stats (lhero, rhero, wins, games) "
+                //     "VALUES (?, ?, ?, ?, ?) "
+                //     "ON CONFLICT(lhero, rhero) "
+                //     "DO UPDATE SET wins = excluded.wins + wins, games = excluded.games + games";
 
-            const char* sql =
-                "UPDATE stats "
-                "SET wins=wins+?, games=games+? "
-                "WHERE lhero=? AND rhero=? "
-                "RETURNING id";
+                const char* sql =
+                    "UPDATE stats "
+                    "SET wins=wins+?, games=games+? "
+                    "WHERE lhero=? AND rhero=? "
+                    "RETURNING id";
 
-            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
-                Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
+                if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+                    Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
 
-            logStats->trace("Prepared: %s", sql);
+                logStats->trace("Prepared: %s", sql);
 
-            for (auto &[k, v] : buffer) {
-                auto [lhero, rhero] = k;
-                auto [wins, games] = v;
-                sqlite3_bind_int(stmt, 1, wins);
-                sqlite3_bind_int(stmt, 2, games);
-                sqlite3_bind_int(stmt, 3, lhero);
-                sqlite3_bind_int(stmt, 4, rhero);
+                for (auto &[k, v] : buffer) {
+                    auto [lhero, rhero] = k;
+                    auto [wins, games] = v;
+                    sqlite3_bind_int(stmt, 1, wins);
+                    sqlite3_bind_int(stmt, 2, games);
+                    sqlite3_bind_int(stmt, 3, lhero);
+                    sqlite3_bind_int(stmt, 4, rhero);
 
-                logStats->trace("Bindings: %d %d %d %d", wins, games, lhero, rhero);
+                    logStats->trace("Bindings: %d %d %d %d", wins, games, lhero, rhero);
 
-                auto rc = sqlite3_step(stmt);
-                if (rc != SQLITE_ROW)
-                    Error("sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(db));
+                    auto rc = sqlite3_step(stmt);
+                    if (rc != SQLITE_ROW)
+                        Error("sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(db));
 
-                // auto dbid = sqlite3_column_int(stmt, 0);
+                    // auto dbid = sqlite3_column_int(stmt, 0);
 
-                // there should be no more rows returned
-                rc = sqlite3_step(stmt);
-                if (rc != SQLITE_DONE)
-                    Error("sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(db));
+                    // there should be no more rows returned
+                    rc = sqlite3_step(stmt);
+                    if (rc != SQLITE_DONE)
+                        Error("sqlite3_step: bad status: want: %d, have: %d, errmsg: %s", SQLITE_DONE, rc, sqlite3_errmsg(db));
 
-                rc = sqlite3_reset(stmt);
+                    rc = sqlite3_reset(stmt);
+                    if (rc != SQLITE_OK)
+                        Error("sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+                }
+
+                auto rc = sqlite3_finalize(stmt);
                 if (rc != SQLITE_OK)
-                    Error("sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
-            }
-
-            auto rc = sqlite3_finalize(stmt);
-            if (rc != SQLITE_OK)
-                Error("sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
-
-            ExecSQL(db, "COMMIT");
-            buffer.clear();
+                    Error("sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+                buffer.clear();
+            });
         } catch (const std::exception& e) {
             std::cerr << "dbupdate: " << e.what() << std::endl;
             auto rc = sqlite3_close(db);

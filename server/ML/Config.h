@@ -19,6 +19,7 @@ namespace ML {
             manaMax = settings["server"]["ML"]["manaMax"].Integer();
 
             statsPersistFreq = settings["server"]["ML"]["statsPersistFreq"].Integer();
+            statsTimeout = settings["server"]["ML"]["statsTimeout"].Integer();
             statsStorage = settings["server"]["ML"]["statsStorage"].String();
             statsMode = settings["server"]["ML"]["statsMode"].String();
         }
@@ -33,6 +34,7 @@ namespace ML {
         int manaMax = 0;
 
         int statsPersistFreq = 0;
+        int statsTimeout = 0;
         std::string statsStorage = "-";
         std::string statsMode = "red";
     };

@@ -38,6 +38,7 @@ using Args = std::tuple<
     std::string, // blueModel
     std::string, // statsMode
     std::string, // statsStorage
+    int,         // statsTimeout
     int,         // statsPersistFreq
     bool         // printModelPredictions
 >;

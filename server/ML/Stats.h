@@ -26,15 +26,17 @@ namespace ML {
         using STAT = std::tuple<N_WINS, N_GAMES>;
 
         // XXX: dbpath must be unuque for agent, map and perspective
-        Stats(std::string dbpath, int side, int persistfreq, int maxbattles);
+        Stats(std::string dbpath, int side, int timeout, int persistfreq, int maxbattles);
 
         void dbupdate(); // add buffers data to DB
         void dataadd(bool victory, int heroL, int heroR);
     private:
         std::unordered_map<std::tuple<int, int>, std::tuple<int, int>, TupleHash> buffer;
+        void withinTransaction(sqlite3* db, bool commit, std::function<void()> func);
         const std::string dbpath;
         const int maxbattles;
         const int persistfreq;
+        const int timeout;
         int persistcounter;
         void verify(int side);
     };

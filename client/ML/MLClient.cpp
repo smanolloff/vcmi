@@ -300,6 +300,7 @@ void validateArguments(
     std::string &blueModel,
     std::string &statsMode,
     std::string &statsStorage,
+    int &statsTimeout,
     int &statsPersistFreq,
     bool &_printModelPredictions
 ) {
@@ -382,6 +383,11 @@ void validateArguments(
         exit(1);
     }
 
+    if (statsTimeout < 0) {
+        std::cerr << "Bad value for statsTimeout: expected a non-negative integer, got: " << statsTimeout << "\n";
+        exit(1);
+    }
+
     if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
         if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI." LIBEXT)) {
             std::cerr << "Bad value for VCMI_BIN_DIR: exists, but AI/libMMAI." LIBEXT " was not found: " << VCMI_BIN_DIR << "\n";
@@ -438,6 +444,7 @@ void processArguments(
     int swapSides,
     std::string statsMode,
     std::string statsStorage,
+    int statsTimeout,
     int statsPersistFreq,
     bool printModelPredictions
 ) {
@@ -552,6 +559,7 @@ void processArguments(
     Settings(settings.write({"server", "ML", "swapSides"}))->Integer() = swapSides;
     Settings(settings.write({"server", "ML", "statsMode"}))->String() = statsMode;
     Settings(settings.write({"server", "ML", "statsStorage"}))->String() = statsStorage;
+    Settings(settings.write({"server", "ML", "statsTimeout"}))->Integer() = statsTimeout;
     Settings(settings.write({"server", "ML", "statsPersistFreq"}))->Integer() = statsPersistFreq;
     Settings(settings.write({"server", "ML", "statsLoglevel"}))->String() = loglevelStats;
 
@@ -634,6 +642,7 @@ void init_vcmi(
     std::string blueModel,
     std::string statsMode,
     std::string statsStorage,
+    int statsTimeout,
     int statsPersistFreq,
     bool printModelPredictions,
     bool headless_
@@ -666,6 +675,7 @@ void init_vcmi(
         blueModel,
         statsMode,
         statsStorage,
+        statsTimeout,
         statsPersistFreq,
         printModelPredictions
     );
@@ -704,6 +714,7 @@ void init_vcmi(
         swapSides,
         statsMode,
         statsStorage,
+        statsTimeout,
         statsPersistFreq,
         printModelPredictions
     );
