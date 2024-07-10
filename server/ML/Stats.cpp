@@ -61,6 +61,7 @@ namespace ML {
 
     Stats::Stats(
         std::string dbpath_,
+        int side,
         int persistfreq_,
         int maxbattles_
     ) : dbpath(dbpath_)
@@ -69,17 +70,51 @@ namespace ML {
       , persistcounter(persistfreq_)
     {
         buffer.reserve(maxbattles);
+        verify(side);
+    }
 
-        // test DB
+    void Stats::verify(int side) {
+        // test DB structure and verify side against the DB metadata
+
         sqlite3* db;
         if (sqlite3_open(dbpath.c_str(), &db))
             Error("sqlite3_open: %s", sqlite3_errmsg(db));
+
         ExecSQL(db, "BEGIN");
-        ExecSQL(db, "INSERT INTO stats (side, lhero, rhero, wins, games) VALUES (0,0,0,0,0,0)");
+        ExecSQL(db, "INSERT INTO stats (lhero, rhero, wins, games) VALUES (0,0,0,0)");
+
+        sqlite3_stmt* stmt;
+        const char* sql = "SELECT side FROM stats_md";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+            Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
+
+        auto rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+            Error("init: side check failed: no rows found in stats_md table");
+        else if (rc != SQLITE_ROW)
+            Error("init: side check failed: bad status: want: %d, have: %d, errmsg: %s", SQLITE_ROW, rc, sqlite3_errmsg(db));
+
+        auto dbside = sqlite3_column_int(stmt, 0);
+
+        if (dbside != side)
+            Error("init: side check failed: side in DB is %d", dbside, side);
+
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_DONE)
+            Error("init: side check failed: extra rows found in stats_md table", SQLITE_DONE, rc, sqlite3_errmsg(db));
+
+        rc = sqlite3_reset(stmt);
+        if (rc != SQLITE_OK)
+            Error("init: sqlite3_reset: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+
+        rc = sqlite3_finalize(stmt);
+        if (rc != SQLITE_OK)
+            Error("init: sqlite3_finalize: bad status: want: %d, have: %d, errmsg: %s", SQLITE_OK, rc, sqlite3_errmsg(db));
+
         ExecSQL(db, "ROLLBACK");
+
         if (sqlite3_close(db))
             Error("sqlite3_close: %s", sqlite3_errmsg(db));
-
     }
 
     void Stats::dbupdate() {
@@ -102,15 +137,15 @@ namespace ML {
             //    (use sql/seed.sql)
 
             // const char* sql =
-            //     "INSERT INTO stats (side, lhero, rhero, wins, games) "
+            //     "INSERT INTO stats (lhero, rhero, wins, games) "
             //     "VALUES (?, ?, ?, ?, ?) "
-            //     "ON CONFLICT(side, lhero, rhero) "
+            //     "ON CONFLICT(lhero, rhero) "
             //     "DO UPDATE SET wins = excluded.wins + wins, games = excluded.games + games";
 
             const char* sql =
                 "UPDATE stats "
                 "SET wins=wins+?, games=games+? "
-                "WHERE side=? AND lhero=? AND rhero=? "
+                "WHERE lhero=? AND rhero=? "
                 "RETURNING id";
 
             if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
@@ -119,15 +154,14 @@ namespace ML {
             logStats->trace("Prepared: %s", sql);
 
             for (auto &[k, v] : buffer) {
-                auto [side, lhero, rhero] = k;
+                auto [lhero, rhero] = k;
                 auto [wins, games] = v;
                 sqlite3_bind_int(stmt, 1, wins);
                 sqlite3_bind_int(stmt, 2, games);
-                sqlite3_bind_int(stmt, 3, side);
-                sqlite3_bind_int(stmt, 4, lhero);
-                sqlite3_bind_int(stmt, 5, rhero);
+                sqlite3_bind_int(stmt, 3, lhero);
+                sqlite3_bind_int(stmt, 4, rhero);
 
-                logStats->trace("Bindings: %d %d %d %d %d", wins, games, side, lhero, rhero);
+                logStats->trace("Bindings: %d %d %d %d", wins, games, lhero, rhero);
 
                 auto rc = sqlite3_step(stmt);
                 if (rc != SQLITE_ROW)
@@ -166,9 +200,9 @@ namespace ML {
         MEASURE_END(dbupdate, 5000);
     }
 
-    void Stats::dataadd(bool side, bool victory, int heroL, int heroR) {
-        logStats->debug("Adding data: side=%d victory=%d heroL=%d heroR=%d", side, victory, heroL, heroR);
-        auto key = std::tuple<int, int, int> {side, heroL, heroR};
+    void Stats::dataadd(bool victory, int heroL, int heroR) {
+        logStats->debug("Adding data: victory=%d heroL=%d heroR=%d", victory, heroL, heroR);
+        auto key = std::tuple<int, int> {heroL, heroR};
         auto it = buffer.find(key);
         if(it == buffer.end()) {
             buffer.insert({key, {static_cast<int>(victory), 1}});

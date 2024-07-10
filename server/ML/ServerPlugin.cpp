@@ -1,5 +1,6 @@
 #include "ServerPlugin.h"
 #include "ArtifactUtils.h"
+#include "Global.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
 #include "mapObjects/CGTownInstance.h"
@@ -30,7 +31,11 @@ namespace ML {
         if (config.statsMode == "disabled")
             return nullptr;
 
-        return std::make_unique<Stats>(config.statsStorage, config.statsPersistFreq, config.maxBattles);
+        if (config.swapSides > 0) {
+            THROW_FORMAT("Cannot track stats for %s when swapping sides", config.statsMode);
+        }
+
+        return std::make_unique<Stats>(config.statsStorage, config.statsMode == "blue", config.statsPersistFreq, config.maxBattles);
     }
 
     ServerPlugin::ServerPlugin(CGameState * gs, Config & config)
@@ -183,7 +188,7 @@ namespace ML {
             auto defenderID = extractHeroID(heroDefender->nameCustomTextId);
             auto statside = (config.statsMode == "red") ? redside : !redside;
             auto victory = br->winner == statside;
-            stats->dataadd(redside, victory, attackerID, defenderID);
+            stats->dataadd(victory, attackerID, defenderID);
         }
 
         if (config.maxBattles && battlecounter >= config.maxBattles) {
