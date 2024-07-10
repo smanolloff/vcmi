@@ -184,7 +184,7 @@ namespace ML {
 
                 try {
                     num = std::stoi(num_str);
-                } catch (const std::exception e) {
+                } catch (const std::exception &e) {
                     throw std::runtime_error("Could not extract hero ID from name: " + name + ": " + e.what());
                 }
 
