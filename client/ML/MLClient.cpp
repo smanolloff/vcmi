@@ -378,13 +378,13 @@ void validateArguments(
         exit(1);
     }
 
-    if (statsPersistFreq < 0) {
-        std::cerr << "Bad value for statsPersistFreq: expected a non-negative integer, got: " << statsPersistFreq << "\n";
+    if (statsTimeout < 0) {
+        std::cerr << "Bad value for statsTimeout: expected a non-negative integer, got: " << statsTimeout << "\n";
         exit(1);
     }
 
-    if (statsTimeout < 0) {
-        std::cerr << "Bad value for statsTimeout: expected a non-negative integer, got: " << statsTimeout << "\n";
+    if (statsPersistFreq < 0) {
+        std::cerr << "Bad value for statsPersistFreq: expected a non-negative integer, got: " << statsPersistFreq << "\n";
         exit(1);
     }
 

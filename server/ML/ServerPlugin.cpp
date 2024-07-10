@@ -37,8 +37,8 @@ namespace ML {
 
         return std::make_unique<Stats>(
             config.statsStorage,
-            config.statsTimeout,
             config.statsMode == "blue",
+            config.statsTimeout,
             config.statsPersistFreq,
             config.maxBattles
         );

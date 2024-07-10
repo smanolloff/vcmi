@@ -128,7 +128,7 @@ namespace ML {
             auto dbside = sqlite3_column_int(stmt, 0);
 
             if (dbside != side)
-                Error("init: side check failed: side in DB is %d", dbside, side);
+                Error("init: side check failed: side in DB is %d, want: %d", dbside, side);
 
             rc = sqlite3_step(stmt);
             if (rc != SQLITE_DONE)
