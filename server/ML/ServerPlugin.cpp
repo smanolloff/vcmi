@@ -8,6 +8,7 @@
 #include "networkPacks/PacksForClientBattle.h"
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
+#include <limits>
 #include <stdexcept>
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -51,13 +52,13 @@ namespace ML {
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config))
-    , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, (1<<(8*sizeof(int)-1)) - 1))) // 2^31-1
+    , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {}
 
     void ServerPlugin::setupBattleHook(const CGTownInstance *& town, ui32 & seed) {
         if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
             // modification by reference
-            seed = gs->getRandomGenerator().nextInt(0, (1<<(8*sizeof(int)-1)) - 1);
+            seed = gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max());
         }
 
         if (config.townChance > 0) {
