@@ -13,3 +13,6 @@
 [submodule "server/ML"]
 	path = server/ML
 	url = git@github.com:smanolloff/vcmi-mlserver.git
+[submodule "client/ML"]
+	path = client/ML
+	url = git@github.com:smanolloff/vcmi-mlclient.git
