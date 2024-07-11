@@ -10,3 +10,6 @@
 	path = launcher/lib/innoextract
 	url = https://github.com/vcmi/innoextract.git
 	branch = vcmi
+[submodule "server/ML"]
+	path = server/ML
+	url = git@github.com:smanolloff/vcmi-mlserver.git
