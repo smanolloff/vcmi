@@ -59,7 +59,6 @@ $ cmake -S . -B rel -Wno-dev \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
     -D ENABLE_READONLY_MODE=1 \
-    -D ENABLE_DEV_BUILD=1 \
     -D ENABLE_LIBTORCH=1 \
     -D ENABLE_ML=1 \
     -D ENABLE_MMAI=1 \
@@ -80,7 +79,6 @@ $ cmake -S . -B build -Wno-dev \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
     -D ENABLE_READONLY_MODE=1 \
-    -D ENABLE_DEV_BUILD=1 \
     -D ENABLE_LIBTORCH=1 \
     -D ENABLE_ML=1 \
     -D ENABLE_MMAI=1 \

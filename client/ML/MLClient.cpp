@@ -680,6 +680,9 @@ void init_vcmi(
         printModelPredictions
     );
 
+    // Store original shell workdir (as VCMI will chdir to VCMI_BIN_DIR)
+    // The original workdir is used for loading models specified by relative paths
+    // (then is again changed to VCMI_BIN_DIR to prevent VCMI errors)
     auto wd = boost::filesystem::current_path();
 
     // chdir needed for VCMI init
