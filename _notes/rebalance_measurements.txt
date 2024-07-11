@@ -1,0 +1,78 @@
+19:46 - start
+20:00 - battle limit hit
+  25s per dbupdate
+20:07:09 - first lock timeout (x17)
+20:07:30 - last lock timeout from 1st round
+20:10 - first battle limit hit from 2nd round
+20:14:57 - last dbupdate completed from 1st round (PID 1405535)
+
+...
+21:16:14 - watchdog kills all
+Until then:
+175 dbupdates in 90min
+
+Absolute optimal would be:
+14m10s+25s =~ 14.5m for 1 cycle/1 worker
+=> 6.2 cycles/worker for 90m
+=> 223 dbupdates in 90min
+... pretty good usage of disk/CPU resources.
+With the change 20K->26K battles, it should become optimal.
+
+...
+
+Real data after switching to 26K:
+
+01:10:41 round0            start
+01:30:23 round0 PID=620590 first quit       (19m38s)
+01:30:49 round0 PID=620590 first dbupdate   (COMMIT: took 23089 ms)
+01:30:49 round1            start
+01:31:05 round0 PID=620534 last quit        (20m24s)
+01:43:44 round1 PID=620590 first quit       (12m55s)
+01:45:13 round0 PID=620534 last dbupdate    (COMMIT: took 25739 ms)
+01:36:52 round0 last update
+...
+03:07:38 (still running) - 178 dbupdates total in 117 min => 39K battles/min
+                            (20K was 38.9K battles/min)
+...so nearly identical performance compared ot 20K battles.
+
+
+
+========= 20K battles, 36 workers
+vcmifinish: 14m10s
+dbupdate: 24..25s
+
+total for all workers:
+  16m for dbupdate, but vcmifinish is 14m
+=> increase N battles slightly
+
+given vcmifinish increases by 44s/1K battles
+given dbupdate increases by 18s/1K battles (summed for all workers)
+=> add +6K battles
+=> (expected) vcmifinish =~ 18m40s
+=> (expected) dbupdate =~ 16m10s..16m50s
+
+
+========= 10K battles, 36 workers
+vcmifinish: 6m50s
+dbupdate: 19s
+
+========= 10K battles, 1 worker
+vcmifinish: 4m10s
+dbupdate: 15..16s
+
+========= 1K battles, 16 workers
+vcmifinish: 32s
+dbupdate: 3..4s
+
+--------------
+=> diff 20K - 10K
+vcmifinish: 850-410 = 440 => 44s/1K
+dbupdate: 24-19 = 5 = 0.5s/1K => 18s total/1K
+=> i win 44-18=26s per 1K battles increase
+=> for the 2m=120s diff I need to increase with 6K
+
+
+30s - dbupdate for 20K battles
+=> 36*30 = 1080s for 36 workers
+=> 18 min per worker
+  => increase battles 20K => 30K
