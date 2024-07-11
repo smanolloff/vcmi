@@ -626,20 +626,6 @@ void CPlayerInterface::battleStartBefore(const BattleID & battleID, const CCreat
 		waitForAllDialogs();
 }
 
-void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side) {
-	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
-	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
-	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-
-	aiBaggage.has_value()
-		? autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getPlayerID()->toString())
-		: autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
-
-	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
-	isAutoFightOn = true;
-	cb->registerBattleInterface(autofightingAI);
-}
-
 void CPlayerInterface::battleStart(const BattleID & battleID, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
@@ -806,15 +792,15 @@ void CPlayerInterface::activeStack(const BattleID & battleID, const CStack * sta
 void CPlayerInterface::battleEnd(const BattleID & battleID, const BattleResult *br, QueryID queryID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	if(isAutoFightOn || autofightingAI || IFML(true, false))
+	if(isAutoFightOn || autofightingAI)
 	{
 		isAutoFightOn = false;
 		cb->unregisterBattleInterface(autofightingAI);
 		autofightingAI.reset();
 
-		if(!battleInt || IFML(true, false))
+		if(!battleInt)
 		{
-			bool allowManualReplay = queryID != QueryID::NONE && (!isAutoFightEndBattle || IFML(true, false));
+			bool allowManualReplay = queryID != QueryID::NONE && !isAutoFightEndBattle;
 
 			auto wnd = std::make_shared<BattleResultWindow>(*br, *this, allowManualReplay);
 
@@ -832,10 +818,6 @@ void CPlayerInterface::battleEnd(const BattleID & battleID, const BattleResult *
 			// #1490 - during AI turn when quick combat is on, we need to display the message and wait for user to close it.
 			// Otherwise NewTurn causes freeze.
 			waitWhileDialog();
-
-			if (battleInt)
-				CPlayerInterface::battleInt.reset();
-
 			return;
 		}
 	}
@@ -1880,6 +1862,21 @@ bool CPlayerInterface::capturedAllEvents()
 	}
 
 	return false;
+}
+
+void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side)
+{
+	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
+	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
+	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
+
+	aiBaggage.has_value()
+		? autofightingAI->initBattleInterface(env, cb, aiBaggage, cb->getPlayerID()->toString())
+		: autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+
+	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
+	isAutoFightOn = true;
+	cb->registerBattleInterface(autofightingAI);
 }
 
 void CPlayerInterface::showWorldViewEx(const std::vector<ObjectPosInfo>& objectPositions, bool showTerrain)

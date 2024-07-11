@@ -1,1 +1,11 @@
-{}
+{
+	"gui" : {
+		"tutorialCompleted0" : true,
+		"tutorialCompleted1" : true
+	},
+	"startExtraOptions" : {
+		"singlePlayer" : {
+			"unlimitedReplay" : true
+		}
+	}
+}

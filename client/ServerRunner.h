@@ -34,7 +34,6 @@ class ServerThreadRunner : public IServerRunner, boost::noncopyable
 	std::unique_ptr<CVCMIServer> server;
 	boost::thread threadRunLocalServer;
 public:
-	CVCMIServer* getServer();
 	ui16 start(ui16 port, bool connectToLobby, std::shared_ptr<StartInfo> startingInfo) override;
 	void shutdown() override;
 	void wait() override;

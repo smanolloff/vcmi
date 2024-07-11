@@ -84,7 +84,6 @@ class DLL_LINKAGE CGameState : public CNonConstInfoCallback
 	friend class CGameStateCampaign;
 
 public:
-
 	/// Stores number of times each artifact was placed on map via randomization
 	std::map<ArtifactID, int> allocatedArtifacts;
 

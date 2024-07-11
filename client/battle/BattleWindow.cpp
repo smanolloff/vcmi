@@ -602,7 +602,6 @@ void BattleWindow::bAutofightf()
 		blockUI(true);
 
 		owner.curInt->prepareAutoFightingAI(owner.getBattleID(), owner.army1, owner.army2, int3(0,0,0), owner.attackingHeroInstance, owner.defendingHeroInstance, owner.getBattle()->battleGetMySide());
-
 		owner.requestAutofightingAIToTakeAction();
 	}
 }

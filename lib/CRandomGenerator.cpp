@@ -15,7 +15,7 @@ VCMI_LIB_NAMESPACE_BEGIN
 
 CRandomGenerator::CRandomGenerator()
 {
-	logRng->debug("** RNG ** constructor **");
+	logRng->trace("** RNG ** constructor **");
 	resetSeed();
 }
 
@@ -32,7 +32,7 @@ void CRandomGenerator::setSeed(int seed)
 
 void CRandomGenerator::resetSeed()
 {
-	logRng->debug("** RNG ** resetSeed() **");
+	logRng->trace("** RNG ** resetSeed() **");
 	boost::hash<std::string> stringHash;
 	auto threadIdHash = stringHash(boost::lexical_cast<std::string>(boost::this_thread::get_id()));
 	setSeed(static_cast<int>(threadIdHash * std::time(nullptr)));
@@ -40,7 +40,7 @@ void CRandomGenerator::resetSeed()
 
 TRandI CRandomGenerator::getIntRange(int lower, int upper)
 {
-	logRng->debug("** RNG ** getIntRange(%d, %d) **", lower, upper);
+	logRng->trace("** RNG ** getIntRange(%d, %d) **", lower, upper);
 	if (lower <= upper)
 		return std::bind(TIntDist(lower, upper), std::ref(rand));
 	throw std::runtime_error("Invalid range provided: " + std::to_string(lower) + " ... " + std::to_string(upper));
@@ -48,7 +48,7 @@ TRandI CRandomGenerator::getIntRange(int lower, int upper)
 
 vstd::TRandI64 CRandomGenerator::getInt64Range(int64_t lower, int64_t upper)
 {
-	logRng->debug("** RNG ** getInt64Range(%d, %d) **", lower, upper);
+	logRng->trace("** RNG ** getInt64Range(%d, %d) **", lower, upper);
 	if(lower <= upper)
 		return std::bind(TInt64Dist(lower, upper), std::ref(rand));
 	throw std::runtime_error("Invalid range provided: " + std::to_string(lower) + " ... " + std::to_string(upper));
@@ -77,7 +77,7 @@ int CRandomGenerator::nextInt()
 
 vstd::TRand CRandomGenerator::getDoubleRange(double lower, double upper)
 {
-	logRng->debug("** RNG ** getDoubleRange(%f, %f) **", lower, upper);
+	logRng->trace("** RNG ** getDoubleRange(%f, %f) **", lower, upper);
 	if(lower <= upper)
 		return std::bind(TRealDist(lower, upper), std::ref(rand));
 	throw std::runtime_error("Invalid range provided: " + std::to_string(lower) + " ... " + std::to_string(upper));
