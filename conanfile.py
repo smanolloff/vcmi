@@ -20,8 +20,7 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-    ]
-    _nullkillerAIRequires = [
+        "onetbb/[^2021.3]",
     ]
     _MMAIRequires = [
         "llvm-openmp/17.0.6",
@@ -29,7 +28,9 @@ class VCMI(ConanFile):
     _MLRequires = [
         "sqlite3/[~3.45.3]",
     ]
-    requires = _libRequires + _clientRequires + _nullkillerAIRequires + _MMAIRequires + _MLRequires
+
+    requires = _libRequires + _clientRequires + _MMAIRequires + _MLRequires
+
 
     options = {
         "default_options_of_requirements": [True, False],

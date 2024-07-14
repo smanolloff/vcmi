@@ -653,7 +653,6 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 		CMM->disable();
 
 	client->aiBaggage = aiBaggage;
-	campaignScoreCalculator = nullptr;
 
 	switch(si->mode)
 	{
@@ -661,6 +660,8 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 		client->newGame(gameState);
 		break;
 	case EStartMode::CAMPAIGN:
+		if(si->campState->conqueredScenarios().empty())
+			campaignScoreCalculator.reset();
 		client->newGame(gameState);
 		break;
 	case EStartMode::LOAD_GAME:
