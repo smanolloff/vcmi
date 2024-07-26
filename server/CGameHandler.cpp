@@ -566,7 +566,7 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 			heroPool->getHeroSkillsRandomGenerator(elem->getHeroType()); // init RMG seed
 	}
 
-	ML(mlplugin = std::make_unique<ML::ServerPlugin>(gs, si->mlconfig));
+	ML(mlplugin = std::make_unique<ML::ServerPlugin>(this, gs, si->mlconfig));
 
 	reinitScripting();
 }

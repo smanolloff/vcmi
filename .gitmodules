@@ -19,3 +19,6 @@
 [submodule "AI/MMAI"]
 	path = AI/MMAI
 	url = git@github.com:smanolloff/vcmi-MMAI.git
+[submodule "Mods/ML"]
+	path = Mods/ML
+	url = git@github.com:smanolloff/vcmi-mlmod.git

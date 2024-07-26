@@ -102,7 +102,7 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
-	ML(gameHandler->mlplugin->startBattleHook1(army1, army2, hero1, hero2));
+	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
 
 	const CArmedInstance *armies[2];
 	armies[0] = army1;
@@ -146,7 +146,6 @@ void BattleProcessor::startBattlePrimary(const CArmedInstance *army1, const CArm
 			if(heroes[i])
 				newBattleQuery->initialHeroMana[i] = heroes[i]->mana;
 
-		ML(gameHandler->mlplugin->startBattleHook2(heroes, newBattleQuery));
 		gameHandler->queries->addQuery(newBattleQuery);
 	}
 
