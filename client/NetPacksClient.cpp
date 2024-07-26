@@ -780,13 +780,6 @@ void ApplyFirstClientNetPackVisitor::visitBattleStart(BattleStart & pack)
 
 void ApplyClientNetPackVisitor::visitBattleStart(BattleStart & pack)
 {
-#ifdef ENABLE_ML
-	// fix deserialization of heroes with duplicate type (ML maps have those)
-	for (auto & side : pack.info->sides)
-		if (side.hero && side.armyObject)
-			side.hero = dynamic_cast<const CGHeroInstance*>(side.armyObject);
-#endif
-
 	cl.battleStarted(pack.info);
 }
 
