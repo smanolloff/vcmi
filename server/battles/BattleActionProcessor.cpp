@@ -57,11 +57,13 @@ bool BattleActionProcessor::doWaitAction(const CBattleInfoCallback & battle, con
 
 bool BattleActionProcessor::doRetreatAction(const CBattleInfoCallback & battle, const BattleAction & ba)
 {
+#ifndef ML
 	if (!battle.battleCanFlee(battle.sideToPlayer(ba.side)))
 	{
 		gameHandler->complain("Cannot retreat!");
 		return false;
 	}
+#endif
 
 	owner->setBattleResult(battle, EBattleResult::ESCAPE, !ba.side);
 	return true;
