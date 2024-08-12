@@ -1,0 +1,134 @@
+{
+	"gameTweaks" : {
+		"skipBattleIntroMusic" : true
+	},
+	"general" : {
+		"lastMap" : "MAPS/TEST-BATTLE-QUEUE",
+		"music" : 0,
+		"sound" : 0
+	},
+	"launcher" : {
+		"setupCompleted" : true
+	},
+	"logging" : {
+		"console" : {
+			"colorMapping" : [
+				{
+					"color" : "gray",
+					"domain" : "global",
+					"level" : "trace"
+				},
+				{
+					"color" : "gray",
+					"domain" : "ai",
+					"level" : "trace"
+				},
+				{
+					"color" : "gray",
+					"domain" : "stats",
+					"level" : "trace"
+				},
+				{
+					"color" : "gray",
+					"domain" : "global",
+					"level" : "debug"
+				},
+				{
+					"color" : "gray",
+					"domain" : "ai",
+					"level" : "debug"
+				},
+				{
+					"color" : "gray",
+					"domain" : "stats",
+					"level" : "debug"
+				},
+				{
+					"color" : "white",
+					"domain" : "global",
+					"level" : "info"
+				},
+				{
+					"color" : "white",
+					"domain" : "ai",
+					"level" : "info"
+				},
+				{
+					"color" : "white",
+					"domain" : "stats",
+					"level" : "info"
+				},
+				{
+					"color" : "yellow",
+					"domain" : "global",
+					"level" : "warn"
+				},
+				{
+					"color" : "yellow",
+					"domain" : "ai",
+					"level" : "warn"
+				},
+				{
+					"color" : "yellow",
+					"domain" : "stats",
+					"level" : "warn"
+				},
+				{
+					"color" : "red",
+					"domain" : "global",
+					"level" : "error"
+				},
+				{
+					"color" : "red",
+					"domain" : "stats",
+					"level" : "error"
+				},
+				{
+					"color" : "red",
+					"domain" : "ai",
+					"level" : "error"
+				}
+			],
+			"format" : "[%t][%n] %l %m",
+			"threshold" : "trace"
+		},
+		"loggers" : [
+			{
+				"domain" : "global",
+				"level" : "error"
+			},
+			{
+				"domain" : "stats",
+				"level" : "info"
+			},
+			{
+				"domain" : "ai",
+				"level" : "error"
+			},
+			{
+				"domain" : "rng",
+				"level" : "error"
+			},
+			{
+				"domain" : "network",
+				"level" : "error"
+			},
+			{
+				"domain" : "mod",
+				"level" : "error"
+			},
+			{
+				"domain" : "animation",
+				"level" : "error"
+			},
+			{
+				"domain" : "bonus",
+				"level" : "error"
+			}
+		]
+	},
+	"server" : {
+		"friendlyAI" : "StupidAI",
+		"playerAI" : "MMAI"
+	}
+}

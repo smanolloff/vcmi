@@ -701,8 +701,7 @@ if(ENABLE_TEST)
 endif()
 
 if(ENABLE_ML)
-	add_subdirectory(client/ML)
-	add_subdirectory(server/ML)
+	add_subdirectory(ML)
 endif()
 
 #######################################

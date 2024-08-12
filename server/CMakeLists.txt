@@ -62,6 +62,7 @@ endif()
 
 if(ENABLE_ML)
   set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
+	add_subdirectory(ML)
 	add_dependencies(vcmiservercommon mlserverplugin)
 	set(vcmiservercommon_LIBS mlserverplugin ${vcmiservercommon_LIBS})
 endif()

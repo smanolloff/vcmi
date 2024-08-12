@@ -411,6 +411,13 @@ else()
 	endif()
 endif()
 
+if(ENABLE_MMAI)
+	# mlclientplugin is needed for loading of pre-trained MMAI models
+	add_subdirectory(ML)
+	add_dependencies(vcmiclient mlclientplugin)
+	target_link_libraries(vcmiclient PRIVATE mlclientplugin)
+endif()
+
 if(NOT ENABLE_STATIC_LIBS)
 	add_dependencies(vcmiclient
 		BattleAI
