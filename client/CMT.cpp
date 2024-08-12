@@ -283,8 +283,8 @@ int main(int argc, char * argv[])
 
 	CCS = new CClientState();
 	CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-	CSH = new CServerHandler();
-	
+	CSH = new CServerHandler(AICombatOptions());
+
 	// Initialize video
 #ifdef DISABLE_VIDEO
 	CCS->videoh = new CEmptyVideoPlayer();

@@ -184,7 +184,7 @@ void CAdventureAI::battleStart(const BattleID & battleID, const CCreatureSet * a
 	assert(!battleAI);
 	assert(cbc);
 	battleAI = CDynLibHandler::getNewBattleAI(getBattleAIName());
-	battleAI->initBattleInterface(env, cbc);
+	battleAI->initBattleInterface(env, cbc, aiCombatOptions);
 	battleAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 
@@ -274,7 +274,7 @@ void CAdventureAI::loadGame(BinaryDeserializer & h) /*loading */
 		h & dllName;
 		battleAI = CDynLibHandler::getNewBattleAI(dllName);
 		assert(cbc); //it should have been set by the one who new'ed us
-		battleAI->initBattleInterface(env, cbc);
+		battleAI->initBattleInterface(env, cbc, aiCombatOptions);
 	}
 }
 

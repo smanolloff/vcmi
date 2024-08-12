@@ -1,5 +1,5 @@
 /*
- * AutocombatPreferences.h, part of VCMI engine
+ * AIOptions.h, part of VCMI engine
  *
  * Authors: listed in file AUTHORS in main folder
  *
@@ -9,7 +9,7 @@
  */
 #pragma once
 
-struct AutocombatPreferences
+struct AICombatOptions
 {
 	bool enableSpellsUsage = true;
 	//TODO: below options exist in original H3, consider usefulness of mixed human-AI combat when enabling autocombat inside battle
@@ -17,5 +17,10 @@ struct AutocombatPreferences
 //	bool enableCatapultUsage = true;
 //	bool enableBallistaUsage = true;
 //	bool enableFirstAidTendUsage = true;
+
+	// AI-specific options are transported as std::any as they may
+	// include arbitary types which are not known here
+	// (e.g. for optional AIs that are excluded from the VCMI core codebase)
+	std::any other;
 };
 

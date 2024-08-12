@@ -13,6 +13,7 @@
 #include <vcmi/Environment.h>
 
 #include "../lib/IGameCallback.h"
+#include "battle/AICombatOptions.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -119,7 +120,7 @@ public:
 	std::map<PlayerColor, std::vector<std::shared_ptr<IBattleEventsReceiver>>> additionalBattleInts;
 
 	std::unique_ptr<BattleAction> currentBattleAction;
-	std::any aiBaggage;
+	AICombatOptions aiCombatOptions;
 
 	CClient();
 	~CClient();

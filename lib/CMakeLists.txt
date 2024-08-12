@@ -386,7 +386,7 @@ set(lib_MAIN_HEADERS
 	../include/vcmi/Team.h
 
 	battle/AccessibilityInfo.h
-	battle/AutocombatPreferences.h
+	battle/AICombatOptions.h
 	battle/BattleAction.h
 	battle/BattleAttackInfo.h
 	battle/BattleHex.h

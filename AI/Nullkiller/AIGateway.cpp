@@ -563,11 +563,12 @@ std::optional<BattleAction> AIGateway::makeSurrenderRetreatDecision(const Battle
 }
 
 
-void AIGateway::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB)
+void AIGateway::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions_)
 {
 	LOG_TRACE(logAi);
 	myCb = CB;
 	cbc = CB;
+	aiCombatOptions = aiCombatOptions_;
 
 	NET_EVENT_HANDLER;
 	playerID = *myCb->getPlayerID();

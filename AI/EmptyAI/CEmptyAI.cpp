@@ -22,10 +22,11 @@ void CEmptyAI::loadGame(BinaryDeserializer & h)
 {
 }
 
-void CEmptyAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB)
+void CEmptyAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions_)
 {
 	cb = CB;
 	env = ENV;
+	aiCombatOptions = aiCombatOptions_;
 	human=false;
 	playerID = *cb->getPlayerID();
 }
