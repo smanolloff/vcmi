@@ -13,6 +13,7 @@
 #include "CMT.h"
 
 #include "CGameInfo.h"
+#include "battle/AICombatOptions.h"
 #include "mainmenu/CMainMenu.h"
 #include "gui/CursorHandler.h"
 #include "eventsSDL/InputHandler.h"
@@ -38,11 +39,17 @@
 
 #include "../lib/logging/CBasicLogConfigurator.h"
 
+#include <any>
 #include <boost/program_options.hpp>
 #include <vstd/StringUtils.h>
 
 #include <SDL_main.h>
 #include <SDL.h>
+
+#ifdef ENABLE_MMAI
+#include "AI/MMAI/schema/base.h"
+#include "MMAI/Loader.h"
+#endif
 
 #ifdef VCMI_ANDROID
 #include "../lib/CAndroidVMHelper.h"
@@ -283,7 +290,18 @@ int main(int argc, char * argv[])
 
 	CCS = new CClientState();
 	CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-	CSH = new CServerHandler(AICombatOptions());
+
+	auto aco = AICombatOptions();
+
+#ifdef ENABLE_MMAI
+	aco.other = std::make_any<MMAI::Schema::Baggage*>(MMAI::LoadModels(
+		settings["server"]["battle"]["MMAI"]["leftModel"].String(),
+		settings["server"]["battle"]["MMAI"]["rightModel"].String(),
+		settings["server"]["battle"]["MMAI"]["verbose"].Bool()
+	));
+#endif
+
+	CSH = new CServerHandler(aco);
 
 	// Initialize video
 #ifdef DISABLE_VIDEO

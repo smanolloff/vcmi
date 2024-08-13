@@ -10,6 +10,13 @@
 	"launcher" : {
 		"setupCompleted" : true
 	},
+	"battle" : {
+		"MMAI": {
+			"leftModel" : "/Users/simo/Projects/vcmi-gym/rl/models/agent.pt:v6301/jit-agent.pt",
+			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/agent.pt:v6301/jit-agent.pt",
+			"verbose" : true
+		}
+	},
 	"logging" : {
 		"console" : {
 			"colorMapping" : [

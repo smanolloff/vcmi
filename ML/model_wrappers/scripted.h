@@ -16,30 +16,21 @@
 
 #pragma once
 
-#include "./base.h"
+#include "AI/MMAI/schema/base.h"
 
 namespace ML {
-    namespace UserAgents {
-        class AgentV1 : public Base {
+    namespace ModelWrappers {
+        class DLL_LINKAGE Scripted : public MMAI::Schema::IModel {
         public:
-            using Base::Base;
+            Scripted(std::string keyword);
+
             std::string getName() override;
             int getVersion() override;
             int getAction(const MMAI::Schema::IState * s) override;
             double getValue(const MMAI::Schema::IState * s) override;
-
         private:
-            unsigned long steps = 0;
-            unsigned long resets = 0;
-            clock_t t0 = 0;
-            bool render = false;
-            MMAI::Schema::ActionMask lastmask = {};
-            int recording_i = 0;
-
-            MMAI::Schema::Action promptAction(const MMAI::Schema::ActionMask &mask);
-            MMAI::Schema::Action recordedAction();
-            MMAI::Schema::Action randomValidAction(const MMAI::Schema::ActionMask &mask);
-            MMAI::Schema::Action firstValidAction(const MMAI::Schema::ActionMask &mask);
+            std::string keyword;
+            void warn(std::string m, int retval);
         };
     }
 }

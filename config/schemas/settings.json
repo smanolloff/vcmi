@@ -430,6 +430,26 @@
 				"queueSmallOutside" : {
 					"type": "boolean",
 					"default": false
+				},
+				"MMAI" : {
+					"type" : "object",
+					"additionalProperties" : false,
+					"default" : {},
+					"required" : ["leftModel", "rightModel", "verbose"],
+					"properties" : {
+						"leftModel" : {
+							"type" : "string",
+							"default" : ""
+						},
+						"rightModel" : {
+							"type" : "string",
+							"default" : ""
+						},
+						"verbose" : {
+							"type" : "boolean",
+							"default" : false
+						}
+					}
 				}
 			}
 		},

@@ -39,14 +39,23 @@ namespace ML {
 
     const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};
     const std::vector<std::string> ENCODINGS = {"default", "float"};
+
+    // TODO: rename to left/right
     const std::vector<std::string> STATPERSPECTIVES = {"disabled", "red", "blue"};
+
+    DLL_LINKAGE MMAI::Schema::IModel* MakeScriptedModel(std::string keyword);
+    DLL_LINKAGE MMAI::Schema::IModel* MakeUserModel(
+        int version,
+        std::function<int(const MMAI::Schema::IState*)> getAction,
+        std::function<double(const MMAI::Schema::IState*)> getState
+    );
 
     struct DLL_LINKAGE InitArgs {
         InitArgs() = delete;
         InitArgs(
             std::string mapname,
-            int schemaVersion,
-            MMAI::Schema::F_GetAction f_getAction,
+            MMAI::Schema::IModel * leftModel,
+            MMAI::Schema::IModel * rightModel,
             int maxBattles,
             int seed,
             int randomHeroes,
@@ -59,19 +68,14 @@ namespace ML {
             std::string loglevelGlobal,
             std::string loglevelAI,
             std::string loglevelStats,
-            std::string redAI,
-            std::string blueAI,
-            std::string redModel,
-            std::string blueModel,
             std::string statsMode,
             std::string statsStorage,
             int statsTimeout,
             int statsPersistFreq,
-            bool printModelPredictions,
             bool headless
         ) : mapname(mapname)
-          , schemaVersion(schemaVersion)
-          , f_getAction(f_getAction)
+          , leftModel(leftModel)
+          , rightModel(rightModel)
           , maxBattles(maxBattles)
           , seed(seed)
           , randomHeroes(randomHeroes)
@@ -84,20 +88,16 @@ namespace ML {
           , loglevelGlobal(loglevelGlobal)
           , loglevelAI(loglevelAI)
           , loglevelStats(loglevelStats)
-          , redAI(redAI)
-          , blueAI(blueAI)
-          , redModel(redModel)
-          , blueModel(blueModel)
           , statsMode(statsMode)
-          , statsStorage(statsStorage == "?" ? statsStorage : fs::absolute(fs::path(statsStorage)).string())
+          , statsStorage(statsStorage == "-" ? statsStorage : fs::absolute(fs::path(statsStorage)).string())
           , statsTimeout(statsTimeout)
           , statsPersistFreq(statsPersistFreq)
-          , printModelPredictions(printModelPredictions)
           , headless(headless) {};
 
+        MMAI::Schema::IModel * leftModel;
+        MMAI::Schema::IModel * rightModel;
+
         const std::string mapname;
-        const int schemaVersion;
-        const MMAI::Schema::F_GetAction f_getAction;
         const int maxBattles;
         const int seed;
         const int randomHeroes;
@@ -110,19 +110,14 @@ namespace ML {
         const std::string loglevelGlobal;
         const std::string loglevelAI;
         const std::string loglevelStats;
-        const std::string redAI;
-        const std::string blueAI;
-        const std::string redModel;
-        const std::string blueModel;
         const std::string statsMode;
         const std::string statsStorage;
         const int statsTimeout;
         const int statsPersistFreq;
-        const bool printModelPredictions;
         const bool headless;
     };
 
-    void DLL_LINKAGE init_vcmi(InitArgs a);
+    void DLL_LINKAGE init_vcmi(InitArgs &a);
     void DLL_LINKAGE start_vcmi();
 }
 [[noreturn]] void handleFatalError(const std::string & message, bool terminate);

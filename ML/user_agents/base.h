@@ -18,21 +18,27 @@
 
 #include "AI/MMAI/schema/base.h"
 
-namespace UserAgents {
-    class Base {
-    public:
-        Base(bool benchmark_, bool interactive_, bool verbose_, std::vector<int> actions_)
-        : benchmark(benchmark_)
-        , interactive(interactive_)
-        , verbose(verbose_)
-        , actions(actions_) {};
+namespace ML {
+    namespace UserAgents {
+        class Base : public MMAI::Schema::IModel {
+        public:
+            Base(bool benchmark_, bool interactive_, bool autorender_, bool verbose_, std::vector<int> actions_)
+            : benchmark(benchmark_)
+            , interactive(interactive_)
+            , autorender(autorender_)
+            , verbose(verbose_)
+            , actions(actions_) {};
 
-        virtual ~Base() = default;
-        virtual MMAI::Schema::Action getAction(const MMAI::Schema::IState * s) = 0;
-    protected:
-        const bool benchmark;  // obsoletes all options below, always picks random actions
-        const bool interactive;
-        const bool verbose;
-        const std::vector<int> actions;
-    };
+            std::string getName() override { return ""; };
+            int getVersion() override { return 0; };
+            int getAction(const MMAI::Schema::IState * s) override { return 0; };
+            double getValue(const MMAI::Schema::IState * s) override { return 0; };
+        protected:
+            const bool autorender;
+            const bool benchmark;  // obsoletes all options below, always picks random actions
+            const bool interactive;
+            const bool verbose;
+            const std::vector<int> actions;
+        };
+    }
 }

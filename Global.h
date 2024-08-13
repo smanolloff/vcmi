@@ -103,7 +103,7 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 #endif
 
 /* ---------------------------------------------------------------------------- */
-/* A macro which expands to nothing unless ENABLE_ML compile flag set */
+/* A macro which expands to nothing unless ENABLE_ML compile flag is set */
 /* ---------------------------------------------------------------------------- */
 #ifdef ENABLE_ML
 #define ML(STMT) STMT

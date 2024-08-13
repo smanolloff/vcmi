@@ -17,7 +17,6 @@
 #include "Global.h"
 #include "AI/MMAI/schema/base.h"
 #include "AI/MMAI/schema/v1/constants.h"
-#include "client/ML/ClientPlugin.h"
 #include <algorithm>
 #include <thread>
 #include <cstdio>
@@ -73,7 +72,7 @@ static std::optional<std::string> criticalInitializationError;
 
 bool headless;
 std::string mapname;
-MMAI::Schema::Baggage* baggage;
+MMAI::Schema::Baggage * baggage;
 
 #ifndef VCMI_BIN_DIR
 #error "VCMI_BIN_DIR compile definition needs to be set"
@@ -116,17 +115,6 @@ namespace ML {
 
     void validateArguments(InitArgs &a) {
         auto wd = boost::filesystem::current_path();
-
-        validateValue("redAI", a.redAI, AIS);
-        validateValue("blueAI", a.blueAI, AIS);
-
-        if (a.redAI == AI_MMAI_MODEL) {
-            validateFile("redModel", a.redModel, wd);
-        }
-
-        if (a.blueAI == AI_MMAI_MODEL) {
-            validateFile("blueModel", a.blueModel, wd);
-        }
 
         if (a.statsMode != "disabled" && a.statsMode != "red" && a.statsMode != "blue") {
             std::cerr << "Bad value for statsMode: expected disabled|red|blue, got: " << a.statsMode << "\n";
@@ -201,13 +189,8 @@ namespace ML {
                 exit(1);
         }
 
-        // if (headless && redAI != AI_MMAI_MODEL && redAI != AI_MMAI_USER) {
-        //     std::cerr << "headless mode requires an MMAI-type redAI\n";
-        //     exit(1);
-        // }
-
         // XXX: can this blow given preinitDLL is not yet called here?
-        validateFile("map", baggage->map, VCMIDirs::get().userDataPath() / "Maps");
+        validateFile("map", a.mapname, VCMIDirs::get().userDataPath() / "Maps");
 
         if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), a.loglevelAI) == LOGLEVELS.end()) {
             std::cerr << "Bad value for loglevelAI: " << a.loglevelAI << "\n";
@@ -226,109 +209,15 @@ namespace ML {
     }
 
     void processArguments(InitArgs &a) {
-        baggage = new MMAI::Schema::Baggage(a.mapname, a.f_getAction, a.schemaVersion);
-
-        // Notes on AI creation
-        //
-        //
-        // *** Game start - adventure interfaces ***
-        // initGameInterface() is called on:
-        // * CPlayerInterface (CPI) for humans
-        // * settings["playerAI"] for computers
-        //   settings["playerAI"] is fixed to "MMAI" (ie. MMAI::AAI), which
-        //   can create battle interfaces as per `redAI` and `blueAI`
-        //   script arguments (this info is passed to AAI via baggage).
-        //
-        // *** Battle start - battle interfaces ***
-        // * battleStart() is called on the adventure interfaces for all players
-        //
-        // VCAI - (via parent class) reads settings["enemyAI"]) and calls GetNewBattleAI()
-        // MMAI - creates BAI directly, passing the user's getAction fn via baggage
-        // CPI - reads settings["friendlyAI"], but modified to init it with baggage
-        //       (baggage ignored by non-MMAIs)
-        //
-        // *** Auto-combat button clicked ***
-        // BattleWindow()::bAutofightf() has been patched to reuse code in CPI
-        // (in order to also pass baggage)
-        //
-        // Notes on AI deletion
-        // *** Battle end ***
-        // The battleEnd() is sent to the ADVENTURE AI:
-        // * for CPI, it's NOT forwarded to the battle AI (which is just destroyed)
-        // * for MMAI, it's forwarded to the battle AI and THEN it gets destroyed
-
-        //
-        // AI for attacker (red)
-        // When attacker is "MMAI":
-        //  * if headless=true, VCMI will create MMAI::AAI which inits BAI via myInitBattleInterface()
-        //  * if headless=false, it will create CPI which inits BAI via the (default) initBattleInterface()
-        //
-        // CPI creates battle interfaces as per settings["friendlyAI"]
-        // => must set that setting also (see further down)
-        // (Note: CPI had to be modded to pass the baggage)
-        //
-        if (a.redAI == AI_MMAI_USER) {
-            baggage->battleAINameRed = "MMAI";
-
-            if (baggage->versionRed < MIN_SCHEMA_VERSION || baggage->versionRed > MAX_SCHEMA_VERSION)
-                throw std::runtime_error("Unsupported schema version for red: " + std::to_string(baggage->versionRed));
-        } else if (a.redAI == AI_MMAI_MODEL) {
-            baggage->battleAINameRed = "MMAI";
-            // Same as above, but with replaced "getAction" for attacker
-            auto [getaction, getvalue, version] = ML::loadModel(a.redModel, a.printModelPredictions);
-            baggage->f_getActionRed = getaction;
-            baggage->f_getValueRed = getvalue;
-            baggage->versionRed = version;
-        } else if (a.redAI == AI_MMAI_SCRIPT_SUMMONER) {
-            baggage->battleAINameRed = "MMAI";
-            baggage->versionRed = MMAI_RESERVED_VERSION_SUMMONER;
-        } else if (a.redAI == AI_STUPIDAI) {
-            baggage->battleAINameRed = "StupidAI";
-        } else if (a.redAI == AI_BATTLEAI) {
-            baggage->battleAINameRed = "BattleAI";
-        } else {
-            throw std::runtime_error("Unexpected redAI: " + a.redAI);
-        }
-
-        //
-        // AI for defender (aka. computer, aka. some AI)
-        // Defender is computer with adventure interface as per settings["playerAI"]
-        // (ie. always MMAI::AAI)
-        //
-        // * "MMAI", which will create BAI/StupidAI/BattleAI battle interfaces
-        //   based on info provided via baggage.
-        //
-        if (a.blueAI == AI_MMAI_USER) {
-            baggage->battleAINameBlue = "MMAI";
-            if (baggage->versionBlue < MIN_SCHEMA_VERSION || baggage->versionBlue > MAX_SCHEMA_VERSION)
-                throw std::runtime_error("Unsupported schema version for blue: " + std::to_string(baggage->versionBlue));
-        } else if (a.blueAI == AI_MMAI_MODEL) {
-            baggage->battleAINameBlue = "MMAI";
-            // Same as above, but with replaced "getAction" for defender
-            auto [getaction, getvalue, version] = ML::loadModel(a.blueModel, a.printModelPredictions);
-            baggage->f_getActionBlue = getaction;
-            baggage->f_getValueBlue = getvalue;
-            baggage->versionBlue = version;
-        } else if (a.blueAI == AI_MMAI_SCRIPT_SUMMONER) {
-            baggage->battleAINameBlue = "MMAI";
-            baggage->versionBlue = MMAI_RESERVED_VERSION_SUMMONER;
-        } else if (a.blueAI == AI_STUPIDAI) {
-            baggage->battleAINameBlue = "StupidAI";
-        } else if (a.blueAI == AI_BATTLEAI) {
-            baggage->battleAINameBlue = "BattleAI";
-        } else {
-            throw std::runtime_error("Unexpected blueAI: " + a.blueAI);
-        }
-
+        headless = a.headless;
+        baggage = new MMAI::Schema::Baggage;
+        baggage->devMode = true;
+        baggage->modelLeft = a.leftModel;
+        baggage->modelRight = a.rightModel;
 
         Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
         Settings(settings.write({"session", "headless"}))->Bool() = headless;
         Settings(settings.write({"session", "onlyai"}))->Bool() = headless;
-
-        // All adventure AIs must be MMAI to properly init the battle AIs
-        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-        Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
-
         Settings(settings.write({"server", "seed"}))->Integer() = a.seed;
         Settings(settings.write({"server", "localPort"}))->Integer() = 0;
         Settings(settings.write({"server", "useProcess"}))->Bool() = false;
@@ -346,11 +235,15 @@ namespace ML {
         Settings(settings.write({"server", "ML", "statsPersistFreq"}))->Integer() = a.statsPersistFreq;
         Settings(settings.write({"server", "ML", "statsLoglevel"}))->String() = a.loglevelStats;
 
-        // CPI needs this setting in case the attacker is human (headless==false)
-        Settings(settings.write({"server", "friendlyAI"}))->String() = baggage->battleAINameRed;
+        // Set all adventure AIs to AAI, which always create BAIs
+        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
+        Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
+
+        // Set CPlayerInterface (aka. GUI) to create BAI for auto-combat
+        Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
 
         // convert to "ai/mymap.vmap" to "maps/ai/mymap.vmap"
-        auto mappath = std::filesystem::path("Maps") / std::filesystem::path(baggage->map);
+        auto mappath = std::filesystem::path("Maps") / std::filesystem::path(a.mapname);
         // store "maps/ai/mymap.vmap" into global var
         mapname = mappath.string();
 
@@ -402,7 +295,6 @@ namespace ML {
         conflog("bonus", loglevelBonus);
     }
 
-
     void init_vcmi(InitArgs &a) {
         validateArguments(a);
 
@@ -433,10 +325,6 @@ namespace ML {
         // printf("map: %s\n", map.c_str());
         // printf("loglevelGlobal: %s\n", loglevelGlobal.c_str());
         // printf("loglevelAI: %s\n", loglevelAI.c_str());
-        // printf("redAI: %s\n", redAI.c_str());
-        // printf("blueAI: %s\n", blueAI.c_str());
-        // printf("redModel: %s\n", redModel.c_str());
-        // printf("blueModel: %s\n", blueModel.c_str());
         // printf("headless: %d\n", headless);
 
         Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
@@ -455,7 +343,10 @@ namespace ML {
 
         CCS = new CClientState();
         CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
-        CSH = new CServerHandler(std::make_any<MMAI::Schema::Baggage*>(baggage));
+
+        auto aco = AICombatOptions();
+        aco.other = std::make_any<MMAI::Schema::Baggage*>(baggage);
+        CSH = new CServerHandler(aco);
 
         if (!headless) {
             CCS->videoh = new CEmptyVideoPlayer();

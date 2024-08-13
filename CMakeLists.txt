@@ -93,7 +93,7 @@ else()
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
 	option(ENABLE_ML "Enable extensions needed for AI training" OFF)
-	option(ENABLE_MMAI "Enable compilation of MMAI and leverage pre-trained ML models" OFF)
+	option(ENABLE_MMAI "Enable extensions needed for loading pre-trained AI models" OFF)
 endif()
 
 # ERM depends on LUA implicitly
