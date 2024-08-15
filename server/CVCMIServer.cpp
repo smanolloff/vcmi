@@ -293,7 +293,7 @@ bool CVCMIServer::prepareToStartGame()
 			boost::this_thread::sleep(boost::posix_time::milliseconds(50));
 		}
 	});
-
+	
 	gh = std::make_shared<CGameHandler>(this);
 	switch(si->mode)
 	{
@@ -327,10 +327,10 @@ bool CVCMIServer::prepareToStartGame()
 		assert(0);
 		break;
 	}
-
+	
 	current.finish();
 	progressTrackingThread.join();
-
+	
 	return true;
 }
 

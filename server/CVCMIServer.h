@@ -43,6 +43,8 @@ enum class EServerState : ui8
 
 class CVCMIServer : public LobbyInfo, public INetworkServerListener, public INetworkTimerListener
 {
+	/// Network server instance that receives and processes incoming connections on active socket
+	std::unique_ptr<INetworkServer> networkServer;
 	std::unique_ptr<GlobalLobbyProcessor> lobbyProcessor;
 
 	std::chrono::steady_clock::time_point gameplayStartTime;
@@ -61,9 +63,6 @@ class CVCMIServer : public LobbyInfo, public INetworkServerListener, public INet
 	bool runByClient;
 
 public:
-	/// Network server instance that receives and processes incoming connections on active socket
-	std::unique_ptr<INetworkServer> networkServer;
-
 	/// List of all active connections
 	std::vector<std::shared_ptr<CConnection>> activeConnections;
 

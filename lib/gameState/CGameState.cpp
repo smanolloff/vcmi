@@ -7,7 +7,6 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
-#include "CRandomGenerator.h"
 #include "StdInc.h"
 #include "CGameState.h"
 
@@ -157,7 +156,7 @@ int CGameState::getDate(Date mode) const
 	return 0;
 }
 
-CGameState::CGameState() : rand(CRandomGenerator::getDefault())
+CGameState::CGameState()
 {
 	gs = this;
 	heroesPool = std::make_unique<TavernHeroesPool>();

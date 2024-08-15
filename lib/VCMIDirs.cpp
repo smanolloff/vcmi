@@ -366,14 +366,10 @@ class IVCMIDirsUNIX : public IVCMIDirs
 
 bool IVCMIDirsUNIX::developmentMode() const
 {
-#ifdef DEV_BUILD
-	return true;
-#else
 	// We want to be able to run VCMI from single directory. E.g to run from build output directory
 	const bool hasConfigs = bfs::exists("config") && bfs::exists("Mods");
 	const bool hasBinaries = bfs::exists("vcmiclient") || bfs::exists("vcmiserver") || bfs::exists("vcmilobby");
 	return hasConfigs && hasBinaries;
-#endif
 }
 
 bfs::path IVCMIDirsUNIX::clientPath() const { return binaryPath() / "vcmiclient"; }

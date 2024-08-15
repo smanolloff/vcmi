@@ -7,6 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
+#include "Global.h"
 #include "StdInc.h"
 #include "SideInBattle.h"
 #include "../mapObjects/CArmedInstance.h"
@@ -27,7 +28,7 @@ void SideInBattle::init(const CGHeroInstance * Hero, const CArmedInstance * Army
 			color = PlayerColor::NEUTRAL;
 			break;
 		default:
-			color = armyObject->tempOwner;
+			color = IFML(armyObject->tempOwner, armyObject->getOwner());
 	}
 
 	if(color == PlayerColor::UNFLAGGABLE)

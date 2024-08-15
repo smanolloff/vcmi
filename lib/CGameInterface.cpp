@@ -112,8 +112,8 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 #ifdef ENABLE_MMAI
 	} else if(libpath.stem() == "libMMAI") {
 		return std::make_shared<MMAI::AAI>();
-	}
 #endif
+	}
 	else{
 		return std::make_shared<VCAI>();
 	}
