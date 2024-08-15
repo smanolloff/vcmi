@@ -11,7 +11,7 @@
 #pragma once
 
 #include "../ResourceSet.h"
-#include "../MetaString.h"
+#include "../texts/MetaString.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -30,17 +30,17 @@ public:
 	CMapEvent();
 	virtual ~CMapEvent() = default;
 
-	bool earlierThan(const CMapEvent & other) const;
-	bool earlierThanOrEqual(const CMapEvent & other) const;
+	bool occursToday(int currentDay) const;
+	bool affectsPlayer(PlayerColor player, bool isHuman) const;
 
 	std::string name;
 	MetaString message;
 	TResources resources;
-	ui8 players; // affected players, bit field?
+	std::set<PlayerColor> players;
 	bool humanAffected;
 	bool computerAffected;
-	ui32 firstOccurence;
-	ui32 nextOccurence; /// specifies after how many days the event will occur the next time; 0 if event occurs only one time
+	ui32 firstOccurrence;
+	ui32 nextOccurrence; /// specifies after how many days the event will occur the next time; 0 if event occurs only one time
 
 	template <typename Handler>
 	void serialize(Handler & h)
@@ -48,11 +48,22 @@ public:
 		h & name;
 		h & message;
 		h & resources;
-		h & players;
+		if (h.version >= Handler::Version::EVENTS_PLAYER_SET)
+		{
+			h & players;
+		}
+		else
+		{
+			ui8 playersMask = 0;
+			h & playersMask;
+			for (int i = 0; i < 8; ++i)
+				if ((playersMask & (1 << i)) != 0)
+					players.insert(PlayerColor(i));
+		}
 		h & humanAffected;
 		h & computerAffected;
-		h & firstOccurence;
-		h & nextOccurence;
+		h & firstOccurrence;
+		h & nextOccurrence;
 	}
 	
 	virtual void serializeJson(JsonSerializeFormat & handler);
@@ -97,10 +108,10 @@ struct DLL_LINKAGE TerrainTile
 	bool hasFavorableWinds() const;
 
 	const TerrainType * terType;
-	ui8 terView;
 	const RiverType * riverType;
-	ui8 riverDir;
 	const RoadType * roadType;
+	ui8 terView;
+	ui8 riverDir;
 	ui8 roadDir;
 	/// first two bits - how to rotate terrain graphic (next two - river graphic, next two - road);
 	///	7th bit - whether tile is coastal (allows disembarking if land or block movement if water); 8th bit - Favorable Winds effect

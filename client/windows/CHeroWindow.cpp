@@ -28,7 +28,6 @@
 #include "../widgets/CGarrisonInt.h"
 #include "../widgets/TextControls.h"
 #include "../widgets/Buttons.h"
-#include "../render/CAnimation.h"
 #include "../render/IRenderHandler.h"
 
 #include "../../CCallback.h"
@@ -36,7 +35,7 @@
 #include "../lib/ArtifactUtils.h"
 #include "../lib/CArtHandler.h"
 #include "../lib/CConfigHandler.h"
-#include "../lib/CGeneralTextHandler.h"
+#include "../lib/texts/CGeneralTextHandler.h"
 #include "../lib/CHeroHandler.h"
 #include "../lib/CSkillHandler.h"
 #include "../lib/mapObjects/CGHeroInstance.h"
@@ -47,7 +46,7 @@ void CHeroSwitcher::clickPressed(const Point & cursorPosition)
 	//TODO: do not recreate window
 	if (false)
 	{
-		owner->update(hero, true);
+		owner->update();
 	}
 	else
 	{
@@ -62,7 +61,7 @@ CHeroSwitcher::CHeroSwitcher(CHeroWindow * owner_, Point pos_, const CGHeroInsta
 	owner(owner_),
 	hero(hero_)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 	pos += pos_;
 
 	image = std::make_shared<CAnimImage>(AnimationPath::builtin("PortraitsSmall"), hero->getIconIndex());
@@ -75,7 +74,7 @@ CHeroWindow::CHeroWindow(const CGHeroInstance * hero)
 {
 	auto & heroscrn = CGI->generaltexth->heroscrn;
 
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 	curHero = hero;
 
 	banner = std::make_shared<CAnimImage>(AnimationPath::builtin("CREST58"), LOCPLINT->playerID.getNum(), 0, 606, 8);
@@ -131,14 +130,12 @@ CHeroWindow::CHeroWindow(const CGHeroInstance * hero)
 		primSkillValues.push_back(value);
 	}
 
-	auto primSkills = GH.renderHandler().loadAnimation(AnimationPath::builtin("PSKIL42"));
-	primSkills->preload();
-	primSkillImages.push_back(std::make_shared<CAnimImage>(primSkills, 0, 0, 32, 111));
-	primSkillImages.push_back(std::make_shared<CAnimImage>(primSkills, 1, 0, 102, 111));
-	primSkillImages.push_back(std::make_shared<CAnimImage>(primSkills, 2, 0, 172, 111));
-	primSkillImages.push_back(std::make_shared<CAnimImage>(primSkills, 3, 0, 162, 230));
-	primSkillImages.push_back(std::make_shared<CAnimImage>(primSkills, 4, 0, 20, 230));
-	primSkillImages.push_back(std::make_shared<CAnimImage>(primSkills, 5, 0, 242, 111));
+	primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL42"), 0, 0, 32, 111));
+	primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL42"), 1, 0, 102, 111));
+	primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL42"), 2, 0, 172, 111));
+	primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL42"), 3, 0, 162, 230));
+	primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL42"), 4, 0, 20, 230));
+	primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL42"), 5, 0, 242, 111));
 
 	specImage = std::make_shared<CAnimImage>(AnimationPath::builtin("UN44"), 0, 0, 18, 180);
 	specArea = std::make_shared<LRClickableAreaWText>(Rect(18, 180, 136, 42), CGI->generaltexth->heroscrn[27]);
@@ -152,12 +149,11 @@ CHeroWindow::CHeroWindow(const CGHeroInstance * hero)
 	expValue = std::make_shared<CLabel>(68, 252);
 	manaValue = std::make_shared<CLabel>(211, 252);
 
-	auto secSkills = GH.renderHandler().loadAnimation(AnimationPath::builtin("SECSKILL"));
 	for(int i = 0; i < std::min<size_t>(hero->secSkills.size(), 8u); ++i)
 	{
 		Rect r = Rect(i%2 == 0  ?  18  :  162,  276 + 48 * (i/2),  136,  42);
 		secSkillAreas.push_back(std::make_shared<LRClickableAreaWTextComp>(r, ComponentType::SEC_SKILL));
-		secSkillImages.push_back(std::make_shared<CAnimImage>(secSkills, 0, 0, r.x, r.y));
+		secSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("SECSKILL"), 0, 0, r.x, r.y));
 
 		int x = (i % 2) ? 212 : 68;
 		int y = 280 + 48 * (i/2);
@@ -176,20 +172,14 @@ CHeroWindow::CHeroWindow(const CGHeroInstance * hero)
 	labels.push_back(std::make_shared<CLabel>(69, 232, FONT_SMALL, ETextAlignment::TOPLEFT, Colors::YELLOW, CGI->generaltexth->jktexts[6]));
 	labels.push_back(std::make_shared<CLabel>(213, 232, FONT_SMALL, ETextAlignment::TOPLEFT, Colors::YELLOW, CGI->generaltexth->jktexts[7]));
 
-	update(hero);
+	CHeroWindow::update();
 }
 
-void CHeroWindow::update(const CGHeroInstance * hero, bool redrawNeeded)
+void CHeroWindow::update()
 {
+	CWindowWithArtifacts::update();
 	auto & heroscrn = CGI->generaltexth->heroscrn;
-
-	if(!hero) //something strange... no hero? it shouldn't happen
-	{
-		logGlobal->error("Set nullptr hero? no way...");
-		return;
-	}
-
-	assert(hero == curHero);
+	assert(curHero);
 
 	name->setText(curHero->getNameTranslated());
 	title->setText((boost::format(CGI->generaltexth->allTexts[342]) % curHero->level % curHero->getClassNameTranslated()).str());
@@ -207,22 +197,25 @@ void CHeroWindow::update(const CGHeroInstance * hero, bool redrawNeeded)
 	portraitImage->setFrame(curHero->getIconIndex());
 
 	{
-		OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+		OBJECT_CONSTRUCTION;
 		if(!garr)
 		{
 			std::string helpBox = heroscrn[32];
 			boost::algorithm::replace_first(helpBox, "%s", CGI->generaltexth->allTexts[43]);
 
 			garr = std::make_shared<CGarrisonInt>(Point(15, 485), 8, Point(), curHero);
-			auto split = std::make_shared<CButton>(Point(539, 519), AnimationPath::builtin("hsbtns9.def"), CButton::tooltip(CGI->generaltexth->allTexts[256], helpBox), [&](){ garr->splitClick(); }, EShortcut::HERO_ARMY_SPLIT);
+			auto split = std::make_shared<CButton>(Point(539, 519), AnimationPath::builtin("hsbtns9.def"), CButton::tooltip(CGI->generaltexth->allTexts[256], helpBox), [this](){ garr->splitClick(); }, EShortcut::HERO_ARMY_SPLIT);
 			garr->addSplitBtn(split);
 		}
 		if(!arts)
 		{
 			arts = std::make_shared<CArtifactsOfHeroMain>(Point(-65, -8));
+			arts->clickPressedCallback = [this](const CArtPlace & artPlace, const Point & cursorPosition){clickPressedOnArtPlace(curHero, artPlace.slot, true, false, false);};
+			arts->showPopupCallback = [this](CArtPlace & artPlace, const Point & cursorPosition){showArtifactAssembling(*arts, artPlace, cursorPosition);};
+			arts->gestureCallback = [this](const CArtPlace & artPlace, const Point & cursorPosition){showQuickBackpackWindow(curHero, artPlace.slot, cursorPosition);};
 			arts->setHero(curHero);
-			addSetAndCallbacks(arts);
-			enableArtifactsCostumeSwitcher();
+			addSet(arts);
+			enableKeyboardShortcuts();
 		}
 
 		int serial = LOCPLINT->cb->getHeroSerial(curHero, false);
@@ -313,8 +306,7 @@ void CHeroWindow::update(const CGHeroInstance * hero, bool redrawNeeded)
 	morale->set(curHero);
 	luck->set(curHero);
 
-	if(redrawNeeded)
-		redraw();
+	redraw();
 }
 
 void CHeroWindow::dismissCurrent()

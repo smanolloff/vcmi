@@ -11,7 +11,7 @@
 
 #include "CPlayerState.h"
 #include "gameState/QuestInfo.h"
-#include "CGeneralTextHandler.h"
+#include "texts/CGeneralTextHandler.h"
 #include "VCMI_Lib.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -48,6 +48,11 @@ int32_t PlayerState::getIconIndex() const
 std::string PlayerState::getJsonKey() const
 {
 	return color.toString();
+}
+
+std::string PlayerState::getModScope() const
+{
+	return "core";
 }
 
 std::string PlayerState::getNameTranslated() const

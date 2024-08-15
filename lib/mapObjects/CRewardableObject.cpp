@@ -11,14 +11,17 @@
 #include "StdInc.h"
 #include "CRewardableObject.h"
 #include "../gameState/CGameState.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../CPlayerState.h"
 #include "../IGameCallback.h"
 #include "../mapObjectConstructors/AObjectTypeHandler.h"
 #include "../mapObjectConstructors/CObjectClassesHandler.h"
+#include "../mapObjectConstructors/CRewardableConstructor.h"
 #include "../mapObjects/CGHeroInstance.h"
 #include "../networkPacks/PacksForClient.h"
 #include "../serializer/JsonSerializeFormat.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -43,7 +46,7 @@ void CRewardableObject::grantRewardWithMessage(const CGHeroInstance * contextHer
 	grantReward(index, contextHero);
 }
 
-void CRewardableObject::selectRewardWthMessage(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices, const MetaString & dialog) const
+void CRewardableObject::selectRewardWithMessage(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices, const MetaString & dialog) const
 {
 	BlockingDialog sd(configuration.canRefuse, rewardIndices.size() > 1);
 	sd.player = contextHero->tempOwner;
@@ -53,7 +56,7 @@ void CRewardableObject::selectRewardWthMessage(const CGHeroInstance * contextHer
 
 }
 
-void CRewardableObject::grantAllRewardsWthMessage(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices, bool markAsVisit) const
+void CRewardableObject::grantAllRewardsWithMessage(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices, bool markAsVisit) const
 {
 	if (rewardIndices.empty())
 		return;
@@ -115,7 +118,7 @@ void CRewardableObject::onHeroVisit(const CGHeroInstance *h) const
 			case 1: // one reward. Just give it with message
 			{
 				if (configuration.canRefuse)
-					selectRewardWthMessage(h, rewards, configuration.info.at(rewards.front()).message);
+					selectRewardWithMessage(h, rewards, configuration.info.at(rewards.front()).message);
 				else
 					grantRewardWithMessage(h, rewards.front(), true);
 				break;
@@ -124,11 +127,11 @@ void CRewardableObject::onHeroVisit(const CGHeroInstance *h) const
 			{
 				switch (configuration.selectMode) {
 					case Rewardable::SELECT_PLAYER: // player must select
-						selectRewardWthMessage(h, rewards, configuration.onSelect);
+						selectRewardWithMessage(h, rewards, configuration.onSelect);
 						break;
 					case Rewardable::SELECT_FIRST: // give first available
 						if (configuration.canRefuse)
-							selectRewardWthMessage(h, { rewards.front() }, configuration.info.at(rewards.front()).message);
+							selectRewardWithMessage(h, { rewards.front() }, configuration.info.at(rewards.front()).message);
 						else
 							grantRewardWithMessage(h, rewards.front(), true);
 						break;
@@ -136,13 +139,13 @@ void CRewardableObject::onHeroVisit(const CGHeroInstance *h) const
 					{
 						ui32 rewardIndex = *RandomGeneratorUtil::nextItem(rewards, cb->gameState()->getRandomGenerator());
 						if (configuration.canRefuse)
-							selectRewardWthMessage(h, { rewardIndex }, configuration.info.at(rewardIndex).message);
+							selectRewardWithMessage(h, { rewardIndex }, configuration.info.at(rewardIndex).message);
 						else
 							grantRewardWithMessage(h, rewardIndex, true);
 						break;
 					}
 					case Rewardable::SELECT_ALL: // grant all possible
-						grantAllRewardsWthMessage(h, rewards, true);
+						grantAllRewardsWithMessage(h, rewards, true);
 						break;
 				}
 				break;
@@ -178,10 +181,29 @@ void CRewardableObject::heroLevelUpDone(const CGHeroInstance *hero) const
 	grantRewardAfterLevelup(cb, configuration.info.at(selectedReward), this, hero);
 }
 
-void CRewardableObject::blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const
+void CRewardableObject::blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const
 {
 	if(answer == 0)
+	{
+		switch (configuration.visitMode)
+		{
+			case Rewardable::VISIT_UNLIMITED:
+			case Rewardable::VISIT_BONUS:
+			case Rewardable::VISIT_HERO:
+			case Rewardable::VISIT_LIMITER:
+			{
+				// workaround for object with refusable reward not getting marked as visited
+				// TODO: better solution that would also work for player-visitable objects
+				if (!wasScouted(hero->getOwner()))
+				{
+					ChangeObjectVisitors cov(ChangeObjectVisitors::VISITOR_ADD_TEAM, id, hero->id);
+					cb->sendAndApply(&cov);
+				}
+			}
+		}
+
 		return; // player refused
+	}
 
 	if(answer > 0 && answer-1 < configuration.info.size())
 	{
@@ -208,7 +230,7 @@ void CRewardableObject::grantReward(ui32 rewardID, const CGHeroInstance * hero) 
 	cb->setObjPropertyValue(id, ObjProperty::REWARD_SELECT, rewardID);
 	grantRewardBeforeLevelup(cb, configuration.info.at(rewardID), hero);
 	
-	// hero is not blocked by levelup dialog - grant remainer immediately
+	// hero is not blocked by levelup dialog - grant remainder immediately
 	if(!cb->isVisitCoveredByAnotherQuery(this, hero))
 	{
 		grantRewardAfterLevelup(cb, configuration.info.at(rewardID), this, hero);
@@ -375,9 +397,6 @@ void CRewardableObject::setPropertyDer(ObjProperty what, ObjPropertyID identifie
 {
 	switch (what)
 	{
-		case ObjProperty::REWARD_RANDOMIZE:
-			initObj(cb->gameState()->getRandomGenerator());
-			break;
 		case ObjProperty::REWARD_SELECT:
 			selectedReward = identifier.getNum();
 			break;
@@ -387,13 +406,15 @@ void CRewardableObject::setPropertyDer(ObjProperty what, ObjPropertyID identifie
 	}
 }
 
-void CRewardableObject::newTurn(CRandomGenerator & rand) const
+void CRewardableObject::newTurn(vstd::RNG & rand) const
 {
 	if (configuration.resetParameters.period != 0 && cb->getDate(Date::DAY) > 1 && ((cb->getDate(Date::DAY)-1) % configuration.resetParameters.period) == 0)
 	{
 		if (configuration.resetParameters.rewards)
 		{
-			cb->setObjPropertyValue(id, ObjProperty::REWARD_RANDOMIZE, 0);
+			auto handler = std::dynamic_pointer_cast<const CRewardableConstructor>(getObjectHandler());
+			auto newConfiguration = handler->generateConfiguration(cb, rand, ID);
+			cb->setRewardableObjectConfiguration(id, newConfiguration);
 		}
 		if (configuration.resetParameters.visitors)
 		{
@@ -404,7 +425,7 @@ void CRewardableObject::newTurn(CRandomGenerator & rand) const
 	}
 }
 
-void CRewardableObject::initObj(CRandomGenerator & rand)
+void CRewardableObject::initObj(vstd::RNG & rand)
 {
 	getObjectHandler()->configureObject(this, rand);
 }

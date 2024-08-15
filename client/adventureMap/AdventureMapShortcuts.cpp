@@ -31,7 +31,7 @@
 
 #include "../../CCallback.h"
 #include "../../lib/CConfigHandler.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapping/CMap.h"
@@ -48,7 +48,7 @@ void AdventureMapShortcuts::setState(EAdventureState newState)
 	state = newState;
 }
 
-EAdventureState AdventureMapShortcuts::getState()
+EAdventureState AdventureMapShortcuts::getState() const
 {
 	return state;
 }
@@ -71,6 +71,8 @@ std::vector<AdventureMapShortcutState> AdventureMapShortcuts::getShortcuts()
 		{ EShortcut::ADVENTURE_QUEST_LOG,        optionCanViewQuests(),  [this]() { this->showQuestlog(); } },
 		{ EShortcut::ADVENTURE_TOGGLE_SLEEP,     optionHeroSelected(),   [this]() { this->toggleSleepWake(); } },
 		{ EShortcut::ADVENTURE_TOGGLE_GRID,      optionInMapView(),      [this]() { this->toggleGrid(); } },
+		{ EShortcut::ADVENTURE_TOGGLE_VISITABLE, optionInMapView(),      [this]() { this->toggleVisitable(); } },
+		{ EShortcut::ADVENTURE_TOGGLE_BLOCKED,   optionInMapView(),      [this]() { this->toggleBlocked(); } },
 		{ EShortcut::ADVENTURE_TRACK_HERO,       optionInMapView(),      [this]() { this->toggleTrackHero(); } },
 		{ EShortcut::ADVENTURE_SET_HERO_ASLEEP,  optionHeroAwake(),      [this]() { this->setHeroSleeping(); } },
 		{ EShortcut::ADVENTURE_SET_HERO_AWAKE,   optionHeroSleeping(),   [this]() { this->setHeroAwake(); } },
@@ -166,6 +168,18 @@ void AdventureMapShortcuts::toggleGrid()
 {
 	Settings s = settings.write["gameTweaks"];
 	s["showGrid"].Bool() = !settings["gameTweaks"]["showGrid"].Bool();
+}
+
+void AdventureMapShortcuts::toggleVisitable()
+{
+	Settings s = settings.write["session"];
+	s["showVisitable"].Bool() = !settings["session"]["showVisitable"].Bool();
+}
+
+void AdventureMapShortcuts::toggleBlocked()
+{
+	Settings s = settings.write["session"];
+	s["showBlocked"].Bool() = !settings["session"]["showBlocked"].Bool();
 }
 
 void AdventureMapShortcuts::toggleSleepWake()
@@ -311,7 +325,6 @@ void AdventureMapShortcuts::toMainMenu()
 		[]()
 		{
 			CSH->endGameplay();
-			GH.defActionsDef = 63;
 			CMM->menu->switchToTab("main");
 		},
 		0
@@ -325,7 +338,6 @@ void AdventureMapShortcuts::newGame()
 		[]()
 		{
 			CSH->endGameplay();
-			GH.defActionsDef = 63;
 			CMM->menu->switchToTab("new");
 		},
 		nullptr
@@ -518,7 +530,6 @@ bool AdventureMapShortcuts::optionCanVisitObject()
 	auto * hero = LOCPLINT->localState->getCurrentHero();
 	auto objects = LOCPLINT->cb->getVisitableObjs(hero->visitablePos());
 
-	assert(vstd::contains(objects,hero));
 	return objects.size() > 1; // there is object other than our hero
 }
 
@@ -563,16 +574,15 @@ bool AdventureMapShortcuts::optionInWorldView()
 
 bool AdventureMapShortcuts::optionSidePanelActive()
 {
-return state == EAdventureState::MAKING_TURN || state == EAdventureState::WORLD_VIEW || state == EAdventureState::OTHER_HUMAN_PLAYER_TURN;
+return state == EAdventureState::MAKING_TURN || state == EAdventureState::WORLD_VIEW;
 }
 
 bool AdventureMapShortcuts::optionMapScrollingActive()
 {
-	return state == EAdventureState::MAKING_TURN || state == EAdventureState::WORLD_VIEW || state == EAdventureState::OTHER_HUMAN_PLAYER_TURN;
+	return state == EAdventureState::MAKING_TURN || state == EAdventureState::WORLD_VIEW;
 }
 
 bool AdventureMapShortcuts::optionMapViewActive()
 {
-	return state == EAdventureState::MAKING_TURN || state == EAdventureState::WORLD_VIEW || state == EAdventureState::CASTING_SPELL
-		|| state == EAdventureState::OTHER_HUMAN_PLAYER_TURN;
+	return state == EAdventureState::MAKING_TURN || state == EAdventureState::WORLD_VIEW || state == EAdventureState::CASTING_SPELL;
 }

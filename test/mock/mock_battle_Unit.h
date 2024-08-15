@@ -38,7 +38,7 @@ public:
 
 	MOCK_CONST_METHOD0(unitBaseAmount, int32_t());
 	MOCK_CONST_METHOD0(unitId, uint32_t());
-	MOCK_CONST_METHOD0(unitSide, ui8());
+	MOCK_CONST_METHOD0(unitSide, BattleSide());
 	MOCK_CONST_METHOD0(unitOwner, PlayerColor());
 	MOCK_CONST_METHOD0(unitSlot, SlotID());
 	MOCK_CONST_METHOD0(unitType, const CCreature * ());
@@ -93,7 +93,7 @@ public:
 	MOCK_METHOD1(load, void(const JsonNode &));
 
 	MOCK_METHOD1(damage, void(int64_t &));
-	MOCK_METHOD3(heal, void(int64_t &, EHealLevel, EHealPower));
+	MOCK_METHOD3(heal, battle::HealInfo(int64_t &, EHealLevel, EHealPower));
 };
 
 

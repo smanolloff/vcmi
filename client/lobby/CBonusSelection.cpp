@@ -18,12 +18,11 @@
 #include "ExtraOptionsTab.h"
 
 #include "../CGameInfo.h"
-#include "../CMusicHandler.h"
-#include "../CVideoHandler.h"
 #include "../CPlayerInterface.h"
 #include "../CServerHandler.h"
 #include "../mainmenu/CMainMenu.h"
 #include "../mainmenu/CPrologEpilogVideo.h"
+#include "../media/IMusicPlayer.h"
 #include "../widgets/CComponent.h"
 #include "../widgets/Buttons.h"
 #include "../widgets/MiscWidgets.h"
@@ -39,16 +38,18 @@
 #include "../gui/Shortcut.h"
 #include "../gui/WindowHandler.h"
 
-#include "../../lib/filesystem/Filesystem.h"
-#include "../../lib/CGeneralTextHandler.h"
-
-#include "../../lib/CBuildingHandler.h"
-
-#include "../../lib/CSkillHandler.h"
-#include "../../lib/CTownHandler.h"
-#include "../../lib/CHeroHandler.h"
+#include "../../lib/CConfigHandler.h"
 #include "../../lib/CCreatureHandler.h"
+#include "../../lib/CHeroHandler.h"
+#include "../../lib/CSkillHandler.h"
 #include "../../lib/StartInfo.h"
+#include "../../lib/entities/building/CBuilding.h"
+#include "../../lib/entities/building/CBuildingHandler.h"
+#include "../../lib/entities/faction/CFaction.h"
+#include "../../lib/entities/faction/CTown.h"
+#include "../../lib/entities/faction/CTownHandler.h"
+#include "../../lib/filesystem/Filesystem.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 
 #include "../../lib/campaign/CampaignState.h"
 #include "../../lib/mapping/CMapService.h"
@@ -65,7 +66,7 @@ std::shared_ptr<CampaignState> CBonusSelection::getCampaign()
 CBonusSelection::CBonusSelection()
 	: CWindowObject(BORDERED)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	setBackground(getCampaign()->getRegions().getBackgroundName());
 
@@ -144,7 +145,7 @@ CBonusSelection::CBonusSelection()
 
 void CBonusSelection::createBonusesIcons()
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	const CampaignScenario & scenario = getCampaign()->scenario(CSH->campaignMap);
 	const std::vector<CampaignBonus> & bonDescs = scenario.travelOptions.bonusesToChoose;
 	groupBonuses = std::make_shared<CToggleGroup>(std::bind(&IServerAPI::setCampaignBonus, CSH, _1));
@@ -473,7 +474,7 @@ void CBonusSelection::decreaseDifficulty()
 CBonusSelection::CRegion::CRegion(CampaignScenarioID id, bool accessible, bool selectable, const CampaignRegions & campDsc)
 	: CIntObject(LCLICK | SHOW_POPUP), idOfMapAndRegion(id), accessible(accessible), selectable(selectable)
 {
-	OBJ_CONSTRUCTION;
+	OBJECT_CONSTRUCTION;
 
 	pos += campDsc.getPosition(id);
 

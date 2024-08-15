@@ -21,8 +21,7 @@
 
 #include "../../../CCallback.h"
 
-#include "../../../lib/CGeneralTextHandler.h"
-#include "../../../lib/MetaString.h"
+#include "../../../lib/texts/CGeneralTextHandler.h"
 #include "../../../lib/mapObjects/CGMarket.h"
 
 CMarketResources::CMarketResources(const IMarket * market, const CGHeroInstance * hero)
@@ -33,7 +32,7 @@ CMarketResources::CMarketResources(const IMarket * market, const CGHeroInstance 
 		[this](){CMarketResources::updateSubtitles();})
 	, CMarketSlider([this](int newVal){CMarketSlider::onOfferSliderMoved(newVal);})
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	labels.emplace_back(std::make_shared<CLabel>(titlePos.x, titlePos.y, FONT_BIG, ETextAlignment::CENTER, Colors::YELLOW, CGI->generaltexth->allTexts[158]));
 	deal = std::make_shared<CButton>(dealButtonPosWithSlider, AnimationPath::builtin("TPMRKB.DEF"),

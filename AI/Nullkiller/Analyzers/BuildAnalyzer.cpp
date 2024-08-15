@@ -10,6 +10,7 @@
 #include "../StdInc.h"
 #include "../Engine/Nullkiller.h"
 #include "../Engine/Nullkiller.h"
+#include "../../../lib/entities/building/CBuilding.h"
 
 namespace NKAI
 {
@@ -30,16 +31,14 @@ void BuildAnalyzer::updateTownDwellings(TownDevelopmentInfo & developmentInfo)
 		}
 	}
 
-	BuildingID prefixes[] = {BuildingID::DWELL_UP_FIRST, BuildingID::DWELL_FIRST};
-
-	for(int level = 0; level < GameConstants::CREATURES_PER_TOWN; level++)
+	for(int level = 0; level < developmentInfo.town->town->creatures.size(); level++)
 	{
 		logAi->trace("Checking dwelling level %d", level);
 		BuildingInfo nextToBuild = BuildingInfo();
 
-		for(BuildingID prefix : prefixes)
+		for(int upgradeIndex : {1, 0})
 		{
-			BuildingID building = BuildingID(prefix + level);
+			BuildingID building = BuildingID(BuildingID::getDwellingFromLevel(level, upgradeIndex));
 
 			if(!vstd::contains(buildings, building))
 				continue; // no such building in town
@@ -100,10 +99,17 @@ int32_t convertToGold(const TResources & res)
 		+ 125 * (res[EGameResID::GEMS] + res[EGameResID::CRYSTAL] + res[EGameResID::MERCURY] + res[EGameResID::SULFUR]);
 }
 
+TResources withoutGold(TResources other)
+{
+	other[GameResID::GOLD] = 0;
+
+	return other;
+}
+
 TResources BuildAnalyzer::getResourcesRequiredNow() const
 {
 	auto resourcesAvailable = ai->getFreeResources();
-	auto result = requiredResources - resourcesAvailable;
+	auto result = withoutGold(armyCost) + requiredResources - resourcesAvailable;
 
 	result.positive();
 
@@ -113,7 +119,7 @@ TResources BuildAnalyzer::getResourcesRequiredNow() const
 TResources BuildAnalyzer::getTotalResourcesRequired() const
 {
 	auto resourcesAvailable = ai->getFreeResources();
-	auto result = totalDevelopmentCost - resourcesAvailable;
+	auto result = totalDevelopmentCost + withoutGold(armyCost) - resourcesAvailable;
 
 	result.positive();
 
@@ -203,8 +209,8 @@ BuildingInfo BuildAnalyzer::getBuildingOrPrerequisite(
 
 	if(BuildingID::DWELL_FIRST <= toBuild && toBuild <= BuildingID::DWELL_UP_LAST)
 	{
-		creatureLevel = (toBuild - BuildingID::DWELL_FIRST) % GameConstants::CREATURES_PER_TOWN;
-		creatureUpgrade = (toBuild - BuildingID::DWELL_FIRST) / GameConstants::CREATURES_PER_TOWN;
+		creatureLevel = BuildingID::getLevelFromDwelling(toBuild);
+		creatureUpgrade = BuildingID::getUpgradedFromDwelling(toBuild);
 	}
 	else if(toBuild == BuildingID::HORDE_1 || toBuild == BuildingID::HORDE_1_UPGR)
 	{
@@ -267,7 +273,7 @@ BuildingInfo BuildAnalyzer::getBuildingOrPrerequisite(
 
 				BuildingInfo prerequisite = getBuildingOrPrerequisite(town, missingBuildings[0], excludeDwellingDependencies);
 
-				prerequisite.buildCostWithPrerequisits += info.buildCost;
+				prerequisite.buildCostWithPrerequisites += info.buildCost;
 				prerequisite.creatureCost = info.creatureCost;
 				prerequisite.creatureGrows = info.creatureGrows;
 				prerequisite.creatureLevel = info.creatureLevel;
@@ -309,7 +315,7 @@ void BuildAnalyzer::updateDailyIncome()
 
 		if(mine)
 		{
-			dailyIncome[mine->producedResource.getNum()] += mine->producedQuantity;
+			dailyIncome[mine->producedResource.getNum()] += mine->getProducedQuantity();
 		}
 	}
 
@@ -340,7 +346,8 @@ void TownDevelopmentInfo::addExistingDwelling(const BuildingInfo & existingDwell
 
 void TownDevelopmentInfo::addBuildingToBuild(const BuildingInfo & nextToBuild)
 {
-	townDevelopmentCost += nextToBuild.buildCostWithPrerequisits;
+	townDevelopmentCost += nextToBuild.buildCostWithPrerequisites;
+	townDevelopmentCost += withoutGold(nextToBuild.armyCost);
 
 	if(nextToBuild.canBuild)
 	{
@@ -361,7 +368,7 @@ BuildingInfo::BuildingInfo()
 	creatureGrows = 0;
 	creatureID = CreatureID::NONE;
 	buildCost = 0;
-	buildCostWithPrerequisits = 0;
+	buildCostWithPrerequisites = 0;
 	prerequisitesCount = 0;
 	name.clear();
 	armyStrength = 0;
@@ -376,7 +383,7 @@ BuildingInfo::BuildingInfo(
 {
 	id = building->bid;
 	buildCost = building->resources;
-	buildCostWithPrerequisits = building->resources;
+	buildCostWithPrerequisites = building->resources;
 	dailyIncome = building->produce;
 	exists = town->hasBuilt(id);
 	prerequisitesCount = 1;

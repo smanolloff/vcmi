@@ -27,7 +27,7 @@
 #include "../CGameInfo.h"
 #include "../CPlayerInterface.h"
 
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/CGMarket.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
@@ -40,7 +40,7 @@ CMarketWindow::CMarketWindow(const IMarket * market, const CGHeroInstance * hero
 		mode == EMarketMode::RESOURCE_ARTIFACT || mode == EMarketMode::ARTIFACT_RESOURCE || mode == EMarketMode::ARTIFACT_EXP ||
 		mode == EMarketMode::CREATURE_EXP);
 	
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	if(mode == EMarketMode::RESOURCE_RESOURCE)
 		createMarketResources(market, hero);
@@ -62,24 +62,27 @@ CMarketWindow::CMarketWindow(const IMarket * market, const CGHeroInstance * hero
 
 void CMarketWindow::updateArtifacts()
 {
-	assert(marketWidget);
-	marketWidget->update();
+	update();
 }
 
 void CMarketWindow::updateGarrisons()
 {
-	assert(marketWidget);
-	marketWidget->update();
+	update();
 }
 
-void CMarketWindow::updateResource()
+void CMarketWindow::updateResources()
 {
-	assert(marketWidget);
-	marketWidget->update();
+	update();
 }
 
-void CMarketWindow::updateHero()
+void CMarketWindow::updateExperience()
 {
+	update();
+}
+
+void CMarketWindow::update()
+{
+	CWindowWithArtifacts::update();
 	assert(marketWidget);
 	marketWidget->update();
 }
@@ -96,21 +99,6 @@ bool CMarketWindow::holdsGarrison(const CArmedInstance * army)
 {
 	assert(marketWidget);
 	return marketWidget->hero == army;
-}
-
-void CMarketWindow::artifactRemoved(const ArtifactLocation & artLoc)
-{
-	marketWidget->update();
-	CWindowWithArtifacts::artifactRemoved(artLoc);
-}
-
-void CMarketWindow::artifactMoved(const ArtifactLocation & srcLoc, const ArtifactLocation & destLoc, bool withRedraw)
-{
-	if(!getState().has_value())
-		return;
-	CWindowWithArtifacts::artifactMoved(srcLoc, destLoc, withRedraw);
-	assert(marketWidget);
-	marketWidget->update();
 }
 
 void CMarketWindow::createChangeModeButtons(EMarketMode currentMode, const IMarket * market, const CGHeroInstance * hero)
@@ -189,7 +177,7 @@ void CMarketWindow::initWidgetInternals(const EMarketMode mode, const std::pair<
 
 void CMarketWindow::createArtifactsBuying(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("TPMRKABS.bmp"), PLAYER_COLORED);
 	marketWidget = std::make_shared<CArtifactsBuying>(market, hero);
@@ -198,7 +186,7 @@ void CMarketWindow::createArtifactsBuying(const IMarket * market, const CGHeroIn
 
 void CMarketWindow::createArtifactsSelling(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("TPMRKASS.bmp"), PLAYER_COLORED);
 	// Create image that copies part of background containing slot MISC_1 into position of slot MISC_5
@@ -206,14 +194,16 @@ void CMarketWindow::createArtifactsSelling(const IMarket * market, const CGHeroI
 	artSlotBack->moveTo(pos.topLeft() + Point(18, 339));
 	auto artsSellingMarket = std::make_shared<CArtifactsSelling>(market, hero);
 	artSets.clear();
-	addSetAndCallbacks(artsSellingMarket->getAOHset());
+	const auto heroArts = artsSellingMarket->getAOHset();
+	heroArts->showPopupCallback = [this, heroArts](CArtPlace & artPlace, const Point & cursorPosition){showArifactInfo(*heroArts, artPlace, cursorPosition);};
+	addSet(heroArts);
 	marketWidget = artsSellingMarket;
 	initWidgetInternals(EMarketMode::ARTIFACT_RESOURCE, CGI->generaltexth->zelp[600]);	
 }
 
 void CMarketWindow::createMarketResources(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("TPMRKRES.bmp"), PLAYER_COLORED);
 	marketWidget = std::make_shared<CMarketResources>(market, hero);
@@ -222,7 +212,7 @@ void CMarketWindow::createMarketResources(const IMarket * market, const CGHeroIn
 
 void CMarketWindow::createFreelancersGuild(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("TPMRKCRS.bmp"), PLAYER_COLORED);
 	marketWidget = std::make_shared<CFreelancerGuild>(market, hero);
@@ -231,7 +221,7 @@ void CMarketWindow::createFreelancersGuild(const IMarket * market, const CGHeroI
 
 void CMarketWindow::createTransferResources(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("TPMRKPTS.bmp"), PLAYER_COLORED);
 	marketWidget = std::make_shared<CTransferResources>(market, hero);
@@ -240,24 +230,37 @@ void CMarketWindow::createTransferResources(const IMarket * market, const CGHero
 
 void CMarketWindow::createAltarArtifacts(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("ALTRART2.bmp"), PLAYER_COLORED);
 	auto altarArtifacts = std::make_shared<CAltarArtifacts>(market, hero);
 	marketWidget = altarArtifacts;
 	artSets.clear();
-	addSetAndCallbacks(altarArtifacts->getAOHset());
+	const auto heroArts = altarArtifacts->getAOHset();
+	heroArts->clickPressedCallback = [this, heroArts](const CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		clickPressedOnArtPlace(heroArts->getHero(), artPlace.slot, true, true, false);
+	};
+	heroArts->showPopupCallback = [this, heroArts](CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		showArtifactAssembling(*heroArts, artPlace, cursorPosition);
+	};
+	heroArts->gestureCallback = [this, heroArts](const CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		showQuickBackpackWindow(heroArts->getHero(), artPlace.slot, cursorPosition);
+	};
+	addSet(heroArts);
 	initWidgetInternals(EMarketMode::ARTIFACT_EXP, CGI->generaltexth->zelp[568]);
-	updateHero();
+	updateExperience();
 	quitButton->addCallback([altarArtifacts](){altarArtifacts->putBackArtifacts();});
 }
 
 void CMarketWindow::createAltarCreatures(const IMarket * market, const CGHeroInstance * hero)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(ImagePath::builtin("ALTARMON.bmp"), PLAYER_COLORED);
 	marketWidget = std::make_shared<CAltarCreatures>(market, hero);
 	initWidgetInternals(EMarketMode::CREATURE_EXP, CGI->generaltexth->zelp[568]);
-	updateHero();
+	updateExperience();
 }

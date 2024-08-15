@@ -26,7 +26,7 @@
 #include "../windows/InfoWindows.h"
 
 #include "../../CCallback.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/TerrainHandler.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapping/CMapDefines.h"
@@ -90,11 +90,11 @@ CMinimap::CMinimap(const Rect & position)
 	: CIntObject(LCLICK | SHOW_POPUP | DRAG | MOVE | GESTURE, position.topLeft()),
 	level(0)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
-	double maxSideLenghtSrc = std::max(LOCPLINT->cb->getMapSize().x, LOCPLINT->cb->getMapSize().y);
-	double maxSideLenghtDst = std::max(position.w, position.h);
-	double resize = maxSideLenghtSrc / maxSideLenghtDst;
+	double maxSideLengthSrc = std::max(LOCPLINT->cb->getMapSize().x, LOCPLINT->cb->getMapSize().y);
+	double maxSideLengthDst = std::max(position.w, position.h);
+	double resize = maxSideLengthSrc / maxSideLengthDst;
 	Point newMinimapSize = Point(LOCPLINT->cb->getMapSize().x/ resize, LOCPLINT->cb->getMapSize().y / resize);
 	Point offset = Point((std::max(newMinimapSize.x, newMinimapSize.y) - newMinimapSize.x) / 2, (std::max(newMinimapSize.x, newMinimapSize.y) - newMinimapSize.y) / 2);
 
@@ -202,7 +202,7 @@ void CMinimap::update()
 	if(aiShield->recActions & UPDATE) //AI turn is going on. There is no need to update minimap
 		return;
 
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 	minimap = std::make_shared<CMinimapInstance>(this, level);
 	redraw();
 }

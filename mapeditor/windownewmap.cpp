@@ -16,7 +16,8 @@
 #include "../lib/VCMI_Lib.h"
 #include "../lib/mapping/CMapEditManager.h"
 #include "../lib/mapping/MapFormat.h"
-#include "../lib/CGeneralTextHandler.h"
+#include "../lib/texts/CGeneralTextHandler.h"
+#include "../lib/CRandomGenerator.h"
 #include "../lib/serializer/JsonSerializer.h"
 #include "../lib/serializer/JsonDeserializer.h"
 
@@ -201,6 +202,7 @@ std::unique_ptr<CMap> generateEmptyMap(CMapGenOptions & options)
 {
 	auto map = std::make_unique<CMap>(nullptr);
 	map->version = EMapFormat::VCMI;
+	map->creationDateTime = std::time(nullptr);
 	map->width = options.getWidth();
 	map->height = options.getHeight();
 	map->twoLevel = options.getHasTwoLevels();
@@ -243,7 +245,7 @@ void WindowNewMap::on_okButton_clicked()
 		//verify map template
 		if(mapGenOptions.getPossibleTemplates().empty())
 		{
-			QMessageBox::warning(this, tr("No template"), tr("No template for parameters scecified. Random map cannot be generated."));
+			QMessageBox::warning(this, tr("No template"), tr("No template for parameters specified. Random map cannot be generated."));
 			return;
 		}
 		

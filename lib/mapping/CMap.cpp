@@ -13,7 +13,6 @@
 #include "../CArtHandler.h"
 #include "../VCMI_Lib.h"
 #include "../CCreatureHandler.h"
-#include "../CTownHandler.h"
 #include "../CHeroHandler.h"
 #include "../RiverHandler.h"
 #include "../RoadHandler.h"
@@ -22,12 +21,14 @@
 #include "../mapObjects/CGTownInstance.h"
 #include "../mapObjects/CQuest.h"
 #include "../mapObjects/ObjectTemplate.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../spells/CSpellHandler.h"
 #include "../CSkillHandler.h"
 #include "CMapEditManager.h"
 #include "CMapOperation.h"
 #include "../serializer/JsonSerializeFormat.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -43,34 +44,63 @@ DisposedHero::DisposedHero() : heroId(0), portrait(255)
 }
 
 CMapEvent::CMapEvent()
-	: players(0)
-	, humanAffected(false)
+	: humanAffected(false)
 	, computerAffected(false)
-	, firstOccurence(0)
-	, nextOccurence(0)
+	, firstOccurrence(0)
+	, nextOccurrence(0)
 {
 
 }
 
-bool CMapEvent::earlierThan(const CMapEvent & other) const
+bool CMapEvent::occursToday(int currentDay) const
 {
-	return firstOccurence < other.firstOccurence;
+	if (currentDay == firstOccurrence + 1)
+		return true;
+
+	if (nextOccurrence == 0)
+		return false;
+
+	if (currentDay < firstOccurrence)
+		return false;
+
+	return (currentDay - firstOccurrence - 1) % nextOccurrence == 0;
 }
 
-bool CMapEvent::earlierThanOrEqual(const CMapEvent & other) const
+bool CMapEvent::affectsPlayer(PlayerColor color, bool isHuman) const
 {
-	return firstOccurence <= other.firstOccurence;
+	if (players.count(color) == 0)
+		return false;
+
+	if (!isHuman && !computerAffected)
+		return false;
+
+	if (isHuman && !humanAffected)
+		return false;
+
+	return true;
 }
 
 void CMapEvent::serializeJson(JsonSerializeFormat & handler)
 {
 	handler.serializeString("name", name);
 	handler.serializeStruct("message", message);
-	handler.serializeInt("players", players);
+	if (!handler.saving && handler.getCurrent()["players"].isNumber())
+	{
+		// compatibility for old maps
+		int playersMask = 0;
+		handler.serializeInt("players", playersMask);
+		for (int i = 0; i < 8; ++i)
+			if ((playersMask & (1 << i)) != 0)
+				players.insert(PlayerColor(i));
+	}
+	else
+	{
+		handler.serializeIdArray("players", players);
+	}
 	handler.serializeInt("humanAffected", humanAffected);
 	handler.serializeInt("computerAffected", computerAffected);
-	handler.serializeInt("firstOccurence", firstOccurence);
-	handler.serializeInt("nextOccurence", nextOccurence);
+	handler.serializeInt("firstOccurrence", firstOccurrence);
+	handler.serializeInt("nextOccurrence", nextOccurrence);
 	resources.serializeJson(handler, "resources");
 }
 
@@ -101,10 +131,10 @@ void CCastleEvent::serializeJson(JsonSerializeFormat & handler)
 
 TerrainTile::TerrainTile():
 	terType(nullptr),
-	terView(0),
 	riverType(VLC->riverTypeHandler->getById(River::NO_RIVER)),
-	riverDir(0),
 	roadType(VLC->roadTypeHandler->getById(Road::NO_ROAD)),
+	terView(0),
+	riverDir(0),
 	roadDir(0),
 	extTileFlags(0),
 	visitable(false),
@@ -571,7 +601,7 @@ void CMap::removeObject(CGObjectInstance * obj)
 	removeBlockVisTiles(obj);
 	instanceNames.erase(obj->instanceName);
 
-	//update indeces
+	//update indices
 
 	auto iter = std::next(objects.begin(), obj->id.getNum());
 	iter = objects.erase(iter);
@@ -582,7 +612,7 @@ void CMap::removeObject(CGObjectInstance * obj)
 
 	obj->afterRemoveFromMap(this);
 
-	//TOOD: Clean artifact instances (mostly worn by hero?) and quests related to this object
+	//TODO: Clean artifact instances (mostly worn by hero?) and quests related to this object
 	//This causes crash with undo/redo in editor
 }
 

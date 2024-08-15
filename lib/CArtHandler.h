@@ -14,8 +14,10 @@
 
 #include "bonuses/Bonus.h"
 #include "bonuses/CBonusSystemNode.h"
+#include "ConstTransitivePtr.h"
 #include "GameConstants.h"
 #include "IHandlerBase.h"
+#include "serializer/Serializeable.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -23,7 +25,6 @@ class CArtHandler;
 class CGHeroInstance;
 class CArtifactSet;
 class CArtifactInstance;
-class CRandomGenerator;
 class CMap;
 class JsonSerializeFormat;
 
@@ -105,6 +106,7 @@ public:
 	int32_t getIndex() const override;
 	int32_t getIconIndex() const override;
 	std::string getJsonKey() const override;
+	std::string getModScope() const override;
 	void registerIcons(const IconRegistar & cb) const override;
 	ArtifactID getId() const override;
 	const IBonusBearer * getBonusBearer() const override;
@@ -162,7 +164,7 @@ public:
 
 protected:
 	const std::vector<std::string> & getTypeNames() const override;
-	CArtifact * loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index) override;
+	std::shared_ptr<CArtifact> loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index) override;
 
 private:
 	void addSlot(CArtifact * art, const std::string & slotID) const;
@@ -187,14 +189,14 @@ struct DLL_LINKAGE ArtSlotInfo
 	}
 };
 
-class DLL_LINKAGE CArtifactSet
+class DLL_LINKAGE CArtifactSet : public virtual Serializeable
 {
 public:
 	using ArtPlacementMap = std::map<CArtifactInstance*, ArtifactPosition>;
 
 	std::vector<ArtSlotInfo> artifactsInBackpack; //hero's artifacts from bag
 	std::map<ArtifactPosition, ArtSlotInfo> artifactsWorn; //map<position,artifact_id>; positions: 0 - head; 1 - shoulders; 2 - neck; 3 - right hand; 4 - left hand; 5 - torso; 6 - right ring; 7 - left ring; 8 - feet; 9 - misc1; 10 - misc2; 11 - misc3; 12 - misc4; 13 - mach1; 14 - mach2; 15 - mach3; 16 - mach4; 17 - spellbook; 18 - misc5
-	std::vector<ArtSlotInfo> artifactsTransitionPos; // Used as transition position for dragAndDrop artifact exchange
+	ArtSlotInfo artifactsTransitionPos; // Used as transition position for dragAndDrop artifact exchange
 
 	void setNewArtSlot(const ArtifactPosition & slot, ConstTransitivePtr<CArtifactInstance> art, bool locked);
 	void eraseArtSlot(const ArtifactPosition & slot);
@@ -205,11 +207,10 @@ public:
 	/// Looks for equipped artifact with given ID and returns its slot ID or -1 if none
 	/// (if more than one such artifact lower ID is returned)
 	ArtifactPosition getArtPos(const ArtifactID & aid, bool onlyWorn = true, bool allowLocked = true) const;
-	ArtifactPosition getArtPos(const CArtifactInstance *art) const;
+	ArtifactPosition getArtPos(const CArtifactInstance * art) const;
 	std::vector<ArtifactPosition> getAllArtPositions(const ArtifactID & aid, bool onlyWorn, bool allowLocked, bool getAll) const;
 	std::vector<ArtifactPosition> getBackpackArtPositions(const ArtifactID & aid) const;
 	const CArtifactInstance * getArtByInstanceId(const ArtifactInstanceID & artInstId) const;
-	const ArtifactPosition getSlotByInstance(const CArtifactInstance * artInst) const;
 	/// Search for constituents of assemblies in backpack which do not have an ArtifactPosition
 	const CArtifactInstance * getHiddenArt(const ArtifactID & aid) const;
 	const CArtifactInstance * getAssemblyByConstituent(const ArtifactID & aid) const;
@@ -253,7 +254,7 @@ public:
 	ArtBearer::ArtBearer bearerType() const override;
 
 protected:
-	ArtBearer::ArtBearer Bearer;
+	ArtBearer::ArtBearer bearer;
 };
 
 VCMI_LIB_NAMESPACE_END

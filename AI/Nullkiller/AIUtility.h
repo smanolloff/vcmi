@@ -40,9 +40,7 @@
 /*********************** TBB.h ********************/
 
 #include "../../lib/VCMI_Lib.h"
-#include "../../lib/CBuildingHandler.h"
 #include "../../lib/CCreatureHandler.h"
-#include "../../lib/CTownHandler.h"
 #include "../../lib/spells/CSpellHandler.h"
 #include "../../lib/CStopWatch.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
@@ -110,13 +108,6 @@ public:
 	const CGHeroInstance * get(bool doWeExpectNull = false) const;
 	const CGHeroInstance * get(const CPlayerSpecificInfoCallback * cb, bool doWeExpectNull = false) const;
 	bool validAndSet() const;
-
-
-	template<typename Handler> void serialize(Handler & handler)
-	{
-		handler & h;
-		handler & hid;
-	}
 };
 
 enum BattleState
@@ -141,12 +132,6 @@ struct ObjectIdRef
 	ObjectIdRef(const CGObjectInstance * obj);
 
 	bool operator<(const ObjectIdRef & rhs) const;
-
-
-	template<typename Handler> void serialize(Handler & h)
-	{
-		h & id;
-	}
 };
 
 template<Obj::Type id>

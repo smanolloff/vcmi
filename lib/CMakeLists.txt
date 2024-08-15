@@ -30,13 +30,14 @@ set(lib_SRCS
 	network/NetworkHandler.cpp
 	network/NetworkServer.cpp
 
+	texts/TextOperations.cpp
+
 	vstd/DateUtils.cpp
 	vstd/StringUtils.cpp
 
 	CConfigHandler.cpp
 	CConsoleHandler.cpp
 	CThreadHelper.cpp
-	TextOperations.cpp
 	VCMIDirs.cpp
 )
 
@@ -80,6 +81,12 @@ set(lib_MAIN_SRCS
 
 	constants/EntityIdentifiers.cpp
 
+	entities/building/CBuilding.cpp
+	entities/building/CBuildingHandler.cpp
+	entities/faction/CFaction.cpp
+	entities/faction/CTown.cpp
+	entities/faction/CTownHandler.cpp
+
 	events/ApplyDamage.cpp
 	events/GameResumed.cpp
 	events/ObjectVisitEnded.cpp
@@ -92,8 +99,11 @@ set(lib_MAIN_SRCS
 
 	gameState/CGameState.cpp
 	gameState/CGameStateCampaign.cpp
+	gameState/HighScore.cpp
 	gameState/InfoAboutArmy.cpp
+	gameState/RumorState.cpp
 	gameState/TavernHeroesPool.cpp
+	gameState/GameStatistics.cpp
 
 	mapObjectConstructors/AObjectTypeHandler.cpp
 	mapObjectConstructors/CBankInstanceConstructor.cpp
@@ -240,6 +250,11 @@ set(lib_MAIN_SRCS
 	spells/effects/RemoveObstacle.cpp
 	spells/effects/Sacrifice.cpp
 
+	texts/CGeneralTextHandler.cpp
+	texts/CLegacyConfigParser.cpp
+	texts/MetaString.cpp
+	texts/TextLocalizationContainer.cpp
+
 	ArtifactUtils.cpp
 	BasicTypes.cpp
 	BattleFieldHandler.cpp
@@ -247,25 +262,21 @@ set(lib_MAIN_SRCS
 	CArtHandler.cpp
 	CArtifactInstance.cpp
 	CBonusTypeHandler.cpp
-	CBuildingHandler.cpp
 	CCreatureHandler.cpp
 	CCreatureSet.cpp
 	CGameInfoCallback.cpp
 	CGameInterface.cpp
-	CGeneralTextHandler.cpp
 	CHeroHandler.cpp
 	CPlayerState.cpp
 	CRandomGenerator.cpp
 	CScriptingModule.cpp
 	CSkillHandler.cpp
 	CStack.cpp
-	CTownHandler.cpp
 	GameSettings.cpp
 	IGameCallback.cpp
 	IHandlerBase.cpp
 	LoadProgress.cpp
 	LogicalExpression.cpp
-	MetaString.cpp
 	ObstacleHandler.cpp
 	StartInfo.cpp
 	ResourceSet.cpp
@@ -334,10 +345,11 @@ set(lib_HEADERS
 	network/NetworkInterface.h
 	network/NetworkServer.h
 
+	texts/TextOperations.h
+
 	CConfigHandler.h
 	CConsoleHandler.h
 	CThreadHelper.h
-	TextOperations.h
 	VCMIDirs.h
 )
 
@@ -391,6 +403,7 @@ set(lib_MAIN_HEADERS
 	battle/BattleAttackInfo.h
 	battle/BattleHex.h
 	battle/BattleInfo.h
+	battle/BattleSide.h
 	battle/BattleStateInfoForRetreat.h
 	battle/BattleProxy.h
 	battle/CBattleInfoCallback.h
@@ -434,6 +447,12 @@ set(lib_MAIN_HEADERS
 	constants/NumericConstants.h
 	constants/StringConstants.h
 
+	entities/building/CBuilding.h
+	entities/building/CBuildingHandler.h
+	entities/faction/CFaction.h
+	entities/faction/CTown.h
+	entities/faction/CTownHandler.h
+
 	events/ApplyDamage.h
 	events/GameResumed.h
 	events/ObjectVisitEnded.h
@@ -447,9 +466,12 @@ set(lib_MAIN_HEADERS
 	gameState/CGameState.h
 	gameState/CGameStateCampaign.h
 	gameState/EVictoryLossCheckResult.h
+	gameState/HighScore.h
 	gameState/InfoAboutArmy.h
+	gameState/RumorState.h
 	gameState/SThievesGuildInfo.h
 	gameState/TavernHeroesPool.h
+	gameState/GameStatistics.h
 	gameState/TavernSlot.h
 	gameState/QuestInfo.h
 
@@ -527,6 +549,7 @@ set(lib_MAIN_HEADERS
 	networkPacks/PacksForClientBattle.h
 	networkPacks/PacksForLobby.h
 	networkPacks/PacksForServer.h
+	networkPacks/SetRewardableConfiguration.h
 	networkPacks/SetStackEffect.h
 	networkPacks/StackLocation.h
 	networkPacks/TradeItem.h
@@ -602,6 +625,7 @@ set(lib_MAIN_HEADERS
 	serializer/JsonUpdater.h
 	serializer/Cast.h
 	serializer/ESerializationVersion.h
+	serializer/Serializeable.h
 
 	spells/AbilityCaster.h
 	spells/AdventureSpellMechanics.h
@@ -635,6 +659,13 @@ set(lib_MAIN_HEADERS
 	spells/effects/RemoveObstacle.h
 	spells/effects/Sacrifice.h
 
+	texts/CGeneralTextHandler.h
+	texts/Languages.h
+	texts/CLegacyConfigParser.h
+	texts/MetaString.h
+	texts/TextIdentifier.h
+	texts/TextLocalizationContainer.h
+
 	AI_Base.h
 	ArtifactUtils.h
 	BattleFieldHandler.h
@@ -642,12 +673,10 @@ set(lib_MAIN_HEADERS
 	CArtHandler.h
 	CArtifactInstance.h
 	CBonusTypeHandler.h
-	CBuildingHandler.h
 	CCreatureHandler.h
 	CCreatureSet.h
 	CGameInfoCallback.h
 	CGameInterface.h
-	CGeneralTextHandler.h
 	CHeroHandler.h
 	ConstTransitivePtr.h
 	Color.h
@@ -658,7 +687,6 @@ set(lib_MAIN_HEADERS
 	CSoundBase.h
 	CStack.h
 	CStopWatch.h
-	CTownHandler.h
 	ExceptionsCommon.h
 	ExtraOptionsInfo.h
 	FunctionList.h
@@ -670,10 +698,8 @@ set(lib_MAIN_HEADERS
 	IGameEventsReceiver.h
 	IHandlerBase.h
 	int3.h
-	Languages.h
 	LoadProgress.h
 	LogicalExpression.h
-	MetaString.h
 	ObstacleHandler.h
 	Point.h
 	Rect.h

@@ -15,7 +15,7 @@
 VCMI_LIB_NAMESPACE_BEGIN
 
 /// Base class that can handle granting rewards to visiting heroes.
-/// Inherits from CArmedInstance for proper trasfer of armies
+/// Inherits from CArmedInstance for proper transfer of armies
 class DLL_LINKAGE CRewardableObject : public CArmedInstance, public Rewardable::Interface
 {
 protected:
@@ -35,9 +35,9 @@ protected:
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
 	
 	virtual void grantRewardWithMessage(const CGHeroInstance * contextHero, int rewardIndex, bool markAsVisit) const;
-	virtual void selectRewardWthMessage(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices, const MetaString & dialog) const;
+	virtual void selectRewardWithMessage(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices, const MetaString & dialog) const;
 
-	virtual void grantAllRewardsWthMessage(const CGHeroInstance * contextHero, const std::vector<ui32>& rewardIndices, bool markAsVisit) const;
+	virtual void grantAllRewardsWithMessage(const CGHeroInstance * contextHero, const std::vector<ui32>& rewardIndices, bool markAsVisit) const;
 
 	std::vector<Component> loadComponents(const CGHeroInstance * contextHero, const std::vector<ui32> & rewardIndices) const;
 
@@ -57,15 +57,15 @@ public:
 	void onHeroVisit(const CGHeroInstance *h) const override;
 
 	///possibly resets object state
-	void newTurn(CRandomGenerator & rand) const override;
+	void newTurn(vstd::RNG & rand) const override;
 
 	/// gives second part of reward after hero level-ups for proper granting of spells/mana
 	void heroLevelUpDone(const CGHeroInstance *hero) const override;
 
 	/// applies player selection of reward
-	void blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const override;
+	void blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const override;
 
-	void initObj(CRandomGenerator & rand) override;
+	void initObj(vstd::RNG & rand) override;
 	
 	void setPropertyDer(ObjProperty what, ObjPropertyID identifier) override;
 

@@ -18,9 +18,9 @@
 #include "BattleStacksController.h"
 #include "BattleRenderer.h"
 
-#include "../CMusicHandler.h"
 #include "../CGameInfo.h"
 #include "../CPlayerInterface.h"
+#include "../media/ISoundPlayer.h"
 #include "../render/Canvas.h"
 #include "../render/CAnimation.h"
 #include "../render/Graphics.h"
@@ -31,7 +31,7 @@
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 #include "../../lib/CStack.h"
 #include "../../lib/IGameEventsReceiver.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 
 BattleEffectsController::BattleEffectsController(BattleInterface & owner):
 	owner(owner)

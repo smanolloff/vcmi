@@ -29,13 +29,14 @@
 #include "mainmenu/CHighScoreScreen.h"
 
 #include "../lib/CConfigHandler.h"
-#include "../lib/CGeneralTextHandler.h"
+#include "../lib/texts/CGeneralTextHandler.h"
 #include "ConditionalWait.h"
 #include "../lib/CThreadHelper.h"
 #include "../lib/StartInfo.h"
 #include "../lib/TurnTimerInfo.h"
 #include "../lib/VCMIDirs.h"
 #include "../lib/campaign/CampaignState.h"
+#include "../lib/gameState/HighScore.h"
 #include "../lib/CPlayerState.h"
 #include "../lib/mapping/CMapInfo.h"
 #include "../lib/mapObjects/CGTownInstance.h"
@@ -163,11 +164,6 @@ CServerHandler::CServerHandler(AICombatOptions aiCombatOptions)
 	registerTypesLobbyPacks(*applier);
 }
 
-void CServerHandler::setHighScoreCalc(const std::shared_ptr<HighScoreCalculation> &newHighScoreCalc)
-{
-	campaignScoreCalculator = newHighScoreCalc;
-}
-
 void CServerHandler::threadRunNetwork()
 {
 	logGlobal->info("Starting network thread");
@@ -175,7 +171,7 @@ void CServerHandler::threadRunNetwork()
 	try {
 		networkHandler->run();
 	}
-	catch (const TerminationRequestedException & e)
+	catch (const TerminationRequestedException &)
 	{
 		logGlobal->info("Terminating network thread");
 		return;
@@ -243,8 +239,8 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	ML(si->mlconfig.init(settings));
 
 	logNetwork->trace("\tStarting local server");
-	auto srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
-	logNetwork->trace("\tConnecting to local server on port %d", srvport);
+	uint16_t srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
+	logNetwork->trace("\tConnecting to local server");
 	connectToServer(getLocalHostname(), srvport);
 	logNetwork->trace("\tWaiting for connection");
 }
@@ -502,6 +498,14 @@ void CServerHandler::setPlayerName(PlayerColor color, const std::string & name) 
 	sendLobbyPack(lspn);
 }
 
+void CServerHandler::setPlayerHandicap(PlayerColor color, Handicap handicap) const
+{
+	LobbySetPlayerHandicap lsph;
+	lsph.color = color;
+	lsph.handicap = handicap;
+	sendLobbyPack(lsph);
+}
+
 void CServerHandler::setPlayerOption(ui8 what, int32_t value, PlayerColor player) const
 {
 	LobbyChangePlayerOption lcpo;
@@ -662,7 +666,7 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 		break;
 	case EStartMode::CAMPAIGN:
 		if(si->campState->conqueredScenarios().empty())
-			campaignScoreCalculator.reset();
+			si->campState->highscoreParameters.clear();
 		client->newGame(gameState);
 		break;
 	case EStartMode::LOAD_GAME:
@@ -676,39 +680,9 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 	setState(EClientState::GAMEPLAY);
 }
 
-HighScoreParameter CServerHandler::prepareHighScores(PlayerColor player, bool victory)
-{
-	const auto * gs = client->gameState();
-	const auto * playerState = gs->getPlayerState(player);
-
-	HighScoreParameter param;
-	param.difficulty = gs->getStartInfo()->difficulty;
-	param.day = gs->getDate();
-	param.townAmount = gs->howManyTowns(player);
-	param.usedCheat = gs->getPlayerState(player)->cheated;
-	param.hasGrail = false;
-	for(const CGHeroInstance * h : playerState->heroes)
-		if(h->hasArt(ArtifactID::GRAIL))
-			param.hasGrail = true;
-	for(const CGTownInstance * t : playerState->towns)
-		if(t->builtBuildings.count(BuildingID::GRAIL))
-			param.hasGrail = true;
-	param.allDefeated = true;
-	for (PlayerColor otherPlayer(0); otherPlayer < PlayerColor::PLAYER_LIMIT; ++otherPlayer)
-	{
-		auto ps = gs->getPlayerState(otherPlayer, false);
-		if(ps && otherPlayer != player && !ps->checkVanquished())
-			param.allDefeated = false;
-	}
-	param.scenarioName = gs->getMapHeader()->name.toString();
-	param.playerName = gs->getStartInfo()->playerInfos.find(player)->second.name;
-
-	return param;
-}
-
 void CServerHandler::showHighScoresAndEndGameplay(PlayerColor player, bool victory)
 {
-	HighScoreParameter param = prepareHighScores(player, victory);
+	HighScoreParameter param = HighScore::prepareHighScores(client->gameState(), player, victory);
 
 	if(victory && client->gameState()->getStartInfo()->campState)
 	{
@@ -721,7 +695,6 @@ void CServerHandler::showHighScoresAndEndGameplay(PlayerColor player, bool victo
 		scenarioHighScores.isCampaign = false;
 
 		endGameplay();
-		GH.defActionsDef = 63;
 		CMM->menu->switchToTab("main");
 		GH.windows().createAndPushWindow<CHighScoreInputScreen>(victory, scenarioHighScores);
 	}
@@ -763,19 +736,16 @@ void CServerHandler::startCampaignScenario(HighScoreParameter param, std::shared
 	if (!cs)
 		ourCampaign = si->campState;
 
-	if(campaignScoreCalculator == nullptr)
-	{
-		campaignScoreCalculator = std::make_shared<HighScoreCalculation>();
-		campaignScoreCalculator->isCampaign = true;
-		campaignScoreCalculator->parameters.clear();
-	}
 	param.campaignName = cs->getNameTranslated();
-	campaignScoreCalculator->parameters.push_back(param);
+	cs->highscoreParameters.push_back(param);
+	auto campaignScoreCalculator = std::make_shared<HighScoreCalculation>();
+	campaignScoreCalculator->isCampaign = true;
+	campaignScoreCalculator->parameters = cs->highscoreParameters;
 
 	endGameplay();
 
 	auto & epilogue = ourCampaign->scenario(*ourCampaign->lastScenario()).epilog;
-	auto finisher = [this, ourCampaign]()
+	auto finisher = [ourCampaign, campaignScoreCalculator]()
 	{
 		if(ourCampaign->campaignSet != "" && ourCampaign->isCampaignFinished())
 		{
@@ -966,7 +936,6 @@ void CServerHandler::onDisconnected(const std::shared_ptr<INetworkConnection> & 
 	if(client)
 	{
 		endGameplay();
-		GH.defActionsDef = 63;
 		CMM->menu->switchToTab("main");
 		showServerError(CGI->generaltexth->translate("vcmi.server.errors.disconnected"));
 	}

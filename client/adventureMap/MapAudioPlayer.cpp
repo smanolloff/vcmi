@@ -12,10 +12,12 @@
 
 #include "../CCallback.h"
 #include "../CGameInfo.h"
-#include "../CMusicHandler.h"
 #include "../CPlayerInterface.h"
 #include "../mapView/mapHandler.h"
+#include "../media/IMusicPlayer.h"
+#include "../media/ISoundPlayer.h"
 
+#include "../../lib/CRandomGenerator.h"
 #include "../../lib/TerrainHandler.h"
 #include "../../lib/mapObjects/CArmedInstance.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
@@ -135,8 +137,12 @@ std::vector<AudioPath> MapAudioPlayer::getAmbientSounds(const int3 & tile)
 		if (!object)
 			logGlobal->warn("Already removed object %d found on tile! (%d %d %d)", objectID.getNum(), tile.x, tile.y, tile.z);
 
-		if(object && object->getAmbientSound())
-			result.push_back(object->getAmbientSound().value());
+		if(object)
+		{
+			auto ambientSound = object->getAmbientSound(CRandomGenerator::getDefault());
+			if (ambientSound)
+				result.push_back(ambientSound.value());
+		}
 	}
 
 	if(CGI->mh->getMap()->isCoastalTile(tile))

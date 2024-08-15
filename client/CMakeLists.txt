@@ -27,6 +27,7 @@ set(client_SRCS
 	battle/BattleStacksController.cpp
 	battle/BattleWindow.cpp
 	battle/CreatureAnimation.cpp
+	battle/BattleOverlayLogVisualizer.cpp
 
 	eventsSDL/NotificationHandler.cpp
 	eventsSDL/InputHandler.cpp
@@ -74,6 +75,12 @@ set(client_SRCS
 	mapView/MapViewController.cpp
 	mapView/MapViewModel.cpp
 	mapView/mapHandler.cpp
+	mapView/MapOverlayLogVisualizer.cpp
+
+	media/CAudioBase.cpp
+	media/CMusicHandler.cpp
+	media/CSoundHandler.cpp
+	media/CVideoHandler.cpp
 
 	render/CAnimation.cpp
 	render/CBitmapHandler.cpp
@@ -83,6 +90,7 @@ set(client_SRCS
 	render/Colors.cpp
 	render/Graphics.cpp
 	render/IFont.cpp
+	render/ImageLocator.cpp
 
 	renderSDL/CBitmapFont.cpp
 	renderSDL/CBitmapHanFont.cpp
@@ -126,6 +134,7 @@ set(client_SRCS
 	widgets/CArtifactsOfHeroMarket.cpp
 	widgets/CArtifactsOfHeroBackpack.cpp
 	widgets/RadialMenu.cpp
+	widgets/VideoWidget.cpp
 	widgets/markets/CAltarArtifacts.cpp
 	widgets/markets/CAltarCreatures.cpp
 	widgets/markets/CArtifactsBuying.cpp
@@ -162,13 +171,12 @@ set(client_SRCS
 	windows/settings/BattleOptionsTab.cpp
 	windows/settings/AdventureOptionsTab.cpp
 
+	ArtifactsUIController.cpp
 	CGameInfo.cpp
 	CMT.cpp
-	CMusicHandler.cpp
 	CPlayerInterface.cpp
 	PlayerLocalState.cpp
 	CServerHandler.cpp
-	CVideoHandler.cpp
 	Client.cpp
 	ClientCommandManager.cpp
 	GameChatHandler.cpp
@@ -208,6 +216,7 @@ set(client_HEADERS
 	battle/BattleStacksController.h
 	battle/BattleWindow.h
 	battle/CreatureAnimation.h
+	battle/BattleOverlayLogVisualizer.h
 
 	eventsSDL/NotificationHandler.h
 	eventsSDL/InputHandler.h
@@ -260,6 +269,16 @@ set(client_HEADERS
 	mapView/MapViewController.h
 	mapView/MapViewModel.h
 	mapView/mapHandler.h
+	mapView/MapOverlayLogVisualizer.h
+
+	media/CAudioBase.h
+	media/CEmptyVideoPlayer.h
+	media/CMusicHandler.h
+	media/CSoundHandler.h
+	media/CVideoHandler.h
+	media/IMusicPlayer.h
+	media/ISoundPlayer.h
+	media/IVideoPlayer.h
 
 	render/CAnimation.h
 	render/CBitmapHandler.h
@@ -273,6 +292,7 @@ set(client_HEADERS
 	render/IFont.h
 	render/IImage.h
 	render/IImageLoader.h
+	render/ImageLocator.h
 	render/IRenderHandler.h
 	render/IScreenHandler.h
 
@@ -321,6 +341,7 @@ set(client_HEADERS
 	widgets/CArtifactsOfHeroMarket.h
 	widgets/CArtifactsOfHeroBackpack.h
 	widgets/RadialMenu.h
+	widgets/VideoWidget.h
 	widgets/markets/CAltarArtifacts.h
 	widgets/markets/CAltarCreatures.h
 	widgets/markets/CArtifactsBuying.h
@@ -357,13 +378,12 @@ set(client_HEADERS
 	windows/settings/BattleOptionsTab.h
 	windows/settings/AdventureOptionsTab.h
 
+	ArtifactsUIController.h
 	CGameInfo.h
 	CMT.h
-	CMusicHandler.h
 	CPlayerInterface.h
 	PlayerLocalState.h
 	CServerHandler.h
-	CVideoHandler.h
 	Client.h
 	ClientCommandManager.h
 	ClientNetPackVisitors.h

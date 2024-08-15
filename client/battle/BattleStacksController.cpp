@@ -23,10 +23,10 @@
 #include "CreatureAnimation.h"
 
 #include "../CPlayerInterface.h"
-#include "../CMusicHandler.h"
 #include "../CGameInfo.h"
 #include "../gui/CGuiHandler.h"
 #include "../gui/WindowHandler.h"
+#include "../media/ISoundPlayer.h"
 #include "../render/Colors.h"
 #include "../render/Canvas.h"
 #include "../render/IRenderHandler.h"
@@ -37,9 +37,9 @@
 #include "../../lib/spells/ISpellMechanics.h"
 #include "../../lib/battle/BattleAction.h"
 #include "../../lib/battle/BattleHex.h"
+#include "../../lib/texts/TextOperations.h"
 #include "../../lib/CRandomGenerator.h"
 #include "../../lib/CStack.h"
-#include "../../lib/TextOperations.h"
 
 static void onAnimationFinished(const CStack *stack, std::weak_ptr<CreatureAnimation> anim)
 {
@@ -438,7 +438,7 @@ void BattleStacksController::stacksAreAttacked(std::vector<StackAttackedInfo> at
 		// defender need to face in direction opposited to out attacker
 		bool needsReverse = shouldAttackFacingRight(attackedInfo.attacker, attackedInfo.defender) == facingRight(attackedInfo.defender);
 
-		// FIXME: this check is better, however not usable since stacksAreAttacked is called after net pack is applyed - petrification is already removed
+		// FIXME: this check is better, however not usable since stacksAreAttacked is called after net pack is applied - petrification is already removed
 		// if (needsReverse && !attackedInfo.defender->isFrozen())
 		if (needsReverse && stackAnimation[attackedInfo.defender->unitId()]->getType() != ECreatureAnimType::FROZEN)
 		{

@@ -73,7 +73,7 @@ size_t CArtifactsOfHeroBackpack::getSlotsNum()
 
 void CArtifactsOfHeroBackpack::initAOHbackpack(size_t slots, bool slider)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	backpack.resize(slots);
 	size_t artPlaceIdx = 0;
@@ -126,7 +126,7 @@ size_t CArtifactsOfHeroBackpack::calcRows(size_t slots)
 CArtifactsOfHeroQuickBackpack::CArtifactsOfHeroQuickBackpack(const ArtifactPosition filterBySlot)
 	: CArtifactsOfHeroBackpack(0, 0)
 {
-	assert(filterBySlot != ArtifactPosition::FIRST_AVAILABLE);
+	assert(ArtifactUtils::checkIfSlotValid(*getHero(), filterBySlot));
 
 	if(!ArtifactUtils::isSlotEquipment(filterBySlot))
 		return;
@@ -176,9 +176,9 @@ void CArtifactsOfHeroQuickBackpack::setHero(const CGHeroInstance * hero)
 		initAOHbackpack(requiredSlots, false);
 		auto artPlace = backpack.begin();
 		for(auto & art : filteredArts)
-			setSlotData(*artPlace++, curHero->getSlotByInstance(art.second));
+			setSlotData(*artPlace++, curHero->getArtPos(art.second));
 		for(auto & art : filteredScrolls)
-			setSlotData(*artPlace++, curHero->getSlotByInstance(art.second));
+			setSlotData(*artPlace++, curHero->getArtPos(art.second));
 	}
 }
 

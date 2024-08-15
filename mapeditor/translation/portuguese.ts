@@ -715,7 +715,7 @@
 <context>
     <name>MapView</name>
     <message>
-        <location filename="../mapview.cpp" line="625"/>
+        <location filename="../mapview.cpp" line="626"/>
         <source>Can&apos;t place object</source>
         <translation>Não é possível colocar objeto</translation>
     </message>
@@ -889,38 +889,38 @@
         <translation>Experiente</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="36"/>
+        <location filename="../inspector/inspector.cpp" line="38"/>
         <source>Compliant</source>
         <translation>Conformista</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="37"/>
+        <location filename="../inspector/inspector.cpp" line="39"/>
         <source>Friendly</source>
         <translation>Amigável</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="38"/>
+        <location filename="../inspector/inspector.cpp" line="40"/>
         <source>Aggressive</source>
         <translation>Agressivo</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="39"/>
+        <location filename="../inspector/inspector.cpp" line="41"/>
         <source>Hostile</source>
         <translation>Hostil</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="40"/>
+        <location filename="../inspector/inspector.cpp" line="42"/>
         <source>Savage</source>
         <translation>Selvagem</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="843"/>
-        <location filename="../inspector/inspector.cpp" line="932"/>
+        <location filename="../inspector/inspector.cpp" line="847"/>
+        <location filename="../inspector/inspector.cpp" line="936"/>
         <source>neutral</source>
         <translation>neutro</translation>
     </message>
     <message>
-        <location filename="../inspector/inspector.cpp" line="841"/>
+        <location filename="../inspector/inspector.cpp" line="845"/>
         <source>UNFLAGGABLE</source>
         <translation>NÃO TEM BANDEIRA</translation>
     </message>
@@ -1394,7 +1394,7 @@
     </message>
     <message>
         <location filename="../mapsettings/timedevent.ui" line="70"/>
-        <source>Day of first occurance</source>
+        <source>Day of first occurrence</source>
         <translation>Dia da primeira ocorrência</translation>
     </message>
     <message>
@@ -1429,11 +1429,213 @@
     </message>
 </context>
 <context>
-    <name>TownBulidingsWidget</name>
+    <name>TownBuildingsWidget</name>
     <message>
-        <location filename="../inspector/townbulidingswidget.ui" line="29"/>
+        <location filename="../inspector/townbuildingswidget.ui" line="29"/>
         <source>Buildings</source>
         <translation>Estruturas</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.ui" line="53"/>
+        <source>Build all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.ui" line="60"/>
+        <source>Demolish all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.ui" line="67"/>
+        <source>Enable all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.ui" line="74"/>
+        <source>Disable all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.cpp" line="77"/>
+        <source>Type</source>
+        <translation type="unfinished">Tipo</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.cpp" line="77"/>
+        <source>Enabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townbuildingswidget.cpp" line="77"/>
+        <source>Built</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TownEventDialog</name>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="23"/>
+        <source>Town event</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="42"/>
+        <source>General</source>
+        <translation type="unfinished">Geral</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="57"/>
+        <source>Event name</source>
+        <translation type="unfinished">Nome do evento</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="64"/>
+        <source>Type event message text</source>
+        <translation type="unfinished">Introduza o texto da mensagem do evento</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="85"/>
+        <source>Day of first occurrence</source>
+        <translation type="unfinished">Dia da primeira ocorrência</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="99"/>
+        <source>Repeat after (0 = no repeat)</source>
+        <translation type="unfinished">Repetir após (0 = não repetir)</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="123"/>
+        <source>Affected players</source>
+        <translation type="unfinished">Jogadores afetados</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="146"/>
+        <source>affects human</source>
+        <translation type="unfinished">afeta humano</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="155"/>
+        <source>affects AI</source>
+        <translation type="unfinished">afeta IA</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="166"/>
+        <source>Resources</source>
+        <translation type="unfinished">Recursos</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="198"/>
+        <source>Buildings</source>
+        <translation type="unfinished">Estruturas</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="216"/>
+        <source>Creatures</source>
+        <translation type="unfinished">Criaturas</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.ui" line="255"/>
+        <source>OK</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.cpp" line="177"/>
+        <source>Creature level %1 / Creature level %1 Upgrade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventdialog.cpp" line="219"/>
+        <source>Day %1 - %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TownEventsWidget</name>
+    <message>
+        <location filename="../inspector/towneventswidget.ui" line="29"/>
+        <source>Town events</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventswidget.ui" line="37"/>
+        <source>Timed events</source>
+        <translation type="unfinished">Eventos Temporizados</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventswidget.ui" line="63"/>
+        <source>Add</source>
+        <translation type="unfinished">Adicionar</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventswidget.ui" line="76"/>
+        <source>Remove</source>
+        <translation type="unfinished">Remover</translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventswidget.cpp" line="105"/>
+        <source>Day %1 - %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/towneventswidget.cpp" line="126"/>
+        <source>New event</source>
+        <translation type="unfinished">Novo Evento</translation>
+    </message>
+</context>
+<context>
+    <name>TownSpellsWidget</name>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="29"/>
+        <source>Spells</source>
+        <translation type="unfinished">Feitiços</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="47"/>
+        <source>Customize spells</source>
+        <translation type="unfinished">Personalizar feitiços</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="76"/>
+        <source>Level 1</source>
+        <translation type="unfinished">Nível 1</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="93"/>
+        <location filename="../inspector/townspellswidget.ui" line="139"/>
+        <location filename="../inspector/townspellswidget.ui" line="185"/>
+        <location filename="../inspector/townspellswidget.ui" line="231"/>
+        <location filename="../inspector/townspellswidget.ui" line="277"/>
+        <source>Spell that may appear in mage guild</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="100"/>
+        <location filename="../inspector/townspellswidget.ui" line="146"/>
+        <location filename="../inspector/townspellswidget.ui" line="192"/>
+        <location filename="../inspector/townspellswidget.ui" line="238"/>
+        <location filename="../inspector/townspellswidget.ui" line="284"/>
+        <source>Spell that must appear in mage guild</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="122"/>
+        <source>Level 2</source>
+        <translation type="unfinished">Nível 2</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="168"/>
+        <source>Level 3</source>
+        <translation type="unfinished">Nível 3</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="214"/>
+        <source>Level 4</source>
+        <translation type="unfinished">Nível 4</translation>
+    </message>
+    <message>
+        <location filename="../inspector/townspellswidget.ui" line="260"/>
+        <source>Level 5</source>
+        <translation type="unfinished">Nível 5</translation>
     </message>
 </context>
 <context>
@@ -1450,7 +1652,7 @@
     </message>
     <message>
         <location filename="../mapsettings/translations.ui" line="48"/>
-        <source>Suppported</source>
+        <source>Supported</source>
         <translation>Suportado</translation>
     </message>
     <message>
@@ -1515,7 +1717,7 @@
     <message>
         <location filename="../validator.cpp" line="95"/>
         <source>Armored instance %1 is UNFLAGGABLE but must have NEUTRAL or player owner</source>
-        <translation>A instância protegida %1 não tem bandeira mas precisa ser definida como neutra ou pertencente a um dos jogadores</translation>
+        <translation>A instância protegida %1 não tem bandeira mas precisa set definida como neutra ou pertencente a um dos jogadores</translation>
     </message>
     <message>
         <location filename="../validator.cpp" line="101"/>
@@ -1530,7 +1732,7 @@
     <message>
         <location filename="../validator.cpp" line="118"/>
         <source>Prison %1 must be a NEUTRAL</source>
-        <translation>A prisão %1 deve ser NEUTRA</translation>
+        <translation>A prisão %1 deve set NEUTRA</translation>
     </message>
     <message>
         <location filename="../validator.cpp" line="124"/>
@@ -1550,7 +1752,7 @@
     <message>
         <location filename="../validator.cpp" line="135"/>
         <source>Hero %1 has an empty type and must be removed</source>
-        <translation>O herói %1 possui um tipo vazio e deve ser removido</translation>
+        <translation>O herói %1 possui um tipo vazio e deve set removido</translation>
     </message>
     <message>
         <location filename="../validator.cpp" line="146"/>
@@ -1560,7 +1762,7 @@
     <message>
         <location filename="../validator.cpp" line="149"/>
         <source>Spell scroll %1 doesn&apos;t have instance assigned and must be removed</source>
-        <translation>O pergaminho mágico %1 não tem instância atribuída e deve ser removido</translation>
+        <translation>O pergaminho mágico %1 não tem instância atribuída e deve set removido</translation>
     </message>
     <message>
         <location filename="../validator.cpp" line="155"/>
@@ -1663,7 +1865,7 @@
     <message>
         <location filename="../mapsettings/victoryconditions.cpp" line="43"/>
         <source>Transport artifact</source>
-        <translation>Transportar artefato</translation>
+        <translation>Transporter artefato</translation>
     </message>
     <message>
         <location filename="../mapsettings/victoryconditions.cpp" line="44"/>
@@ -1697,18 +1899,6 @@
         <location filename="../windownewmap.ui" line="126"/>
         <source>Width</source>
         <translation>Largura</translation>
-    </message>
-    <message>
-        <source>S (36x36)</source>
-        <translation type="vanished">P (36x36)</translation>
-    </message>
-    <message>
-        <source>M (72x72)</source>
-        <translation type="vanished">M (72x72)</translation>
-    </message>
-    <message>
-        <source>L (108x108)</source>
-        <translation type="vanished">G (108x108)</translation>
     </message>
     <message>
         <location filename="../windownewmap.ui" line="179"/>
@@ -1856,8 +2046,8 @@
     </message>
     <message>
         <location filename="../windownewmap.cpp" line="246"/>
-        <source>No template for parameters scecified. Random map cannot be generated.</source>
-        <translation>Sem modelo para os parâmetros especificados. O mapa aleatório não pode ser gerado.</translation>
+        <source>No template for parameters specified. Random map cannot be generated.</source>
+        <translation>Sem modelo para os parâmetros especificados. O mapa aleatório não pode set gerado.</translation>
     </message>
     <message>
         <location filename="../windownewmap.cpp" line="266"/>
@@ -1880,7 +2070,7 @@
     <message>
         <location filename="../mainwindow.cpp" line="114"/>
         <source>From an extracted archive, it Splits TwCrPort, CPRSMALL, FlagPort, ITPA, ITPt, Un32 and Un44 into individual PNG&apos;s.</source>
-        <translation>De um arquivo extraído, divide TwCrPort, CPRSMALL, FlagPort, ITPA, ITPt, Un32 e Un44 em PNGs individuais.</translation>
+        <translation>De um arquivo extraído, divide TwCrPort, CPRSMALL, FlagPort, ITPA, ITPt, Un32 e Un44 em ONGs individuals.</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="115"/>

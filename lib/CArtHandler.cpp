@@ -11,7 +11,6 @@
 #include "StdInc.h"
 
 #include "ArtifactUtils.h"
-#include "CGeneralTextHandler.h"
 #include "ExceptionsCommon.h"
 #include "GameSettings.h"
 #include "mapObjects/MapObjects.h"
@@ -20,6 +19,8 @@
 #include "mapObjectConstructors/AObjectTypeHandler.h"
 #include "mapObjectConstructors/CObjectClassesHandler.h"
 #include "serializer/JsonSerializeFormat.h"
+#include "texts/CGeneralTextHandler.h"
+#include "texts/CLegacyConfigParser.h"
 
 // Note: list must match entries in ArtTraits.txt
 #define ART_POS_LIST    \
@@ -103,6 +104,11 @@ int32_t CArtifact::getIconIndex() const
 std::string CArtifact::getJsonKey() const
 {
 	return modScope + ':' + identifier;
+}
+
+std::string CArtifact::getModScope() const
+{
+	return modScope;
 }
 
 void CArtifact::registerIcons(const IconRegistar & cb) const
@@ -373,7 +379,7 @@ std::vector<JsonNode> CArtHandler::loadLegacyData()
 
 void CArtHandler::loadObject(std::string scope, std::string name, const JsonNode & data)
 {
-	auto * object = loadFromJson(scope, data, name, objects.size());
+	auto object = loadFromJson(scope, data, name, objects.size());
 
 	object->iconIndex = object->getIndex() + 5;
 
@@ -384,7 +390,7 @@ void CArtHandler::loadObject(std::string scope, std::string name, const JsonNode
 
 void CArtHandler::loadObject(std::string scope, std::string name, const JsonNode & data, size_t index)
 {
-	auto * object = loadFromJson(scope, data, name, index);
+	auto object = loadFromJson(scope, data, name, index);
 
 	object->iconIndex = object->getIndex();
 
@@ -400,12 +406,12 @@ const std::vector<std::string> & CArtHandler::getTypeNames() const
 	return typeNames;
 }
 
-CArtifact * CArtHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
+std::shared_ptr<CArtifact> CArtHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
 {
 	assert(identifier.find(':') == std::string::npos);
 	assert(!scope.empty());
 
-	CArtifact * art = new CArtifact();
+	auto art = std::make_shared<CArtifact>();
 	if(!node["growing"].isNull())
 	{
 		for(auto bonus : node["growing"]["bonusesPerLevel"].Vector())
@@ -442,10 +448,10 @@ CArtifact * CArtHandler::loadFromJson(const std::string & scope, const JsonNode 
 	art->price = static_cast<ui32>(node["value"].Float());
 	art->onlyOnWaterMap = node["onlyOnWaterMap"].Bool();
 
-	loadSlots(art, node);
-	loadClass(art, node);
-	loadType(art, node);
-	loadComponents(art, node);
+	loadSlots(art.get(), node);
+	loadClass(art.get(), node);
+	loadType(art.get(), node);
+	loadComponents(art.get(), node);
 
 	for(const auto & b : node["bonuses"].Vector())
 	{
@@ -663,7 +669,7 @@ std::set<ArtifactID> CArtHandler::getDefaultAllowed() const
 {
 	std::set<ArtifactID> allowedArtifacts;
 
-	for (auto artifact : objects)
+	for (const auto & artifact : objects)
 	{
 		if (!artifact->isCombined())
 			allowedArtifacts.insert(artifact->getId());
@@ -741,19 +747,6 @@ std::vector<ArtifactPosition> CArtifactSet::getBackpackArtPositions(const Artifa
 	return result;
 }
 
-ArtifactPosition CArtifactSet::getArtPos(const CArtifactInstance *art) const
-{
-	for(auto i : artifactsWorn)
-		if(i.second.artifact == art)
-			return i.first;
-
-	for(int i = 0; i < artifactsInBackpack.size(); i++)
-		if(artifactsInBackpack[i].artifact == art)
-			return ArtifactPosition::BACKPACK_START + i;
-
-	return ArtifactPosition::PRE_FIRST;
-}
-
 const CArtifactInstance * CArtifactSet::getArtByInstanceId(const ArtifactInstanceID & artInstId) const
 {
 	for(auto i : artifactsWorn)
@@ -767,7 +760,7 @@ const CArtifactInstance * CArtifactSet::getArtByInstanceId(const ArtifactInstanc
 	return nullptr;
 }
 
-const ArtifactPosition CArtifactSet::getSlotByInstance(const CArtifactInstance * artInst) const
+ArtifactPosition CArtifactSet::getArtPos(const CArtifactInstance * artInst) const
 {
 	if(artInst)
 	{
@@ -897,13 +890,7 @@ const CArtifactInstance * CArtifactSet::getAssemblyByConstituent(const ArtifactI
 const ArtSlotInfo * CArtifactSet::getSlot(const ArtifactPosition & pos) const
 {
 	if(pos == ArtifactPosition::TRANSITION_POS)
-	{
-		// Always add to the end. Always take from the beginning.
-		if(artifactsTransitionPos.empty())
-			return nullptr;
-		else
-			return &(*artifactsTransitionPos.begin());
-	}
+		return &artifactsTransitionPos;
 	if(vstd::contains(artifactsWorn, pos))
 		return &artifactsWorn.at(pos);
 	if(ArtifactUtils::isSlotBackpack(pos))
@@ -936,9 +923,7 @@ void CArtifactSet::setNewArtSlot(const ArtifactPosition & slot, ConstTransitiveP
 	ArtSlotInfo * slotInfo;
 	if(slot == ArtifactPosition::TRANSITION_POS)
 	{
-		// Always add to the end. Always take from the beginning.
-		artifactsTransitionPos.emplace_back();
-		slotInfo = &artifactsTransitionPos.back();
+		slotInfo = &artifactsTransitionPos;
 	}
 	else if(ArtifactUtils::isSlotEquipment(slot))
 	{
@@ -957,8 +942,7 @@ void CArtifactSet::eraseArtSlot(const ArtifactPosition & slot)
 {
 	if(slot == ArtifactPosition::TRANSITION_POS)
 	{
-		assert(!artifactsTransitionPos.empty());
-		artifactsTransitionPos.erase(artifactsTransitionPos.begin());
+		artifactsTransitionPos.artifact = nullptr;
 	}
 	else if(ArtifactUtils::isSlotBackpack(slot))
 	{
@@ -1088,8 +1072,8 @@ void CArtifactSet::serializeJsonSlot(JsonSerializeFormat & handler, const Artifa
 	}
 }
 
-CArtifactFittingSet::CArtifactFittingSet(ArtBearer::ArtBearer Bearer):
-	Bearer(Bearer)
+CArtifactFittingSet::CArtifactFittingSet(ArtBearer::ArtBearer bearer)
+	: bearer(bearer)
 {
 }
 
@@ -1103,7 +1087,7 @@ CArtifactFittingSet::CArtifactFittingSet(const CArtifactSet & artSet)
 
 ArtBearer::ArtBearer CArtifactFittingSet::bearerType() const
 {
-	return this->Bearer;
+	return this->bearer;
 }
 
 VCMI_LIB_NAMESPACE_END

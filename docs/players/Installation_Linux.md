@@ -1,6 +1,8 @@
+# Installation Linux
+
 VCMI requires data from original Heroes 3: Shadow of Death or Complete editions. Data from native Linux version made by LOKI will not work.
 
-# Step 1: Binaries installation
+## Step 1: Binaries installation
 
 ### Ubuntu - Latest stable build from PPA (recommended)
 
@@ -40,6 +42,15 @@ To install VCMI from repository:
 ```
     sudo apt-get update
     sudo apt-get install vcmi
+```
+
+### Fedora (40 or newer)
+
+Stable VCMI version is available in RPM Fusion repository. Learn how to enable it in [wiki](https://docs.fedoraproject.org/en-US/quick-docs/rpmfusion-setup/). To install VCMI from repository:
+
+```
+    sudo dnf update
+    sudo dnf install vcmi
 ```
 ### Flatpak (distribution-agnostic)
 
@@ -95,7 +106,7 @@ Download both files for the "offline backup game installers" and extract them us
 
 You can select both downloaded files in launcher to extract automatically.
 
-Alternativly you can use the classic way:
+Alternatively you can use the classic way:
 ```
 innoextract --output-dir=~/Downloads/HoMM3 "setup_heroes_of_might_and_magic_3_complete_4.0_(28740).exe"
 ```

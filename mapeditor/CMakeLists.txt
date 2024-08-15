@@ -28,7 +28,10 @@ set(editor_SRCS
 		mapcontroller.cpp
 		validator.cpp
 		inspector/inspector.cpp
-		inspector/townbulidingswidget.cpp
+		inspector/townbuildingswidget.cpp
+		inspector/towneventdialog.cpp
+		inspector/towneventswidget.cpp
+		inspector/townspellswidget.cpp
 		inspector/armywidget.cpp
 		inspector/messagewidget.cpp
 		inspector/rewardswidget.cpp
@@ -69,7 +72,10 @@ set(editor_HEADERS
 		mapcontroller.h
 		validator.h
 		inspector/inspector.h
-		inspector/townbulidingswidget.h
+		inspector/townbuildingswidget.h
+		inspector/towneventdialog.h
+		inspector/towneventswidget.h
+		inspector/townspellswidget.h
 		inspector/armywidget.h
 		inspector/messagewidget.h
 		inspector/rewardswidget.h
@@ -79,6 +85,7 @@ set(editor_HEADERS
 		inspector/PickObjectDelegate.h
 		inspector/portraitwidget.h
 		resourceExtractor/ResourceConverter.h
+		mapeditorroles.h
 )
 
 set(editor_FORMS
@@ -97,7 +104,10 @@ set(editor_FORMS
 		playersettings.ui
 		playerparams.ui
 		validator.ui
-		inspector/townbulidingswidget.ui
+		inspector/townbuildingswidget.ui
+		inspector/towneventdialog.ui
+		inspector/towneventswidget.ui
+		inspector/townspellswidget.ui
 		inspector/armywidget.ui
 		inspector/messagewidget.ui
 		inspector/rewardswidget.ui

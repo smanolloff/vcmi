@@ -14,7 +14,6 @@
 #include <vcmi/spells/Spell.h>
 
 #include "../CCreatureHandler.h"
-#include "../MetaString.h"
 
 #include "../serializer/JsonDeserializer.h"
 #include "../serializer/JsonSerializer.h"
@@ -140,7 +139,7 @@ int32_t CRetaliations::total() const
 	if(noRetaliation.getHasBonus())
 		return 0;
 
-	//after dispell bonus should remain during current round
+	//after dispel bonus should remain during current round
 	int32_t val = 1 + totalProxy->totalValue();
 	vstd::amax(totalCache, val);
 	return totalCache;
@@ -228,7 +227,7 @@ void CHealth::damage(int64_t & amount)
 	addResurrected(getCount() - oldCount);
 }
 
-void CHealth::heal(int64_t & amount, EHealLevel level, EHealPower power)
+HealInfo CHealth::heal(int64_t & amount, EHealLevel level, EHealPower power)
 {
 	const int32_t unitHealth = owner->getMaxHealth();
 	const int32_t oldCount = getCount();
@@ -252,7 +251,7 @@ void CHealth::heal(int64_t & amount, EHealLevel level, EHealPower power)
 	vstd::abetween(amount, int64_t(0), maxHeal);
 
 	if(amount == 0)
-		return;
+		return {};
 
 	int64_t availableHealth = available();
 
@@ -263,6 +262,8 @@ void CHealth::heal(int64_t & amount, EHealLevel level, EHealPower power)
 		addResurrected(getCount() - oldCount);
 	else
 		assert(power == EHealPower::PERMANENT);
+
+	return HealInfo(amount, getCount() - oldCount);
 }
 
 void CHealth::setFromTotal(const int64_t totalHealth)
@@ -834,14 +835,16 @@ void CUnitState::damage(int64_t & amount)
 		ghostPending = true;
 }
 
-void CUnitState::heal(int64_t & amount, EHealLevel level, EHealPower power)
+HealInfo CUnitState::heal(int64_t & amount, EHealLevel level, EHealPower power)
 {
 	if(level == EHealLevel::HEAL && power == EHealPower::ONE_BATTLE)
 		logGlobal->error("Heal for one battle does not make sense");
 	else if(cloned)
 		logGlobal->error("Attempt to heal clone");
 	else
-		health.heal(amount, level, power);
+		return health.heal(amount, level, power);
+
+	return {};
 }
 
 void CUnitState::afterAttack(bool ranged, bool counter)
@@ -918,7 +921,7 @@ uint32_t CUnitStateDetached::unitId() const
 	return unit->unitId();
 }
 
-ui8 CUnitStateDetached::unitSide() const
+BattleSide CUnitStateDetached::unitSide() const
 {
 	return unit->unitSide();
 }

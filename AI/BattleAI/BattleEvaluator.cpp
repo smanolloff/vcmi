@@ -189,14 +189,14 @@ BattleAction BattleEvaluator::selectStackAction(const CStack * stack)
 					else
 					{
 						activeActionMade = true;
-						return BattleAction::makeMeleeAttack(stack, bestAttack.attack.defender->getPosition(), bestAttack.from);
+						return BattleAction::makeMeleeAttack(stack, bestAttack.attack.defenderPos, bestAttack.from);
 					}
 				}
 			}
 		}
 	}
 
-	//ThreatMap threatsToUs(stack); // These lines may be usefull but they are't used in the code.
+	//ThreatMap threatsToUs(stack); // These lines may be useful but they are't used in the code.
 	if(moveTarget.scorePerTurn > score)
 	{
 		score = moveTarget.score;
@@ -291,10 +291,9 @@ BattleAction BattleEvaluator::goTowardsNearest(const CStack * stack, std::vector
 		std::vector<BattleHex> copy = targetHexes;
 
 		for(auto hex : copy)
-		{
 			vstd::concatenate(targetHexes, hex.allNeighbouringTiles());
-		}
 
+		vstd::erase_if(targetHexes, [](const BattleHex & hex) {return !hex.isValid();});
 		vstd::removeDuplicates(targetHexes);
 	}
 
@@ -687,7 +686,7 @@ bool BattleEvaluator::attemptCastingSpell(const CStack * activeStack)
 		spellcast.spell = castToPerform.spell->id;
 		spellcast.setTarget(castToPerform.dest);
 		spellcast.side = side;
-		spellcast.stackNumber = (!side) ? -1 : -2;
+		spellcast.stackNumber = -1;
 		cb->battleMakeSpellAction(battleID, spellcast);
 		activeActionMade = true;
 

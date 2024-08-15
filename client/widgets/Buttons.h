@@ -69,6 +69,7 @@ public:
 class CButton : public ButtonBase
 {
 	CFunctionList<void()> callback;
+	CFunctionList<void()> callbackPopup;
 
 	std::array<std::string, 4> hoverTexts; //texts for statusbar, if empty - first entry will be used
 	std::optional<ColorRGBA> borderColor; // mapping of button state to border color
@@ -90,6 +91,7 @@ public:
 
 	/// adds one more callback to on-click actions
 	void addCallback(const std::function<void()> & callback);
+	void addPopupCallback(const std::function<void()> & callback);
 
 	void addHoverText(EButtonState state, const std::string & text);
 
@@ -154,7 +156,7 @@ public:
 
 	void addCallback(const std::function<void(bool)> & callback);
 
-	/// Set whether the toggle is currently enabled for user to use, this is only inplemented in ToggleButton, not for other toggles yet.
+	/// Set whether the toggle is currently enabled for user to use, this is only implemented in ToggleButton, not for other toggles yet.
 	virtual void setEnabled(bool enabled);
 };
 

@@ -1,3 +1,5 @@
+# Translations
+
 ## List of currently supported languages
 
 This is list of all languages that are currently supported by VCMI. If your languages is missing from the list and you wish to translate VCMI - please contact our team and we'll add support for your language in next release.
@@ -140,7 +142,7 @@ In order to display information in Launcher in language selected by user add fol
 ```
 However, normally you don't need to use block for English. Instead, English text should remain in root section of your mod.json file, to be used when game can not find translated version.
 
-### Tranlating in-game strings
+### Translating in-game strings
 
 After you have exported translation and added mod information for your language, copy exported file to `<mod directory>/Content/config/<mod name>/<language>.json`.
 

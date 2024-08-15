@@ -26,8 +26,11 @@ class CAnimImage;
 class CComponentBox;
 class CTextBox;
 class CButton;
+class CSlider;
+class LRClickableArea;
 
 class FilledTexturePlayerColored;
+class TransparentFilledRectangle;
 
 /// The options tab which is shown at the map selection phase.
 class OptionsTab : public OptionsTabBase
@@ -48,6 +51,22 @@ public:
 		TOWN,
 		HERO,
 		BONUS
+	};
+
+	class HandicapWindow : public CWindowObject
+	{
+		std::shared_ptr<FilledTexturePlayerColored> backgroundTexture;
+
+		std::vector<std::shared_ptr<CLabel>> labels;
+		std::vector<std::shared_ptr<CAnimImage>> anim;
+		std::vector<std::shared_ptr<TransparentFilledRectangle>> textinputbackgrounds;
+		std::map<PlayerColor, std::map<EGameResID, std::shared_ptr<CTextInput>>> textinputs;
+		std::vector<std::shared_ptr<CButton>> buttons;
+
+		bool receiveEvent(const Point & position, int eventType) const override;
+		void clickReleased(const Point & cursorPosition) override;
+	public:
+		HandicapWindow();
 	};
 
 private:
@@ -105,7 +124,12 @@ private:
 		const int TEXT_POS_X = 29;
 		const int TEXT_POS_Y = 56;
 
+		const int MAX_LINES = 5;
+		const int MAX_ELEM_PER_LINES = 5;
+
 		int elementsPerLine;
+
+		std::shared_ptr<CSlider> slider;
 
 		PlayerColor color;
 		SelType type;
@@ -134,12 +158,14 @@ private:
 		void genContentBonus();
 
 		void drawOutlinedText(int x, int y, ColorRGBA color, std::string text);
-		int calcLines(FactionID faction);
+		std::tuple<int, int> calcLines(FactionID faction);
 		void apply();
-		void recreate();
+		void recreate(int sliderPos = 0);
 		void setSelection();
 		int getElement(const Point & cursorPosition);
 		void setElement(int element, bool doApply);
+
+		void sliderMove(int slidPos);
 
 		bool receiveEvent(const Point & position, int eventType) const override;
 		void clickReleased(const Point & cursorPosition) override;
@@ -148,7 +174,7 @@ private:
 	public:
 		void reopen();
 
-		SelectionWindow(const PlayerColor & color, SelType _type);
+		SelectionWindow(const PlayerColor & color, SelType _type, int sliderPos = 0);
 	};
 
 	/// Image with current town/hero/bonus
@@ -184,6 +210,8 @@ private:
 		std::shared_ptr<SelectedBox> town;
 		std::shared_ptr<SelectedBox> hero;
 		std::shared_ptr<SelectedBox> bonus;
+		std::shared_ptr<LRClickableArea> handicap;
+		std::shared_ptr<CMultiLineLabel> labelHandicap;
 		enum {HUMAN_OR_CPU, HUMAN, CPU} whoCanPlay;
 
 		PlayerOptionsEntry(const PlayerSettings & S, const OptionsTab & parentTab);

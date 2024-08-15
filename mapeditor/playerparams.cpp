@@ -12,9 +12,8 @@
 #include "playerparams.h"
 #include "ui_playerparams.h"
 #include "mapsettings/abstractsettings.h"
-#include "../lib/CTownHandler.h"
 #include "../lib/constants/StringConstants.h"
-
+#include "../lib/entities/faction/CTownHandler.h"
 #include "../lib/mapping/CMap.h"
 
 PlayerParams::PlayerParams(MapController & ctrl, int playerId, QWidget *parent) :
@@ -48,7 +47,7 @@ PlayerParams::PlayerParams(MapController & ctrl, int playerId, QWidget *parent) 
 	//load factions
 	for(auto idx : VLC->townh->getAllowedFactions())
 	{
-		const CFaction * faction = VLC->townh->objects.at(idx);
+		const auto & faction = VLC->townh->objects.at(idx);
 		auto * item = new QListWidgetItem(QString::fromStdString(faction->getNameTranslated()));
 		item->setData(Qt::UserRole, QVariant::fromValue(idx.getNum()));
 		item->setFlags(item->flags() | Qt::ItemIsUserCheckable);

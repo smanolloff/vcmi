@@ -23,7 +23,7 @@
 #include "../CGameInfo.h"
 
 #include "../../CCallback.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/ArtifactUtils.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
@@ -80,7 +80,7 @@ CArtPlace::CArtPlace(Point position, const CArtifactInstance * art)
 	, ourArt(art)
 	, locked(false)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	imageIndex = 0;
 	if(locked)
@@ -90,6 +90,7 @@ CArtPlace::CArtPlace(Point position, const CArtifactInstance * art)
 
 	image = std::make_shared<CAnimImage>(AnimationPath::builtin("artifact"), imageIndex);
 	image->disable();
+	moveSelectionForeground();
 }
 
 const CArtifactInstance * CArtPlace::getArt() const
@@ -244,60 +245,4 @@ void CArtPlace::addCombinedArtInfo(const std::map<const ArtifactID, std::vector<
 		}
 		text += info.toString();
 	}
-}
-
-bool ArtifactUtilsClient::askToAssemble(const CGHeroInstance * hero, const ArtifactPosition & slot)
-{
-	assert(hero);
-	const auto art = hero->getArt(slot);
-	assert(art);
-
-	if(hero->tempOwner != LOCPLINT->playerID)
-		return false;
-
-	auto assemblyPossibilities = ArtifactUtils::assemblyPossibilities(hero, art->getTypeId());
-	if(!assemblyPossibilities.empty())
-	{
-		auto askThread = new boost::thread([hero, art, slot, assemblyPossibilities]() -> void
-			{
-				boost::mutex::scoped_lock interfaceLock(GH.interfaceMutex);
-				for(const auto combinedArt : assemblyPossibilities)
-				{
-					bool assembleConfirmed = false;
-					CFunctionList<void()> onYesHandlers([&assembleConfirmed]() -> void {assembleConfirmed = true; });
-					onYesHandlers += std::bind(&CCallback::assembleArtifacts, LOCPLINT->cb.get(), hero, slot, true, combinedArt->getId());
-
-					LOCPLINT->showArtifactAssemblyDialog(art->artType, combinedArt, onYesHandlers);
-					LOCPLINT->waitWhileDialog();
-					if(assembleConfirmed)
-						break;
-				}
-			});
-		askThread->detach();
-		return true;
-	}
-	return false;
-}
-
-bool ArtifactUtilsClient::askToDisassemble(const CGHeroInstance * hero, const ArtifactPosition & slot)
-{
-	assert(hero);
-	const auto art = hero->getArt(slot);
-	assert(art);
-
-	if(hero->tempOwner != LOCPLINT->playerID)
-		return false;
-
-	if(art->isCombined())
-	{
-		if(ArtifactUtils::isSlotBackpack(slot) && !ArtifactUtils::isBackpackFreeSlots(hero, art->artType->getConstituents().size() - 1))
-			return false;
-
-		LOCPLINT->showArtifactAssemblyDialog(
-			art->artType,
-			nullptr,
-			std::bind(&CCallback::assembleArtifacts, LOCPLINT->cb.get(), hero, slot, false, ArtifactID()));
-		return true;
-	}
-	return false;
 }

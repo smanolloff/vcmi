@@ -12,6 +12,7 @@
 #include "../networkPacks/PacksForClient.h"
 #include "../networkPacks/PacksForClientBattle.h"
 #include "../networkPacks/SetStackEffect.h"
+#include "../networkPacks/SetRewardableConfiguration.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -43,8 +44,6 @@ void registerTypesClientPacks(Serializer &s)
 	s.template registerType<CPackForClient, PlayerReinitInterface>();
 	s.template registerType<CPackForClient, RemoveBonus>();
 	s.template registerType<CPackForClient, UpdateArtHandlerLists>();
-	s.template registerType<CPackForClient, UpdateMapEvents>();
-	s.template registerType<CPackForClient, UpdateCastleEvents>();
 	s.template registerType<CPackForClient, ChangeFormation>();
 	s.template registerType<CPackForClient, RemoveObject>();
 	s.template registerType<CPackForClient, TryMoveHero>();
@@ -112,7 +111,6 @@ void registerTypesClientPacks(Serializer &s)
 	s.template registerType<CPackForClient, CArtifactOperationPack>();
 	s.template registerType<CArtifactOperationPack, PutArtifact>();
 	s.template registerType<CArtifactOperationPack, EraseArtifact>();
-	s.template registerType<CArtifactOperationPack, MoveArtifact>();
 	s.template registerType<CArtifactOperationPack, AssembledArtifact>();
 	s.template registerType<CArtifactOperationPack, DisassembledArtifact>();
 	s.template registerType<CArtifactOperationPack, BulkMoveArtifacts>();
@@ -120,6 +118,9 @@ void registerTypesClientPacks(Serializer &s)
 	s.template registerType<CPackForClient, PlayerMessageClient>();
 	s.template registerType<CGarrisonOperationPack, BulkRebalanceStacks>();
 	s.template registerType<CGarrisonOperationPack, BulkSmartRebalanceStacks>();
+
+	s.template registerType<SetRewardableConfiguration, CPackForClient>();
+	s.template registerType<SetBankConfiguration, CPackForClient>();
 }
 
 VCMI_LIB_NAMESPACE_END

@@ -26,13 +26,15 @@
 #include "../../lib/spells/ISpellMechanics.h"
 #include "../../lib/spells/ObstacleCasterProxy.h"
 
+#include <vstd/RNG.h>
+
 BattleFlowProcessor::BattleFlowProcessor(BattleProcessor * owner, CGameHandler * newGameHandler)
 	: owner(owner)
 	, gameHandler(newGameHandler)
 {
 }
 
-void BattleFlowProcessor::summonGuardiansHelper(const CBattleInfoCallback & battle, std::vector<BattleHex> & output, const BattleHex & targetPosition, ui8 side, bool targetIsTwoHex) //return hexes for summoning two hex monsters in output, target = unit to guard
+void BattleFlowProcessor::summonGuardiansHelper(const CBattleInfoCallback & battle, std::vector<BattleHex> & output, const BattleHex & targetPosition, BattleSide side, bool targetIsTwoHex) //return hexes for summoning two hex monsters in output, target = unit to guard
 {
 	int x = targetPosition.getX();
 	int y = targetPosition.getY();
@@ -139,7 +141,7 @@ void BattleFlowProcessor::trySummonGuardians(const CBattleInfoCallback & battle,
 		return;
 
 	std::shared_ptr<const Bonus> summonInfo = stack->getBonus(Selector::type()(BonusType::SUMMON_GUARDIANS));
-	auto accessibility = battle.getAccesibility();
+	auto accessibility = battle.getAccessibility();
 	CreatureID creatureData = summonInfo->subtype.as<CreatureID>();
 	std::vector<BattleHex> targetHexes;
 	const bool targetIsBig = stack->unitType()->isDoubleWide(); //target = creature to guard
@@ -183,7 +185,7 @@ void BattleFlowProcessor::trySummonGuardians(const CBattleInfoCallback & battle,
 
 void BattleFlowProcessor::castOpeningSpells(const CBattleInfoCallback & battle)
 {
-	for (int i = 0; i < 2; ++i)
+	for(auto i : {BattleSide::ATTACKER, BattleSide::DEFENDER})
 	{
 		auto h = battle.battleGetFightingHero(i);
 		if (!h)
@@ -387,20 +389,47 @@ bool BattleFlowProcessor::tryMakeAutomaticAction(const CBattleInfoCallback & bat
 		attack.side = next->unitSide();
 		attack.stackNumber = next->unitId();
 
-		//TODO: select target by priority
+		// TODO: unify logic with AI?
+		// Find best target using logic similar to H3 AI
+
+		const auto & isBetterTarget = [&battle](const battle::Unit * candidate, const battle::Unit * current)
+		{
+			bool candidateInsideWalls = battle.battleIsInsideWalls(candidate->getPosition());
+			bool currentInsideWalls = battle.battleIsInsideWalls(current->getPosition());
+
+			if (candidateInsideWalls != currentInsideWalls)
+				return candidateInsideWalls > currentInsideWalls;
+
+			// also check for war machines - shooters are more dangerous than war machines, ballista or catapult
+			bool candidateCanShoot = candidate->canShoot() && candidate->unitType()->warMachine == ArtifactID::NONE;
+			bool currentCanShoot = current->canShoot() && current->unitType()->warMachine == ArtifactID::NONE;
+
+			if (candidateCanShoot != currentCanShoot)
+				return candidateCanShoot > currentCanShoot;
+
+			int64_t candidateTargetValue = static_cast<int64_t>(candidate->unitType()->getAIValue() * candidate->getCount());
+			int64_t currentTargetValue = static_cast<int64_t>(current->unitType()->getAIValue() * current->getCount());
+
+			return candidateTargetValue > currentTargetValue;
+		};
 
 		const battle::Unit * target = nullptr;
 
 		for(auto & elem : battle.battleGetAllStacks(true))
 		{
-			if(elem->unitType()->getId() != CreatureID::CATAPULT
-			   && elem->unitOwner() != next->unitOwner()
-			   && elem->isValidTarget()
-			   && battle.battleCanShoot(next, elem->getPosition()))
-			{
-				target = elem;
-				break;
-			}
+			if (elem->unitOwner() == next->unitOwner())
+				continue;
+
+			if (!elem->isValidTarget())
+				continue;
+
+			if (!battle.battleCanShoot(next, elem->getPosition()))
+				continue;
+
+			if (target && !isBetterTarget(elem, target))
+				continue;
+
+			target = elem;
 		}
 
 		if(target == nullptr)
@@ -713,7 +742,7 @@ void BattleFlowProcessor::stackTurnTrigger(const CBattleInfoCallback & battle, c
 			return b->subtype.as<SpellID>() == SpellID::NONE;
 		});
 
-		int side = *battle.playerToSide(st->unitOwner());
+		BattleSide side = battle.playerToSide(st->unitOwner());
 		if(st->canCast() && battle.battleGetEnchanterCounter(side) == 0)
 		{
 			bool cast = false;

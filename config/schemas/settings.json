@@ -19,6 +19,7 @@
 			"additionalProperties" : false,
 			"required" : [
 				"playerName",
+				"multiPlayerNames",
 				"music",
 				"sound",
 				"saveRandomMaps",
@@ -47,6 +48,10 @@
 				"playerName" : {
 					"type" : "string",
 					"default" : "Player"
+				},
+				"multiPlayerNames" : {
+					"type" : "array",
+					"default" : []
 				},
 				"music" : {
 					"type" : "number",
@@ -372,7 +377,7 @@
 			"type" : "object",
 			"additionalProperties" : false,
 			"default" : {},
-			"required" : [ "speedFactor", "mouseShadow", "cellBorders", "stackRange", "movementHighlightOnHover", "rangeLimitHighlightOnHover", "showQueue", "swipeAttackDistance", "queueSize", "stickyHeroInfoWindows", "enableAutocombatSpells", "endWithAutocombat", "queueSmallSlots", "queueSmallOutside" ],
+			"required" : [ "speedFactor", "mouseShadow", "cellBorders", "stackRange", "movementHighlightOnHover", "rangeLimitHighlightOnHover", "showQueue", "swipeAttackDistance", "queueSize", "stickyHeroInfoWindows", "enableAutocombatSpells", "endWithAutocombat", "queueSmallSlots", "queueSmallOutside", "enableQuickSpellPanel" ],
 			"properties" : {
 				"speedFactor" : {
 					"type" : "number",
@@ -431,6 +436,10 @@
 					"type": "boolean",
 					"default": false
 				},
+				"enableQuickSpellPanel" : {
+					"type": "boolean",
+					"default": true
+				},
 				"MMAI" : {
 					"type" : "object",
 					"additionalProperties" : false,
@@ -476,8 +485,8 @@
 					"default" : 3030
 				},
 				"seed" : {
-					"type": "integer",
-					"default": 0 // 0 = no seed
+					"type" : "number",
+					"default" : 0
 				},
 				"playerAI" : {
 					"type" : "string",
@@ -561,7 +570,7 @@
 				},
 				"loggers" : {
 					"type" : "array",
-					"default" : [ { "domain" : "global", "level" : "trace" } ],
+					"default" : [ { "domain" : "global", "level" : "trace" }, { "domain" : "rng", "level" : "info" } ],
 					"items" : {
 						"type" : "object",
 						"additionalProperties" : false,

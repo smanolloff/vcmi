@@ -82,9 +82,8 @@ CPathfinder::CPathfinder(CGameState * _gs, std::shared_ptr<PathfinderConfig> con
 
 void CPathfinder::push(CGPathNode * node)
 {
-	if(node && !node->inPQ)
+	if(node && !node->inPQ())
 	{
-		node->inPQ = true;
 		node->pq = &this->pq;
 		auto handle = pq.push(node);
 		node->pqHandle = handle;
@@ -96,14 +95,13 @@ CGPathNode * CPathfinder::topAndPop()
 	auto * node = pq.top();
 
 	pq.pop();
-	node->inPQ = false;
 	node->pq = nullptr;
 	return node;
 }
 
 void CPathfinder::calculatePaths()
 {
-	//logGlobal->info("Calculating paths for hero %s (adress  %d) of player %d", hero->name, hero , hero->tempOwner);
+	//logGlobal->info("Calculating paths for hero %s (address  %d) of player %d", hero->name, hero , hero->tempOwner);
 
 	//initial tile - set cost on 0 and add to the queue
 	std::vector<CGPathNode *> initialNodes = config->nodeStorage->getInitialNodes();
@@ -175,7 +173,7 @@ void CPathfinder::calculatePaths()
 				if(!hlp->isPatrolMovementAllowed(neighbour->coord))
 					continue;
 
-				/// Check transition without tile accessability rules
+				/// Check transition without tile accessibility rules
 				if(source.node->layer != neighbour->layer && !isLayerTransitionPossible())
 					continue;
 
@@ -468,7 +466,7 @@ bool CPathfinderHelper::addTeleportOneWayRandom(const CGTeleport * obj) const
 
 bool CPathfinderHelper::addTeleportWhirlpool(const CGWhirlpool * obj) const
 {
-	return options.useTeleportWhirlpool && hasBonusOfType(BonusType::WHIRLPOOL_PROTECTION) && obj;
+	return options.useTeleportWhirlpool && (whirlpoolProtection || options.forceUseTeleportWhirlpool) && obj;
 }
 
 int CPathfinderHelper::movementPointsAfterEmbark(int movement, int basicCost, bool disembark) const
@@ -507,6 +505,8 @@ CPathfinderHelper::CPathfinderHelper(CGameState * gs, const CGHeroInstance * Her
 	turnsInfo.reserve(16);
 	updateTurnInfo();
 	initializePatrol();
+
+	whirlpoolProtection = Hero->hasBonusOfType(BonusType::WHIRLPOOL_PROTECTION);
 
 	SpellID flySpell = SpellID::FLY;
 	canCastFly = Hero->canCastThisSpell(flySpell.toSpell());

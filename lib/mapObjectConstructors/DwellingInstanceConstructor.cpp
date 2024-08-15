@@ -11,7 +11,7 @@
 #include "DwellingInstanceConstructor.h"
 
 #include "../CCreatureHandler.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../json/JsonRandom.h"
 #include "../VCMI_Lib.h"
 #include "../mapObjects/CGDwelling.h"
@@ -74,7 +74,7 @@ void DwellingInstanceConstructor::initializeObject(CGDwelling * obj) const
 	}
 }
 
-void DwellingInstanceConstructor::randomizeObject(CGDwelling * dwelling, CRandomGenerator &rng) const
+void DwellingInstanceConstructor::randomizeObject(CGDwelling * dwelling, vstd::RNG &rng) const
 {
 	JsonRandom randomizer(dwelling->cb);
 

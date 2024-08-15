@@ -22,8 +22,8 @@
 #include "../widgets/ObjectLists.h"
 #include "../widgets/TextControls.h"
 
-#include "../../lib/MetaString.h"
 #include "../../lib/json/JsonNode.h"
+#include "../../lib/texts/MetaString.h"
 
 GlobalLobbyInviteAccountCard::GlobalLobbyInviteAccountCard(const GlobalLobbyAccount & accountDescription)
 	: accountID(accountDescription.accountID)
@@ -47,7 +47,7 @@ GlobalLobbyInviteAccountCard::GlobalLobbyInviteAccountCard(const GlobalLobbyAcco
 		}
 	}
 
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	if (thisAccountInvited)
 		backgroundOverlay = std::make_shared<TransparentFilledRectangle>(Rect(0, 0, pos.w, pos.h), ColorRGBA(0, 0, 0, 128), Colors::WHITE, 1);
 	else
@@ -73,13 +73,13 @@ void GlobalLobbyInviteAccountCard::clickPressed(const Point & cursorPosition)
 GlobalLobbyInviteWindow::GlobalLobbyInviteWindow()
 	: CWindowObject(BORDERED)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	pos.w = 236;
 	pos.h = 420;
 
 	filledBackground = std::make_shared<FilledTexturePlayerColored>(ImagePath::builtin("DiBoxBck"), Rect(0, 0, pos.w, pos.h));
-	filledBackground->playerColored(PlayerColor(1));
+	filledBackground->setPlayerColor(PlayerColor(1));
 	labelTitle = std::make_shared<CLabel>(
 		pos.w / 2, 20, FONT_BIG, ETextAlignment::CENTER, Colors::YELLOW, MetaString::createFromTextID("vcmi.lobby.invite.header").toString()
 	);
@@ -94,7 +94,7 @@ GlobalLobbyInviteWindow::GlobalLobbyInviteWindow()
 	};
 
 	listBackground = std::make_shared<TransparentFilledRectangle>(Rect(8, 48, 220, 324), ColorRGBA(0, 0, 0, 64), ColorRGBA(64, 80, 128, 255), 1);
-	accountList = std::make_shared<CListBox>(createAccountCardCallback, Point(10, 50), Point(0, 40), 8, 0, 0, 1 | 4, Rect(200, 0, 320, 320));
+	accountList = std::make_shared<CListBox>(createAccountCardCallback, Point(10, 50), Point(0, 40), 8, CSH->getGlobalLobby().getActiveAccounts().size(), 0, 1 | 4, Rect(200, 0, 320, 320));
 
 	buttonClose = std::make_shared<CButton>(Point(86, 384), AnimationPath::builtin("MuBchck"), CButton::tooltip(), [this]() { close(); }, EShortcut::GLOBAL_RETURN );
 

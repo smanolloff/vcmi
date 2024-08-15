@@ -10,12 +10,11 @@
 #include "StdInc.h"
 #include "CCreatureHandler.h"
 
-#include "CGeneralTextHandler.h"
 #include "ResourceSet.h"
+#include "entities/faction/CFaction.h"
+#include "entities/faction/CTownHandler.h"
 #include "filesystem/Filesystem.h"
 #include "VCMI_Lib.h"
-#include "CRandomGenerator.h"
-#include "CTownHandler.h"
 #include "GameSettings.h"
 #include "constants/StringConstants.h"
 #include "bonuses/Limiters.h"
@@ -23,10 +22,14 @@
 #include "json/JsonBonus.h"
 #include "serializer/JsonDeserializer.h"
 #include "serializer/JsonUpdater.h"
+#include "texts/CGeneralTextHandler.h"
+#include "texts/CLegacyConfigParser.h"
 #include "mapObjectConstructors/AObjectTypeHandler.h"
 #include "mapObjectConstructors/CObjectClassesHandler.h"
 #include "modding/CModHandler.h"
 #include "ExceptionsCommon.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -56,6 +59,11 @@ int32_t CCreature::getIconIndex() const
 std::string CCreature::getJsonKey() const
 {
 	return modScope + ':' + identifier;
+}
+
+std::string CCreature::getModScope() const
+{
+	return modScope;
 }
 
 void CCreature::registerIcons(const IconRegistar & cb) const
@@ -588,12 +596,12 @@ std::vector<JsonNode> CCreatureHandler::loadLegacyData()
 	return h3Data;
 }
 
-CCreature * CCreatureHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
+std::shared_ptr<CCreature> CCreatureHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
 {
 	assert(identifier.find(':') == std::string::npos);
 	assert(!scope.empty());
 
-	auto * cre = new CCreature();
+	auto cre = std::make_shared<CCreature>();
 
 	if(node["hasDoubleWeek"].Bool())
 	{
@@ -636,9 +644,9 @@ CCreature * CCreatureHandler::loadFromJson(const std::string & scope, const Json
 	if(!node["shots"].isNull())
 		cre->addBonus(node["shots"].Integer(), BonusType::SHOTS);
 
-	loadStackExperience(cre, node["stackExperience"]);
-	loadJsonAnimation(cre, node["graphics"]);
-	loadCreatureJson(cre, node);
+	loadStackExperience(cre.get(), node["stackExperience"]);
+	loadJsonAnimation(cre.get(), node["graphics"]);
+	loadCreatureJson(cre.get(), node);
 
 	for(const auto & extraName : node["extraNames"].Vector())
 	{
@@ -757,7 +765,7 @@ void CCreatureHandler::loadCrExpBon(CBonusSystemNode & globalEffects)
 		auto addBonusForTier = [&](int tier, std::shared_ptr<Bonus> b) {
 			assert(vstd::iswithin(tier, 1, 7));
 			//bonuses from level 7 are given to high-level creatures too
-			auto max = tier == GameConstants::CREATURES_PER_TOWN ? std::numeric_limits<int>::max() : tier + 1;
+			auto max = tier == 7 ? std::numeric_limits<int>::max() : tier + 1;
 			auto limiter = std::make_shared<CreatureLevelLimiter>(tier, max);
 			b->addLimiter(limiter);
 			globalEffects.addNewBonus(b);
@@ -884,15 +892,15 @@ void CCreatureHandler::loadJsonAnimation(CCreature * cre, const JsonNode & graph
 
 	const JsonNode & missile = graphics["missile"];
 	const JsonNode & offsets = missile["offset"];
-	cre->animation.upperRightMissleOffsetX = static_cast<int>(offsets["upperX"].Float());
-	cre->animation.upperRightMissleOffsetY = static_cast<int>(offsets["upperY"].Float());
-	cre->animation.rightMissleOffsetX =      static_cast<int>(offsets["middleX"].Float());
-	cre->animation.rightMissleOffsetY =      static_cast<int>(offsets["middleY"].Float());
-	cre->animation.lowerRightMissleOffsetX = static_cast<int>(offsets["lowerX"].Float());
-	cre->animation.lowerRightMissleOffsetY = static_cast<int>(offsets["lowerY"].Float());
+	cre->animation.upperRightMissileOffsetX = static_cast<int>(offsets["upperX"].Float());
+	cre->animation.upperRightMissileOffsetY = static_cast<int>(offsets["upperY"].Float());
+	cre->animation.rightMissileOffsetX =      static_cast<int>(offsets["middleX"].Float());
+	cre->animation.rightMissileOffsetY =      static_cast<int>(offsets["middleY"].Float());
+	cre->animation.lowerRightMissileOffsetX = static_cast<int>(offsets["lowerX"].Float());
+	cre->animation.lowerRightMissileOffsetY = static_cast<int>(offsets["lowerY"].Float());
 
 	cre->animation.attackClimaxFrame = static_cast<int>(missile["attackClimaxFrame"].Float());
-	cre->animation.missleFrameAngles = missile["frameAngles"].convertTo<std::vector<double> >();
+	cre->animation.missileFrameAngles = missile["frameAngles"].convertTo<std::vector<double> >();
 
 	cre->smallIconName = graphics["iconSmall"].String();
 	cre->largeIconName = graphics["iconLarge"].String();
@@ -1166,7 +1174,7 @@ void CCreatureHandler::loadStackExp(Bonus & b, BonusList & bl, CLegacyConfigPars
 				b.subtype = BonusSubtypeID(SpellID(SpellID::METEOR_SHOWER));
 				b.additionalInfo = 0;//normal immunity
 				break;
-			case 'N': //dispell beneficial spells
+			case 'N': //dispel beneficial spells
 				b.type = BonusType::SPELL_IMMUNITY;
 				b.subtype = BonusSubtypeID(SpellID(SpellID::DISPEL_HELPFUL_SPELLS));
 				b.additionalInfo = 0;//normal immunity
@@ -1362,7 +1370,7 @@ CCreatureHandler::~CCreatureHandler()
 		p.first = nullptr;
 }
 
-CreatureID CCreatureHandler::pickRandomMonster(CRandomGenerator & rand, int tier) const
+CreatureID CCreatureHandler::pickRandomMonster(vstd::RNG & rand, int tier) const
 {
 	std::vector<CreatureID> allowed;
 	for(const auto & creature : objects)

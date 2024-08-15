@@ -17,7 +17,7 @@
 
 #include "../ArtifactUtils.h"
 #include "../CCreatureHandler.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../CHeroHandler.h"
 #include "../CSkillHandler.h"
 #include "../CStopWatch.h"
@@ -25,7 +25,6 @@
 #include "../RiverHandler.h"
 #include "../RoadHandler.h"
 #include "../TerrainHandler.h"
-#include "../TextOperations.h"
 #include "../VCMI_Lib.h"
 #include "../constants/StringConstants.h"
 #include "../filesystem/CBinaryReader.h"
@@ -39,6 +38,7 @@
 #include "../networkPacks/Component.h"
 #include "../networkPacks/ArtifactLocation.h"
 #include "../spells/CSpellHandler.h"
+#include "../texts/TextOperations.h"
 
 #include <boost/crc.hpp>
 
@@ -219,6 +219,10 @@ void CMapLoaderH3M::readHeader()
 	mapHeader->twoLevel = reader->readBool();
 	mapHeader->name.appendTextID(readLocalizedString("header.name"));
 	mapHeader->description.appendTextID(readLocalizedString("header.description"));
+	mapHeader->author.appendRawString("");
+	mapHeader->authorContact.appendRawString("");
+	mapHeader->mapVersion.appendRawString("");
+	mapHeader->creationDateTime = 0;
 	mapHeader->difficulty = static_cast<EMapDifficulty>(reader->readInt8Checked(0, 4));
 
 	if(features.levelAB)
@@ -1052,7 +1056,7 @@ void CMapLoaderH3M::readBoxContent(CGPandoraBox * object, const int3 & mapPositi
 	if(auto val = reader->readInt8Checked(-3, 3))
 		reward.bonuses.emplace_back(BonusDuration::ONE_BATTLE, BonusType::LUCK, BonusSource::OBJECT_INSTANCE, val, BonusSourceID(idToBeGiven));
 
-	reader->readResourses(reward.resources);
+	reader->readResources(reward.resources);
 	for(int x = 0; x < GameConstants::PRIMARY_SKILLS; ++x)
 		reward.primary.at(x) = reader->readUInt8();
 
@@ -1109,7 +1113,7 @@ CGObjectInstance * CMapLoaderH3M::readMonster(const int3 & mapPosition, const Ob
 	if(hasMessage)
 	{
 		object->message.appendTextID(readLocalizedString(TextIdentifier("monster", mapPosition.x, mapPosition.y, mapPosition.z, "message")));
-		reader->readResourses(object->resources);
+		reader->readResources(object->resources);
 		object->gainedArtifact = reader->readArtifact();
 	}
 	object->neverFlees = reader->readBool();
@@ -1119,18 +1123,18 @@ CGObjectInstance * CMapLoaderH3M::readMonster(const int3 & mapPosition, const Ob
 	if(features.levelHOTA3)
 	{
 		//TODO: HotA
-		int32_t agressionExact = reader->readInt32(); // -1 = default, 1-10 = possible values range
+		int32_t aggressionExact = reader->readInt32(); // -1 = default, 1-10 = possible values range
 		bool joinOnlyForMoney = reader->readBool(); // if true, monsters will only join for money
-		int32_t joinPercent = reader->readInt32(); // 100 = default, percent of monsters that will join on succesfull agression check
+		int32_t joinPercent = reader->readInt32(); // 100 = default, percent of monsters that will join on successful aggression check
 		int32_t upgradedStack = reader->readInt32(); // Presence of upgraded stack, -1 = random, 0 = never, 1 = always
 		int32_t stacksCount = reader->readInt32(); // TODO: check possible values. How many creature stacks will be present on battlefield, -1 = default
 
-		if(agressionExact != -1 || joinOnlyForMoney || joinPercent != 100 || upgradedStack != -1 || stacksCount != -1)
+		if(aggressionExact != -1 || joinOnlyForMoney || joinPercent != 100 || upgradedStack != -1 || stacksCount != -1)
 			logGlobal->warn(
 				"Map '%s': Wandering monsters %s settings %d %d %d %d %d are not implemented!",
 				mapName,
 				mapPosition.toString(),
-				agressionExact,
+				aggressionExact,
 				int(joinOnlyForMoney),
 				joinPercent,
 				upgradedStack,
@@ -2238,17 +2242,17 @@ CGObjectInstance * CMapLoaderH3M::readTown(const int3 & position, std::shared_pt
 		event.name = readBasicString();
 		event.message.appendTextID(readLocalizedString(TextIdentifier("town", position.x, position.y, position.z, "event", eventID, "description")));
 
-		reader->readResourses(event.resources);
+		reader->readResources(event.resources);
 
-		event.players = reader->readUInt8();
+		reader->readBitmaskPlayers(event.players, false);
 		if(features.levelSOD)
 			event.humanAffected = reader->readBool();
 		else
 			event.humanAffected = true;
 
 		event.computerAffected = reader->readBool();
-		event.firstOccurence = reader->readUInt16();
-		event.nextOccurence = reader->readUInt8();
+		event.firstOccurrence = reader->readUInt16();
+		event.nextOccurrence = reader->readUInt8();
 
 		reader->skipZero(17);
 
@@ -2276,7 +2280,7 @@ CGObjectInstance * CMapLoaderH3M::readTown(const int3 & position, std::shared_pt
 				if (mapHeader->players[alignment].canAnyonePlay())
 					object->alignmentToPlayer = PlayerColor(alignment);
 				else
-					logGlobal->warn("%s - Aligment of town at %s is invalid! Player %d is not present on map!", mapName, position.toString(), int(alignment));
+					logGlobal->warn("%s - Alignment of town at %s is invalid! Player %d is not present on map!", mapName, position.toString(), int(alignment));
 			}
 			else
 			{
@@ -2285,11 +2289,11 @@ CGObjectInstance * CMapLoaderH3M::readTown(const int3 & position, std::shared_pt
 
 				if(invertedAlignment < PlayerColor::PLAYER_LIMIT.getNum())
 				{
-					logGlobal->warn("%s - Aligment of town at %s 'not as player %d' is not implemented!", mapName, position.toString(), alignment - PlayerColor::PLAYER_LIMIT.getNum());
+					logGlobal->warn("%s - Alignment of town at %s 'not as player %d' is not implemented!", mapName, position.toString(), alignment - PlayerColor::PLAYER_LIMIT.getNum());
 				}
 				else
 				{
-					logGlobal->warn("%s - Aligment of town at %s is corrupted!!", mapName, position.toString());
+					logGlobal->warn("%s - Alignment of town at %s is corrupted!!", mapName, position.toString());
 				}
 			}
 		}
@@ -2308,8 +2312,8 @@ void CMapLoaderH3M::readEvents()
 		event.name = readBasicString();
 		event.message.appendTextID(readLocalizedString(TextIdentifier("event", eventID, "description")));
 
-		reader->readResourses(event.resources);
-		event.players = reader->readUInt8();
+		reader->readResources(event.resources);
+		reader->readBitmaskPlayers(event.players, false);
 		if(features.levelSOD)
 		{
 			event.humanAffected = reader->readBool();
@@ -2319,8 +2323,8 @@ void CMapLoaderH3M::readEvents()
 			event.humanAffected = true;
 		}
 		event.computerAffected = reader->readBool();
-		event.firstOccurence = reader->readUInt16();
-		event.nextOccurence = reader->readUInt8();
+		event.firstOccurrence = reader->readUInt16();
+		event.nextOccurrence = reader->readUInt8();
 
 		reader->skipZero(17);
 

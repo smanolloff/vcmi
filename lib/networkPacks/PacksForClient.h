@@ -18,10 +18,10 @@
 #include "ObjProperty.h"
 
 #include "../CCreatureSet.h"
-#include "../MetaString.h"
 #include "../ResourceSet.h"
 #include "../TurnTimerInfo.h"
 #include "../gameState/EVictoryLossCheckResult.h"
+#include "../gameState/RumorState.h"
 #include "../gameState/QuestInfo.h"
 #include "../gameState/TavernSlot.h"
 #include "../int3.h"
@@ -545,34 +545,6 @@ struct DLL_LINKAGE UpdateArtHandlerLists : public CPackForClient
 	}
 };
 
-struct DLL_LINKAGE UpdateMapEvents : public CPackForClient
-{
-	std::list<CMapEvent> events;
-
-	void applyGs(CGameState * gs) const;
-	void visitTyped(ICPackVisitor & visitor) override;
-
-	template <typename Handler> void serialize(Handler & h)
-	{
-		h & events;
-	}
-};
-
-struct DLL_LINKAGE UpdateCastleEvents : public CPackForClient
-{
-	ObjectInstanceID town;
-	std::list<CCastleEvent> events;
-
-	void applyGs(CGameState * gs) const;
-	void visitTyped(ICPackVisitor & visitor) override;
-
-	template <typename Handler> void serialize(Handler & h)
-	{
-		h & town;
-		h & events;
-	}
-};
-
 struct DLL_LINKAGE ChangeFormation : public CPackForClient
 {
 	ObjectInstanceID hid;
@@ -660,7 +632,7 @@ struct DLL_LINKAGE NewStructures : public CPackForClient
 
 	ObjectInstanceID tid;
 	std::set<BuildingID> bid;
-	si16 builded = 0;
+	si16 built = 0;
 
 	void visitTyped(ICPackVisitor & visitor) override;
 
@@ -668,7 +640,7 @@ struct DLL_LINKAGE NewStructures : public CPackForClient
 	{
 		h & tid;
 		h & bid;
-		h & builded;
+		h & built;
 	}
 };
 
@@ -786,23 +758,15 @@ struct DLL_LINKAGE NewObject : public CPackForClient
 	void applyGs(CGameState * gs);
 
 	/// Object ID to create
-	MapObjectID ID;
-	/// Object secondary ID to create
-	MapObjectSubID subID;
-	/// Position of visitable tile of created object
-	int3 targetPos;
+	CGObjectInstance * newObject;
 	/// Which player initiated creation of this object
 	PlayerColor initiator;
-
-	ObjectInstanceID createdObjectID; //used locally, filled during applyGs
 
 	void visitTyped(ICPackVisitor & visitor) override;
 
 	template <typename Handler> void serialize(Handler & h)
 	{
-		h & ID;
-		subID.serializeIdentifier(h, ID);
-		h & targetPos;
+		h & newObject;
 		h & initiator;
 	}
 };
@@ -1025,47 +989,26 @@ struct DLL_LINKAGE EraseArtifact : CArtifactOperationPack
 	}
 };
 
-struct DLL_LINKAGE MoveArtifact : CArtifactOperationPack
-{
-	MoveArtifact() = default;
-	MoveArtifact(const PlayerColor & interfaceOwner, const ArtifactLocation & src, const ArtifactLocation & dst, bool askAssemble = true)
-		: interfaceOwner(interfaceOwner), src(src), dst(dst), askAssemble(askAssemble)
-	{
-	}
-	PlayerColor interfaceOwner;
-	ArtifactLocation src;
-	ArtifactLocation dst;
-	bool askAssemble = true;
-
-	void applyGs(CGameState * gs);
-	void visitTyped(ICPackVisitor & visitor) override;
-
-	template <typename Handler> void serialize(Handler & h)
-	{
-		h & interfaceOwner;
-		h & src;
-		h & dst;
-		h & askAssemble;
-	}
-};
-
 struct DLL_LINKAGE BulkMoveArtifacts : CArtifactOperationPack
 {
 	struct LinkedSlots
 	{
 		ArtifactPosition srcPos;
 		ArtifactPosition dstPos;
+		bool askAssemble;
 
 		LinkedSlots() = default;
-		LinkedSlots(const ArtifactPosition & srcPos, const ArtifactPosition & dstPos)
+		LinkedSlots(const ArtifactPosition & srcPos, const ArtifactPosition & dstPos, bool askAssemble = false)
 			: srcPos(srcPos)
 			, dstPos(dstPos)
+			, askAssemble(askAssemble)
 		{
 		}
 		template <typename Handler> void serialize(Handler & h)
 		{
 			h & srcPos;
 			h & dstPos;
+			h & askAssemble;
 		}
 	};
 
@@ -1079,8 +1022,6 @@ struct DLL_LINKAGE BulkMoveArtifacts : CArtifactOperationPack
 		: interfaceOwner(PlayerColor::NEUTRAL)
 		, srcArtHolder(ObjectInstanceID::NONE)
 		, dstArtHolder(ObjectInstanceID::NONE)
-		, swap(false)
-		, askAssemble(false)
 		, srcCreature(std::nullopt)
 		, dstCreature(std::nullopt)
 	{
@@ -1089,8 +1030,6 @@ struct DLL_LINKAGE BulkMoveArtifacts : CArtifactOperationPack
 		: interfaceOwner(interfaceOwner)
 		, srcArtHolder(srcArtHolder)
 		, dstArtHolder(dstArtHolder)
-		, swap(swap)
-		, askAssemble(false)
 		, srcCreature(std::nullopt)
 		, dstCreature(std::nullopt)
 	{
@@ -1100,8 +1039,6 @@ struct DLL_LINKAGE BulkMoveArtifacts : CArtifactOperationPack
 
 	std::vector<LinkedSlots> artsPack0;
 	std::vector<LinkedSlots> artsPack1;
-	bool swap;
-	bool askAssemble;
 
 	void visitTyped(ICPackVisitor & visitor) override;
 
@@ -1114,8 +1051,6 @@ struct DLL_LINKAGE BulkMoveArtifacts : CArtifactOperationPack
 		h & dstArtHolder;
 		h & srcCreature;
 		h & dstCreature;
-		h & swap;
-		h & askAssemble;
 	}
 };
 
@@ -1198,6 +1133,7 @@ struct DLL_LINKAGE NewTurn : public CPackForClient
 	ui32 day = 0;
 	ui8 specialWeek = 0; //weekType
 	CreatureID creatureid; //for creature weeks
+	std::optional<RumorState> newRumor; // only on new weeks
 
 	NewTurn() = default;
 
@@ -1209,6 +1145,7 @@ struct DLL_LINKAGE NewTurn : public CPackForClient
 		h & day;
 		h & specialWeek;
 		h & creatureid;
+		h & newRumor;
 	}
 };
 

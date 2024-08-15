@@ -133,17 +133,33 @@ void MainWindow::parseCommandLine(ExtractionOptions & extractionOptions)
 void MainWindow::loadTranslation()
 {
 #ifdef ENABLE_QT_TRANSLATIONS
-	const std::string translationFile = settings["general"]["language"].String() + ".qm";
-	logGlobal->info("Loading translation '%s'", translationFile);
+	const std::string translationFile = settings["general"]["language"].String()+ ".qm";
+	QString translationFileResourcePath = QString{":/translation/%1"}.arg(translationFile.c_str());
 
-	if (!translator.load(QString{":/translation/%1"}.arg(translationFile.c_str())))
+	logGlobal->info("Loading translation %s", translationFile);
+
+	if(!QFile::exists(translationFileResourcePath))
 	{
-		logGlobal->error("Failed to load translation");
+		logGlobal->debug("Translation file %s does not exist", translationFileResourcePath.toStdString());
+		return;
+	}
+
+	if (!translator.load(translationFileResourcePath))
+	{
+		logGlobal->error("Failed to load translation file %s", translationFileResourcePath.toStdString());
+		return;
+	}
+
+	if(translationFile == "english.qm")
+	{
+		// translator doesn't need to be installed for English
 		return;
 	}
 
 	if (!qApp->installTranslator(&translator))
-		logGlobal->error("Failed to install translator");
+	{
+		logGlobal->error("Failed to install translator for translation file %s", translationFileResourcePath.toStdString());
+	}
 #endif
 }
 
@@ -612,7 +628,7 @@ void MainWindow::loadObjectsTree()
 	{
 		auto *b = new QPushButton(QString::fromStdString(terrain->getNameTranslated()));
 		ui->terrainLayout->addWidget(b);
-		connect(b, &QPushButton::clicked, this, [this, terrain]{ terrainButtonClicked(terrain->getId()); });
+		connect(b, &QPushButton::clicked, this, [this, terrainID=terrain->getId()]{ terrainButtonClicked(terrainID); });
 
 		//filter
 		QString displayName = QString::fromStdString(terrain->getNameTranslated());
@@ -627,7 +643,7 @@ void MainWindow::loadObjectsTree()
 	{
 		auto *b = new QPushButton(QString::fromStdString(road->getNameTranslated()));
 		ui->roadLayout->addWidget(b);
-		connect(b, &QPushButton::clicked, this, [this, road]{ roadOrRiverButtonClicked(road->getIndex(), true); });
+		connect(b, &QPushButton::clicked, this, [this, roadID=road->getIndex()]{ roadOrRiverButtonClicked(roadID, true); });
 	}
 	//add spacer to keep terrain button on the top
 	ui->roadLayout->addItem(new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Expanding));
@@ -636,7 +652,7 @@ void MainWindow::loadObjectsTree()
 	{
 		auto *b = new QPushButton(QString::fromStdString(river->getNameTranslated()));
 		ui->riverLayout->addWidget(b);
-		connect(b, &QPushButton::clicked, this, [this, river]{ roadOrRiverButtonClicked(river->getIndex(), false); });
+		connect(b, &QPushButton::clicked, this, [this, riverID=river->getIndex()]{ roadOrRiverButtonClicked(riverID, false); });
 	}
 	//add spacer to keep terrain button on the top
 	ui->riverLayout->addItem(new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Expanding));

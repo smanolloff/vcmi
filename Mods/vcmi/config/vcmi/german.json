@@ -72,6 +72,11 @@
 	"vcmi.lobby.noUnderground" : "Kein Untergrund",
 	"vcmi.lobby.sortDate" : "Ordnet Karten nach Änderungsdatum",
 	"vcmi.lobby.backToLobby" : "Zur Lobby zurückkehren",
+	"vcmi.lobby.author" : "Author",
+	"vcmi.lobby.handicap" : "Handicap",
+	"vcmi.lobby.handicap.resource" : "Gibt den Spielern entsprechende Ressourcen zum Start zusätzlich zu den normalen Startressourcen. Negative Werte sind erlaubt, werden aber insgesamt auf 0 begrenzt (der Spieler beginnt nie mit negativen Ressourcen).",
+	"vcmi.lobby.handicap.income" : "Verändert die verschiedenen Einkommen des Spielers um den Prozentsatz. Wird aufgerundet.",
+	"vcmi.lobby.handicap.growth" : "Verändert die Wachstumsrate der Kreaturen in den Städten, die der Spieler besitzt. Wird aufgerundet.",
 	
 	"vcmi.lobby.login.title" : "VCMI Online Lobby",
 	"vcmi.lobby.login.username" : "Benutzername:",
@@ -237,6 +242,8 @@
 	"vcmi.battleOptions.skipBattleIntroMusic.help": "{Intro-Musik überspringen}\n\n Überspringe die kurze Musik, die zu Beginn eines jeden Kampfes gespielt wird, bevor die Action beginnt. Kann auch durch Drücken der ESC-Taste übersprungen werden.",	
 	"vcmi.battleOptions.endWithAutocombat.hover": "Kampf beenden",
 	"vcmi.battleOptions.endWithAutocombat.help": "{Kampf beenden}\n\nAutokampf spielt den Kampf sofort zu Ende",
+	"vcmi.battleOptions.showQuickSpell.hover": "Schnellzauber-Panel anzeigen",
+	"vcmi.battleOptions.showQuickSpell.help": "{Schnellzauber-Panel anzeigen}\n\nZeigt ein Panel, auf dem schnell Zauber ausgewählt werden können",
 
 	"vcmi.adventureMap.revisitObject.hover" : "Objekt erneut besuchen",
 	"vcmi.adventureMap.revisitObject.help" : "{Objekt erneut besuchen}\n\nSteht ein Held gerade auf einem Kartenobjekt, kann er den Ort erneut aufsuchen.",

@@ -111,9 +111,6 @@ public:
 	virtual void showWorldViewEx(const std::vector<ObjectPosInfo> & objectPositions, bool showTerrain){};
 
 	virtual std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleID & battleID, const BattleStateInfoForRetreat & battleState) = 0;
-
-	virtual void saveGame(BinarySerializer & h) = 0;
-	virtual void loadGame(BinaryDeserializer & h) = 0;
 };
 
 class DLL_LINKAGE CDynLibHandler
@@ -150,7 +147,7 @@ public:
 
 	void battleNewRound(const BattleID & battleID) override;
 	void battleCatapultAttacked(const BattleID & battleID, const CatapultAttack & ca) override;
-	void battleStart(const BattleID & battleID, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side, bool replayAllowed) override;
+	void battleStart(const BattleID & battleID, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side, bool replayAllowed) override;
 	void battleStacksAttacked(const BattleID & battleID, const std::vector<BattleStackAttacked> & bsa, bool ranged) override;
 	void actionStarted(const BattleID & battleID, const BattleAction &action) override;
 	void battleNewRoundFirst(const BattleID & battleID) override;
@@ -162,9 +159,6 @@ public:
 	void battleSpellCast(const BattleID & battleID, const BattleSpellCast *sc) override;
 	void battleEnd(const BattleID & battleID, const BattleResult *br, QueryID queryID) override;
 	void battleUnitsChanged(const BattleID & battleID, const std::vector<UnitChanges> & units) override;
-
-	void saveGame(BinarySerializer & h) override;
-	void loadGame(BinaryDeserializer & h) override;
 };
 
 VCMI_LIB_NAMESPACE_END

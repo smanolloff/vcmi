@@ -18,11 +18,11 @@
 #include "MapFormat.h"
 #include "../ArtifactUtils.h"
 #include "../CHeroHandler.h"
-#include "../CTownHandler.h"
 #include "../VCMI_Lib.h"
 #include "../RiverHandler.h"
 #include "../RoadHandler.h"
 #include "../TerrainHandler.h"
+#include "../entities/faction/CTownHandler.h"
 #include "../mapObjectConstructors/AObjectTypeHandler.h"
 #include "../mapObjectConstructors/CObjectClassesHandler.h"
 #include "../mapObjects/ObjectTemplate.h"
@@ -36,7 +36,7 @@
 #include "../constants/StringConstants.h"
 #include "../serializer/JsonDeserializer.h"
 #include "../serializer/JsonSerializer.h"
-#include "../Languages.h"
+#include "../texts/Languages.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -296,9 +296,9 @@ void CMapFormatJson::serializeAllowedFactions(JsonSerializeFormat & handler, std
 
 	if(handler.saving)
 	{
-		for(auto faction : VLC->townh->objects)
-			if(faction->town && vstd::contains(value, faction->getId()))
-				temp.insert(faction->getId());
+		for(auto const factionID : VLC->townh->getDefaultAllowed())
+			if(vstd::contains(value, factionID))
+				temp.insert(factionID);
 	}
 
 	handler.serializeLIC("allowedFactions", &FactionID::decode, &FactionID::encode, VLC->townh->getDefaultAllowed(), temp);
@@ -311,6 +311,10 @@ void CMapFormatJson::serializeHeader(JsonSerializeFormat & handler)
 {
 	handler.serializeStruct("name", mapHeader->name);
 	handler.serializeStruct("description", mapHeader->description);
+	handler.serializeStruct("author", mapHeader->author);
+	handler.serializeStruct("authorContact", mapHeader->authorContact);
+	handler.serializeStruct("mapVersion", mapHeader->mapVersion);
+	handler.serializeInt("creationDateTime", mapHeader->creationDateTime, 0);
 	handler.serializeInt("heroLevelLimit", mapHeader->levelLimit, 0);
 
 	//todo: support arbitrary percentage
@@ -809,7 +813,7 @@ JsonNode CMapLoaderJson::getFromArchive(const std::string & archiveFilename)
 
 	auto data = loader.load(resource)->readAll();
 
-	JsonNode res(reinterpret_cast<const std::byte*>(data.first.get()), data.second);
+	JsonNode res(reinterpret_cast<const std::byte*>(data.first.get()), data.second, archiveFilename);
 
 	return res;
 }
@@ -855,7 +859,6 @@ void CMapLoaderJson::readHeader(const bool complete)
 	//todo: multilevel map load support
 	{
 		auto levels = handler.enterStruct("mapLevels");
-
 		{
 			auto surface = handler.enterStruct("surface");
 			handler.serializeInt("height", mapHeader->height);

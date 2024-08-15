@@ -15,11 +15,13 @@
 #include "CGameInfo.h"
 #include "battle/AICombatOptions.h"
 #include "mainmenu/CMainMenu.h"
+#include "media/CEmptyVideoPlayer.h"
+#include "media/CMusicHandler.h"
+#include "media/CSoundHandler.h"
+#include "media/CVideoHandler.h"
 #include "gui/CursorHandler.h"
 #include "eventsSDL/InputHandler.h"
 #include "CPlayerInterface.h"
-#include "CVideoHandler.h"
-#include "CMusicHandler.h"
 #include "gui/CGuiHandler.h"
 #include "gui/WindowHandler.h"
 #include "CServerHandler.h"
@@ -27,10 +29,11 @@
 #include "windows/CMessage.h"
 #include "windows/InfoWindows.h"
 #include "render/IScreenHandler.h"
+#include "render/IRenderHandler.h"
 #include "render/Graphics.h"
 
 #include "../lib/CConfigHandler.h"
-#include "../lib/CGeneralTextHandler.h"
+#include "../lib/texts/CGeneralTextHandler.h"
 #include "../lib/CThreadHelper.h"
 #include "../lib/ExceptionsCommon.h"
 #include "../lib/VCMIDirs.h"
@@ -289,7 +292,7 @@ int main(int argc, char * argv[])
 		GH.init();
 
 	CCS = new CClientState();
-	CGI = new CGameInfo(); //contains all global informations about game (texts, lodHandlers, map handler etc.)
+	CGI = new CGameInfo(); //contains all global information about game (texts, lodHandlers, map handler etc.)
 
 	auto aco = AICombatOptions();
 
@@ -302,7 +305,7 @@ int main(int argc, char * argv[])
 #endif
 
 	CSH = new CServerHandler(aco);
-
+	
 	// Initialize video
 #ifdef DISABLE_VIDEO
 	CCS->videoh = new CEmptyVideoPlayer();
@@ -319,10 +322,8 @@ int main(int argc, char * argv[])
 	{
 		//initializing audio
 		CCS->soundh = new CSoundHandler();
-		CCS->soundh->init();
 		CCS->soundh->setVolume((ui32)settings["general"]["sound"].Float());
 		CCS->musich = new CMusicHandler();
-		CCS->musich->init();
 		CCS->musich->setVolume((ui32)settings["general"]["music"].Float());
 		logGlobal->info("Initializing screen and sound handling: %d ms", pomtime.getDiff());
 	}
@@ -367,6 +368,7 @@ int main(int argc, char * argv[])
 	{
 		pomtime.getDiff();
 		graphics = new Graphics(); // should be before curh
+		GH.renderHandler().onLibraryLoadingFinished(CGI);
 
 		CCS->curh = new CursorHandler();
 		logGlobal->info("Screen handler: %d ms", pomtime.getDiff());
@@ -423,20 +425,13 @@ int main(int argc, char * argv[])
 //plays intro, ends when intro is over or button has been pressed (handles events)
 void playIntro()
 {
-	auto audioData = CCS->videoh->getAudio(VideoPath::builtin("3DOLOGO.SMK"));
-	int sound = CCS->soundh->playSound(audioData);
-	if(CCS->videoh->openAndPlayVideo(VideoPath::builtin("3DOLOGO.SMK"), 0, 1, EVideoType::INTRO))
-	{
-		audioData = CCS->videoh->getAudio(VideoPath::builtin("NWCLOGO.SMK"));
-		sound = CCS->soundh->playSound(audioData);
-		if (CCS->videoh->openAndPlayVideo(VideoPath::builtin("NWCLOGO.SMK"), 0, 1, EVideoType::INTRO))
-		{
-			audioData = CCS->videoh->getAudio(VideoPath::builtin("H3INTRO.SMK"));
-			sound = CCS->soundh->playSound(audioData);
-			CCS->videoh->openAndPlayVideo(VideoPath::builtin("H3INTRO.SMK"), 0, 1, EVideoType::INTRO);
-		}
-	}
-	CCS->soundh->stopSound(sound);
+	if(!CCS->videoh->playIntroVideo(VideoPath::builtin("3DOLOGO.SMK")))
+		return;
+
+	if (!CCS->videoh->playIntroVideo(VideoPath::builtin("NWCLOGO.SMK")))
+		return;
+
+	CCS->videoh->playIntroVideo(VideoPath::builtin("H3INTRO.SMK"));
 }
 
 static void mainLoop()
@@ -488,9 +483,6 @@ static void mainLoop()
 		// cleanup, mostly to remove false leaks from analyzer
 		if(CCS)
 		{
-			CCS->musich->release();
-			CCS->soundh->release();
-
 			delete CCS->consoleh;
 			delete CCS->curh;
 			delete CCS->videoh;
@@ -555,7 +547,7 @@ void handleQuit(bool ask)
 
 void handleFatalError(const std::string & message, bool terminate)
 {
-	logGlobal->error("FATAL ERROR ENCOUTERED, VCMI WILL NOW TERMINATE");
+	logGlobal->error("FATAL ERROR ENCOUNTERED, VCMI WILL NOW TERMINATE");
 	logGlobal->error("Reason: %s", message);
 
 	std::string messageToShow = "Fatal error! " + message;

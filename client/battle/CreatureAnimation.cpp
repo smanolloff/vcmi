@@ -14,6 +14,7 @@
 #include "../../lib/CCreatureHandler.h"
 
 #include "../gui/CGuiHandler.h"
+#include "../render/CAnimation.h"
 #include "../render/Canvas.h"
 #include "../render/ColorFilter.h"
 #include "../render/IRenderHandler.h"
@@ -198,12 +199,8 @@ CreatureAnimation::CreatureAnimation(const AnimationPath & name_, TSpeedControll
 	  speedController(controller),
 	  once(false)
 {
-	forward = GH.renderHandler().loadAnimation(name_);
-	reverse = GH.renderHandler().loadAnimation(name_);
-
-	//todo: optimize
-	forward->preload();
-	reverse->preload();
+	forward = GH.renderHandler().loadAnimation(name_, EImageBlitMode::ALPHA);
+	reverse = GH.renderHandler().loadAnimation(name_, EImageBlitMode::ALPHA);
 
 	// if necessary, add one frame into vcmi-only group DEAD
 	if(forward->size(size_t(ECreatureAnimType::DEAD)) == 0)
@@ -372,7 +369,7 @@ void CreatureAnimation::nextFrame(Canvas & canvas, const ColorFilter & shifter, 
 		IImage::SpecialPalette SpecialPalette;
 		genSpecialPalette(SpecialPalette);
 
-		image->setSpecialPallete(SpecialPalette, IImage::SPECIAL_PALETTE_MASK_CREATURES);
+		image->setSpecialPalette(SpecialPalette, IImage::SPECIAL_PALETTE_MASK_CREATURES);
 		image->adjustPalette(shifter, IImage::SPECIAL_PALETTE_MASK_CREATURES);
 
 		canvas.draw(image, pos.topLeft(), Rect(0, 0, pos.w, pos.h));

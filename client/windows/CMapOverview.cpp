@@ -20,14 +20,11 @@
 #include "../widgets/TextControls.h"
 #include "../windows/GUIClasses.h"
 #include "../windows/InfoWindows.h"
-#include "../render/CAnimation.h"
 #include "../render/Canvas.h"
 #include "../render/IImage.h"
 #include "../render/IRenderHandler.h"
 #include "../render/Graphics.h"
 
-#include "../../lib/CGeneralTextHandler.h"
-#include "../../lib/TextOperations.h"
 #include "../../lib/CConfigHandler.h"
 #include "../../lib/campaign/CampaignState.h"
 #include "../../lib/mapping/CMap.h"
@@ -38,16 +35,17 @@
 #include "../../lib/TerrainHandler.h"
 #include "../../lib/filesystem/Filesystem.h"
 
-#include "../../lib/serializer/CLoadFile.h"
 #include "../../lib/StartInfo.h"
 #include "../../lib/rmg/CMapGenOptions.h"
-#include "../../lib/Languages.h"
+#include "../../lib/serializer/CLoadFile.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
+#include "../../lib/texts/TextOperations.h"
 
-CMapOverview::CMapOverview(std::string mapName, std::string fileName, std::string date, ResourcePath resource, ESelectionScreen tabType)
-	: CWindowObject(BORDERED | RCLICK_POPUP), resource(resource), mapName(mapName), fileName(fileName), date(date), tabType(tabType)
+CMapOverview::CMapOverview(const std::string & mapName, const std::string & fileName, const std::string & date, const std::string & author, const std::string & version, const ResourcePath & resource, ESelectionScreen tabType)
+	: CWindowObject(BORDERED | RCLICK_POPUP), resource(resource), mapName(mapName), fileName(fileName), date(date), author(author), version(version), tabType(tabType)
 {
 
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	widget = std::make_shared<CMapOverviewWidget>(*this);
 
@@ -136,9 +134,9 @@ std::shared_ptr<CPicture> CMapOverviewWidget::buildDrawMinimap(const JsonNode & 
 		return nullptr;
 
 	Rect minimapRect = minimaps[id].getRenderArea();
-	double maxSideLenghtSrc = std::max(minimapRect.w, minimapRect.h);
-	double maxSideLenghtDst = std::max(rect.w, rect.h);
-	double resize = maxSideLenghtSrc / maxSideLenghtDst;
+	double maxSideLengthSrc = std::max(minimapRect.w, minimapRect.h);
+	double maxSideLengthDst = std::max(rect.w, rect.h);
+	double resize = maxSideLengthSrc / maxSideLengthDst;
 	Point newMinimapSize = Point(minimapRect.w / resize, minimapRect.h / resize);
 
 	Canvas canvasScaled = Canvas(Point(rect.w, rect.h));
@@ -203,6 +201,14 @@ CMapOverviewWidget::CMapOverviewWidget(CMapOverview& parent):
 		}
 		else
 			w->setText(p.date);
+	}
+	if(auto w = widget<CLabel>("author"))
+	{
+		w->setText(p.author.empty() ? "-" : p.author);
+	}
+	if(auto w = widget<CLabel>("version"))
+	{
+		w->setText(p.version);
 	}
 	if(auto w = widget<CLabel>("noUnderground"))
 	{

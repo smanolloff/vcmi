@@ -121,6 +121,10 @@ public:
 		return gameState.get();
 	}
 
+	void createBoat(const int3 & visitablePosition, BoatId type, PlayerColor initiator) override
+	{
+	}
+
 	bool moveHero(ObjectInstanceID hid, int3 dst, EMovementMode movementMode) override
 	{
 		return false;
@@ -142,9 +146,7 @@ public:
 		StartInfo si;
 		si.mapname = "anything";//does not matter, map service mocked
 		si.difficulty = 0;
-		si.mapfileChecksum = 0;
 		si.mode = EStartMode::NEW_GAME;
-		si.seedToBeUsed = 42;
 
 		std::unique_ptr<CMapHeader> header = mapService.loadMapHeader(ResourcePath(si.mapname));
 
@@ -173,8 +175,6 @@ public:
 				pset.heroNameTextId = pinfo.mainCustomHeroNameTextId;
 				pset.heroPortrait = HeroTypeID(pinfo.mainCustomHeroPortrait);
 			}
-
-			pset.handicap = PlayerSettings::NO_HANDICAP;
 		}
 
 
@@ -188,8 +188,8 @@ public:
 
 	void startTestBattle(const CGHeroInstance * attacker, const CGHeroInstance * defender)
 	{
-		const CGHeroInstance * heroes[2] = {attacker, defender};
-		const CArmedInstance * armedInstancies[2] = {attacker, defender};
+		BattleSideArray<const CGHeroInstance *> heroes = {attacker, defender};
+		BattleSideArray<const CArmedInstance *> armedInstancies = {attacker, defender};
 
 		int3 tile(4,4,0);
 
@@ -251,7 +251,7 @@ TEST_F(CGameStateTest, DISABLED_issue2765)
 		info.count = 1;
 		info.type = CreatureID(69);
 		info.side = BattleSide::ATTACKER;
-		info.position = gameState->currentBattles.front()->getAvaliableHex(info.type, info.side);
+		info.position = gameState->currentBattles.front()->getAvailableHex(info.type, info.side);
 		info.summoned = false;
 
 		BattleUnitsChanged pack;
@@ -347,7 +347,7 @@ TEST_F(CGameStateTest, DISABLED_battleResurrection)
 		info.count = 10;
 		info.type = CreatureID(13);
 		info.side = BattleSide::ATTACKER;
-		info.position = gameState->currentBattles.front()->getAvaliableHex(info.type, info.side);
+		info.position = gameState->currentBattles.front()->getAvailableHex(info.type, info.side);
 		info.summoned = false;
 
 		BattleUnitsChanged pack;
@@ -362,7 +362,7 @@ TEST_F(CGameStateTest, DISABLED_battleResurrection)
 		info.count = 10;
 		info.type = CreatureID(13);
 		info.side = BattleSide::DEFENDER;
-		info.position = gameState->currentBattles.front()->getAvaliableHex(info.type, info.side);
+		info.position = gameState->currentBattles.front()->getAvailableHex(info.type, info.side);
 		info.summoned = false;
 
 		BattleUnitsChanged pack;
@@ -410,16 +410,4 @@ TEST_F(CGameStateTest, DISABLED_battleResurrection)
 
 	EXPECT_EQ(unit->health.getCount(), 10);
 	EXPECT_EQ(unit->health.getResurrected(), 0);
-}
-
-TEST_F(CGameStateTest, updateEntity)
-{
-	using ::testing::SaveArg;
-	using ::testing::Eq;
-	using ::testing::_;
-
-	JsonNode actual;
-	EXPECT_CALL(services, updateEntity(Eq(Metatype::CREATURE), Eq(424242), _)).WillOnce(SaveArg<2>(&actual));
-	gameState->updateEntity(Metatype::CREATURE, 424242, JsonNode("TEST"));
-	EXPECT_EQ(actual.String(), "TEST");
 }

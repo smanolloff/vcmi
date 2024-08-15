@@ -12,28 +12,42 @@
 
 #include "CPrologEpilogVideo.h"
 #include "../CGameInfo.h"
-#include "../CMusicHandler.h"
-#include "../CVideoHandler.h"
-#include "../gui/WindowHandler.h"
+#include "../media/IMusicPlayer.h"
+#include "../media/ISoundPlayer.h"
+//#include "../gui/WindowHandler.h"
 #include "../gui/CGuiHandler.h"
-#include "../gui/FramerateManager.h"
+//#include "../gui/FramerateManager.h"
 #include "../widgets/TextControls.h"
+#include "../widgets/VideoWidget.h"
 #include "../widgets/Images.h"
 #include "../render/Canvas.h"
-
 
 CPrologEpilogVideo::CPrologEpilogVideo(CampaignScenarioPrologEpilog _spe, std::function<void()> callback)
 	: CWindowObject(BORDERED), spe(_spe), positionCounter(0), voiceSoundHandle(-1), videoSoundHandle(-1), exitCb(callback), elapsedTimeMilliseconds(0)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	addUsedEvents(LCLICK | TIME);
 	pos = center(Rect(0, 0, 800, 600));
 
 	backgroundAroundMenu = std::make_shared<CFilledTexture>(ImagePath::builtin("DIBOXBCK"), Rect(-pos.x, -pos.y, GH.screenDimensions().x, GH.screenDimensions().y));
 
-	auto audioData = CCS->videoh->getAudio(spe.prologVideo);
-	videoSoundHandle = CCS->soundh->playSound(audioData, -1);
-	CCS->videoh->open(spe.prologVideo);
+	//TODO: remove hardcoded paths. Some of campaigns video actually consist from 2 parts
+	// however, currently our campaigns format expects only	a single video file
+	static const std::map<VideoPath, VideoPath> pairedVideoFiles = {
+		{ VideoPath::builtin("EVIL2AP1"),  VideoPath::builtin("EVIL2AP2") },
+		{ VideoPath::builtin("H3ABdb4"),   VideoPath::builtin("H3ABdb4b") },
+		{ VideoPath::builtin("H3x2_RNe1"), VideoPath::builtin("H3x2_RNe2") },
+	};
+
+	if (pairedVideoFiles.count(spe.prologVideo))
+		videoPlayer = std::make_shared<VideoWidget>(Point(0, 0), spe.prologVideo, pairedVideoFiles.at(spe.prologVideo), true);
+	else
+		videoPlayer = std::make_shared<VideoWidget>(Point(0, 0), spe.prologVideo, true);
+
+	//some videos are 800x600 in size while some are 800x400
+	if (videoPlayer->pos.h == 400)
+		videoPlayer->moveBy(Point(0, 100));
+
 	CCS->musich->playMusic(spe.prologMusic, true, true);
 	voiceDurationMilliseconds = CCS->soundh->getSoundDurationMilliseconds(spe.prologVoice);
 	voiceSoundHandle = CCS->soundh->playSound(spe.prologVoice);
@@ -67,9 +81,8 @@ void CPrologEpilogVideo::tick(uint32_t msPassed)
 void CPrologEpilogVideo::show(Canvas & to)
 {
 	to.drawColor(pos, Colors::BLACK);
-	//some videos are 800x600 in size while some are 800x400
-	CCS->videoh->update(pos.x, pos.y + (CCS->videoh->size().y == 400 ? 100 : 0), to.getInternalSurface(), true, false);
 
+	videoPlayer->show(to);
 	text->showAll(to); // blit text over video, if needed
 }
 

@@ -12,6 +12,7 @@
 #include "../../lib/ArtifactUtils.h"
 #include "../../lib/UnlockGuard.h"
 #include "../../lib/StartInfo.h"
+#include "../../lib/entities/building/CBuilding.h"
 #include "../../lib/mapObjects/MapObjects.h"
 #include "../../lib/mapObjects/ObjectTemplate.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
@@ -28,6 +29,7 @@
 #include "../../lib/networkPacks/StackLocation.h"
 #include "../../lib/battle/BattleStateInfoForRetreat.h"
 #include "../../lib/battle/BattleInfo.h"
+#include "../../lib/CPlayerState.h"
 
 #include "AIGateway.h"
 #include "Goals/Goals.h"
@@ -500,7 +502,7 @@ void AIGateway::objectPropertyChanged(const SetObjectProperty * sop)
 			if(relations == PlayerRelations::ENEMIES)
 			{
 				//we want to visit objects owned by oppponents
-				//addVisitableObj(obj); // TODO: Remove once save compatability broken. In past owned objects were removed from this set
+				//addVisitableObj(obj); // TODO: Remove once save compatibility broken. In past owned objects were removed from this set
 				nullkiller->memory->markObjectUnvisited(obj);
 			}
 			else if(relations == PlayerRelations::SAME_PLAYER && obj->ID == Obj::TOWN)
@@ -604,7 +606,7 @@ void AIGateway::heroGotLevel(const CGHeroInstance * hero, PrimarySkill pskill, s
 
 		if(hPtr.validAndSet())
 		{
-			std::unique_lock<std::mutex> lockGuard(nullkiller->aiStateMutex);
+			std::unique_lock lockGuard(nullkiller->aiStateMutex);
 
 			nullkiller->heroManager->update();
 
@@ -684,7 +686,7 @@ void AIGateway::showBlockingDialog(const std::string & text, const std::vector<C
 			sel = components.size();
 
 		{
-				std::unique_lock<std::mutex> mxLock(nullkiller->aiStateMutex);
+				std::unique_lock mxLock(nullkiller->aiStateMutex);
 
 				// TODO: Find better way to understand it is Chest of Treasures
 				if(hero.validAndSet()
@@ -706,7 +708,7 @@ void AIGateway::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelI
 	NET_EVENT_HANDLER;
 	status.addQuery(askID, boost::str(boost::format("Teleport dialog query with %d exits") % exits.size()));
 
-	int choosenExit = -1;
+	int chosenExit = -1;
 	if(impassable)
 	{
 		nullkiller->memory->knownTeleportChannels[channel]->passability = TeleportChannel::IMPASSABLE;
@@ -715,14 +717,14 @@ void AIGateway::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelI
 	{
 		auto neededExit = std::make_pair(destinationTeleport, destinationTeleportPos);
 		if(destinationTeleport != ObjectInstanceID() && vstd::contains(exits, neededExit))
-			choosenExit = vstd::find_pos(exits, neededExit);
+			chosenExit = vstd::find_pos(exits, neededExit);
 	}
 
 	for(auto exit : exits)
 	{
 		if(status.channelProbing() && exit.first == destinationTeleport)
 		{
-			choosenExit = vstd::find_pos(exits, exit);
+			chosenExit = vstd::find_pos(exits, exit);
 			break;
 		}
 		else
@@ -740,7 +742,7 @@ void AIGateway::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelI
 
 	requestActionASAP([=]()
 	{
-		answerQuery(askID, choosenExit);
+		answerQuery(askID, chosenExit);
 	});
 }
 
@@ -771,27 +773,6 @@ void AIGateway::showMapObjectSelectDialog(QueryID askID, const Component & icon,
 	NET_EVENT_HANDLER;
 	status.addQuery(askID, "Map object select query");
 	requestActionASAP([=](){ answerQuery(askID, selectedObject.getNum()); });
-}
-
-void AIGateway::saveGame(BinarySerializer & h)
-{
-	NET_EVENT_HANDLER;
-	nullkiller->memory->removeInvisibleObjects(myCb.get());
-
-	CAdventureAI::saveGame(h);
-	serializeInternal(h);
-}
-
-void AIGateway::loadGame(BinaryDeserializer & h)
-{
-	//NET_EVENT_HANDLER;
-
-	#if 0
-	//disabled due to issue 2890
-	registerGoals(h);
-	#endif // 0
-	CAdventureAI::loadGame(h);
-	serializeInternal(h);
 }
 
 bool AIGateway::makePossibleUpgrades(const CArmedInstance * obj)
@@ -826,7 +807,7 @@ void AIGateway::makeTurn()
 	auto day = cb->getDate(Date::DAY);
 	logAi->info("Player %d (%s) starting turn, day %d", playerID, playerID.toString(), day);
 
-	boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
+	boost::shared_lock gsLock(CGameState::mutex);
 	setThreadName("AIGateway::makeTurn");
 
 	if(nullkiller->isOpenMap())
@@ -886,7 +867,7 @@ void AIGateway::performObjectInteraction(const CGObjectInstance * obj, HeroPtr h
 		{
 			makePossibleUpgrades(h.get());
 
-			std::unique_lock<std::mutex>  lockGuard(nullkiller->aiStateMutex);
+			std::unique_lock lockGuard(nullkiller->aiStateMutex);
 
 			if(!h->visitedTown->garrisonHero || !nullkiller->isHeroLocked(h->visitedTown->garrisonHero))
 				moveCreaturesToHero(h->visitedTown);
@@ -1168,7 +1149,7 @@ void AIGateway::recruitCreatures(const CGDwelling * d, const CArmedInstance * re
 	}
 }
 
-void AIGateway::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side, bool replayAllowed)
+void AIGateway::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
 {
 	NET_EVENT_HANDLER;
 	assert(!playerID.isValidPlayer() || status.getBattle() == UPCOMING_BATTLE);
@@ -1188,6 +1169,17 @@ void AIGateway::battleEnd(const BattleID & battleID, const BattleResult * br, Qu
 	battlename.clear();
 
 	CAdventureAI::battleEnd(battleID, br, queryID);
+
+	// gosolo
+	if(queryID != QueryID::NONE && myCb->getPlayerState(playerID)->isHuman())
+	{
+		status.addQuery(queryID, "Confirm battle query");
+
+		requestActionASAP([=]()
+			{
+				answerQuery(queryID, 0);
+			});
+	}
 }
 
 void AIGateway::waitTillFree()
@@ -1320,6 +1312,11 @@ bool AIGateway::moveHeroToTile(int3 dst, HeroPtr h)
 
 		auto doTeleportMovement = [&](ObjectInstanceID exitId, int3 exitPos)
 		{
+			if(cb->getObj(exitId) && cb->getObj(exitId)->ID == Obj::WHIRLPOOL)
+			{
+				nullkiller->armyFormation->rearrangeArmyForWhirlpool(*h);
+			}
+
 			destinationTeleport = exitId;
 			if(exitPos.valid())
 				destinationTeleportPos = exitPos;
@@ -1341,6 +1338,7 @@ bool AIGateway::moveHeroToTile(int3 dst, HeroPtr h)
 				status.setChannelProbing(true);
 				for(auto exit : teleportChannelProbingList)
 					doTeleportMovement(exit, int3(-1));
+
 				teleportChannelProbingList.clear();
 				status.setChannelProbing(false);
 
@@ -1474,7 +1472,7 @@ void AIGateway::tryRealize(Goals::Trade & g) //trade
 	if(cb->getResourceAmount(GameResID(g.resID)) >= g.value) //goal is already fulfilled. Why we need this check, anyway?
 		throw goalFulfilledException(sptr(g));
 
-	int accquiredResources = 0;
+	int acquiredResources = 0;
 	if(const CGObjectInstance * obj = cb->getObj(ObjectInstanceID(g.objid), false))
 	{
 		if(const auto * m = dynamic_cast<const IMarket*>(obj))
@@ -1494,8 +1492,8 @@ void AIGateway::tryRealize(Goals::Trade & g) //trade
 				if (toGive) //don't try to sell 0 resources
 				{
 					cb->trade(m, EMarketMode::RESOURCE_RESOURCE, res, GameResID(g.resID), toGive);
-					accquiredResources = static_cast<int>(toGet * (it->resVal / toGive));
-					logAi->debug("Traded %d of %s for %d of %s at %s", toGive, res, accquiredResources, g.resID, obj->getObjectName());
+					acquiredResources = static_cast<int>(toGet * (it->resVal / toGive));
+					logAi->debug("Traded %d of %s for %d of %s at %s", toGive, res, acquiredResources, g.resID, obj->getObjectName());
 				}
 				if (cb->getResourceAmount(GameResID(g.resID)))
 					throw goalFulfilledException(sptr(g)); //we traded all we needed
@@ -1566,7 +1564,7 @@ void AIGateway::requestActionASAP(std::function<void()> whatToDo)
 	{
 		setThreadName("AIGateway::requestActionASAP::whatToDo");
 		SET_GLOBAL_STATE(this);
-		boost::shared_lock<boost::shared_mutex> gsLock(CGameState::mutex);
+		boost::shared_lock gsLock(CGameState::mutex);
 		whatToDo();
 	});
 

@@ -13,6 +13,7 @@
 #include "TurnOrderProcessor.h"
 #include "../CGameHandler.h"
 
+#include "../../lib/CRandomGenerator.h"
 #include "../../lib/CHeroHandler.h"
 #include "../../lib/CPlayerState.h"
 #include "../../lib/GameSettings.h"
@@ -226,8 +227,7 @@ bool HeroPoolProcessor::hireHero(const ObjectInstanceID & objectID, const HeroTy
 	if(gameHandler->getTile(targetPos)->isWater() && !recruitedHero->boat)
 	{
 		//Create a new boat for hero
-		gameHandler->createObject(targetPos, player, Obj::BOAT, recruitedHero->getBoatType().getNum());
-
+		gameHandler->createBoat(targetPos, recruitedHero->getBoatType(), player);
 		hr.boatId = gameHandler->getTopObj(targetPos)->id;
 	}
 
@@ -242,10 +242,7 @@ bool HeroPoolProcessor::hireHero(const ObjectInstanceID & objectID, const HeroTy
 	gameHandler->giveResource(player, EGameResID::GOLD, -GameConstants::HERO_GOLD_COST);
 
 	if(town)
-	{
-		gameHandler->visitCastleObjects(town, recruitedHero);
-		gameHandler->giveSpells(town, recruitedHero);
-	}
+		gameHandler->objectVisited(town, recruitedHero);
 
 	// If new hero has scouting he might reveal more terrain than we saw before
 	gameHandler->changeFogOfWar(recruitedHero->getSightCenter(), recruitedHero->getSightRadius(), player, ETileVisibility::REVEALED);
@@ -368,7 +365,7 @@ CGHeroInstance * HeroPoolProcessor::pickHeroFor(bool isNative, const PlayerColor
 	return *RandomGeneratorUtil::nextItem(possibleHeroes, getRandomGenerator(player));
 }
 
-CRandomGenerator & HeroPoolProcessor::getHeroSkillsRandomGenerator(const HeroTypeID & hero)
+vstd::RNG & HeroPoolProcessor::getHeroSkillsRandomGenerator(const HeroTypeID & hero)
 {
 	if (heroSeed.count(hero) == 0)
 	{
@@ -379,7 +376,7 @@ CRandomGenerator & HeroPoolProcessor::getHeroSkillsRandomGenerator(const HeroTyp
 	return *heroSeed.at(hero);
 }
 
-CRandomGenerator & HeroPoolProcessor::getRandomGenerator(const PlayerColor & player)
+vstd::RNG & HeroPoolProcessor::getRandomGenerator(const PlayerColor & player)
 {
 	if (playerSeed.count(player) == 0)
 	{

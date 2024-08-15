@@ -20,7 +20,6 @@ class CHeroClassHandler;
 class CCreatureHandler;
 class CSpellHandler;
 class CSkillHandler;
-class CBuildingHandler;
 class CObjectHandler;
 class CObjectClassesHandler;
 class ObstacleSetHandler;
@@ -71,8 +70,6 @@ public:
 	const BattleFieldService * battlefields() const override;
 	const ObstacleService * obstacles() const override;
 	const IGameSettings * settings() const override;
-
-	void updateEntity(Metatype metatype, int32_t index, const JsonNode & data) override;
 
 	const spells::effects::Registry * spellEffects() const override;
 	spells::effects::Registry * spellEffects() override;

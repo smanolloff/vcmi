@@ -10,8 +10,9 @@
 #include "StdInc.h"
 #include "CRewardableConstructor.h"
 
+#include "../json/JsonUtils.h"
 #include "../mapObjects/CRewardableObject.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../IGameCallback.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -23,6 +24,8 @@ void CRewardableConstructor::initTypeData(const JsonNode & config)
 
 	if (!config["name"].isNull())
 		VLC->generaltexth->registerString( config.getModScope(), getNameTextID(), config["name"].String());
+
+	JsonUtils::validate(config, "vcmi:rewardable", getJsonKey());
 	
 }
 
@@ -40,25 +43,35 @@ CGObjectInstance * CRewardableConstructor::create(IGameCallback * cb, std::share
 	return ret;
 }
 
-void CRewardableConstructor::configureObject(CGObjectInstance * object, CRandomGenerator & rng) const
+Rewardable::Configuration CRewardableConstructor::generateConfiguration(IGameCallback * cb, vstd::RNG & rand, MapObjectID objectID) const
+{
+	Rewardable::Configuration result;
+	objectInfo.configureObject(result, rand, cb);
+
+	for(auto & rewardInfo : result.info)
+	{
+		for (auto & bonus : rewardInfo.reward.bonuses)
+		{
+			bonus.source = BonusSource::OBJECT_TYPE;
+			bonus.sid = BonusSourceID(objectID);
+		}
+	}
+
+	return result;
+}
+
+void CRewardableConstructor::configureObject(CGObjectInstance * object, vstd::RNG & rng) const
 {
 	if(auto * rewardableObject = dynamic_cast<CRewardableObject*>(object))
 	{
-		objectInfo.configureObject(rewardableObject->configuration, rng, object->cb);
-		for(auto & rewardInfo : rewardableObject->configuration.info)
-		{
-			for (auto & bonus : rewardInfo.reward.bonuses)
-			{
-				bonus.source = BonusSource::OBJECT_TYPE;
-				bonus.sid = BonusSourceID(rewardableObject->ID);
-			}
-		}
+		rewardableObject->configuration = generateConfiguration(object->cb, rng, object->ID);
+
 		if (rewardableObject->configuration.info.empty())
 		{
 			if (objectInfo.getParameters()["rewards"].isNull())
 				logMod->error("Object %s has invalid configuration! No defined rewards found!", getJsonKey());
 			else
-				logMod->error("Object %s has invalid configuration! Make sure that defined appear chances are continious!", getJsonKey());
+				logMod->error("Object %s has invalid configuration! Make sure that defined appear chances are continuous!", getJsonKey());
 		}
 	}
 }

@@ -20,11 +20,14 @@
 #include "../../mapObjects/ObjectTemplate.h"
 #include "../../mapping/CMap.h"
 #include "../../mapping/CMapEditManager.h"
+#include "../../VCMI_Lib.h"
 #include "../RmgPath.h"
 #include "ObjectManager.h"
 #include "ObstaclePlacer.h"
 #include "WaterProxy.h"
 #include "RoadPlacer.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 

@@ -11,7 +11,6 @@
 #pragma once
 
 #include "../GameConstants.h"
-#include "../CRandomGenerator.h"
 #include "CMapGenOptions.h"
 #include "../int3.h"
 #include "CRmgTemplate.h"
@@ -67,7 +66,7 @@ public:
 	std::unique_ptr<CMap> generate();
 
 	int getNextMonlithIndex();
-	int getPrisonsRemaning() const;
+	int getPrisonsRemaining() const;
 	std::shared_ptr<CZonePlacer> getZonePlacer() const;
 	const std::vector<ArtifactID> & getAllPossibleQuestArtifacts() const;
 	const std::vector<HeroTypeID> getAllPossibleHeroes() const;
@@ -79,7 +78,7 @@ public:
 	int getRandomSeed() const;
 	
 private:
-	CRandomGenerator rand;
+	std::unique_ptr<vstd::RNG> rand;
 	int randomSeed;
 	CMapGenOptions& mapGenOptions;
 	Config config;

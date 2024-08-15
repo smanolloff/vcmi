@@ -10,24 +10,28 @@
 #include "StdInc.h"
 #include "CHeroHandler.h"
 
-#include "CGeneralTextHandler.h"
 #include "filesystem/Filesystem.h"
 #include "VCMI_Lib.h"
 #include "constants/StringConstants.h"
 #include "battle/BattleHex.h"
 #include "CCreatureHandler.h"
 #include "GameSettings.h"
-#include "CRandomGenerator.h"
-#include "CTownHandler.h"
 #include "CSkillHandler.h"
 #include "BattleFieldHandler.h"
 #include "bonuses/Limiters.h"
 #include "bonuses/Updaters.h"
+#include "entities/faction/CFaction.h"
+#include "entities/faction/CTown.h"
+#include "entities/faction/CTownHandler.h"
 #include "json/JsonBonus.h"
 #include "json/JsonUtils.h"
 #include "mapObjectConstructors/AObjectTypeHandler.h"
 #include "mapObjectConstructors/CObjectClassesHandler.h"
 #include "modding/IdentifierStorage.h"
+#include "texts/CGeneralTextHandler.h"
+#include "texts/CLegacyConfigParser.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -47,6 +51,11 @@ int32_t CHero::getIconIndex() const
 std::string CHero::getJsonKey() const
 {
 	return modScope + ':' + identifier;
+}
+
+std::string CHero::getModScope() const
+{
+	return modScope;
 }
 
 HeroTypeID CHero::getId() const
@@ -123,7 +132,7 @@ void CHero::serializeJson(JsonSerializeFormat & handler)
 }
 
 
-SecondarySkill CHeroClass::chooseSecSkill(const std::set<SecondarySkill> & possibles, CRandomGenerator & rand) const //picks secondary skill out from given possibilities
+SecondarySkill CHeroClass::chooseSecSkill(const std::set<SecondarySkill> & possibles, vstd::RNG & rand) const //picks secondary skill out from given possibilities
 {
 	assert(!possibles.empty());
 
@@ -185,6 +194,11 @@ std::string CHeroClass::getJsonKey() const
 	return modScope + ':' + identifier;
 }
 
+std::string CHeroClass::getModScope() const
+{
+	return modScope;
+}
+
 HeroClassID CHeroClass::getId() const
 {
 	return id;
@@ -226,8 +240,7 @@ void CHeroClassHandler::fillPrimarySkillData(const JsonNode & node, CHeroClass *
 {
 	const auto & skillName = NPrimarySkill::names[pSkill.getNum()];
 	auto currentPrimarySkillValue = static_cast<int>(node["primarySkills"][skillName].Integer());
-	//minimal value is 0 for attack and defense and 1 for spell power and knowledge
-	auto primarySkillLegalMinimum = (pSkill == PrimarySkill::ATTACK || pSkill == PrimarySkill::DEFENSE) ? 0 : 1;
+	int primarySkillLegalMinimum = VLC->settings()->getVector(EGameSettings::HEROES_MINIMAL_PRIMARY_SKILLS)[pSkill.getNum()];
 
 	if(currentPrimarySkillValue < primarySkillLegalMinimum)
 	{
@@ -246,14 +259,14 @@ const std::vector<std::string> & CHeroClassHandler::getTypeNames() const
 	return typeNames;
 }
 
-CHeroClass * CHeroClassHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
+std::shared_ptr<CHeroClass> CHeroClassHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
 {
 	assert(identifier.find(':') == std::string::npos);
 	assert(!scope.empty());
 
 	std::string affinityStr[2] = { "might", "magic" };
 
-	auto * heroClass = new CHeroClass();
+	auto heroClass = std::make_shared<CHeroClass>();
 
 	heroClass->id = HeroClassID(index);
 	heroClass->identifier = identifier;
@@ -276,10 +289,10 @@ CHeroClass * CHeroClassHandler::loadFromJson(const std::string & scope, const Js
 		heroClass->affinity = CHeroClass::MIGHT;
 	}
 
-	fillPrimarySkillData(node, heroClass, PrimarySkill::ATTACK);
-	fillPrimarySkillData(node, heroClass, PrimarySkill::DEFENSE);
-	fillPrimarySkillData(node, heroClass, PrimarySkill::SPELL_POWER);
-	fillPrimarySkillData(node, heroClass, PrimarySkill::KNOWLEDGE);
+	fillPrimarySkillData(node, heroClass.get(), PrimarySkill::ATTACK);
+	fillPrimarySkillData(node, heroClass.get(), PrimarySkill::DEFENSE);
+	fillPrimarySkillData(node, heroClass.get(), PrimarySkill::SPELL_POWER);
+	fillPrimarySkillData(node, heroClass.get(), PrimarySkill::KNOWLEDGE);
 
 	auto percentSumm = std::accumulate(heroClass->primarySkillLowLevel.begin(), heroClass->primarySkillLowLevel.end(), 0);
 	if(percentSumm <= 0)
@@ -431,12 +444,12 @@ const std::vector<std::string> & CHeroHandler::getTypeNames() const
 	return typeNames;
 }
 
-CHero * CHeroHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
+std::shared_ptr<CHero> CHeroHandler::loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index)
 {
 	assert(identifier.find(':') == std::string::npos);
 	assert(!scope.empty());
 
-	auto * hero = new CHero();
+	auto hero = std::make_shared<CHero>();
 	hero->ID = HeroTypeID(index);
 	hero->identifier = identifier;
 	hero->modScope = scope;
@@ -458,9 +471,9 @@ CHero * CHeroHandler::loadFromJson(const std::string & scope, const JsonNode & n
 	hero->portraitLarge = node["images"]["large"].String();
 	hero->battleImage = AnimationPath::fromJson(node["battleImage"]);
 
-	loadHeroArmy(hero, node);
-	loadHeroSkills(hero, node);
-	loadHeroSpecialty(hero, node);
+	loadHeroArmy(hero.get(), node);
+	loadHeroSkills(hero.get(), node);
+	loadHeroSpecialty(hero.get(), node);
 
 	VLC->identifiers()->requestIdentifier("heroClass", node["class"],
 	[=](si32 classID)
@@ -752,7 +765,7 @@ void CHeroHandler::loadObject(std::string scope, std::string name, const JsonNod
 {
 	size_t index = objects.size();
 	static const int specialFramesCount = 2; // reserved for 2 special frames
-	auto * object = loadFromJson(scope, data, name, index);
+	auto object = loadFromJson(scope, data, name, index);
 	object->imageIndex = static_cast<si32>(index) + specialFramesCount;
 
 	objects.emplace_back(object);
@@ -765,7 +778,7 @@ void CHeroHandler::loadObject(std::string scope, std::string name, const JsonNod
 
 void CHeroHandler::loadObject(std::string scope, std::string name, const JsonNode & data, size_t index)
 {
-	auto * object = loadFromJson(scope, data, name, index);
+	auto object = loadFromJson(scope, data, name, index);
 	object->imageIndex = static_cast<si32>(index);
 
 	assert(objects[index] == nullptr); // ensure that this id was not loaded before

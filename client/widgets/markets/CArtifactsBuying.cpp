@@ -21,16 +21,18 @@
 
 #include "../../../CCallback.h"
 
-#include "../../../lib/CGeneralTextHandler.h"
+#include "../../../lib/entities/building/CBuilding.h"
+#include "../../../lib/entities/faction/CTownHandler.h"
 #include "../../../lib/mapObjects/CGHeroInstance.h"
 #include "../../../lib/mapObjects/CGMarket.h"
 #include "../../../lib/mapObjects/CGTownInstance.h"
+#include "../../../lib/texts/CGeneralTextHandler.h"
 
 CArtifactsBuying::CArtifactsBuying(const IMarket * market, const CGHeroInstance * hero)
 	: CMarketBase(market, hero)
 	, CResourcesSelling([this](const std::shared_ptr<CTradeableItem> & heroSlot){CArtifactsBuying::onSlotClickPressed(heroSlot, bidTradePanel);})
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	std::string title;
 	if(auto townMarket = dynamic_cast<const CGTownInstance*>(market))

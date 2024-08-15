@@ -15,7 +15,6 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-class CRandomGenerator;
 class AObjectTypeHandler;
 class ObjectTemplate;
 struct SObjectSounds;
@@ -72,7 +71,7 @@ class DLL_LINKAGE CObjectClassesHandler : public IHandlerBase, boost::noncopyabl
 	/// list of object handlers, each of them handles only one type
 	std::vector< std::unique_ptr<ObjectClass> > objects;
 
-	/// map that is filled during contruction with all known handlers. Not serializeable due to usage of std::function
+	/// map that is filled during construction with all known handlers. Not serializeable due to usage of std::function
 	std::map<std::string, std::function<TObjectTypeHandler()> > handlerConstructors;
 
 	/// container with H3 templates, used only during loading, no need to serialize it

@@ -42,6 +42,7 @@ class CHeroArea;
 class CAnimImage;
 class CFilledTexture;
 class IImage;
+class VideoWidget;
 
 enum class EUserEvent;
 
@@ -237,6 +238,10 @@ public:
 	{
 	public:
 		std::shared_ptr<CFilledTexture> background;
+		std::shared_ptr<CSlider> slider;
+
+		const int MAX_LINES = 18;
+		const int ELEM_PER_LINES = 16;
 
 		HeroSelector(std::map<HeroTypeID, CGHeroInstance*> InviteableHeroes, std::function<void(CGHeroInstance*)> OnChoose);
 
@@ -246,6 +251,9 @@ public:
 
 		std::vector<std::shared_ptr<CAnimImage>> portraits;
 		std::vector<std::shared_ptr<LRClickableArea>> portraitAreas;
+
+		void recreate();
+		void sliderMove(int slidPos);
 	};
 
 	//recruitable heroes
@@ -265,6 +273,7 @@ public:
 	std::shared_ptr<CLabel> cost;
 	std::shared_ptr<CLabel> heroesForHire;
 	std::shared_ptr<CTextBox> heroDescription;
+	std::shared_ptr<VideoWidget> videoPlayer;
 
 	std::shared_ptr<CTextBox> rumor;
 	
@@ -276,7 +285,6 @@ public:
 	void addInvite();
 
 	CTavernWindow(const CGObjectInstance * TavernObj, const std::function<void()> & onWindowClosed);
-	~CTavernWindow();
 
 	void close() override;
 	void recruitb();
@@ -350,31 +358,28 @@ public:
 	CTransformerWindow(const IMarket * _market, const CGHeroInstance * _hero, const std::function<void()> & onWindowClosed);
 };
 
-class CUniversityWindow : public CStatusbarWindow
+class CUniversityWindow final : public CStatusbarWindow, public IMarketHolder
 {
-	class CItem : public CIntObject
+	class CItem final : public CIntObject
 	{
 		std::shared_ptr<CAnimImage> icon;
-		std::shared_ptr<CAnimImage> topBar;
-		std::shared_ptr<CAnimImage> bottomBar;
+		std::shared_ptr<CPicture> topBar;
+		std::shared_ptr<CPicture> bottomBar;
 		std::shared_ptr<CLabel> name;
 		std::shared_ptr<CLabel> level;
 	public:
 		SecondarySkill ID;//id of selected skill
 		CUniversityWindow * parent;
 
-		void showAll(Canvas & to) override;
 		void clickPressed(const Point & cursorPosition) override;
 		void showPopupWindow(const Point & cursorPosition) override;
 		void hover(bool on) override;
-		int state();//0=can't learn, 1=learned, 2=can learn
+		void update();
 		CItem(CUniversityWindow * _parent, int _ID, int X, int Y);
 	};
 
 	const CGHeroInstance * hero;
 	const IMarket * market;
-
-	std::shared_ptr<CAnimation> bars;
 
 	std::vector<std::shared_ptr<CItem>> items;
 
@@ -389,11 +394,14 @@ public:
 	CUniversityWindow(const CGHeroInstance * _hero, const IMarket * _market, const std::function<void()> & onWindowClosed);
 
 	void makeDeal(SecondarySkill skill);
-	void close();
+	void close() override;
+
+	// IMarketHolder impl
+	void updateSecondarySkills() override;
 };
 
 /// Confirmation window for University
-class CUnivConfirmWindow : public CStatusbarWindow
+class CUnivConfirmWindow final : public CStatusbarWindow
 {
 	std::shared_ptr<CTextBox> clerkSpeech;
 	std::shared_ptr<CLabel> name;

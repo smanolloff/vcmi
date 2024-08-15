@@ -41,7 +41,7 @@ void CGPandoraBox::init()
 	}
 }
 
-void CGPandoraBox::initObj(CRandomGenerator & rand)
+void CGPandoraBox::initObj(vstd::RNG & rand)
 {
 	init();
 	
@@ -180,13 +180,13 @@ void CGPandoraBox::onHeroVisit(const CGHeroInstance * h) const
 
 void CGPandoraBox::battleFinished(const CGHeroInstance *hero, const BattleResult &result) const
 {
-	if(result.winner == 0)
+	if(result.winner == BattleSide::ATTACKER)
 	{
 		CRewardableObject::onHeroVisit(hero);
 	}
 }
 
-void CGPandoraBox::blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const
+void CGPandoraBox::blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const
 {
 	if(answer)
 	{

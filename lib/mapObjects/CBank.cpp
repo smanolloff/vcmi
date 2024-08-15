@@ -14,7 +14,7 @@
 #include <vcmi/spells/Spell.h>
 #include <vcmi/spells/Service.h>
 
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../CSoundBase.h"
 #include "../GameSettings.h"
 #include "../CPlayerState.h"
@@ -24,7 +24,6 @@
 #include "../networkPacks/Component.h"
 #include "../networkPacks/PacksForClient.h"
 #include "../networkPacks/PacksForClientBattle.h"
-#include "../MetaString.h"
 #include "../IGameCallback.h"
 #include "../gameState/CGameState.h"
 
@@ -44,7 +43,7 @@ CBank::CBank(IGameCallback *cb)
 //must be instantiated in .cpp file for access to complete types of all member fields
 CBank::~CBank() = default;
 
-void CBank::initObj(CRandomGenerator & rand)
+void CBank::initObj(vstd::RNG & rand)
 {
 	daycounter = 0;
 	resetDuration = 0;
@@ -97,6 +96,8 @@ void CBank::setConfig(const BankConfig & config)
 
 	for(const auto & stack : config.guards)
 		setCreature (SlotID(stacksCount()), stack.type->getId(), stack.count);
+
+	daycounter = 1; //yes, 1 since "today" daycounter won't be incremented
 }
 
 void CBank::setPropertyDer (ObjProperty what, ObjPropertyID identifier)
@@ -106,25 +107,24 @@ void CBank::setPropertyDer (ObjProperty what, ObjPropertyID identifier)
 		case ObjProperty::BANK_DAYCOUNTER: //daycounter
 				daycounter+= identifier.getNum();
 			break;
-		case ObjProperty::BANK_RESET:
-			// FIXME: Object reset must be done by separate netpack from server
-			initObj(cb->gameState()->getRandomGenerator());
-			daycounter = 1; //yes, 1 since "today" daycounter won't be incremented
-			break;
 		case ObjProperty::BANK_CLEAR:
 			bankConfig.reset();
 			break;
 	}
 }
 
-void CBank::newTurn(CRandomGenerator & rand) const
+void CBank::newTurn(vstd::RNG & rand) const
 {
 	if (bankConfig == nullptr)
 	{
 		if (resetDuration != 0)
 		{
 			if (daycounter >= resetDuration)
-				cb->setObjPropertyValue(id, ObjProperty::BANK_RESET); //daycounter 0
+			{
+				auto handler = std::dynamic_pointer_cast<CBankInstanceConstructor>(getObjectHandler());
+				auto config = handler->generateConfiguration(cb, rand, ID);
+				cb->setBankObjectConfiguration(id, config);
+			}
 			else
 				cb->setObjPropertyValue(id, ObjProperty::BANK_DAYCOUNTER, 1); //daycounter++
 		}
@@ -387,13 +387,13 @@ void CBank::doVisit(const CGHeroInstance * hero) const
 
 void CBank::battleFinished(const CGHeroInstance *hero, const BattleResult &result) const
 {
-	if (result.winner == 0)
+	if (result.winner == BattleSide::ATTACKER)
 	{
 		doVisit(hero);
 	}
 }
 
-void CBank::blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const
+void CBank::blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const
 {
 	if (answer)
 	{

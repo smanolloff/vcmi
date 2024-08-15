@@ -32,7 +32,7 @@
 
 #include "../../lib/constants/StringConstants.h"
 #include "../../lib/json/JsonUtils.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/filesystem/ResourcePath.h"
 
 InterfaceObjectConfigurable::InterfaceObjectConfigurable(const JsonNode & config, int used, Point offset):
@@ -106,7 +106,7 @@ void InterfaceObjectConfigurable::loadCustomBuilders(const JsonNode & config)
 
 void InterfaceObjectConfigurable::build(const JsonNode &config)
 {
-	OBJ_CONSTRUCTION;
+	OBJECT_CONSTRUCTION;
 
 	logGlobal->debug("Building configurable interface object");
 	auto * items = &config;
@@ -333,7 +333,7 @@ std::shared_ptr<CPicture> InterfaceObjectConfigurable::buildPicture(const JsonNo
 	auto pic = std::make_shared<CPicture>(image, position.x, position.y);
 
 	if ( config["playerColored"].Bool() && LOCPLINT)
-		pic->colorize(LOCPLINT->playerID);
+		pic->setPlayerColor(LOCPLINT->playerID);
 	return pic;
 }
 
@@ -345,7 +345,8 @@ std::shared_ptr<CLabel> InterfaceObjectConfigurable::buildLabel(const JsonNode &
 	auto color = readColor(config["color"]);
 	auto text = readText(config["text"]);
 	auto position = readPosition(config["position"]);
-	return std::make_shared<CLabel>(position.x, position.y, font, alignment, color, text);
+	auto maxWidth = config["maxWidth"].Integer();
+	return std::make_shared<CLabel>(position.x, position.y, font, alignment, color, text, maxWidth);
 }
 
 std::shared_ptr<CMultiLineLabel> InterfaceObjectConfigurable::buildMultiLineLabel(const JsonNode & config) const
@@ -370,7 +371,7 @@ std::shared_ptr<CToggleGroup> InterfaceObjectConfigurable::buildToggleGroup(cons
 	group->pos += position;
 	if(!config["items"].isNull())
 	{
-		OBJ_CONSTRUCTION_TARGETED(group.get());
+		OBJECT_CONSTRUCTION_TARGETED(group.get());
 		int itemIdx = -1;
 		for(const auto & item : config["items"].Vector())
 		{
@@ -571,7 +572,7 @@ std::shared_ptr<CFilledTexture> InterfaceObjectConfigurable::buildTexture(const 
 	if(playerColor.isValidPlayer())
 	{
 		auto result = std::make_shared<FilledTexturePlayerColored>(image, rect);
-		result->playerColored(playerColor);
+		result->setPlayerColor(playerColor);
 		return result;
 	}
 	return std::make_shared<CFilledTexture>(image, rect);

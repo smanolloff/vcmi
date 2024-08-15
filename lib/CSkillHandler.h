@@ -52,6 +52,7 @@ public:
 	int32_t getIndex() const override;
 	int32_t getIconIndex() const override;
 	std::string getJsonKey() const override;
+	std::string getModScope() const override;
 	void registerIcons(const IconRegistar & cb) const override;
 	SecondarySkill getId() const override;
 
@@ -94,7 +95,7 @@ public:
 
 protected:
 	const std::vector<std::string> & getTypeNames() const override;
-	CSkill * loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index) override;
+	std::shared_ptr<CSkill> loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index) override;
 };
 
 VCMI_LIB_NAMESPACE_END

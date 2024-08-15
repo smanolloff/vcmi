@@ -67,7 +67,7 @@ void GlobalLobbyProcessor::onPacketReceived(const std::shared_ptr<INetworkConnec
 {
 	if (connection == controlConnection)
 	{
-		JsonNode json(message.data(), message.size());
+		JsonNode json(message.data(), message.size(), "<lobby network packet>");
 
 		if(json["type"].String() == "operationFailed")
 			return receiveOperationFailed(json);
@@ -97,7 +97,7 @@ void GlobalLobbyProcessor::receiveOperationFailed(const JsonNode & json)
 void GlobalLobbyProcessor::receiveServerLoginSuccess(const JsonNode & json)
 {
 	// no-op, wait just for any new commands from lobby
-	logGlobal->info("Lobby: Succesfully connected to lobby server");
+	logGlobal->info("Lobby: Successfully connected to lobby server");
 	owner.startAcceptingIncomingConnections();
 }
 

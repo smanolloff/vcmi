@@ -12,13 +12,13 @@
 
 #include "MapFormat.h"
 
+#include "../CHeroHandler.h"
 #include "../VCMI_Lib.h"
-#include "../CTownHandler.h"
-#include "../CGeneralTextHandler.h"
+#include "../entities/faction/CTownHandler.h"
 #include "../json/JsonUtils.h"
 #include "../modding/CModHandler.h"
-#include "../CHeroHandler.h"
-#include "../Languages.h"
+#include "../texts/CGeneralTextHandler.h"
+#include "../texts/Languages.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -163,7 +163,7 @@ void CMapHeader::registerMapStrings()
 	
 	std::string baseLanguage;
 	std::string language;
-	//english is preferrable as base language
+	//english is preferable as base language
 	if(mapBaseLanguages.count(Languages::getLanguageOptions(Languages::ELanguages::ENGLISH).identifier))
 		baseLanguage = Languages::getLanguageOptions(Languages::ELanguages::ENGLISH).identifier;
 	else

@@ -38,13 +38,13 @@ void IObjectInterface::onHeroVisit(const CGHeroInstance * h) const
 void IObjectInterface::onHeroLeave(const CGHeroInstance * h) const
 {}
 
-void IObjectInterface::newTurn(CRandomGenerator & rand) const
+void IObjectInterface::newTurn(vstd::RNG & rand) const
 {}
 
-void IObjectInterface::initObj(CRandomGenerator & rand)
+void IObjectInterface::initObj(vstd::RNG & rand)
 {}
 
-void IObjectInterface::pickRandomObject(CRandomGenerator & rand)
+void IObjectInterface::pickRandomObject(vstd::RNG & rand)
 {}
 
 void IObjectInterface::setProperty(ObjProperty what, ObjPropertyID identifier)
@@ -68,7 +68,7 @@ void IObjectInterface::preInit()
 void IObjectInterface::battleFinished(const CGHeroInstance *hero, const BattleResult &result) const
 {}
 
-void IObjectInterface::blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const
+void IObjectInterface::blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const
 {}
 
 void IObjectInterface::garrisonDialogClosed(const CGHeroInstance *hero) const

@@ -11,11 +11,15 @@
 #include "StdInc.h"
 #include "CGTownBuilding.h"
 #include "CGTownInstance.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../IGameCallback.h"
 #include "../gameState/CGameState.h"
 #include "../mapObjects/CGHeroInstance.h"
 #include "../networkPacks/PacksForClient.h"
+#include "../entities/building/CBuilding.h"
+
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -314,7 +318,7 @@ CTownRewardableBuilding::CTownRewardableBuilding(IGameCallback *cb)
 	: CGTownBuilding(cb)
 {}
 
-CTownRewardableBuilding::CTownRewardableBuilding(const BuildingID & index, BuildingSubID::EBuildingSubID subId, CGTownInstance * cgTown, CRandomGenerator & rand)
+CTownRewardableBuilding::CTownRewardableBuilding(const BuildingID & index, BuildingSubID::EBuildingSubID subId, CGTownInstance * cgTown, vstd::RNG & rand)
 	: CGTownBuilding(cgTown)
 {
 	bID = index;
@@ -323,14 +327,19 @@ CTownRewardableBuilding::CTownRewardableBuilding(const BuildingID & index, Build
 	initObj(rand);
 }
 
-void CTownRewardableBuilding::initObj(CRandomGenerator & rand)
+void CTownRewardableBuilding::initObj(vstd::RNG & rand)
 {
 	assert(town && town->town);
+	configuration = generateConfiguration(rand);
+}
 
+Rewardable::Configuration CTownRewardableBuilding::generateConfiguration(vstd::RNG & rand) const
+{
+	Rewardable::Configuration result;
 	auto building = town->town->buildings.at(bID);
 
-	building->rewardableObjectInfo.configureObject(configuration, rand, cb);
-	for(auto & rewardInfo : configuration.info)
+	building->rewardableObjectInfo.configureObject(result, rand, cb);
+	for(auto & rewardInfo : result.info)
 	{
 		for (auto & bonus : rewardInfo.reward.bonuses)
 		{
@@ -338,16 +347,16 @@ void CTownRewardableBuilding::initObj(CRandomGenerator & rand)
 			bonus.sid = BonusSourceID(building->getUniqueTypeID());
 		}
 	}
+	return result;
 }
 
-void CTownRewardableBuilding::newTurn(CRandomGenerator & rand) const
+void CTownRewardableBuilding::newTurn(vstd::RNG & rand) const
 {
 	if (configuration.resetParameters.period != 0 && cb->getDate(Date::DAY) > 1 && ((cb->getDate(Date::DAY)-1) % configuration.resetParameters.period) == 0)
 	{
-		if(configuration.resetParameters.rewards)
-		{
-			cb->setObjPropertyValue(town->id, ObjProperty::REWARD_RANDOMIZE, indexOnTV);
-		}
+		auto newConfiguration = generateConfiguration(rand);
+		cb->setRewardableObjectConfiguration(town->id, bID, newConfiguration);
+
 		if(configuration.resetParameters.visitors)
 		{
 			cb->setObjPropertyValue(town->id, ObjProperty::STRUCTURE_CLEAR_VISITORS, indexOnTV);
@@ -365,9 +374,6 @@ void CTownRewardableBuilding::setProperty(ObjProperty what, ObjPropertyID identi
 		case ObjProperty::STRUCTURE_CLEAR_VISITORS:
 			visitors.clear();
 			break;
-		case ObjProperty::REWARD_RANDOMIZE:
-			initObj(cb->gameState()->getRandomGenerator());
-			break;
 		case ObjProperty::REWARD_SELECT:
 			selectedReward = identifier.getNum();
 			break;
@@ -379,7 +385,7 @@ void CTownRewardableBuilding::heroLevelUpDone(const CGHeroInstance *hero) const
 	grantRewardAfterLevelup(cb, configuration.info.at(selectedReward), town, hero);
 }
 
-void CTownRewardableBuilding::blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const
+void CTownRewardableBuilding::blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const
 {
 	if(answer == 0)
 		return; // player refused
@@ -404,7 +410,7 @@ void CTownRewardableBuilding::grantReward(ui32 rewardID, const CGHeroInstance * 
 	
 	grantRewardBeforeLevelup(cb, configuration.info.at(rewardID), hero);
 	
-	// hero is not blocked by levelup dialog - grant remainer immediately
+	// hero is not blocked by levelup dialog - grant remainder immediately
 	if(!cb->isVisitCoveredByAnotherQuery(town, hero))
 	{
 		grantRewardAfterLevelup(cb, configuration.info.at(rewardID), town, hero);
@@ -470,7 +476,7 @@ void CTownRewardableBuilding::onHeroVisit(const CGHeroInstance *h) const
 		cb->showBlockingDialog(&sd);
 	};
 	
-	if(!town->hasBuilt(bID) || cb->isVisitCoveredByAnotherQuery(town, h))
+	if(!town->hasBuilt(bID))
 		return;
 
 	if(!wasVisitedBefore(h))

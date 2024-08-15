@@ -17,8 +17,7 @@
 #include "lib/mapping/CMap.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapObjects/CGTownInstance.h"
-#include "lib/CBuildingHandler.h"
-#include "lib/CGeneralTextHandler.h"
+#include "lib/texts/CGeneralTextHandler.h"
 #include "lib/CHeroHandler.h"
 #include "lib/CArtHandler.h"
 #include "lib/GameConstants.h"
@@ -173,9 +172,9 @@ bool CCallback::swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation
  * @param assembleTo If assemble is true, this represents the artifact ID of the combination
  * artifact to assemble to. Otherwise it's not used.
  */
-void CCallback::assembleArtifacts(const CGHeroInstance * hero, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo)
+void CCallback::assembleArtifacts(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo)
 {
-	AssembleArtifacts aa(hero->id, artifactSlot, assemble, assembleTo);
+	AssembleArtifacts aa(heroID, artifactSlot, assemble, assembleTo);
 	sendRequest(&aa);
 }
 
@@ -214,6 +213,16 @@ bool CCallback::buildBuilding(const CGTownInstance *town, BuildingID buildingID)
 		return false;
 
 	BuildStructure pack(town->id,buildingID);
+	sendRequest(&pack);
+	return true;
+}
+
+bool CCallback::triggerTownSpecialBuildingAction(const CGTownInstance *town, BuildingSubID::EBuildingSubID subBuildingID)
+{
+	if(town->tempOwner!=player)
+		return false;
+
+	TriggerTownSpecialBuildingAction pack(town->id, subBuildingID);
 	sendRequest(&pack);
 	return true;
 }

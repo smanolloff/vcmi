@@ -17,9 +17,10 @@
 
 #include "GameConstants.h"
 #include "CCreatureHandler.h"
-#include "CGeneralTextHandler.h"
+#include "texts/CGeneralTextHandler.h"
 #include "json/JsonUtils.h"
 #include "spells/CSpellHandler.h"
+#include "VCMI_Lib.h"
 
 template class std::vector<VCMI_LIB_WRAP_NAMESPACE(CBonusType)>;
 

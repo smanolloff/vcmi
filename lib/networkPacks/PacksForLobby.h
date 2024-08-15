@@ -11,8 +11,8 @@
 
 #include "StartInfo.h"
 #include "NetPacksBase.h"
-#include "../MetaString.h"
 #include "../serializer/ESerializationVersion.h"
+#include "../texts/MetaString.h"
 
 class CServerHandler;
 class CVCMIServer;
@@ -63,7 +63,7 @@ struct DLL_LINKAGE LobbyClientConnected : public CLobbyPackToPropagate
 			else
 				version = ESerializationVersion::RELEASE_150;
 		}
-		 catch (const std::runtime_error & e)
+		 catch (const std::runtime_error &)
 		{
 			version = ESerializationVersion::RELEASE_150;
 		}
@@ -155,12 +155,13 @@ struct DLL_LINKAGE LobbyStartGame : public CLobbyPackToPropagate
 
 	template <typename Handler> void serialize(Handler &h)
 	{
+		if (!h.saving)
+			h.loadingGamestate = true;
 		h & clientId;
 		h & initializedStartInfo;
-		bool sps = h.smartPointerSerialization;
-		h.smartPointerSerialization = true;
 		h & initializedGameState;
-		h.smartPointerSerialization = sps;
+		if (!h.saving)
+			h.loadingGamestate = false;
 	}
 };
 
@@ -284,6 +285,20 @@ struct DLL_LINKAGE LobbySetPlayerName : public CLobbyPackToServer
 	}
 };
 
+struct DLL_LINKAGE LobbySetPlayerHandicap : public CLobbyPackToServer
+{
+	PlayerColor color = PlayerColor::CANNOT_DETERMINE;
+	Handicap handicap = Handicap();
+
+	void visitTyped(ICPackVisitor & visitor) override;
+
+	template <typename Handler> void serialize(Handler &h)
+	{
+		h & color;
+		h & handicap;
+	}
+};
+
 struct DLL_LINKAGE LobbySetSimturns : public CLobbyPackToServer
 {
 	SimturnsInfo simturnsInfo;
@@ -362,7 +377,9 @@ struct DLL_LINKAGE LobbyPvPAction : public CLobbyPackToServer
 {
 	enum EAction : ui8 {
 		NONE, COIN, RANDOM_TOWN, RANDOM_TOWN_VS
-	} action = NONE;
+	};
+
+	EAction action = NONE;
 	std::vector<FactionID> bannedTowns;
 
 

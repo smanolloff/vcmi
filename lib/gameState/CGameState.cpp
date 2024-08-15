@@ -18,8 +18,7 @@
 #include "SThievesGuildInfo.h"
 
 #include "../ArtifactUtils.h"
-#include "../CBuildingHandler.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../CHeroHandler.h"
 #include "../CPlayerState.h"
 #include "../CStopWatch.h"
@@ -31,6 +30,7 @@
 #include "../battle/BattleInfo.h"
 #include "../campaign/CampaignState.h"
 #include "../constants/StringConstants.h"
+#include "../entities/faction/CTownHandler.h"
 #include "../filesystem/ResourcePath.h"
 #include "../json/JsonBonus.h"
 #include "../json/JsonUtils.h"
@@ -53,6 +53,8 @@
 #include "../serializer/CMemorySerializer.h"
 #include "../serializer/CTypeList.h"
 #include "../spells/CSpellHandler.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -183,8 +185,6 @@ void CGameState::init(const IMapService * mapService, StartInfo * si, Load::Prog
 {
 	assert(services);
 	assert(callback);
-	logGlobal->info("\tUsing random seed: %d", si->seedToBeUsed);
-	getRandomGenerator().setSeed(si->seedToBeUsed);
 	scenarioOps = CMemorySerializer::deepCopy(*si).release();
 	initialOpts = CMemorySerializer::deepCopy(*si).release();
 	si = nullptr;
@@ -202,8 +202,6 @@ void CGameState::init(const IMapService * mapService, StartInfo * si, Load::Prog
 		return;
 	}
 	logGlobal->info("Map loaded!");
-
-	checkMapChecksum();
 
 	day = 0;
 
@@ -236,18 +234,6 @@ void CGameState::init(const IMapService * mapService, StartInfo * si, Load::Prog
 
 	logGlobal->debug("\tChecking objectives");
 	map->checkForObjectives(); //needs to be run when all objects are properly placed
-
-	auto seedAfterInit = getRandomGenerator().nextInt();
-	logGlobal->info("Seed after init is %d (before was %d)", seedAfterInit, scenarioOps->seedToBeUsed);
-	if(scenarioOps->seedPostInit > 0)
-	{
-		//RNG must be in the same state on all machines when initialization is done (otherwise we have desync)
-		assert(scenarioOps->seedPostInit == seedAfterInit);
-	}
-	else
-	{
-		scenarioOps->seedPostInit = seedAfterInit; //store the post init "seed"
-	}
 }
 
 void CGameState::updateEntity(Metatype metatype, int32_t index, const JsonNode & data)
@@ -284,7 +270,7 @@ void CGameState::updateEntity(Metatype metatype, int32_t index, const JsonNode &
 		}
 		break;
 	default:
-		services->updateEntity(metatype, index, data);
+		logGlobal->error("This metatype update is not implemented");
 		break;
 	}
 }
@@ -307,7 +293,7 @@ void CGameState::initNewGame(const IMapService * mapService, bool allowSavingRan
 		CStopWatch sw;
 
 		// Gen map
-		CMapGenerator mapGenerator(*scenarioOps->mapGenOptions, callback, scenarioOps->seedToBeUsed);
+		CMapGenerator mapGenerator(*scenarioOps->mapGenOptions, callback, getRandomGenerator().nextInt());
 		progressTracking.include(mapGenerator);
 
 		std::unique_ptr<CMap> randomMap = mapGenerator.generate();
@@ -323,10 +309,9 @@ void CGameState::initNewGame(const IMapService * mapService, bool allowSavingRan
 				std::shared_ptr<CMapGenOptions> options = scenarioOps->mapGenOptions;
 
 				const std::string templateName = options->getMapTemplate()->getName();
-				const ui32 seed = scenarioOps->seedToBeUsed;
 				const std::string dt = vstd::getDateTimeISO8601Basic(std::time(nullptr));
 
-				const std::string fileName = boost::str(boost::format("%s_%s_%d.vmap") % dt % templateName % seed );
+				const std::string fileName = boost::str(boost::format("%s_%s.vmap") % dt % templateName );
 				const auto fullPath = path / fileName;
 
 				randomMap->name.appendRawString(boost::str(boost::format(" %s") % dt));
@@ -380,24 +365,6 @@ void CGameState::initCampaign()
 	map = campaign->getCurrentMap().release();
 }
 
-void CGameState::checkMapChecksum()
-{
-	logGlobal->info("\tOur checksum for the map: %d", map->checksum);
-	if(scenarioOps->mapfileChecksum)
-	{
-		logGlobal->info("\tServer checksum for %s: %d", scenarioOps->mapname, scenarioOps->mapfileChecksum);
-		if(map->checksum != scenarioOps->mapfileChecksum)
-		{
-			logGlobal->error("Wrong map checksum!!!");
-			throw std::runtime_error("Wrong checksum");
-		}
-	}
-	else
-	{
-		scenarioOps->mapfileChecksum = map->checksum;
-	}
-}
-
 void CGameState::initGlobalBonuses()
 {
 	const JsonNode & baseBonuses = VLC->settings()->getValue(EGameSettings::BONUSES_GLOBAL);
@@ -421,10 +388,14 @@ void CGameState::initDifficulty()
 	const JsonNode & difficultyAI(config["ai"][GameConstants::DIFFICULTY_NAMES[scenarioOps->difficulty]]);
 	const JsonNode & difficultyHuman(config["human"][GameConstants::DIFFICULTY_NAMES[scenarioOps->difficulty]]);
 	
-	auto setDifficulty = [](PlayerState & state, const JsonNode & json)
+	auto setDifficulty = [this](PlayerState & state, const JsonNode & json)
 	{
 		//set starting resources
 		state.resources = TResources(json["resources"]);
+
+		//handicap
+		const PlayerSettings &ps = scenarioOps->getIthPlayersSettings(state.color);
+		state.resources += ps.handicap.startBonus;
 		
 		//set global bonuses
 		for(auto & jsonBonus : json["globalBonuses"].Vector())
@@ -696,8 +667,8 @@ void CGameState::initFogOfWar()
 	for(auto & elem : teams)
 	{
 		auto & fow = elem.second.fogOfWarMap;
-		fow->resize(boost::extents[layers][map->width][map->height]);
-		std::fill(fow->data(), fow->data() + fow->num_elements(), 0);
+		fow.resize(boost::extents[layers][map->width][map->height]);
+		std::fill(fow.data(), fow.data() + fow.num_elements(), 0);
 
 		for(CGObjectInstance *obj : map->objects)
 		{
@@ -707,7 +678,7 @@ void CGameState::initFogOfWar()
 			getTilesInRange(tiles, obj->getSightCenter(), obj->getSightRadius(), ETileVisibility::HIDDEN, obj->tempOwner);
 			for(const int3 & tile : tiles)
 			{
-				(*elem.second.fogOfWarMap)[tile.z][tile.x][tile.y] = 1;
+				elem.second.fogOfWarMap[tile.z][tile.x][tile.y] = 1;
 			}
 		}
 	}
@@ -825,10 +796,11 @@ void CGameState::initTowns()
 	for (auto & vti : map->towns)
 	{
 		assert(vti->town);
+		assert(vti->town->creatures.size() <= GameConstants::CREATURES_PER_TOWN); 
 
-		constexpr std::array basicDwellings = { BuildingID::DWELL_FIRST, BuildingID::DWELL_LVL_2, BuildingID::DWELL_LVL_3, BuildingID::DWELL_LVL_4, BuildingID::DWELL_LVL_5, BuildingID::DWELL_LVL_6, BuildingID::DWELL_LVL_7 };
-		constexpr std::array upgradedDwellings = { BuildingID::DWELL_UP_FIRST, BuildingID::DWELL_LVL_2_UP, BuildingID::DWELL_LVL_3_UP, BuildingID::DWELL_LVL_4_UP, BuildingID::DWELL_LVL_5_UP, BuildingID::DWELL_LVL_6_UP, BuildingID::DWELL_LVL_7_UP };
-		constexpr std::array hordes = { BuildingID::HORDE_PLACEHOLDER1, BuildingID::HORDE_PLACEHOLDER2, BuildingID::HORDE_PLACEHOLDER3, BuildingID::HORDE_PLACEHOLDER4, BuildingID::HORDE_PLACEHOLDER5, BuildingID::HORDE_PLACEHOLDER6, BuildingID::HORDE_PLACEHOLDER7 };
+		constexpr std::array basicDwellings = { BuildingID::DWELL_FIRST, BuildingID::DWELL_LVL_2, BuildingID::DWELL_LVL_3, BuildingID::DWELL_LVL_4, BuildingID::DWELL_LVL_5, BuildingID::DWELL_LVL_6, BuildingID::DWELL_LVL_7, BuildingID::DWELL_LVL_8 };
+		constexpr std::array upgradedDwellings = { BuildingID::DWELL_UP_FIRST, BuildingID::DWELL_LVL_2_UP, BuildingID::DWELL_LVL_3_UP, BuildingID::DWELL_LVL_4_UP, BuildingID::DWELL_LVL_5_UP, BuildingID::DWELL_LVL_6_UP, BuildingID::DWELL_LVL_7_UP, BuildingID::DWELL_LVL_8_UP };
+		constexpr std::array hordes = { BuildingID::HORDE_PLACEHOLDER1, BuildingID::HORDE_PLACEHOLDER2, BuildingID::HORDE_PLACEHOLDER3, BuildingID::HORDE_PLACEHOLDER4, BuildingID::HORDE_PLACEHOLDER5, BuildingID::HORDE_PLACEHOLDER6, BuildingID::HORDE_PLACEHOLDER7, BuildingID::HORDE_PLACEHOLDER8 };
 
 		//init buildings
 		if(vstd::contains(vti->builtBuildings, BuildingID::DEFAULT)) //give standard set of buildings
@@ -853,7 +825,7 @@ void CGameState::initTowns()
 		vti->builtBuildings.insert(BuildingID::VILLAGE_HALL);
 
 		//init hordes
-		for (int i = 0; i < GameConstants::CREATURES_PER_TOWN; i++)
+		for (int i = 0; i < vti->town->creatures.size(); i++)
 		{
 			if (vstd::contains(vti->builtBuildings, hordes[i])) //if we have horde for this level
 			{
@@ -893,7 +865,7 @@ void CGameState::initTowns()
 		//town events
 		for(CCastleEvent &ev : vti->events)
 		{
-			for (int i = 0; i<GameConstants::CREATURES_PER_TOWN; i++)
+			for (int i = 0; i<vti->getTown()->creatures.size(); i++)
 				if (vstd::contains(ev.buildings,hordes[i])) //if we have horde for this level
 				{
 					ev.buildings.erase(hordes[i]);
@@ -905,7 +877,7 @@ void CGameState::initTowns()
 		}
 		//init spells
 		vti->spells.resize(GameConstants::SPELL_LEVELS);
-
+		vti->possibleSpells -= SpellID::PRESET;
 		for(ui32 z=0; z<vti->obligatorySpells.size();z++)
 		{
 			const auto * s = vti->obligatorySpells[z].toSpell();
@@ -1049,7 +1021,7 @@ const BattleInfo * CGameState::getBattle(const PlayerColor & player) const
 		return nullptr;
 
 	for (const auto & battlePtr : currentBattles)
-		if (battlePtr->sides[0].color == player || battlePtr->sides[1].color == player)
+		if (battlePtr->getSide(BattleSide::ATTACKER).color == player || battlePtr->getSide(BattleSide::DEFENDER).color == player)
 			return battlePtr.get();
 
 	return nullptr;
@@ -1073,7 +1045,7 @@ BattleInfo * CGameState::getBattle(const BattleID & battle)
 	return nullptr;
 }
 
-BattleField CGameState::battleGetBattlefieldType(int3 tile, CRandomGenerator & rand)
+BattleField CGameState::battleGetBattlefieldType(int3 tile, vstd::RNG & rand)
 {
 	assert(tile.valid());
 
@@ -1246,8 +1218,10 @@ int3 CGameState::guardingCreaturePosition (int3 pos) const
 	return gs->map->guardingCreaturePositions[pos.z][pos.x][pos.y];
 }
 
-void CGameState::updateRumor()
+RumorState CGameState::pickNewRumor()
 {
+	RumorState newRumor;
+
 	static const std::vector<RumorState::ERumorType> rumorTypes = {RumorState::TYPE_MAP, RumorState::TYPE_SPECIAL, RumorState::TYPE_RAND, RumorState::TYPE_RAND};
 	std::vector<RumorState::ERumorTypeSpecial> sRumorTypes = {
 		RumorState::RUMOR_OBELISKS, RumorState::RUMOR_ARTIFACTS, RumorState::RUMOR_ARMY, RumorState::RUMOR_INCOME};
@@ -1257,11 +1231,11 @@ void CGameState::updateRumor()
 	int rumorId = -1;
 	int rumorExtra = -1;
 	auto & rand = getRandomGenerator();
-	rumor.type = *RandomGeneratorUtil::nextItem(rumorTypes, rand);
+	newRumor.type = *RandomGeneratorUtil::nextItem(rumorTypes, rand);
 
 	do
 	{
-		switch(rumor.type)
+		switch(newRumor.type)
 		{
 		case RumorState::TYPE_SPECIAL:
 		{
@@ -1299,13 +1273,13 @@ void CGameState::updateRumor()
 		}
 		case RumorState::TYPE_MAP:
 			// Makes sure that map rumors only used if there enough rumors too choose from
-			if(!map->rumors.empty() && (map->rumors.size() > 1 || !rumor.last.count(RumorState::TYPE_MAP)))
+			if(!map->rumors.empty() && (map->rumors.size() > 1 || !currentRumor.last.count(RumorState::TYPE_MAP)))
 			{
 				rumorId = rand.nextInt((int)map->rumors.size() - 1);
 				break;
 			}
 			else
-				rumor.type = RumorState::TYPE_RAND;
+				newRumor.type = RumorState::TYPE_RAND;
 			[[fallthrough]];
 
 		case RumorState::TYPE_RAND:
@@ -1315,7 +1289,9 @@ void CGameState::updateRumor()
 			break;
 		}
 	}
-	while(!rumor.update(rumorId, rumorExtra));
+	while(!newRumor.update(rumorId, rumorExtra));
+
+	return newRumor;
 }
 
 bool CGameState::isVisible(int3 pos, const std::optional<PlayerColor> & player) const
@@ -1329,7 +1305,7 @@ bool CGameState::isVisible(int3 pos, const std::optional<PlayerColor> & player) 
 	if(player->isSpectator())
 		return true;
 
-	return (*getPlayerTeam(*player)->fogOfWarMap)[pos.z][pos.x][pos.y];
+	return getPlayerTeam(*player)->fogOfWarMap[pos.z][pos.x][pos.y];
 }
 
 bool CGameState::isVisible(const CGObjectInstance * obj, const std::optional<PlayerColor> & player) const
@@ -1564,137 +1540,6 @@ bool CGameState::checkForStandardLoss(const PlayerColor & player) const
 	return pState.checkVanquished();
 }
 
-struct statsHLP
-{
-	using TStat = std::pair<PlayerColor, si64>;
-	//converts [<player's color, value>] to vec[place] -> platers
-	static std::vector< std::vector< PlayerColor > > getRank( std::vector<TStat> stats )
-	{
-		std::sort(stats.begin(), stats.end(), statsHLP());
-
-		//put first element
-		std::vector< std::vector<PlayerColor> > ret;
-		std::vector<PlayerColor> tmp;
-		tmp.push_back( stats[0].first );
-		ret.push_back( tmp );
-
-		//the rest of elements
-		for(int g=1; g<stats.size(); ++g)
-		{
-			if(stats[g].second == stats[g-1].second)
-			{
-				(ret.end()-1)->push_back( stats[g].first );
-			}
-			else
-			{
-				//create next occupied rank
-				std::vector<PlayerColor> tmp;
-				tmp.push_back(stats[g].first);
-				ret.push_back(tmp);
-			}
-		}
-
-		return ret;
-	}
-
-	bool operator()(const TStat & a, const TStat & b) const
-	{
-		return a.second > b.second;
-	}
-
-	static const CGHeroInstance * findBestHero(CGameState * gs, const PlayerColor & color)
-	{
-		std::vector<ConstTransitivePtr<CGHeroInstance> > &h = gs->players[color].heroes;
-		if(h.empty())
-			return nullptr;
-		//best hero will be that with highest exp
-		int best = 0;
-		for(int b=1; b<h.size(); ++b)
-		{
-			if(h[b]->exp > h[best]->exp)
-			{
-				best = b;
-			}
-		}
-		return h[best];
-	}
-
-	//calculates total number of artifacts that belong to given player
-	static int getNumberOfArts(const PlayerState * ps)
-	{
-		int ret = 0;
-		for(auto h : ps->heroes)
-		{
-			ret += (int)h->artifactsInBackpack.size() + (int)h->artifactsWorn.size();
-		}
-		return ret;
-	}
-
-	// get total strength of player army
-	static si64 getArmyStrength(const PlayerState * ps)
-	{
-		si64 str = 0;
-
-		for(auto h : ps->heroes)
-		{
-			if(!h->inTownGarrison)		//original h3 behavior
-				str += h->getArmyStrength();
-		}
-		return str;
-	}
-
-	// get total gold income
-	static int getIncome(const PlayerState * ps)
-	{
-		int totalIncome = 0;
-		const CGObjectInstance * heroOrTown = nullptr;
-
-		//Heroes can produce gold as well - skill, specialty or arts
-		for(const auto & h : ps->heroes)
-		{
-			totalIncome += h->valOfBonuses(Selector::typeSubtype(BonusType::GENERATE_RESOURCE, BonusSubtypeID(GameResID(GameResID::GOLD))));
-
-			if(!heroOrTown)
-				heroOrTown = h;
-		}
-
-		//Add town income of all towns
-		for(const auto & t : ps->towns)
-		{
-			totalIncome += t->dailyIncome()[EGameResID::GOLD];
-
-			if(!heroOrTown)
-				heroOrTown = t;
-		}
-
-		/// FIXME: Dirty dirty hack
-		/// Stats helper need some access to gamestate.
-		std::vector<const CGObjectInstance *> ownedObjects;
-		for(const CGObjectInstance * obj : heroOrTown->cb->gameState()->map->objects)
-		{
-			if(obj && obj->tempOwner == ps->color)
-				ownedObjects.push_back(obj);
-		}
-		/// This is code from CPlayerSpecificInfoCallback::getMyObjects
-		/// I'm really need to find out about callback interface design...
-
-		for(const auto * object : ownedObjects)
-		{
-			//Mines
-			if ( object->ID == Obj::MINE )
-			{
-				const auto * mine = dynamic_cast<const CGMine *>(object);
-				assert(mine);
-
-				if (mine->producedResource == EGameResID::GOLD)
-					totalIncome += mine->producedQuantity;
-			}
-		}
-
-		return totalIncome;
-	}
-};
-
 void CGameState::obtainPlayersStats(SThievesGuildInfo & tgi, int level)
 {
 	auto playerInactive = [&](const PlayerColor & color) 
@@ -1714,7 +1559,7 @@ void CGameState::obtainPlayersStats(SThievesGuildInfo & tgi, int level)
 			stat.second = VAL_GETTER; \
 			stats.push_back(stat); \
 		} \
-		tgi.FIELD = statsHLP::getRank(stats); \
+		tgi.FIELD = Statistic::getRank(stats); \
 	}
 
 	for(auto & elem : players)
@@ -1736,7 +1581,7 @@ void CGameState::obtainPlayersStats(SThievesGuildInfo & tgi, int level)
 		{
 			if(playerInactive(player.second.color))
 				continue;
-			const CGHeroInstance * best = statsHLP::findBestHero(this, player.second.color);
+			const CGHeroInstance * best = Statistic::findBestHero(this, player.second.color);
 			InfoAboutHero iah;
 			iah.initFromHero(best, (level >= 2) ? InfoAboutHero::EInfoLevel::DETAILED : InfoAboutHero::EInfoLevel::BASIC);
 			iah.army.clear();
@@ -1757,27 +1602,19 @@ void CGameState::obtainPlayersStats(SThievesGuildInfo & tgi, int level)
 	}
 	if(level >= 3) //obelisks found
 	{
-		auto getObeliskVisited = [&](const TeamID & t)
-		{
-			if(map->obelisksVisited.count(t))
-				return map->obelisksVisited[t];
-			else
-				return ui8(0);
-		};
-
-		FILL_FIELD(obelisks, getObeliskVisited(gs->getPlayerTeam(g->second.color)->id))
+		FILL_FIELD(obelisks, Statistic::getObeliskVisited(gs, gs->getPlayerTeam(g->second.color)->id))
 	}
 	if(level >= 4) //artifacts
 	{
-		FILL_FIELD(artifacts, statsHLP::getNumberOfArts(&g->second))
+		FILL_FIELD(artifacts, Statistic::getNumberOfArts(&g->second))
 	}
 	if(level >= 4) //army strength
 	{
-		FILL_FIELD(army, statsHLP::getArmyStrength(&g->second))
+		FILL_FIELD(army, Statistic::getArmyStrength(&g->second))
 	}
 	if(level >= 5) //income
 	{
-		FILL_FIELD(income, statsHLP::getIncome(&g->second))
+		FILL_FIELD(income, Statistic::getIncome(gs, &g->second))
 	}
 	if(level >= 2) //best hero's stats
 	{
@@ -1939,40 +1776,23 @@ CGHeroInstance * CGameState::getUsedHero(const HeroTypeID & hid) const
 	return nullptr;
 }
 
-bool RumorState::update(int id, int extra)
-{
-	if(vstd::contains(last, type))
-	{
-		if(last[type].first != id)
-		{
-			last[type].first = id;
-			last[type].second = extra;
-		}
-		else
-			return false;
-	}
-	else
-		last[type] = std::make_pair(id, extra);
 
-	return true;
-}
 
 TeamState::TeamState()
 {
 	setNodeType(TEAM);
-	fogOfWarMap = std::make_unique<boost::multi_array<ui8, 3>>();
 }
 
-CRandomGenerator & CGameState::getRandomGenerator()
+vstd::RNG & CGameState::getRandomGenerator()
 {
-	return rand;
+	return callback->getRandomGenerator();
 }
 
-ArtifactID CGameState::pickRandomArtifact(CRandomGenerator & rand, int flags, std::function<bool(ArtifactID)> accepts)
+ArtifactID CGameState::pickRandomArtifact(vstd::RNG & rand, int flags, std::function<bool(ArtifactID)> accepts)
 {
 	std::set<ArtifactID> potentialPicks;
 
-	// Select artifacts that satisfy provided criterias
+	// Select artifacts that satisfy provided criteria
 	for (auto const & artifactID : map->allowedArtifact)
 	{
 		if (!VLC->arth->legalArtifact(artifactID))
@@ -2003,7 +1823,7 @@ ArtifactID CGameState::pickRandomArtifact(CRandomGenerator & rand, int flags, st
 	return pickRandomArtifact(rand, potentialPicks);
 }
 
-ArtifactID CGameState::pickRandomArtifact(CRandomGenerator & rand, std::set<ArtifactID> potentialPicks)
+ArtifactID CGameState::pickRandomArtifact(vstd::RNG & rand, std::set<ArtifactID> potentialPicks)
 {
 	// No allowed artifacts at all - give Grail - this can't be banned (hopefully)
 	// FIXME: investigate how such cases are handled by H3 - some heavily customized user-made maps likely rely on H3 behavior
@@ -2032,12 +1852,12 @@ ArtifactID CGameState::pickRandomArtifact(CRandomGenerator & rand, std::set<Arti
 	return artID;
 }
 
-ArtifactID CGameState::pickRandomArtifact(CRandomGenerator & rand, std::function<bool(ArtifactID)> accepts)
+ArtifactID CGameState::pickRandomArtifact(vstd::RNG & rand, std::function<bool(ArtifactID)> accepts)
 {
 	return pickRandomArtifact(rand, 0xff, std::move(accepts));
 }
 
-ArtifactID CGameState::pickRandomArtifact(CRandomGenerator & rand, int flags)
+ArtifactID CGameState::pickRandomArtifact(vstd::RNG & rand, int flags)
 {
 	return pickRandomArtifact(rand, flags, [](const ArtifactID &) { return true; });
 }

@@ -11,10 +11,12 @@
 
 #include "bonuses/Bonus.h"
 #include "bonuses/CBonusSystemNode.h"
+#include "serializer/Serializeable.h"
 #include "GameConstants.h"
 #include "CArtHandler.h"
 #include "CArtifactInstance.h"
 #include "CCreatureHandler.h"
+#include "VCMI_Lib.h"
 
 #include <vcmi/Entity.h>
 
@@ -208,7 +210,7 @@ namespace NArmyFormation
 	static const std::vector<std::string> names{ "wide", "tight" };
 }
 
-class DLL_LINKAGE CCreatureSet : public IArmyDescriptor //seven combined creatures
+class DLL_LINKAGE CCreatureSet : public IArmyDescriptor, public virtual Serializeable //seven combined creatures
 {
 	CCreatureSet(const CCreatureSet &) = delete;
 	CCreatureSet &operator=(const CCreatureSet&);
@@ -266,7 +268,7 @@ public:
 	TMapCreatureSlot getCreatureMap() const;
 	TCreatureQueue getCreatureQueue(const SlotID & exclude) const;
 
-	bool mergableStacks(std::pair<SlotID, SlotID> & out, const SlotID & preferable = SlotID()) const; //looks for two same stacks, returns slot positions;
+	bool mergeableStacks(std::pair<SlotID, SlotID> & out, const SlotID & preferable = SlotID()) const; //looks for two same stacks, returns slot positions;
 	bool validTypes(bool allowUnrandomized = false) const; //checks if all types of creatures are set properly
 	bool slotEmpty(const SlotID & slot) const;
 	int stacksCount() const;

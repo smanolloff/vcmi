@@ -12,8 +12,9 @@
 #include "IMarket.h"
 #include "CGDwelling.h"
 #include "CGTownBuilding.h"
-
-#include "../CTownHandler.h" // For CTown
+#include "../LogicalExpression.h"
+#include "../entities/faction/CFaction.h" // TODO: remove
+#include "../entities/faction/CTown.h" // TODO: remove
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -40,6 +41,7 @@ struct DLL_LINKAGE GrowthInfo
 
 	std::vector<Entry> entries;
 	int totalGrowth() const;
+	int handicapPercentage;
 };
 
 class DLL_LINKAGE CGTownInstance : public CGDwelling, public IShipyard, public IMarket, public INativeTerrainProvider, public ICreatureUpgrader
@@ -52,7 +54,7 @@ public:
 
 	CTownAndVisitingHero townAndVis;
 	const CTown * town;
-	si32 builded; //how many buildings has been built this turn
+	si32 built; //how many buildings has been built this turn
 	si32 destroyed; //how many buildings has been destroyed this turn
 	ConstTransitivePtr<CGHeroInstance> garrisonHero, visitingHero;
 	ui32 identifier; //special identifier from h3m (only > RoE maps)
@@ -63,15 +65,15 @@ public:
 	std::vector<CGTownBuilding*> bonusingBuildings;
 	std::vector<SpellID> possibleSpells, obligatorySpells;
 	std::vector<std::vector<SpellID> > spells; //spells[level] -> vector of spells, first will be available in guild
-	std::list<CCastleEvent> events;
-	std::pair<si32, si32> bonusValue;//var to store town bonuses (rampart = resources from mystic pond);
+	std::vector<CCastleEvent> events;
+	std::pair<si32, si32> bonusValue;//var to store town bonuses (rampart = resources from mystic pond, factory = save debts);
 
 	//////////////////////////////////////////////////////////////////////////
 	template <typename Handler> void serialize(Handler &h)
 	{
 		h & static_cast<CGDwelling&>(*this);
 		h & nameTextId;
-		h & builded;
+		h & built;
 		h & destroyed;
 		h & identifier;
 		h & garrisonHero;
@@ -177,7 +179,7 @@ public:
 	bool armedGarrison() const; //true if town has creatures in garrison or garrisoned hero
 	int getTownLevel() const;
 
-	CBuilding::TRequired genBuildingRequirements(const BuildingID & build, bool deep = false) const;
+	LogicalExpression<BuildingID> genBuildingRequirements(const BuildingID & build, bool deep = false) const;
 
 	void mergeGarrisonOnSiege() const; // merge garrison into army of visiting hero
 	void removeCapitols(const PlayerColor & owner) const;
@@ -201,11 +203,11 @@ public:
 	virtual ~CGTownInstance();
 
 	///IObjectInterface overrides
-	void newTurn(CRandomGenerator & rand) const override;
+	void newTurn(vstd::RNG & rand) const override;
 	void onHeroVisit(const CGHeroInstance * h) const override;
 	void onHeroLeave(const CGHeroInstance * h) const override;
-	void initObj(CRandomGenerator & rand) override;
-	void pickRandomObject(CRandomGenerator & rand) override;
+	void initObj(vstd::RNG & rand) override;
+	void pickRandomObject(vstd::RNG & rand) override;
 	void battleFinished(const CGHeroInstance * hero, const BattleResult & result) const override;
 	std::string getObjectName() const override;
 
@@ -221,17 +223,17 @@ public:
 protected:
 	void setPropertyDer(ObjProperty what, ObjPropertyID identifier) override;
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
-	void blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const override;
+	void blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const override;
 
 private:
-	FactionID randomizeFaction(CRandomGenerator & rand);
+	FactionID randomizeFaction(vstd::RNG & rand);
 	void setOwner(const PlayerColor & owner) const;
 	void onTownCaptured(const PlayerColor & winner) const;
 	int getDwellingBonus(const std::vector<CreatureID>& creatureIds, const std::vector<ConstTransitivePtr<CGDwelling> >& dwellings) const;
 	bool townEnvisagesBuilding(BuildingSubID::EBuildingSubID bid) const;
 	bool isBonusingBuildingAdded(BuildingID bid) const;
 	void initOverriddenBids();
-	void addTownBonuses(CRandomGenerator & rand);
+	void addTownBonuses(vstd::RNG & rand);
 };
 
 VCMI_LIB_NAMESPACE_END

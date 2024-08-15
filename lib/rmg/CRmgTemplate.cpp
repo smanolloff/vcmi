@@ -14,12 +14,12 @@
 #include "CRmgTemplate.h"
 #include "Functions.h"
 
-#include "../VCMI_Lib.h"
-#include "../CTownHandler.h"
 #include "../TerrainHandler.h"
-#include "../serializer/JsonSerializeFormat.h"
-#include "../modding/ModScope.h"
+#include "../VCMI_Lib.h"
 #include "../constants/StringConstants.h"
+#include "../entities/faction/CTownHandler.h"
+#include "../modding/ModScope.h"
+#include "../serializer/JsonSerializeFormat.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -176,7 +176,7 @@ void ZoneOptions::setTerrainTypes(const std::set<TerrainId> & value)
 std::set<TerrainId> ZoneOptions::getDefaultTerrainTypes() const
 {
 	std::set<TerrainId> terrains;
-	for (auto terrain : VLC->terrainTypeHandler->objects)
+	for(const auto & terrain : VLC->terrainTypeHandler->objects)
 	{
 		if (terrain->isLand() && terrain->isPassable())
 		{
@@ -463,7 +463,8 @@ void ZoneConnection::serializeJson(JsonSerializeFormat & handler)
 		"guarded",
 		"fictive",
 		"repulsive",
-		"wide"
+		"wide",
+		"forcePortal"
 	};
 
 	static const std::vector<std::string> roadOptions =
@@ -761,7 +762,7 @@ std::set<TerrainId> CRmgTemplate::inheritTerrainType(std::shared_ptr<ZoneOptions
 		const auto otherZone = zones.at(zone->getTerrainTypeLikeZone());
 		zone->setTerrainTypes(inheritTerrainType(otherZone, iteration));
 	}
-	//This implicitely excludes banned terrains
+	//This implicitly excludes banned terrains
 	return zone->getTerrainTypes();
 }
 

@@ -1,3 +1,5 @@
+# Map Object Format
+
 ## Description
 
 Full object consists from 3 parts:
@@ -50,7 +52,7 @@ Full object consists from 3 parts:
 {
 	"myCoolObject":
 	{
-		// Additonal parameters that will be passed over to class that controls behavior of the object
+		// Additional parameters that will be passed over to class that controls behavior of the object
 		// See object-specific properties of different object types
 		"propertyA" : "value",
 		"propertyB" : 12345

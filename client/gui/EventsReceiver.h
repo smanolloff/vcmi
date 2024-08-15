@@ -16,6 +16,7 @@ VCMI_LIB_NAMESPACE_END
 
 class EventDispatcher;
 enum class EShortcut;
+enum class InputMode;
 
 /// Class that is capable of subscribing and receiving input events
 /// Acts as base class for all UI elements
@@ -67,13 +68,15 @@ public:
 	/// Called when UI element gesture status changes
 	virtual void gesture(bool on, const Point & initialPosition, const Point & finalPosition) {}
 
-	virtual void textInputed(const std::string & enteredText) {}
+	virtual void textInputted(const std::string & enteredText) {}
 	virtual void textEdited(const std::string & enteredText) {}
 
 	virtual void keyPressed(EShortcut key) {}
 	virtual void keyReleased(EShortcut key) {}
 
 	virtual void tick(uint32_t msPassed) {}
+
+	virtual void inputModeChanged(InputMode modi) {}
 
 public:
 	AEventsReceiver();
@@ -94,6 +97,7 @@ public:
 		TEXTINPUT = 512,
 		GESTURE = 1024,
 		DRAG = 2048,
+		INPUT_MODE_CHANGE = 4096
 	};
 
 	/// Returns true if element is currently hovered by mouse

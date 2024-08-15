@@ -42,6 +42,8 @@ class AdventureMapShortcuts
 	void showQuestlog();
 	void toggleTrackHero();
 	void toggleGrid();
+	void toggleVisitable();
+	void toggleBlocked();
 	void toggleSleepWake();
 	void setHeroSleeping();
 	void setHeroAwake();
@@ -94,6 +96,6 @@ public:
 	bool optionMapViewActive();
 
 	void setState(EAdventureState newState);
-	EAdventureState getState();
+	EAdventureState getState() const;
 	void onMapViewMoved(const Rect & visibleArea, int mapLevel);
 };

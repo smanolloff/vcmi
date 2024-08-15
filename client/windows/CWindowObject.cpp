@@ -25,12 +25,11 @@
 
 #include "../CGameInfo.h"
 #include "../CPlayerInterface.h"
-#include "../CMusicHandler.h"
 
 #include "../../CCallback.h"
 
 #include "../../lib/CConfigHandler.h"
-#include "../../lib/CGeneralTextHandler.h" //for Unicode related stuff
+#include "../../lib/texts/CGeneralTextHandler.h" //for Unicode related stuff
 
 #include <SDL_surface.h>
 
@@ -41,8 +40,6 @@ CWindowObject::CWindowObject(int options_, const ImagePath & imageName, Point ce
 {
 	if(!(options & NEEDS_ANIMATED_BACKGROUND)) //currently workaround for highscores (currently uses window as normal control, because otherwise videos are not played in background yet)
 		assert(parent == nullptr); //Safe to remove, but windows should not have parent
-
-	defActions = 255-DISPOSE;
 
 	if (options & RCLICK_POPUP)
 		CCS->curh->hide();
@@ -64,8 +61,6 @@ CWindowObject::CWindowObject(int options_, const ImagePath & imageName):
 	if(!(options & NEEDS_ANIMATED_BACKGROUND)) //currently workaround for highscores (currently uses window as normal control, because otherwise videos are not played in background yet)
 		assert(parent == nullptr); //Safe to remove, but windows should not have parent
 
-	defActions = 255-DISPOSE;
-
 	if(options & RCLICK_POPUP)
 		CCS->curh->hide();
 
@@ -86,7 +81,7 @@ CWindowObject::~CWindowObject()
 
 std::shared_ptr<CPicture> CWindowObject::createBg(const ImagePath & imageName, bool playerColored)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	if(imageName.empty())
 		return nullptr;
@@ -94,13 +89,13 @@ std::shared_ptr<CPicture> CWindowObject::createBg(const ImagePath & imageName, b
 	auto image = std::make_shared<CPicture>(imageName);
 	image->getSurface()->setBlitMode(EImageBlitMode::OPAQUE);
 	if(playerColored)
-		image->colorize(LOCPLINT->playerID);
+		image->setPlayerColor(LOCPLINT->playerID);
 	return image;
 }
 
 void CWindowObject::setBackground(const ImagePath & filename)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	background = createBg(filename, options & PLAYER_COLORED);
 
@@ -203,15 +198,15 @@ void CWindowObject::setShadow(bool on)
 
 		//create base 8x8 piece of shadow
 		SDL_Surface * shadowCorner = CSDL_Ext::copySurface(shadowCornerTempl);
-		SDL_Surface * shadowBottom = CSDL_Ext::scaleSurfaceFast(shadowBottomTempl, fullsize.x - size, size);
-		SDL_Surface * shadowRight  = CSDL_Ext::scaleSurfaceFast(shadowRightTempl,  size, fullsize.y - size);
+		SDL_Surface * shadowBottom = CSDL_Ext::scaleSurface(shadowBottomTempl, fullsize.x - size, size);
+		SDL_Surface * shadowRight  = CSDL_Ext::scaleSurface(shadowRightTempl,  size, fullsize.y - size);
 
 		blitAlphaCol(shadowBottom, 0);
 		blitAlphaRow(shadowRight, 0);
 
 		//generate "shadow" object with these 3 pieces in it
 		{
-			OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+			OBJECT_CONSTRUCTION;
 
 			shadowParts.push_back(std::make_shared<CPicture>( GH.renderHandler().createImage(shadowCorner), Point(shadowPos.x,   shadowPos.y)));
 			shadowParts.push_back(std::make_shared<CPicture>( GH.renderHandler().createImage(shadowRight ),  Point(shadowPos.x,   shadowStart.y)));

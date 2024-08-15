@@ -26,7 +26,7 @@ Node & resolvePointer(Node & in, const std::string & pointer)
 	size_t splitPos = pointer.find('/', 1);
 
 	std::string entry = pointer.substr(1, splitPos - 1);
-	std::string remainer = splitPos == std::string::npos ? "" : pointer.substr(splitPos);
+	std::string remainder = splitPos == std::string::npos ? "" : pointer.substr(splitPos);
 
 	if(in.getType() == VCMI_LIB_WRAP_NAMESPACE(JsonNode)::JsonType::DATA_VECTOR)
 	{
@@ -39,9 +39,9 @@ Node & resolvePointer(Node & in, const std::string & pointer)
 		auto index = boost::lexical_cast<size_t>(entry);
 
 		if(in.Vector().size() > index)
-			return in.Vector()[index].resolvePointer(remainer);
+			return in.Vector()[index].resolvePointer(remainder);
 	}
-	return in[entry].resolvePointer(remainer);
+	return in[entry].resolvePointer(remainder);
 }
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -86,15 +86,15 @@ JsonNode::JsonNode(const std::string & string)
 {
 }
 
-JsonNode::JsonNode(const std::byte * data, size_t datasize)
-	: JsonNode(data, datasize, JsonParsingSettings())
+JsonNode::JsonNode(const std::byte * data, size_t datasize, const std::string & fileName)
+	: JsonNode(data, datasize, JsonParsingSettings(), fileName)
 {
 }
 
-JsonNode::JsonNode(const std::byte * data, size_t datasize, const JsonParsingSettings & parserSettings)
+JsonNode::JsonNode(const std::byte * data, size_t datasize, const JsonParsingSettings & parserSettings, const std::string & fileName)
 {
 	JsonParser parser(data, datasize, parserSettings);
-	*this = parser.parse("<unknown>");
+	*this = parser.parse(fileName);
 }
 
 JsonNode::JsonNode(const JsonPath & fileURI)

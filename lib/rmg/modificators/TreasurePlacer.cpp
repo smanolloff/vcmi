@@ -33,6 +33,8 @@
 #include "../../mapping/CMap.h"
 #include "../../mapping/CMapEditManager.h"
 
+#include <vstd/RNG.h>
+
 VCMI_LIB_NAMESPACE_BEGIN
 
 ObjectInfo::ObjectInfo():
@@ -163,7 +165,7 @@ void TreasurePlacer::addAllPossibleObjects()
 	oi.maxPerZone = std::numeric_limits<ui32>::max();
 
 	std::vector<const CCreature *> creatures; //native creatures for this zone
-	for(auto cre : VLC->creh->objects)
+	for(auto const & cre : VLC->creh->objects)
 	{
 		if(!cre->special && cre->getFaction() == zone.getTownType())
 		{
@@ -221,12 +223,10 @@ void TreasurePlacer::addAllPossibleObjects()
 			auto * obj = dynamic_cast<CGArtifact *>(factory->create(map.mapInstance->cb, nullptr));
 			std::vector<SpellID> out;
 			
-			for(auto spell : VLC->spellh->objects) //spellh size appears to be greater (?)
+			for(auto spellID : VLC->spellh->getDefaultAllowed())
 			{
-				if(map.isAllowedSpell(spell->id) && spell->getLevel() == i + 1)
-				{
-					out.push_back(spell->id);
-				}
+				if(map.isAllowedSpell(spellID) && spellID.toSpell()->getLevel() == i + 1)
+					out.push_back(spellID);
 			}
 			auto * a = ArtifactUtils::createScroll(*RandomGeneratorUtil::nextItem(out, zone.getRand()));
 			obj->storedArtifact = a;
@@ -354,10 +354,10 @@ void TreasurePlacer::addAllPossibleObjects()
 			auto * obj = dynamic_cast<CGPandoraBox *>(factory->create(map.mapInstance->cb, nullptr));
 
 			std::vector <const CSpell *> spells;
-			for(auto spell : VLC->spellh->objects)
+			for(auto spellID : VLC->spellh->getDefaultAllowed())
 			{
-				if(map.isAllowedSpell(spell->id) && spell->getLevel() == i)
-					spells.push_back(spell.get());
+				if(map.isAllowedSpell(spellID) && spellID.toSpell()->getLevel() == i)
+					spells.push_back(spellID.toSpell());
 			}
 			
 			RandomGeneratorUtil::randomShuffle(spells, zone.getRand());
@@ -387,10 +387,10 @@ void TreasurePlacer::addAllPossibleObjects()
 			auto * obj = dynamic_cast<CGPandoraBox *>(factory->create(map.mapInstance->cb, nullptr));
 
 			std::vector <const CSpell *> spells;
-			for(auto spell : VLC->spellh->objects)
+			for(auto spellID : VLC->spellh->getDefaultAllowed())
 			{
-				if(map.isAllowedSpell(spell->id) && spell->hasSchool(SpellSchool(i)))
-					spells.push_back(spell.get());
+				if(map.isAllowedSpell(spellID) && spellID.toSpell()->hasSchool(SpellSchool(i)))
+					spells.push_back(spellID.toSpell());
 			}
 			
 			RandomGeneratorUtil::randomShuffle(spells, zone.getRand());
@@ -419,10 +419,10 @@ void TreasurePlacer::addAllPossibleObjects()
 		auto * obj = dynamic_cast<CGPandoraBox *>(factory->create(map.mapInstance->cb, nullptr));
 
 		std::vector <const CSpell *> spells;
-		for(auto spell : VLC->spellh->objects)
+		for(auto spellID : VLC->spellh->getDefaultAllowed())
 		{
-			if(map.isAllowedSpell(spell->id))
-				spells.push_back(spell.get());
+			if(map.isAllowedSpell(spellID))
+				spells.push_back(spellID.toSpell());
 		}
 		
 		RandomGeneratorUtil::randomShuffle(spells, zone.getRand());
@@ -523,7 +523,7 @@ void TreasurePlacer::addAllPossibleObjects()
 		}
 		
 		static const int seerLevels = std::min(generator.getConfig().questValues.size(), generator.getConfig().questRewardValues.size());
-		for(int i = 0; i < seerLevels; i++) //seems that code for exp and gold reward is similiar
+		for(int i = 0; i < seerLevels; i++) //seems that code for exp and gold reward is similar
 		{
 			int randomAppearance = chooseRandomAppearance(zone.getRand(), Obj::SEER_HUT, zone.getTerrainType());
 			
@@ -651,7 +651,7 @@ std::vector<ObjectInfo*> TreasurePlacer::prepareTreasurePile(const CTreasureInfo
 		if (currentValue >= minValue)
 		{
 			// 50% chance to end right here
-			if (zone.getRand().nextInt() & 1)
+			if (zone.getRand().nextInt(0, 1) == 1)
 				break;
 		}
 	}
@@ -897,15 +897,15 @@ void TreasurePlacer::createTreasures(ObjectManager& manager)
 
 			int value = std::accumulate(treasurePileInfos.begin(), treasurePileInfos.end(), 0, [](int v, const ObjectInfo* oi) {return v + oi->value; });
 
-			const ui32 maxPileGenerationAttemps = 2;
-			for (ui32 attempt = 0; attempt < maxPileGenerationAttemps; attempt++)
+			const ui32 maxPileGenerationAttempts = 2;
+			for (ui32 attempt = 0; attempt < maxPileGenerationAttempts; attempt++)
 			{
 				auto rmgObject = constructTreasurePile(treasurePileInfos, attempt == maxAttempts);
 
 				if (rmgObject.instances().empty())
 				{
-					// Restore once if all attemps failed
-					if (attempt == (maxPileGenerationAttemps - 1))
+					// Restore once if all attempts failed
+					if (attempt == (maxPileGenerationAttempts - 1))
 					{
 						restoreZoneLimits(treasurePileInfos);
 					}

@@ -15,7 +15,7 @@
 #include <vcmi/Entity.h>
 #include <vcmi/ServerCallback.h>
 
-#include "CGeneralTextHandler.h"
+#include "texts/CGeneralTextHandler.h"
 #include "battle/BattleInfo.h"
 #include "spells/CSpellHandler.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -24,7 +24,7 @@ VCMI_LIB_NAMESPACE_BEGIN
 
 
 ///CStack
-CStack::CStack(const CStackInstance * Base, const PlayerColor & O, int I, ui8 Side, const SlotID & S):
+CStack::CStack(const CStackInstance * Base, const PlayerColor & O, int I, BattleSide Side, const SlotID & S):
 	CBonusSystemNode(STACK_BATTLE),
 	base(Base),
 	ID(I),
@@ -45,7 +45,7 @@ CStack::CStack():
 {
 }
 
-CStack::CStack(const CStackBasicDescriptor * stack, const PlayerColor & O, int I, ui8 Side, const SlotID & S):
+CStack::CStack(const CStackBasicDescriptor * stack, const PlayerColor & O, int I, BattleSide Side, const SlotID & S):
 	CBonusSystemNode(STACK_BATTLE),
 	ID(I),
 	type(stack->type),
@@ -212,11 +212,9 @@ void CStack::prepareAttacked(BattleStackAttacked & bsa, vstd::RNG & rand, const 
 
 			auto resurrectedAdd = static_cast<int32_t>(baseAmount - (resurrectedCount / resurrectFactor));
 
-			auto rangeGen = rand.getInt64Range(0, 99);
-
 			for(int32_t i = 0; i < resurrectedAdd; i++)
 			{
-				if(resurrectValue > rangeGen())
+				if(resurrectValue > rand.nextInt(0, 99))
 					resurrectedCount += 1;
 			}
 
@@ -369,7 +367,7 @@ uint32_t CStack::unitId() const
 	return ID;
 }
 
-ui8 CStack::unitSide() const
+BattleSide CStack::unitSide() const
 {
 	return side;
 }

@@ -23,11 +23,15 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
+namespace vstd
+{
+class RNG;
+}
+
 class CHeroClass;
 class CGHeroInstance;
 struct BattleHex;
 class JsonNode;
-class CRandomGenerator;
 class JsonSerializeFormat;
 class BattleField;
 
@@ -80,6 +84,7 @@ public:
 	int32_t getIndex() const override;
 	int32_t getIconIndex() const override;
 	std::string getJsonKey() const override;
+	std::string getModScope() const override;
 	HeroTypeID getId() const override;
 	void registerIcons(const IconRegistar & cb) const override;
 
@@ -141,6 +146,7 @@ public:
 	int32_t getIndex() const override;
 	int32_t getIconIndex() const override;
 	std::string getJsonKey() const override;
+	std::string getModScope() const override;
 	HeroClassID getId() const override;
 	void registerIcons(const IconRegistar & cb) const override;
 
@@ -148,7 +154,7 @@ public:
 	std::string getNameTextID() const override;
 
 	bool isMagicHero() const;
-	SecondarySkill chooseSecSkill(const std::set<SecondarySkill> & possibles, CRandomGenerator & rand) const; //picks secondary skill out from given possibilities
+	SecondarySkill chooseSecSkill(const std::set<SecondarySkill> & possibles, vstd::RNG & rand) const; //picks secondary skill out from given possibilities
 
 	void updateFrom(const JsonNode & data);
 	void serializeJson(JsonSerializeFormat & handler);
@@ -171,7 +177,7 @@ public:
 
 protected:
 	const std::vector<std::string> & getTypeNames() const override;
-	CHeroClass * loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index) override;
+	std::shared_ptr<CHeroClass> loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index) override;
 
 };
 
@@ -209,7 +215,7 @@ public:
 
 protected:
 	const std::vector<std::string> & getTypeNames() const override;
-	CHero * loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index) override;
+	std::shared_ptr<CHero> loadFromJson(const std::string & scope, const JsonNode & node, const std::string & identifier, size_t index) override;
 };
 
 VCMI_LIB_NAMESPACE_END

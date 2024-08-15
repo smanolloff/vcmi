@@ -51,6 +51,7 @@ namespace BuildingSubID
 		LIGHTHOUSE,
 		TREASURY,
 		THIEVES_GUILD,
+		BANK,
 		CUSTOM_VISITING_BONUS,
 		CUSTOM_VISITING_REWARD
 	};
@@ -261,6 +262,13 @@ enum class EMovementMode : int8_t
 	MONOLITH,
 	CASTLE_GATE,
 	TOWN_PORTAL,
+};
+
+enum class EMapLevel : int8_t
+{
+	ANY = -1,
+	SURFACE = 0,
+	UNDERGROUND = 1
 };
 
 VCMI_LIB_NAMESPACE_END

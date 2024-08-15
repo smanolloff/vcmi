@@ -14,6 +14,8 @@
 #include "QuestInfo.h"
 
 #include "../campaign/CampaignState.h"
+#include "../entities/building/CBuilding.h"
+#include "../entities/building/CBuildingHandler.h"
 #include "../mapping/CMapEditManager.h"
 #include "../mapObjects/CGHeroInstance.h"
 #include "../mapObjects/CGTownInstance.h"
@@ -21,12 +23,13 @@
 #include "../mapObjectConstructors/AObjectTypeHandler.h"
 #include "../mapObjectConstructors/CObjectClassesHandler.h"
 #include "../StartInfo.h"
-#include "../CBuildingHandler.h"
 #include "../CHeroHandler.h"
 #include "../mapping/CMap.h"
 #include "../ArtifactUtils.h"
 #include "../CPlayerState.h"
 #include "../serializer/CMemorySerializer.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -130,13 +133,15 @@ void CGameStateCampaign::trimCrossoverHeroesParameters(const CampaignTravel & tr
 				if(!art)
 					return false;
 
-				bool takeable = travelOptions.artifactsKeptByHero.count(art->artType->getId());
+				ArtifactLocation al(hero.hero->id, artifactPosition);
 
-				if (takeable)
+				bool takeable = travelOptions.artifactsKeptByHero.count(art->artType->getId());
+				bool locked = hero.hero->getSlot(al.slot)->locked;
+
+				if (!locked && takeable)
 					hero.transferrableArtifacts.push_back(artifactPosition);
 
-				ArtifactLocation al(hero.hero->id, artifactPosition);
-				if(!takeable && !hero.hero->getSlot(al.slot)->locked)  //don't try removing locked artifacts -> it crashes #1719
+				if (!locked && !takeable)
 				{
 					hero.hero->getArt(al.slot)->removeFrom(*hero.hero, al.slot);
 					return true;
@@ -550,11 +555,11 @@ void CGameStateCampaign::initHeroes()
 		}
 		else //specific hero
 		{
-			for (auto & heroe : heroes)
+			for (auto & hero : heroes)
 			{
-				if (heroe->getHeroType().getNum() == chosenBonus->info1)
+				if (hero->getHeroType().getNum() == chosenBonus->info1)
 				{
-					giveCampaignBonusToHero(heroe);
+					giveCampaignBonusToHero(hero);
 					break;
 				}
 			}

@@ -23,7 +23,7 @@
 #include "../render/Graphics.h"
 #include "../render/IFont.h"
 
-#include "../../lib/TextOperations.h"
+#include "../../lib/texts/TextOperations.h"
 
 #ifdef VCMI_ANDROID
 #include "lib/CAndroidVMHelper.h"
@@ -173,13 +173,13 @@ void CTextContainer::blitLine(Canvas & to, Rect destRect, std::string what)
 {
 	const auto f = graphics->fonts[font];
 	Point where = destRect.topLeft();
-	const std::string delimeters = "{}";
-	auto delimitersCount = std::count_if(what.cbegin(), what.cend(), [&delimeters](char c)
+	const std::string delimiters = "{}";
+	auto delimitersCount = std::count_if(what.cbegin(), what.cend(), [&delimiters](char c)
 	{
-		return delimeters.find(c) != std::string::npos;
+		return delimiters.find(c) != std::string::npos;
 	});
 	//We should count delimiters length from string to correct centering later.
-	delimitersCount *= f->getStringWidth(delimeters)/2;
+	delimitersCount *= f->getStringWidth(delimiters)/2;
 
 	std::smatch match;
 	std::regex expr("\\{(.*?)\\|");
@@ -214,16 +214,16 @@ void CTextContainer::blitLine(Canvas & to, Rect destRect, std::string what)
 		where.y += getBorderSize().y + destRect.h - static_cast<int>(f->getLineHeight());
 
 	size_t begin = 0;
-	size_t currDelimeter = 0;
+	size_t currDelimiter = 0;
 
 	do
 	{
-		size_t end = what.find_first_of(delimeters[currDelimeter % 2], begin);
+		size_t end = what.find_first_of(delimiters[currDelimiter % 2], begin);
 		if(begin != end)
 		{
 			std::string toPrint = what.substr(begin, end - begin);
 
-			if(currDelimeter % 2) // Enclosed in {} text - set to yellow or defined color
+			if(currDelimiter % 2) // Enclosed in {} text - set to yellow or defined color
 			{
 				std::smatch match;
    				std::regex expr("^(.*?)\\|");
@@ -249,7 +249,7 @@ void CTextContainer::blitLine(Canvas & to, Rect destRect, std::string what)
 
 			where.x += (int)f->getStringWidth(toPrint);
 		}
-		currDelimeter++;
+		currDelimiter++;
 	} while(begin++ != std::string::npos);
 }
 
@@ -339,12 +339,11 @@ Rect CMultiLineLabel::getTextLocation()
 CLabelGroup::CLabelGroup(EFonts Font, ETextAlignment Align, const ColorRGBA & Color)
 	: font(Font), align(Align), color(Color)
 {
-	defActions = 255 - DISPOSE;
 }
 
 void CLabelGroup::add(int x, int y, const std::string & text)
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 	labels.push_back(std::make_shared<CLabel>(x, y, font, align, color, text));
 }
 
@@ -357,7 +356,7 @@ CTextBox::CTextBox(std::string Text, const Rect & rect, int SliderStyle, EFonts 
 	sliderStyle(SliderStyle),
 	slider(nullptr)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 	label = std::make_shared<CMultiLineLabel>(rect, Font, Align, Color);
 
 	setRedrawParent(true);
@@ -422,7 +421,7 @@ void CTextBox::setText(const std::string & text)
 		assert(label->pos.w > 0);
 		label->setText(text);
 
-		OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+		OBJECT_CONSTRUCTION;
 		slider = std::make_shared<CSlider>(Point(pos.w - 16, 0), pos.h, std::bind(&CTextBox::sliderMoved, this, _1),
 			label->pos.h, label->textSize.y, 0, Orientation::VERTICAL, CSlider::EStyle(sliderStyle));
 		slider->setScrollStep((int)graphics->fonts[label->font]->getLineHeight());
@@ -505,7 +504,7 @@ CGStatusBar::CGStatusBar(int x, int y, const ImagePath & name, int maxw)
 {
 	addUsedEvents(LCLICK);
 
-	OBJECT_CONSTRUCTION_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	auto backgroundImage = std::make_shared<CPicture>(name);
 	background = backgroundImage;

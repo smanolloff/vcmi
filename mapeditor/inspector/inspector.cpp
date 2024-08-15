@@ -20,7 +20,9 @@
 #include "../lib/mapping/CMap.h"
 #include "../lib/constants/StringConstants.h"
 
-#include "townbulidingswidget.h"
+#include "townbuildingswidget.h"
+#include "towneventswidget.h"
+#include "townspellswidget.h"
 #include "armywidget.h"
 #include "messagewidget.h"
 #include "rewardswidget.h"
@@ -139,7 +141,7 @@ void Initializer::initialize(CGHeroInstance * o)
 	
 	if(o->ID == Obj::HERO)
 	{
-		for(auto t : VLC->heroh->objects)
+		for(auto const & t : VLC->heroh->objects)
 		{
 			if(t->heroClass->getId() == HeroClassID(o->subID))
 			{
@@ -171,7 +173,7 @@ void Initializer::initialize(CGTownInstance * o)
 	if(lvl > 2) o->builtBuildings.insert(BuildingID::CASTLE);
 	if(lvl > 3) o->builtBuildings.insert(BuildingID::CAPITOL);
 
-	for(auto spell : VLC->spellh->objects) //add all regular spells to town
+	for(auto const & spell : VLC->spellh->objects) //add all regular spells to town
 	{
 		if(!spell->isSpecial() && !spell->isCreatureAbility())
 			o->possibleSpells.push_back(spell->id);
@@ -185,7 +187,7 @@ void Initializer::initialize(CGArtifact * o)
 	if(o->ID == Obj::SPELL_SCROLL)
 	{
 		std::vector<SpellID> out;
-		for(auto spell : VLC->spellh->objects) //spellh size appears to be greater (?)
+		for(auto const & spell : VLC->spellh->objects) //spellh size appears to be greater (?)
 		{
 			if(VLC->spellh->getDefaultAllowed().count(spell->id) != 0)
 			{
@@ -342,6 +344,8 @@ void Inspector::updateProperties(CGTownInstance * o)
 	
 	auto * delegate = new TownBuildingsDelegate(*o);
 	addProperty("Buildings", PropertyEditorPlaceholder(), delegate, false);
+	addProperty("Spells", PropertyEditorPlaceholder(), new TownSpellsDelegate(*o), false);
+	addProperty("Events", PropertyEditorPlaceholder(), new TownEventsDelegate(*o, controller), false);
 }
 
 void Inspector::updateProperties(CGArtifact * o)
@@ -357,7 +361,7 @@ void Inspector::updateProperties(CGArtifact * o)
 		if(spellId != SpellID::NONE)
 		{
 			auto * delegate = new InspectorDelegate;
-			for(auto spell : VLC->spellh->objects)
+			for(auto const & spell : VLC->spellh->objects)
 			{
 				if(controller.map()->allowedSpells.count(spell->id) != 0)
 					delegate->options.push_back({QObject::tr(spell->getNameTranslated().c_str()), QVariant::fromValue(int(spell->getId()))});
@@ -464,7 +468,7 @@ void Inspector::updateProperties()
 		return;
 	table->setRowCount(0); //cleanup table
 	
-	addProperty("Indentifier", obj);
+	addProperty("Identifier", obj);
 	addProperty("ID", obj->ID.getNum());
 	addProperty("SubID", obj->subID);
 	addProperty("InstanceName", obj->instanceName);
@@ -699,7 +703,7 @@ void Inspector::setProperty(CGHeroInstance * o, const QString & key, const QVari
 	
 	if(key == "Hero type")
 	{
-		for(auto t : VLC->heroh->objects)
+		for(auto const & t : VLC->heroh->objects)
 		{
 			if(t->getId() == value.toInt())
 			{

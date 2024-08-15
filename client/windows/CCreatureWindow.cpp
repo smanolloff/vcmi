@@ -30,12 +30,12 @@
 #include "../../lib/ArtifactUtils.h"
 #include "../../lib/CStack.h"
 #include "../../lib/CBonusTypeHandler.h"
-#include "../../lib/CGeneralTextHandler.h"
 #include "../../lib/GameSettings.h"
 #include "../../lib/CHeroHandler.h"
 #include "../../lib/gameState/CGameState.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
-#include "../../lib/TextOperations.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
+#include "../../lib/texts/TextOperations.h"
 
 class CCreatureArtifactInstance;
 class CSelectableSkill;
@@ -59,7 +59,7 @@ public:
 		std::function<void(CreatureID)> callback;
 	};
 
-	// pointers to permament objects in game state
+	// pointers to permanent objects in game state
 	const CCreature * creature;
 	const CCommanderInstance * commander;
 	const CStackInstance * stackNode;
@@ -144,10 +144,10 @@ void CCommanderSkillIcon::show(Canvas &to)
 
 static ImagePath skillToFile(int skill, int level, bool selected)
 {
-	// FIXME: is this a correct hadling?
+	// FIXME: is this a correct handling?
 	// level 0 = skill not present, use image with "no" suffix
 	// level 1-5 = skill available, mapped to images indexed as 0-4
-	// selecting skill means that it will appear one level higher (as if alredy upgraded)
+	// selecting skill means that it will appear one level higher (as if already upgraded)
 	std::string file = "zvs/Lib1.res/_";
 	switch (skill)
 	{
@@ -170,24 +170,24 @@ static ImagePath skillToFile(int skill, int level, bool selected)
 			file += "MP";
 			break;
 	}
-	std::string sufix;
+	std::string suffix;
 	if (selected)
 		level++; // UI will display resulting level
 	if (level == 0)
-		sufix = "no"; //not avaliable - no number
+		suffix = "no"; //not available - no number
 	else
-		sufix = std::to_string(level-1);
+		suffix = std::to_string(level-1);
 	if (selected)
-		sufix += "="; //level-up highlight
+		suffix += "="; //level-up highlight
 
-	return ImagePath::builtin(file + sufix + ".bmp");
+	return ImagePath::builtin(file + suffix + ".bmp");
 }
 
 CStackWindow::CWindowSection::CWindowSection(CStackWindow * parent, const ImagePath & backgroundPath, int yOffset)
 	: parent(parent)
 {
 	pos.y += yOffset;
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 	if(!backgroundPath.empty())
 	{
 		background = std::make_shared<CPicture>(backgroundPath);
@@ -202,7 +202,7 @@ CStackWindow::ActiveSpellsSection::ActiveSpellsSection(CStackWindow * owner, int
 	static const Point firstPos(6, 2); // position of 1st spell box
 	static const Point offset(54, 0);  // offset of each spell box from previous
 
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	const CStack * battleStack = parent->info->stack;
 
@@ -241,7 +241,7 @@ CStackWindow::ActiveSpellsSection::ActiveSpellsSection(CStackWindow * owner, int
 CStackWindow::BonusLineSection::BonusLineSection(CStackWindow * owner, size_t lineIndex)
 	: CWindowSection(owner, ImagePath::builtin("stackWindow/bonus-effects"), 0)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	static const std::array<Point, 2> offset =
 	{
@@ -267,7 +267,7 @@ CStackWindow::BonusLineSection::BonusLineSection(CStackWindow * owner, size_t li
 CStackWindow::BonusesSection::BonusesSection(CStackWindow * owner, int yOffset, std::optional<size_t> preferredSize):
 	CWindowSection(owner, {}, yOffset)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	// size of single image for an item
 	static const int itemHeight = 59;
@@ -289,7 +289,7 @@ CStackWindow::BonusesSection::BonusesSection(CStackWindow * owner, int yOffset, 
 CStackWindow::ButtonsSection::ButtonsSection(CStackWindow * owner, int yOffset)
 	: CWindowSection(owner, ImagePath::builtin("stackWindow/button-panel"), yOffset)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	if(parent->info->dismissInfo && parent->info->dismissInfo->callback)
 	{
@@ -343,7 +343,7 @@ CStackWindow::ButtonsSection::ButtonsSection(CStackWindow * owner, int yOffset)
 
 			upgradeBtn->setOverlay(std::make_shared<CAnimImage>(AnimationPath::builtin("CPRSMALL"), VLC->creh->objects[upgradeInfo.info.newID[buttonIndex]]->getIconIndex()));
 
-			if(buttonsToCreate == 1) // single upgrade avaialbe
+			if(buttonsToCreate == 1) // single upgrade available
 				upgradeBtn->assignedKey = EShortcut::RECRUITMENT_UPGRADE;
 
 			upgrade[buttonIndex] = upgradeBtn;
@@ -378,7 +378,7 @@ CStackWindow::ButtonsSection::ButtonsSection(CStackWindow * owner, int yOffset)
 CStackWindow::CommanderMainSection::CommanderMainSection(CStackWindow * owner, int yOffset)
 	: CWindowSection(owner, ImagePath::builtin("stackWindow/commander-bg"), yOffset)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	auto getSkillPos = [](int index)
 	{
@@ -489,7 +489,7 @@ CStackWindow::CommanderMainSection::CommanderMainSection(CStackWindow * owner, i
 CStackWindow::MainSection::MainSection(CStackWindow * owner, int yOffset, bool showExp, bool showArt)
 	: CWindowSection(owner, getBackgroundName(showExp, showArt), yOffset)
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	statNames =
 	{
@@ -752,7 +752,7 @@ CStackWindow::~CStackWindow()
 
 void CStackWindow::init()
 {
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	if(!info->stackNode)
 		info->stackNode = new CStackInstance(info->creature, 1, true);// FIXME: free data
@@ -798,7 +798,7 @@ void CStackWindow::initBonusesList()
 
 void CStackWindow::initSections()
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	bool showArt = CGI->settings()->getBoolean(EGameSettings::MODULE_STACK_ARTIFACT) && info->commander == nullptr && info->stackNode;
 	bool showExp = (CGI->settings()->getBoolean(EGameSettings::MODULE_STACK_EXPERIENCE) || info->commander != nullptr) && info->stackNode;
@@ -920,7 +920,7 @@ void CStackWindow::setSelection(si32 newSkill, std::shared_ptr<CCommanderSkillIc
 		return skillToFile(skillIndex, info->commander->secondarySkills[skillIndex], selected);
 	};
 
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 	int oldSelection = selectedSkill; // update selection
 	selectedSkill = newSkill;
 

@@ -18,7 +18,8 @@
 #include "../../battle/CBattleInfoCallback.h"
 #include "../../networkPacks/PacksForClientBattle.h"
 #include "../../serializer/JsonSerializeFormat.h"
-#include "../../CRandomGenerator.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -101,11 +102,11 @@ void Obstacle::adjustAffectedHexes(std::set<BattleHex> & hexes, const Mechanics 
 
 	for(auto & destination : effectTarget)
 	{
-		for(const auto & trasformation : options.shape)
+		for(const auto & transformation : options.shape)
 		{
 			BattleHex hex = destination.hexValue;
 
-			for(auto direction : trasformation)
+			for(auto direction : transformation)
 				hex.moveInDirection(direction, false);
 
 			if(hex.isValid())
@@ -134,10 +135,10 @@ bool Obstacle::applicable(Problem & problem, const Mechanics * m, const EffectTa
 
 		for(const auto & destination : target)
 		{
-			for(const auto & trasformation : options.shape)
+			for(const auto & transformation : options.shape)
 			{
 				BattleHex hex = destination.hexValue;
-				for(auto direction : trasformation)
+				for(auto direction : transformation)
 					hex.moveInDirection(direction, false);
 
 				if(!isHexAvailable(m->battle(), hex, requiresClearTiles))
@@ -273,7 +274,7 @@ void Obstacle::placeObstacles(ServerCallback * server, const Mechanics * m, cons
 	BattleObstaclesChanged pack;
 	pack.battleID = m->battle()->getBattle()->getBattleID();
 
-	auto all = m->battle()->battleGetAllObstacles(BattlePerspective::ALL_KNOWING);
+	auto all = m->battle()->battleGetAllObstacles(BattleSide::ALL_KNOWING);
 
 	int obstacleIdToGive = 1;
 	for(auto & one : all)

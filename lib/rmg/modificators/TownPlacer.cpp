@@ -12,6 +12,7 @@
 #include "TownPlacer.h"
 #include "../CMapGenerator.h"
 #include "../RmgMap.h"
+#include "../../entities/faction/CTownHandler.h"
 #include "../../mapObjectConstructors/AObjectTypeHandler.h"
 #include "../../mapObjectConstructors/CObjectClassesHandler.h"
 #include "../../mapObjects/CGTownInstance.h"
@@ -26,6 +27,8 @@
 #include "MinePlacer.h"
 #include "WaterAdopter.h"
 #include "../TileInfo.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -79,11 +82,9 @@ void TownPlacer::placeTowns(ObjectManager & manager)
 		town->builtBuildings.insert(BuildingID::FORT);
 		town->builtBuildings.insert(BuildingID::DEFAULT);
 		
-		for(auto spell : VLC->spellh->objects) //add all regular spells to town
-		{
-			if(!spell->isSpecial() && !spell->isCreatureAbility())
-				town->possibleSpells.push_back(spell->id);
-		}
+
+		for(auto spellID : VLC->spellh->getDefaultAllowed()) //add all regular spells to town
+			town->possibleSpells.push_back(spellID);
 		
 		auto position = placeMainTown(manager, *town);
 		
@@ -205,11 +206,8 @@ void TownPlacer::addNewTowns(int count, bool hasFort, const PlayerColor & player
 			town->builtBuildings.insert(BuildingID::FORT);
 		town->builtBuildings.insert(BuildingID::DEFAULT);
 		
-		for(auto spell : VLC->spellh->objects) //add all regular spells to town
-		{
-			if(!spell->isSpecial() && !spell->isCreatureAbility())
-				town->possibleSpells.push_back(spell->id);
-		}
+		for(auto spellID : VLC->spellh->getDefaultAllowed()) //add all regular spells to town
+			town->possibleSpells.push_back(spellID);
 		
 		if(totalTowns <= 0)
 		{

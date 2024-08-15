@@ -29,6 +29,8 @@
 #include "../Functions.h"
 #include "../RmgObject.h"
 
+#include <vstd/RNG.h>
+
 VCMI_LIB_NAMESPACE_BEGIN
 
 void ObjectManager::process()
@@ -481,7 +483,7 @@ bool ObjectManager::createRequiredObjects()
 										  [this, &rmgObject](const int3 & tile)
 		{
 			float dist = rmgObject.getArea().distanceSqr(zone.getPos());
-			dist *= (dist > 12.f * 12.f) ? 10.f : 1.f; //tiles closer 12 are preferrable
+			dist *= (dist > 12.f * 12.f) ? 10.f : 1.f; //tiles closer 12 are preferable
 			dist = 1000000.f - dist; //some big number
 			return dist + map.getNearestObjectDistance(tile);
 		}, guarded, false, OptimizeType::WEIGHT);
@@ -725,7 +727,7 @@ CGCreature * ObjectManager::chooseGuard(si32 strength, bool zoneGuard)
 	CreatureID creId = CreatureID::NONE;
 	int amount = 0;
 	std::vector<CreatureID> possibleCreatures;
-	for(auto cre : VLC->creh->objects)
+	for(auto const & cre : VLC->creh->objects)
 	{
 		if(cre->special)
 			continue;

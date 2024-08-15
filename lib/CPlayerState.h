@@ -85,6 +85,7 @@ public:
 	int32_t getIndex() const override;
 	int32_t getIconIndex() const override;
 	std::string getJsonKey() const override;
+	std::string getModScope() const override;
 	std::string getNameTranslated() const override;
 	std::string getNameTextID() const override;
 	void registerIcons(const IconRegistar & cb) const override;
@@ -128,7 +129,7 @@ public:
 	TeamID id; //position in gameState::teams
 	std::set<PlayerColor> players; // members of this team
 	//TODO: boost::array, bool if possible
-	std::unique_ptr<boost::multi_array<ui8, 3>> fogOfWarMap; //[z][x][y] true - visible, false - hidden
+	boost::multi_array<ui8, 3> fogOfWarMap; //[z][x][y] true - visible, false - hidden
 
 	TeamState();
 
@@ -136,6 +137,18 @@ public:
 	{
 		h & id;
 		h & players;
+		if (h.version < Handler::Version::REMOVE_FOG_OF_WAR_POINTER)
+		{
+			struct Helper : public Serializeable
+			{
+				void serialize(Handler &h) const
+				{}
+			};
+			Helper helper;
+			auto ptrHelper = &helper;
+			h & ptrHelper;
+		}
+
 		h & fogOfWarMap;
 		h & static_cast<CBonusSystemNode&>(*this);
 	}

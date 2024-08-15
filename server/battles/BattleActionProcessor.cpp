@@ -14,7 +14,7 @@
 
 #include "../CGameHandler.h"
 
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/CStack.h"
 #include "../../lib/GameSettings.h"
 #include "../../lib/battle/CBattleInfoCallback.h"
@@ -28,6 +28,8 @@
 #include "../../lib/spells/CSpellHandler.h"
 #include "../../lib/spells/ISpellMechanics.h"
 #include "../../lib/spells/Problem.h"
+
+#include <vstd/RNG.h>
 
 BattleActionProcessor::BattleActionProcessor(BattleProcessor * owner, CGameHandler * newGameHandler)
 	: owner(owner)
@@ -65,7 +67,7 @@ bool BattleActionProcessor::doRetreatAction(const CBattleInfoCallback & battle, 
 	}
 #endif
 
-	owner->setBattleResult(battle, EBattleResult::ESCAPE, !ba.side);
+	owner->setBattleResult(battle, EBattleResult::ESCAPE, battle.otherSide(ba.side));
 	return true;
 }
 
@@ -86,7 +88,7 @@ bool BattleActionProcessor::doSurrenderAction(const CBattleInfoCallback & battle
 	}
 
 	gameHandler->giveResource(player, EGameResID::GOLD, -cost);
-	owner->setBattleResult(battle, EBattleResult::SURRENDER, !ba.side);
+	owner->setBattleResult(battle, EBattleResult::SURRENDER, battle.otherSide(ba.side));
 	return true;
 }
 
@@ -496,7 +498,7 @@ bool BattleActionProcessor::doHealAction(const CBattleInfoCallback & battle, con
 	else
 		destStack = battle.battleGetUnitByPos(target.at(0).hexValue);
 
-	if(stack == nullptr || destStack == nullptr || !healerAbility || healerAbility->subtype == BonusSubtypeID())
+	if(stack == nullptr || destStack == nullptr || !healerAbility || !healerAbility->subtype.hasValue())
 	{
 		gameHandler->complain("There is either no healer, no destination, or healer cannot heal :P");
 	}
@@ -627,7 +629,7 @@ int BattleActionProcessor::moveStack(const CBattleInfoCallback & battle, int sta
 		return 0;
 
 	//initing necessary tables
-	auto accessibility = battle.getAccesibility(curStack);
+	auto accessibility = battle.getAccessibility(curStack);
 	std::set<BattleHex> passed;
 	//Ignore obstacles on starting position
 	passed.insert(curStack->getPosition());
@@ -958,22 +960,22 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 			bat.flags |= BattleAttack::BALLISTA_DOUBLE_DMG;
 	}
 
-	int64_t drainedLife = 0;
+	battle::HealInfo healInfo;
 
 	// only primary target
 	if(defender->alive())
-		drainedLife += applyBattleEffects(battle, bat, attackerState, fireShield, defender, distance, false);
+		applyBattleEffects(battle, bat, attackerState, fireShield, defender, healInfo, distance, false);
 
 	//multiple-hex normal attack
 	std::set<const CStack*> attackedCreatures = battle.getAttackedCreatures(attacker, targetHex, bat.shot()); //creatures other than primary target
 	for(const CStack * stack : attackedCreatures)
 	{
 		if(stack != defender && stack->alive()) //do not hit same stack twice
-			drainedLife += applyBattleEffects(battle, bat, attackerState, fireShield, stack, distance, true);
+			applyBattleEffects(battle, bat, attackerState, fireShield, stack, healInfo, distance, true);
 	}
 
 	std::shared_ptr<const Bonus> bonus = attacker->getFirstBonus(Selector::type()(BonusType::SPELL_LIKE_ATTACK));
-	if(bonus && ranged) //TODO: make it work in melee?
+	if(bonus && ranged && bonus->subtype.hasValue()) //TODO: make it work in melee?
 	{
 		//this is need for displaying hit animation
 		bat.flags |= BattleAttack::SPELL_LIKE;
@@ -997,7 +999,7 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 		{
 			if(stack != defender && stack->alive()) //do not hit same stack twice
 			{
-				drainedLife += applyBattleEffects(battle, bat, attackerState, fireShield, stack, distance, true);
+				applyBattleEffects(battle, bat, attackerState, fireShield, stack, healInfo, distance, true);
 			}
 		}
 
@@ -1021,7 +1023,7 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 		bat.attackerChanges.changedStacks.push_back(info);
 	}
 
-	if (drainedLife > 0)
+	if (healInfo.healedHealthPoints > 0)
 		bat.flags |= BattleAttack::LIFE_DRAIN;
 
 	for (BattleStackAttacked & bsa : bat.bsa)
@@ -1041,26 +1043,16 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 			totalKills += bsa.killedAmount;
 		}
 
-		{
-			MetaString text;
-			attacker->addText(text, EMetaText::GENERAL_TXT, 376);
-			attacker->addNameReplacement(text);
-			text.replaceNumber(totalDamage);
-			blm.lines.push_back(text);
-		}
+		addGenericDamageLog(blm, attackerState, totalDamage);
 
 		addGenericKilledLog(blm, defender, totalKills, multipleTargets);
 	}
 
 	// drain life effect (as well as log entry) must be applied after the attack
-	if(drainedLife > 0)
+	if(healInfo.healedHealthPoints > 0)
 	{
-		MetaString text;
-		attackerState->addText(text, EMetaText::GENERAL_TXT, 361);
-		attackerState->addNameReplacement(text, false);
-		text.replaceNumber(drainedLife);
-		defender->addNameReplacement(text, true);
-		blm.lines.push_back(std::move(text));
+		addGenericDrainedLifeLog(blm, attackerState, defender, healInfo.healedHealthPoints);
+		addGenericResurrectedLog(blm, attackerState, defender, healInfo.resurrectedCount);
 	}
 
 	if(!fireShield.empty())
@@ -1275,10 +1267,9 @@ void BattleActionProcessor::handleDeathStare(const CBattleInfoCallback & battle,
 	int singleCreatureKillChancePercent = attacker->valOfBonuses(BonusType::DEATH_STARE, subtype);
 	double chanceToKill = singleCreatureKillChancePercent / 100.0;
 	vstd::amin(chanceToKill, 1); //cap at 100%
-	std::binomial_distribution<> distribution(attacker->getCount(), chanceToKill);
-	int killedCreatures = distribution(gameHandler->getRandomGenerator().getStdGenerator());
+	int killedCreatures = gameHandler->getRandomGenerator().nextBinomialInt(attacker->getCount(), chanceToKill);
 
-	int maxToKill = (attacker->getCount() * singleCreatureKillChancePercent + 99) / 100;
+	int maxToKill = vstd::divideAndCeil(attacker->getCount() * singleCreatureKillChancePercent, 100);
 	vstd::amin(killedCreatures, maxToKill);
 
 	killedCreatures += (attacker->level() * attacker->valOfBonuses(BonusType::DEATH_STARE, BonusCustomSubtype::deathStareCommander)) / defender->level();
@@ -1353,7 +1344,7 @@ void BattleActionProcessor::handleAfterAttackCasting(const CBattleInfoCallback &
 		double chanceToTrigger = attacker->valOfBonuses(BonusType::TRANSMUTATION) / 100.0f;
 		vstd::amin(chanceToTrigger, 1); //cap at 100%
 
-		if(gameHandler->getRandomGenerator().getDoubleRange(0, 1)() > chanceToTrigger)
+		if(gameHandler->getRandomGenerator().nextDouble(0, 1) > chanceToTrigger)
 			return;
 
 		int bonusAdditionalInfo = attacker->getBonus(Selector::type()(BonusType::TRANSMUTATION))->additionalInfo[0];
@@ -1417,7 +1408,7 @@ void BattleActionProcessor::handleAfterAttackCasting(const CBattleInfoCallback &
 
 		vstd::amin(chanceToTrigger, 1); //cap trigger chance at 100%
 
-		if(gameHandler->getRandomGenerator().getDoubleRange(0, 1)() > chanceToTrigger)
+		if(gameHandler->getRandomGenerator().nextDouble(0, 1) > chanceToTrigger)
 			return;
 
 		BattleStackAttacked bsa;
@@ -1437,7 +1428,7 @@ void BattleActionProcessor::handleAfterAttackCasting(const CBattleInfoCallback &
 	}
 }
 
-int64_t BattleActionProcessor::applyBattleEffects(const CBattleInfoCallback & battle, BattleAttack & bat, std::shared_ptr<battle::CUnitState> attackerState, FireShieldInfo & fireShield, const CStack * def, int distance, bool secondary)
+void BattleActionProcessor::applyBattleEffects(const CBattleInfoCallback & battle, BattleAttack & bat, std::shared_ptr<battle::CUnitState> attackerState, FireShieldInfo & fireShield, const CStack * def, battle::HealInfo & healInfo, int distance, bool secondary) const
 {
 	BattleStackAttacked bsa;
 	if(secondary)
@@ -1458,14 +1449,11 @@ int64_t BattleActionProcessor::applyBattleEffects(const CBattleInfoCallback & ba
 		CStack::prepareAttacked(bsa, gameHandler->getRandomGenerator(), bai.defender->acquireState()); //calculate casualties
 	}
 
-	int64_t drainedLife = 0;
-
 	//life drain handling
 	if(attackerState->hasBonusOfType(BonusType::LIFE_DRAIN) && def->isLiving())
 	{
 		int64_t toHeal = bsa.damageAmount * attackerState->valOfBonuses(BonusType::LIFE_DRAIN) / 100;
-		attackerState->heal(toHeal, EHealLevel::RESURRECT, EHealPower::PERMANENT);
-		drainedLife += toHeal;
+		healInfo += attackerState->heal(toHeal, EHealLevel::RESURRECT, EHealPower::PERMANENT);
 	}
 
 	//soul steal handling
@@ -1479,8 +1467,7 @@ int64_t BattleActionProcessor::applyBattleEffects(const CBattleInfoCallback & ba
 			{
 				int64_t toHeal = bsa.killedAmount * attackerState->valOfBonuses(BonusType::SOUL_STEAL, subtype) * attackerState->getMaxHealth();
 				bool permanent = subtype == BonusCustomSubtype::soulStealPermanent;
-				attackerState->heal(toHeal, EHealLevel::OVERHEAL, (permanent ? EHealPower::PERMANENT : EHealPower::ONE_BATTLE));
-				drainedLife += toHeal;
+				healInfo += attackerState->heal(toHeal, EHealLevel::OVERHEAL, (permanent ? EHealPower::PERMANENT : EHealPower::ONE_BATTLE));
 				break;
 			}
 		}
@@ -1501,8 +1488,6 @@ int64_t BattleActionProcessor::applyBattleEffects(const CBattleInfoCallback & ba
 		auto fireShieldDamage = (std::min<int64_t>(def->getAvailableHealth(), bsa.damageAmount) * def->valOfBonuses(BonusType::FIRE_SHIELD)) / 100;
 		fireShield.push_back(std::make_pair(def, fireShieldDamage));
 	}
-
-	return drainedLife;
 }
 
 void BattleActionProcessor::sendGenericKilledLog(const CBattleInfoCallback & battle, const CStack * defender, int32_t killed, bool multiple)
@@ -1516,7 +1501,7 @@ void BattleActionProcessor::sendGenericKilledLog(const CBattleInfoCallback & bat
 	}
 }
 
-void BattleActionProcessor::addGenericKilledLog(BattleLogMessage & blm, const CStack * defender, int32_t killed, bool multiple)
+void BattleActionProcessor::addGenericKilledLog(BattleLogMessage & blm, const CStack * defender, int32_t killed, bool multiple) const
 {
 	if(killed > 0)
 	{
@@ -1544,6 +1529,46 @@ void BattleActionProcessor::addGenericKilledLog(BattleLogMessage & blm, const CS
 	}
 }
 
+void BattleActionProcessor::addGenericDamageLog(BattleLogMessage& blm, const std::shared_ptr<battle::CUnitState> &attackerState, int64_t damageDealt) const
+{
+	MetaString text;
+	attackerState->addText(text, EMetaText::GENERAL_TXT, 376);
+	attackerState->addNameReplacement(text);
+	text.replaceNumber(damageDealt);
+	blm.lines.push_back(std::move(text));
+}
+
+void BattleActionProcessor::addGenericDrainedLifeLog(BattleLogMessage& blm, const std::shared_ptr<battle::CUnitState>& attackerState, const CStack* defender, int64_t drainedLife) const
+{
+	MetaString text;
+	attackerState->addText(text, EMetaText::GENERAL_TXT, 361);
+	attackerState->addNameReplacement(text);
+	text.replaceNumber(drainedLife);
+	defender->addNameReplacement(text);
+	blm.lines.push_back(std::move(text));
+}
+
+void BattleActionProcessor::addGenericResurrectedLog(BattleLogMessage& blm, const std::shared_ptr<battle::CUnitState>& attackerState, const CStack* defender, int64_t resurrected) const
+{
+	if (resurrected > 0)
+	{
+		auto text = blm.lines.back().toString();
+		text.pop_back();	// erase '.' at the end of line with life drain info
+		MetaString ms = MetaString::createFromRawString(text);
+		if (resurrected == 1)
+		{
+			ms.appendLocalString(EMetaText::GENERAL_TXT, 363);		// "\n and one rises from the dead."
+		}
+		else
+		{
+			ms.appendLocalString(EMetaText::GENERAL_TXT, 364);		// "\n and %d rise from the dead."
+			ms.replaceNumber(resurrected);
+		}
+		blm.lines[blm.lines.size() - 1] = std::move(ms);
+	}	
+
+}
+
 bool BattleActionProcessor::makeAutomaticBattleAction(const CBattleInfoCallback & battle, const BattleAction & ba)
 {
 	return makeBattleActionImpl(battle, ba);
@@ -1551,7 +1576,7 @@ bool BattleActionProcessor::makeAutomaticBattleAction(const CBattleInfoCallback 
 
 bool BattleActionProcessor::makePlayerBattleAction(const CBattleInfoCallback & battle, PlayerColor player, const BattleAction &ba)
 {
-	if (ba.side != 0 && ba.side != 1 && gameHandler->complain("Can not make action - invalid battle side!"))
+	if (ba.side != BattleSide::ATTACKER && ba.side != BattleSide::DEFENDER && gameHandler->complain("Can not make action - invalid battle side!"))
 		return false;
 
 	if(battle.battleGetTacticDist() != 0)

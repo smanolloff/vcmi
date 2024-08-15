@@ -100,9 +100,9 @@ public:
 
 	CHeroWindow(const CGHeroInstance * hero);
 
-	void update(const CGHeroInstance * hero, bool redrawNeeded = false); //sets main displayed hero
+	void update() override;
 
-	void dismissCurrent(); //dissmissed currently displayed hero (curHero)
+	void dismissCurrent(); //dismissed currently displayed hero (curHero)
 	void commanderWindow();
 	void switchHero(); //changes displayed hero
 	void updateGarrisons() override;

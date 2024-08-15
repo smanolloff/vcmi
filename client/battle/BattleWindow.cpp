@@ -18,7 +18,6 @@
 
 #include "../CGameInfo.h"
 #include "../CPlayerInterface.h"
-#include "../CMusicHandler.h"
 #include "../gui/CursorHandler.h"
 #include "../gui/CGuiHandler.h"
 #include "../gui/Shortcut.h"
@@ -35,7 +34,7 @@
 #include "../adventureMap/TurnTimerWidget.h"
 
 #include "../../CCallback.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/gameState/InfoAboutArmy.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/CStack.h"
@@ -47,11 +46,11 @@
 #include "../windows/settings/SettingsMainWindow.h"
 #include "battle/AICombatOptions.h"
 
-BattleWindow::BattleWindow(BattleInterface & owner):
-	owner(owner),
+BattleWindow::BattleWindow(BattleInterface & Owner):
+	owner(Owner),
 	lastAlternativeAction(PossiblePlayerBattleAction::INVALID)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	pos.w = 800;
 	pos.h = 600;
 	pos = center();
@@ -66,6 +65,20 @@ BattleWindow::BattleWindow(BattleInterface & owner):
 	
 	const JsonNode config(JsonPath::builtin("config/widgets/BattleWindow2.json"));
 	
+	addShortcut(EShortcut::BATTLE_TOGGLE_QUICKSPELL, [this](){ this->toggleStickyQuickSpellVisibility();});
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_0,  [this](){ useSpellIfPossible(0);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_1,  [this](){ useSpellIfPossible(1);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_2,  [this](){ useSpellIfPossible(2);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_3,  [this](){ useSpellIfPossible(3);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_4,  [this](){ useSpellIfPossible(4);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_5,  [this](){ useSpellIfPossible(5);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_6,  [this](){ useSpellIfPossible(6);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_7,  [this](){ useSpellIfPossible(7);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_8,  [this](){ useSpellIfPossible(8);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_9,  [this](){ useSpellIfPossible(9);  });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_10, [this](){ useSpellIfPossible(10); });
+	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_11, [this](){ useSpellIfPossible(11); });
+
 	addShortcut(EShortcut::GLOBAL_OPTIONS, std::bind(&BattleWindow::bOptionsf, this));
 	addShortcut(EShortcut::BATTLE_SURRENDER, std::bind(&BattleWindow::bSurrenderf, this));
 	addShortcut(EShortcut::BATTLE_RETREAT, std::bind(&BattleWindow::bFleef, this));
@@ -97,6 +110,7 @@ BattleWindow::BattleWindow(BattleInterface & owner):
 	owner.fieldController->createHeroes();
 
 	createQueue();
+	createQuickSpellWindow();
 	createStickyHeroInfoWindows();
 	createTimerInfoWindows();
 
@@ -110,7 +124,7 @@ BattleWindow::BattleWindow(BattleInterface & owner):
 
 void BattleWindow::createQueue()
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	//create stack queue and adjust our own position
 	bool embedQueue;
@@ -137,7 +151,7 @@ void BattleWindow::createQueue()
 
 void BattleWindow::createStickyHeroInfoWindows()
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	if(owner.defendingHeroInstance)
 	{
@@ -166,9 +180,68 @@ void BattleWindow::createStickyHeroInfoWindows()
 	setPositionInfoWindow();
 }
 
+void BattleWindow::createQuickSpellWindow()
+{
+	OBJECT_CONSTRUCTION;
+
+	quickSpellWindow = std::make_shared<QuickSpellPanel>(owner);
+	quickSpellWindow->moveTo(Point(pos.x - 67, pos.y));
+
+	if(settings["battle"]["enableQuickSpellPanel"].Bool())
+		showStickyQuickSpellWindow();
+	else
+		hideStickyQuickSpellWindow();
+}
+
+void BattleWindow::toggleStickyQuickSpellVisibility()
+{
+	if(settings["battle"]["enableQuickSpellPanel"].Bool())
+		hideStickyQuickSpellWindow();
+	else
+		showStickyQuickSpellWindow();
+}
+
+void BattleWindow::hideStickyQuickSpellWindow()
+{
+	Settings showStickyQuickSpellWindow = settings.write["battle"]["enableQuickSpellPanel"];
+	showStickyQuickSpellWindow->Bool() = false;
+
+	quickSpellWindow->disable();
+	quickSpellWindow->isEnabled = false;
+
+	setPositionInfoWindow();
+	createTimerInfoWindows();
+	GH.windows().totalRedraw();
+}
+
+void BattleWindow::showStickyQuickSpellWindow()
+{
+	Settings showStickyQuickSpellWindow = settings.write["battle"]["enableQuickSpellPanel"];
+	showStickyQuickSpellWindow->Bool() = true;
+
+	auto hero = owner.getBattle()->battleGetMyHero();
+
+	if(GH.screenDimensions().x >= 1050 && hero != nullptr && hero->hasSpellbook())
+	{
+		quickSpellWindow->enable();
+		quickSpellWindow->isEnabled = true;
+	}
+	else
+	{
+		quickSpellWindow->disable();
+		quickSpellWindow->isEnabled = false;
+	}
+
+	setPositionInfoWindow();
+	createTimerInfoWindows();
+	GH.windows().totalRedraw();
+}
+
 void BattleWindow::createTimerInfoWindows()
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
+
+	int xOffsetAttacker = quickSpellWindow->isEnabled ? -53 : 0;
 
 	if(LOCPLINT->cb->getStartInfo()->turnTimerInfo.battleTimer != 0 || LOCPLINT->cb->getStartInfo()->turnTimerInfo.unitTimer != 0)
 	{
@@ -178,7 +251,7 @@ void BattleWindow::createTimerInfoWindows()
 		if (attacker.isValidPlayer())
 		{
 			if (GH.screenDimensions().x >= 1000)
-				attackerTimerWidget = std::make_shared<TurnTimerWidget>(Point(-92, 1), attacker);
+				attackerTimerWidget = std::make_shared<TurnTimerWidget>(Point(-92 + xOffsetAttacker, 1), attacker);
 			else
 				attackerTimerWidget = std::make_shared<TurnTimerWidget>(Point(1, 135), attacker);
 		}
@@ -200,6 +273,21 @@ std::shared_ptr<BattleConsole> BattleWindow::buildBattleConsole(const JsonNode &
 	auto background = widget<CPicture>("menuBattle");
 	return std::make_shared<BattleConsole>(owner, background, rect.topLeft(), offset, rect.dimensions() );
 }
+
+void BattleWindow::useSpellIfPossible(int slot)
+{
+	SpellID id;
+	bool fromSettings;
+	std::tie(id, fromSettings) = quickSpellWindow->getSpells()[slot];
+
+	if(id == SpellID::NONE)
+		return;
+
+	if(id.hasValue() && owner.getBattle()->battleGetMyHero() && id.toSpell()->canBeCast(owner.getBattle().get(), spells::Mode::HERO, owner.getBattle()->battleGetMyHero()))
+	{
+		owner.castThisSpell(id);
+	}
+};
 
 void BattleWindow::toggleQueueVisibility()
 {
@@ -285,10 +373,12 @@ void BattleWindow::showStickyHeroWindows()
 void BattleWindow::updateQueue()
 {
 	queue->update();
+	createQuickSpellWindow();
 }
 
 void BattleWindow::setPositionInfoWindow()
 {
+	int xOffsetAttacker = quickSpellWindow->isEnabled ? -53 : 0;
 	if(defenderHeroWindow)
 	{
 		Point position = (GH.screenDimensions().x >= 1000)
@@ -299,7 +389,7 @@ void BattleWindow::setPositionInfoWindow()
 	if(attackerHeroWindow)
 	{
 		Point position = (GH.screenDimensions().x >= 1000)
-				? Point(pos.x - 93, pos.y + 60)
+				? Point(pos.x - 93 + xOffsetAttacker, pos.y + 60)
 				: Point(pos.x + 1, pos.y + 195);
 		attackerHeroWindow->moveTo(position);
 	}
@@ -313,7 +403,7 @@ void BattleWindow::setPositionInfoWindow()
 	if(attackerStackWindow)
 	{
 		Point position = (GH.screenDimensions().x >= 1000)
-				? Point(pos.x - 93, attackerHeroWindow ? attackerHeroWindow->pos.y + 210 : pos.y + 60)
+				? Point(pos.x - 93 + xOffsetAttacker, attackerHeroWindow ? attackerHeroWindow->pos.y + 210 : pos.y + 60)
 				: Point(pos.x + 1, attackerHeroWindow ? attackerHeroWindow->pos.y : pos.y + 195);
 		attackerStackWindow->moveTo(position);
 	}
@@ -327,7 +417,7 @@ void BattleWindow::updateHeroInfoWindow(uint8_t side, const InfoAboutHero & hero
 
 void BattleWindow::updateStackInfoWindow(const CStack * stack)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	bool showInfoWindows = settings["battle"]["stickyHeroInfoWindows"].Bool();
 
@@ -348,6 +438,7 @@ void BattleWindow::updateStackInfoWindow(const CStack * stack)
 		attackerStackWindow = nullptr;
 	
 	setPositionInfoWindow();
+	createTimerInfoWindows();
 }
 
 void BattleWindow::heroManaPointsChanged(const CGHeroInstance * hero)
@@ -758,6 +849,8 @@ void BattleWindow::blockUI(bool on)
 	setShortcutBlocked(EShortcut::BATTLE_TACTICS_NEXT, on || !owner.tacticsMode);
 	setShortcutBlocked(EShortcut::BATTLE_CONSOLE_DOWN, on && !owner.tacticsMode);
 	setShortcutBlocked(EShortcut::BATTLE_CONSOLE_UP, on && !owner.tacticsMode);
+
+	quickSpellWindow->setInputEnabled(!on);
 }
 
 void BattleWindow::bOpenActiveUnit()
@@ -765,7 +858,7 @@ void BattleWindow::bOpenActiveUnit()
 	const auto * unit = owner.stacksController->getActiveStack();
 
 	if (unit)
-		GH.windows().createAndPushWindow<CStackWindow>(unit, false);;
+		GH.windows().createAndPushWindow<CStackWindow>(unit, false);
 }
 
 void BattleWindow::bOpenHoveredUnit()

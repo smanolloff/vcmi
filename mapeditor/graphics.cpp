@@ -26,7 +26,7 @@
 #include "../lib/CThreadHelper.h"
 #include "../lib/VCMI_Lib.h"
 #include "../CCallback.h"
-#include "../lib/CGeneralTextHandler.h"
+#include "../lib/texts/CGeneralTextHandler.h"
 #include "BitmapHandler.h"
 #include "../lib/CStopWatch.h"
 #include "../lib/mapObjectConstructors/AObjectTypeHandler.h"
@@ -124,7 +124,7 @@ void Graphics::load()
 
 void Graphics::loadHeroAnimations()
 {
-	for(auto & elem : VLC->heroclassesh->objects)
+	for(const auto & elem : VLC->heroclassesh->objects)
 	{
 		for(auto templ : VLC->objtypeh->getHandlerFor(Obj::HERO, elem->getIndex())->getTemplates())
 		{

@@ -11,7 +11,6 @@
 #include "HeroMovementController.h"
 
 #include "CGameInfo.h"
-#include "CMusicHandler.h"
 #include "CPlayerInterface.h"
 #include "PlayerLocalState.h"
 #include "adventureMap/AdventureMapInterface.h"
@@ -19,10 +18,13 @@
 #include "gui/CGuiHandler.h"
 #include "gui/CursorHandler.h"
 #include "mapView/mapHandler.h"
+#include "media/ISoundPlayer.h"
 
 #include "../CCallback.h"
 
 #include "ConditionalWait.h"
+#include "../lib/CConfigHandler.h"
+#include "../lib/CRandomGenerator.h"
 #include "../lib/pathfinder/CGPathNode.h"
 #include "../lib/mapObjects/CGHeroInstance.h"
 #include "../lib/networkPacks/PacksForClient.h"
@@ -152,8 +154,12 @@ void HeroMovementController::onTryMoveHero(const CGHeroInstance * hero, const Tr
 
 	if(details.result == TryMoveHero::EMBARK || details.result == TryMoveHero::DISEMBARK)
 	{
-		if(hero->getRemovalSound() && hero->tempOwner == LOCPLINT->playerID)
-			CCS->soundh->playSound(hero->getRemovalSound().value());
+		if (hero->tempOwner == LOCPLINT->playerID)
+		{
+			auto removalSound = hero->getRemovalSound(CRandomGenerator::getDefault());
+			if (removalSound)
+				CCS->soundh->playSound(removalSound.value());
+		}
 	}
 
 	bool directlyAttackingCreature =

@@ -28,7 +28,7 @@
 #include "../../CCallback.h"
 
 #include "../../lib/CConfigHandler.h"
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/campaign/CampaignHandler.h"
 #include "../../lib/mapping/CMapInfo.h"
 #include "../../lib/networkPacks/PacksForLobby.h"
@@ -38,7 +38,7 @@
 CLobbyScreen::CLobbyScreen(ESelectionScreen screenType)
 	: CSelectionBase(screenType), bonusSel(nullptr)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	tabSel = std::make_shared<SelectionTab>(screenType);
 	curTab = tabSel;
 

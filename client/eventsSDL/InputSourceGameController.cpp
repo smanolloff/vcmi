@@ -28,11 +28,6 @@ void InputSourceGameController::gameControllerDeleter(SDL_GameController * gameC
 }
 
 InputSourceGameController::InputSourceGameController():
-	configTriggerTreshold(settings["input"]["controllerTriggerTreshold"].Float()),
-	configAxisDeadZone(settings["input"]["controllerAxisDeadZone"].Float()),
-	configAxisFullZone(settings["input"]["controllerAxisFullZone"].Float()),
-	configAxisSpeed(settings["input"]["controllerAxisSpeed"].Float()),
-	configAxisScale(settings["input"]["controllerAxisScale"].Float()),
 	cursorAxisValueX(0),
 	cursorAxisValueY(0),
 	cursorPlanDisX(0.0),
@@ -43,7 +38,12 @@ InputSourceGameController::InputSourceGameController():
 	scrollAxisValueX(0),
 	scrollAxisValueY(0),
 	scrollPlanDisX(0.0),
-	scrollPlanDisY(0.0)
+	scrollPlanDisY(0.0),
+	configTriggerThreshold(settings["input"]["controllerTriggerThreshold"].Float()),
+	configAxisDeadZone(settings["input"]["controllerAxisDeadZone"].Float()),
+	configAxisFullZone(settings["input"]["controllerAxisFullZone"].Float()),
+	configAxisSpeed(settings["input"]["controllerAxisSpeed"].Float()),
+	configAxisScale(settings["input"]["controllerAxisScale"].Float())
 {
 	tryOpenAllGameControllers();
 }
@@ -127,7 +127,7 @@ void InputSourceGameController::handleEventDeviceRemapped(const SDL_ControllerDe
 	openGameController(device.which);
 }
 
-double InputSourceGameController::getRealAxisValue(int value)
+double InputSourceGameController::getRealAxisValue(int value) const
 {
 	double ratio = static_cast<double>(value) / SDL_JOYSTICK_AXIS_MAX;
 	double greenZone = configAxisFullZone - configAxisDeadZone;
@@ -142,7 +142,7 @@ double InputSourceGameController::getRealAxisValue(int value)
 
 void InputSourceGameController::dispatchAxisShortcuts(const std::vector<EShortcut> & shortcutsVector, SDL_GameControllerAxis axisID, int axisValue)
 {
-	if(getRealAxisValue(axisValue) > configTriggerTreshold)
+	if(getRealAxisValue(axisValue) > configTriggerThreshold)
 	{
 		if(!pressedAxes.count(axisID))
 		{
@@ -321,7 +321,7 @@ void InputSourceGameController::handleScrollUpdate(int32_t deltaTimeMs)
 	}
 }
 
-bool InputSourceGameController::isScrollAxisReleased()
+bool InputSourceGameController::isScrollAxisReleased() const
 {
-	return scrollAxisValueX == 0 && scrollAxisValueY == 0;
+	return vstd::isAlmostZero(scrollAxisValueX) && vstd::isAlmostZero(scrollAxisValueY);
 }

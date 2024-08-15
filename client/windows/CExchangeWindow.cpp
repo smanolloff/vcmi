@@ -26,16 +26,15 @@
 #include "../widgets/TextControls.h"
 
 #include "../render/IRenderHandler.h"
-#include "../render/CAnimation.h"
 
 #include "../../CCallback.h"
 
-#include "../lib/mapObjects/CGHeroInstance.h"
-#include "../lib/CGeneralTextHandler.h"
 #include "../lib/CHeroHandler.h"
-#include "../lib/filesystem/Filesystem.h"
 #include "../lib/CSkillHandler.h"
-#include "../lib/TextOperations.h"
+#include "../lib/filesystem/Filesystem.h"
+#include "../lib/mapObjects/CGHeroInstance.h"
+#include "../lib/texts/CGeneralTextHandler.h"
+#include "../lib/texts/TextOperations.h"
 
 static const std::string QUICK_EXCHANGE_BG = "quick-exchange/TRADEQE";
 
@@ -50,7 +49,7 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 {
 	const bool qeLayout = isQuickExchangeLayoutAvailable();
 
-	OBJECT_CONSTRUCTION_CAPTURING(255-DISPOSE);
+	OBJECT_CONSTRUCTION;
 	addUsedEvents(KEYBOARD);
 
 	heroInst[0] = LOCPLINT->cb->getHero(hero1);
@@ -66,17 +65,12 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 	titles[0] = std::make_shared<CLabel>(147, 25, FONT_SMALL, ETextAlignment::CENTER, Colors::WHITE, genTitle(heroInst[0]));
 	titles[1] = std::make_shared<CLabel>(653, 25, FONT_SMALL, ETextAlignment::CENTER, Colors::WHITE, genTitle(heroInst[1]));
 
-	auto PSKIL32 = GH.renderHandler().loadAnimation(AnimationPath::builtin("PSKIL32"));
-	PSKIL32->preload();
-
-	auto SECSK32 = GH.renderHandler().loadAnimation(AnimationPath::builtin("SECSK32"));
-
 	for(int g = 0; g < 4; ++g)
 	{
 		if (qeLayout)
-			primSkillImages.push_back(std::make_shared<CAnimImage>(PSKIL32, g, Rect(389, 12 + 26 * g, 22, 22)));
+			primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL32"), g, Rect(389, 12 + 26 * g, 22, 22)));
 		else
-			primSkillImages.push_back(std::make_shared<CAnimImage>(PSKIL32, g, 0, 385, 19 + 36 * g));
+			primSkillImages.push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL32"), g, 0, 385, 19 + 36 * g));
 	}
 
 	for(int leftRight : {0, 1})
@@ -88,24 +82,31 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 
 
 		for(int m=0; m < hero->secSkills.size(); ++m)
-			secSkillIcons[leftRight].push_back(std::make_shared<CAnimImage>(SECSK32, 0, 0, 32 + 36 * m + 454 * leftRight, qeLayout ? 83 : 88));
+			secSkillIcons[leftRight].push_back(std::make_shared<CAnimImage>(AnimationPath::builtin("SECSK32"), 0, 0, 32 + 36 * m + 454 * leftRight, qeLayout ? 83 : 88));
 
 		specImages[leftRight] = std::make_shared<CAnimImage>(AnimationPath::builtin("UN32"), hero->type->imageIndex, 0, 67 + 490 * leftRight, qeLayout ? 41 : 45);
 
-		expImages[leftRight] = std::make_shared<CAnimImage>(PSKIL32, 4, 0, 103 + 490 * leftRight, qeLayout ? 41 : 45);
+		expImages[leftRight] = std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL32"), 4, 0, 103 + 490 * leftRight, qeLayout ? 41 : 45);
 		expValues[leftRight] = std::make_shared<CLabel>(119 + 490 * leftRight, qeLayout ? 66 : 71, FONT_SMALL, ETextAlignment::CENTER, Colors::WHITE);
 
-		manaImages[leftRight] = std::make_shared<CAnimImage>(PSKIL32, 5, 0, 139 + 490 * leftRight, qeLayout ? 41 : 45);
+		manaImages[leftRight] = std::make_shared<CAnimImage>(AnimationPath::builtin("PSKIL32"), 5, 0, 139 + 490 * leftRight, qeLayout ? 41 : 45);
 		manaValues[leftRight] = std::make_shared<CLabel>(155 + 490 * leftRight, qeLayout ? 66 : 71, FONT_SMALL, ETextAlignment::CENTER, Colors::WHITE);
 	}
 
 	artifs[0] = std::make_shared<CArtifactsOfHeroMain>(Point(-334, 151));
+	artifs[0]->clickPressedCallback = [this, hero = heroInst[0]](const CArtPlace & artPlace, const Point & cursorPosition){clickPressedOnArtPlace(hero, artPlace.slot, true, false, false);};
+	artifs[0]->showPopupCallback = [this, heroArts = artifs[0]](CArtPlace & artPlace, const Point & cursorPosition){showArtifactAssembling(*heroArts, artPlace, cursorPosition);};
+	artifs[0]->gestureCallback = [this, hero = heroInst[0]](const CArtPlace & artPlace, const Point & cursorPosition){showQuickBackpackWindow(hero, artPlace.slot, cursorPosition);};
 	artifs[0]->setHero(heroInst[0]);
 	artifs[1] = std::make_shared<CArtifactsOfHeroMain>(Point(98, 151));
+	artifs[1]->clickPressedCallback = [this, hero = heroInst[1]](const CArtPlace & artPlace, const Point & cursorPosition){clickPressedOnArtPlace(hero, artPlace.slot, true, false, false);};
+	artifs[1]->showPopupCallback = [this, heroArts = artifs[1]](CArtPlace & artPlace, const Point & cursorPosition){showArtifactAssembling(*heroArts, artPlace, cursorPosition);};
+	artifs[1]->gestureCallback = [this, hero = heroInst[1]](const CArtPlace & artPlace, const Point & cursorPosition){showQuickBackpackWindow(hero, artPlace.slot, cursorPosition);};
 	artifs[1]->setHero(heroInst[1]);
 
-	addSetAndCallbacks(artifs[0]);
-	addSetAndCallbacks(artifs[1]);
+
+	addSet(artifs[0]);
+	addSet(artifs[1]);
 
 	for(int g=0; g<4; ++g)
 	{
@@ -240,7 +241,7 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 		}
 	}
 
-	updateWidgets();
+	CExchangeWindow::update();
 }
 
 void CExchangeWindow::moveArtifactsCallback(bool leftToRight)
@@ -328,7 +329,7 @@ void CExchangeWindow::updateGarrisons()
 {
 	garr->recreateSlots();
 
-	updateWidgets();
+	update();
 }
 
 bool CExchangeWindow::holdsGarrison(const CArmedInstance * army)
@@ -342,8 +343,10 @@ void CExchangeWindow::questLogShortcut()
 	LOCPLINT->showQuestLog();
 }
 
-void CExchangeWindow::updateWidgets()
+void CExchangeWindow::update()
 {
+	CWindowWithArtifacts::update();
+
 	for(size_t leftRight : {0, 1})
 	{
 		const CGHeroInstance * hero = heroInst.at(leftRight);

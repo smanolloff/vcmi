@@ -170,6 +170,7 @@ public:
 	void enterMagesGuild();
 	void enterAnyMarket();
 	void enterAnyThievesGuild();
+	void enterBank();
 	void enterToTheQuickRecruitmentWindow();
 
 	void buildingClicked(BuildingID building, BuildingSubID::EBuildingSubID subID = BuildingSubID::NONE, BuildingID upgrades = BuildingID::NONE);
@@ -181,7 +182,7 @@ public:
 class CCreaInfo : public CIntObject
 {
 	const CGTownInstance * town;
-	const CCreature * creature;
+	CreatureID creature;
 	int level;
 	bool showAvailable;
 

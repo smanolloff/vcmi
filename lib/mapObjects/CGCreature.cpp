@@ -12,16 +12,18 @@
 #include "CGCreature.h"
 #include "CGHeroInstance.h"
 
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../CConfigHandler.h"
 #include "../GameSettings.h"
 #include "../IGameCallback.h"
+#include "../gameState/CGameState.h"
 #include "../mapObjectConstructors/CObjectClassesHandler.h"
 #include "../networkPacks/PacksForClient.h"
 #include "../networkPacks/PacksForClientBattle.h"
 #include "../networkPacks/StackLocation.h"
 #include "../serializer/JsonSerializeFormat.h"
-#include "../CRandomGenerator.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -189,7 +191,7 @@ CreatureID CGCreature::getCreature() const
 	return CreatureID(getObjTypeIndex().getNum());
 }
 
-void CGCreature::pickRandomObject(CRandomGenerator & rand)
+void CGCreature::pickRandomObject(vstd::RNG & rand)
 {
 	switch(ID.toEnum())
 	{
@@ -227,14 +229,14 @@ void CGCreature::pickRandomObject(CRandomGenerator & rand)
 	{
 		// Try to generate some debug information if sanity check failed
 		CreatureID creatureID(subID.getNum());
-		throw std::out_of_range("Failed to find handler for creature " + std::to_string(creatureID.getNum()) + ", identifer:" + creatureID.toEntity(VLC)->getJsonKey());
+		throw std::out_of_range("Failed to find handler for creature " + std::to_string(creatureID.getNum()) + ", identifier:" + creatureID.toEntity(VLC)->getJsonKey());
 	}
 
 	ID = MapObjectID::MONSTER;
 	setType(ID, subID);
 }
 
-void CGCreature::initObj(CRandomGenerator & rand)
+void CGCreature::initObj(vstd::RNG & rand)
 {
 	blockVisit = true;
 	switch(character)
@@ -270,11 +272,11 @@ void CGCreature::initObj(CRandomGenerator & rand)
 		}
 	}
 
-	temppower = stacks[SlotID(0)]->count * static_cast<ui64>(1000);
+	temppower = stacks[SlotID(0)]->count * static_cast<int64_t>(1000);
 	refusedJoining = false;
 }
 
-void CGCreature::newTurn(CRandomGenerator & rand) const
+void CGCreature::newTurn(vstd::RNG & rand) const
 {//Works only for stacks of single type of size up to 2 millions
 	if (!notGrowingTeam)
 	{
@@ -457,7 +459,7 @@ void CGCreature::fight( const CGHeroInstance *h ) const
 			const auto & upgrades = getStack(slotID).type->upgrades;
 			if(!upgrades.empty())
 			{
-				auto it = RandomGeneratorUtil::nextItem(upgrades, CRandomGenerator::getDefault());
+				auto it = RandomGeneratorUtil::nextItem(upgrades, cb->gameState()->getRandomGenerator());
 				cb->changeStackType(StackLocation(this, slotID), it->toCreature());
 			}
 		}
@@ -478,12 +480,12 @@ void CGCreature::flee( const CGHeroInstance * h ) const
 
 void CGCreature::battleFinished(const CGHeroInstance *hero, const BattleResult &result) const
 {
-	if(result.winner == 0)
+	if(result.winner == BattleSide::ATTACKER)
 	{
 		giveReward(hero);
 		cb->removeObject(this, hero->getOwner());
 	}
-	else if(result.winner > 1) // draw
+	else if(result.winner == BattleSide::NONE) // draw
 	{
 		// guarded reward is lost forever on draw
 		cb->removeObject(this, hero->getOwner());
@@ -521,7 +523,7 @@ void CGCreature::battleFinished(const CGHeroInstance *hero, const BattleResult &
 	}
 }
 
-void CGCreature::blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const
+void CGCreature::blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const
 {
 	auto action = takenAction(hero);
 	if(!refusedJoining && action >= JOIN_FOR_FREE) //higher means price

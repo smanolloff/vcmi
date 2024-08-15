@@ -26,7 +26,12 @@ ExecuteHeroChain::ExecuteHeroChain(const AIPath & path, const CGObjectInstance *
 	if(obj)
 	{
 		objid = obj->id.getNum();
+
+#if NKAI_TRACE_LEVEL >= 1
+		targetName = obj->getObjectName() + tile.toString();
+#else
 		targetName = obj->typeName + tile.toString();
+#endif
 	}
 	else
 	{
@@ -191,6 +196,26 @@ void ExecuteHeroChain::accept(AIGateway * ai)
 					}
 				}
 
+				auto findWhirlpool = [&ai](const int3 & pos) -> ObjectInstanceID
+				{
+					auto objs = ai->myCb->getVisitableObjs(pos);
+					auto whirlpool = std::find_if(objs.begin(), objs.end(), [](const CGObjectInstance * o)->bool
+						{
+							return o->ID == Obj::WHIRLPOOL;
+						});
+
+					return whirlpool != objs.end() ? dynamic_cast<const CGWhirlpool *>(*whirlpool)->id : ObjectInstanceID(-1);
+				};
+
+				auto sourceWhirlpool = findWhirlpool(hero->visitablePos());
+				auto targetWhirlpool = findWhirlpool(node->coord);
+				
+				if(i != chainPath.nodes.size() - 1 && sourceWhirlpool.hasValue() && sourceWhirlpool == targetWhirlpool)
+				{
+					logAi->trace("AI exited whirlpool at %s but expected at %s", hero->visitablePos().toString(), node->coord.toString());
+					continue;
+				}
+
 				if(hero->movementPointsRemaining())
 				{
 					try
@@ -234,7 +259,7 @@ void ExecuteHeroChain::accept(AIGateway * ai)
 			if(node->turns == 0)
 			{
 				logAi->error(
-					"Unable to complete chain. Expected hero %s to arive to %s but he is at %s",
+					"Unable to complete chain. Expected hero %s to arrive to %s but he is at %s",
 					hero->getNameTranslated(),
 					node->coord.toString(),
 					hero->visitablePos().toString());
@@ -260,7 +285,11 @@ void ExecuteHeroChain::accept(AIGateway * ai)
 
 std::string ExecuteHeroChain::toString() const
 {
+#if NKAI_TRACE_LEVEL >= 1
+	return "ExecuteHeroChain " + targetName + " by " + chainPath.toString();
+#else
 	return "ExecuteHeroChain " + targetName + " by " + chainPath.targetHero->getNameTranslated();
+#endif
 }
 
 bool ExecuteHeroChain::moveHeroToTile(AIGateway * ai, const CGHeroInstance * hero, const int3 & tile)

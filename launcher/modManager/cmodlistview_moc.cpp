@@ -27,7 +27,7 @@
 
 #include "../../lib/VCMIDirs.h"
 #include "../../lib/CConfigHandler.h"
-#include "../../lib/Languages.h"
+#include "../../lib/texts/Languages.h"
 #include "../../lib/modding/CModVersion.h"
 
 static double mbToBytes(double mb)
@@ -133,6 +133,8 @@ CModListView::CModListView(QWidget * parent)
 	ui->disableButton->setIcon(QIcon{":/icons/mod-disabled.png"});
 	ui->updateButton->setIcon(QIcon{":/icons/mod-update.png"});
 	ui->installButton->setIcon(QIcon{":/icons/mod-download.png"});
+
+	ui->splitter->setStyleSheet("QSplitter::handle {background: palette('window');}");
 
 	setupModModel();
 	setupFilterModel();
@@ -960,6 +962,12 @@ void CModListView::loadScreenshots()
 {
 	if(ui->tabWidget->currentIndex() == 2)
 	{
+		if(!ui->allModsView->currentIndex().isValid())
+		{
+			// select the first mod, so we can access its data
+			ui->allModsView->setCurrentIndex(filterModel->index(0, 0));
+		}
+		
 		ui->screenshotsList->clear();
 		QString modName = ui->allModsView->currentIndex().data(ModRoles::ModNameRole).toString();
 		assert(modModel->hasMod(modName)); //should be filtered out by check above

@@ -71,7 +71,7 @@ public:
 
 	void keyPressed(EShortcut key) override;
 
-	void updateWidgets();
+	void update() override;
 
 	// IGarrisonHolder impl
 	void updateGarrisons() override;

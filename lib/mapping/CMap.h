@@ -15,7 +15,6 @@
 
 #include "../ConstTransitivePtr.h"
 #include "../GameCallbackHolder.h"
-#include "../MetaString.h"
 #include "../networkPacks/TradeItem.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -137,7 +136,7 @@ public:
 	std::set<SpellID> allowedSpells;
 	std::set<ArtifactID> allowedArtifact;
 	std::set<SecondarySkill> allowedAbilities;
-	std::list<CMapEvent> events;
+	std::vector<CMapEvent> events;
 	int3 grailPos;
 	int grailRadius;
 

@@ -11,9 +11,9 @@
 #pragma once
 
 #include "Limiter.h"
-#include "MetaString.h"
 #include "Reward.h"
 #include "../networkPacks/EInfoWindowMode.h"
+#include "../texts/MetaString.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -35,7 +35,7 @@ enum ESelectMode
 {
 	SELECT_FIRST,  // first reward that matches limiters
 	SELECT_PLAYER, // player can select from all allowed rewards
-	SELECT_RANDOM, // one random reward from all mathing limiters
+	SELECT_RANDOM, // one random reward from all matching limiters
 	SELECT_ALL // grant all rewards that match limiters
 };
 
@@ -143,7 +143,7 @@ struct DLL_LINKAGE Configuration
 	/// how reward will be selected, uses ESelectMode enum
 	ui8 selectMode = Rewardable::SELECT_FIRST;
 
-	/// contols who can visit an object, uses EVisitMode enum
+	/// controls who can visit an object, uses EVisitMode enum
 	ui8 visitMode = Rewardable::VISIT_UNLIMITED;
 
 	/// how and when should the object be reset

@@ -63,7 +63,7 @@
 	"vcmi.mainMenu.serverClosing" : "Fechando...",
 	"vcmi.mainMenu.hostTCP" : "Hospedar jogo TCP/IP",
 	"vcmi.mainMenu.joinTCP" : "Entrar em jogo TCP/IP",
-	
+
 	"vcmi.lobby.filepath" : "Caminho do arquivo",
 	"vcmi.lobby.creationDate" : "Data de criação",
 	"vcmi.lobby.scenarioName" : "Nome do cenário",
@@ -72,6 +72,11 @@
 	"vcmi.lobby.noUnderground" : "sem subterrâneo",
 	"vcmi.lobby.sortDate" : "Classifica mapas por data de alteração",
 	"vcmi.lobby.backToLobby" : "Voltar para a sala de espera",
+	"vcmi.lobby.author" : "Autor",
+	"vcmi.lobby.handicap" : "Desvant.",
+	"vcmi.lobby.handicap.resource" : "Fornece aos jogadores recursos apropriados para começar, além dos recursos iniciais normais. Valores negativos são permitidos, mas são limitados a 0 no total (o jogador nunca começa com recursos negativos).",
+	"vcmi.lobby.handicap.income" : "Altera as várias rendas do jogador em porcentagem. Arredondado para cima.",
+	"vcmi.lobby.handicap.growth" : "Altera a taxa de produção das criaturas nas cidades possuídas pelo jogador. Arredondado para cima.",
 	
 	"vcmi.lobby.login.title" : "Sala de Espera Online do VCMI",
 	"vcmi.lobby.login.username" : "Nome de usuário:",
@@ -237,6 +242,8 @@
 	"vcmi.battleOptions.skipBattleIntroMusic.help": "{Pula a Música de Introdução}\n\nPermite ações durante a música de introdução que toca no início de cada batalha.",
 	"vcmi.battleOptions.endWithAutocombat.hover": "Terminar a batalha",
 	"vcmi.battleOptions.endWithAutocombat.help": "{Termina a batalha}\n\nO Combate Automático reproduz a batalha até o final instantâneo.",
+	"vcmi.battleOptions.showQuickSpell.hover": "Mostrar Painel de Feitiço Rápido",
+	"vcmi.battleOptions.showQuickSpell.help": "{Mostrar Painel de Feitiço Rápido}\n\nMostra um painel para seleção rápida de feitiços",
 
 	"vcmi.adventureMap.revisitObject.hover" : "Revisitar Objeto",
 	"vcmi.adventureMap.revisitObject.help" : "{Revisitar Objeto}\n\nSe um herói estiver atualmente em um Objeto do Mapa, ele pode revisitar o local.",

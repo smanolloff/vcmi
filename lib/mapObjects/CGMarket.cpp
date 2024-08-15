@@ -11,7 +11,7 @@
 #include "StdInc.h"
 #include "CGMarket.h"
 
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../IGameCallback.h"
 #include "../CCreatureHandler.h"
 #include "CGTownInstance.h"
@@ -23,7 +23,7 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-void CGMarket::initObj(CRandomGenerator & rand)
+void CGMarket::initObj(vstd::RNG & rand)
 {
 	getObjectHandler()->configureObject(this, rand);
 }
@@ -80,7 +80,7 @@ std::vector<TradeItemBuy> CGBlackMarket::availableItemsIds(EMarketMode mode) con
 	}
 }
 
-void CGBlackMarket::newTurn(CRandomGenerator & rand) const
+void CGBlackMarket::newTurn(vstd::RNG & rand) const
 {
 	int resetPeriod = VLC->settings()->getInteger(EGameSettings::MARKETS_BLACK_MARKET_RESTOCK_PERIOD);
 

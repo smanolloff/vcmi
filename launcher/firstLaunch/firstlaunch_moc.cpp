@@ -15,8 +15,8 @@
 #include "modManager/cmodlistview_moc.h"
 
 #include "../../lib/CConfigHandler.h"
-#include "../../lib/CGeneralTextHandler.h"
-#include "../../lib/Languages.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
+#include "../../lib/texts/Languages.h"
 #include "../../lib/VCMIDirs.h"
 #include "../../lib/filesystem/Filesystem.h"
 #include "../helper.h"
@@ -368,8 +368,8 @@ void FirstLaunchView::extractGogData()
 
 		QString errorText{};
 
-		auto isGogGalaxyExe = [](QString fileExe) {
-			QFile file(fileExe);
+		auto isGogGalaxyExe = [](QString fileToTest) {
+			QFile file(fileToTest);
 			quint64 fileSize = file.size();
 
 			if(fileSize > 10 * 1024 * 1024)
@@ -379,7 +379,7 @@ void FirstLaunchView::extractGogData()
 				return false;
 			QByteArray data = file.readAll();
 
-			const QByteArray magicId{(const char*)u"GOG Galaxy", 20};
+			const QByteArray magicId{reinterpret_cast<const char*>(u"GOG Galaxy"), 20};
 			return data.contains(magicId);
 		};
 
@@ -397,7 +397,7 @@ void FirstLaunchView::extractGogData()
 		o.extract_unknown = true;
 		o.filenames.set_expand(true);
 
-		o.preserve_file_times = true; // also correctly closes file -> without it: on Windows the files are not written completly
+		o.preserve_file_times = true; // also correctly closes file -> without it: on Windows the files are not written completely
 
 		try
 		{

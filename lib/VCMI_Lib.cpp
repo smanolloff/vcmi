@@ -15,16 +15,15 @@
 #include "CBonusTypeHandler.h"
 #include "CCreatureHandler.h"
 #include "CHeroHandler.h"
-#include "CTownHandler.h"
 #include "CConfigHandler.h"
 #include "RoadHandler.h"
 #include "RiverHandler.h"
 #include "TerrainHandler.h"
-#include "CBuildingHandler.h"
 #include "spells/CSpellHandler.h"
 #include "spells/effects/Registry.h"
 #include "CSkillHandler.h"
-#include "CGeneralTextHandler.h"
+#include "entities/faction/CTownHandler.h"
+#include "texts/CGeneralTextHandler.h"
 #include "modding/CModHandler.h"
 #include "modding/CModInfo.h"
 #include "modding/IdentifierStorage.h"
@@ -139,37 +138,6 @@ const ObstacleService * LibClasses::obstacles() const
 const IGameSettings * LibClasses::settings() const
 {
 	return settingsHandler.get();
-}
-
-void LibClasses::updateEntity(Metatype metatype, int32_t index, const JsonNode & data)
-{
-	switch(metatype)
-	{
-	case Metatype::ARTIFACT:
-		arth->updateEntity(index, data);
-		break;
-	case Metatype::CREATURE:
-		creh->updateEntity(index, data);
-		break;
-	case Metatype::FACTION:
-		townh->updateEntity(index, data);
-		break;
-	case Metatype::HERO_CLASS:
-		heroclassesh->updateEntity(index, data);
-		break;
-	case Metatype::HERO_TYPE:
-		heroh->updateEntity(index, data);
-		break;
-	case Metatype::SKILL:
-		skillh->updateEntity(index, data);
-		break;
-	case Metatype::SPELL:
-		spellh->updateEntity(index, data);
-		break;
-	default:
-		logGlobal->error("Invalid Metatype id %d", static_cast<int32_t>(metatype));
-		break;
-	}
 }
 
 void LibClasses::loadFilesystem(bool extractArchives)

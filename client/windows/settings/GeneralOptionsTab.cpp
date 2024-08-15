@@ -11,9 +11,10 @@
 #include "GeneralOptionsTab.h"
 
 #include "CGameInfo.h"
-#include "CMusicHandler.h"
 #include "CPlayerInterface.h"
 #include "CServerHandler.h"
+#include "media/IMusicPlayer.h"
+#include "media/ISoundPlayer.h"
 #include "render/IScreenHandler.h"
 #include "windows/GUIClasses.h"
 
@@ -25,7 +26,7 @@
 #include "../../widgets/Slider.h"
 #include "../../widgets/TextControls.h"
 
-#include "../../../lib/CGeneralTextHandler.h"
+#include "../../../lib/texts/CGeneralTextHandler.h"
 #include "../../../lib/filesystem/ResourcePath.h"
 
 static void setIntSetting(std::string group, std::string field, int value)
@@ -93,7 +94,7 @@ GeneralOptionsTab::GeneralOptionsTab()
 		: InterfaceObjectConfigurable(),
 		  onFullscreenChanged(settings.listen["video"]["fullscreen"])
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	setRedrawParent(true);
 
 	addConditional("touchscreen", GH.input().hasTouchInputDevice());

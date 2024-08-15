@@ -19,7 +19,7 @@
 #include "bonuses/Limiters.h"
 #include "bonuses/Propagators.h"
 #include "bonuses/Updaters.h"
-
+#include "entities/building/CBuilding.h"
 #include "networkPacks/ArtifactLocation.h"
 #include "serializer/CLoadFile.h"
 #include "serializer/CSaveFile.h"
@@ -50,6 +50,8 @@
 #include "RoadHandler.h"
 #include "RiverHandler.h"
 #include "TerrainHandler.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -103,8 +105,8 @@ void CPrivilegedInfoCallback::getTilesInRange(std::unordered_set<int3> & tiles,
 				if(distance <= radious)
 				{
 					if(!player
-						|| (mode == ETileVisibility::HIDDEN  && (*team->fogOfWarMap)[pos.z][xd][yd] == 0)
-						|| (mode == ETileVisibility::REVEALED && (*team->fogOfWarMap)[pos.z][xd][yd] == 1)
+						|| (mode == ETileVisibility::HIDDEN  && team->fogOfWarMap[pos.z][xd][yd] == 0)
+						|| (mode == ETileVisibility::REVEALED && team->fogOfWarMap[pos.z][xd][yd] == 1)
 					)
 						tiles.insert(int3(xd,yd,pos.z));
 				}
@@ -146,7 +148,7 @@ void CPrivilegedInfoCallback::getAllTiles(std::unordered_set<int3> & tiles, std:
 	}
 }
 
-void CPrivilegedInfoCallback::pickAllowedArtsSet(std::vector<const CArtifact *> & out, CRandomGenerator & rand)
+void CPrivilegedInfoCallback::pickAllowedArtsSet(std::vector<const CArtifact *> & out, vstd::RNG & rand)
 {
 	for (int j = 0; j < 3 ; j++)
 		out.push_back(gameState()->pickRandomArtifact(rand, CArtifact::ART_TREASURE).toArtifact());
@@ -283,6 +285,10 @@ CArtifactSet * CNonConstInfoCallback::getArtSet(const ArtifactLocation & loc)
 		{
 			return hero;
 		}
+	}
+	else if(auto army = getArmyInstance(loc.artHolder))
+	{
+		return army->getStackPtr(loc.creature.value());
 	}
 	else if(auto market = dynamic_cast<CGArtifactsAltar*>(getObjInstance(loc.artHolder)))
 	{

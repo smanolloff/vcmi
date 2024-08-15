@@ -10,11 +10,12 @@
 #pragma once
 
 #include "../GameConstants.h"
-#include "../MetaString.h"
 #include "../filesystem/ResourcePath.h"
-#include "../CGeneralTextHandler.h"
+#include "../serializer/Serializeable.h"
+#include "../texts/TextLocalizationContainer.h"
 #include "CampaignConstants.h"
 #include "CampaignScenarioPrologEpilog.h"
+#include "../gameState/HighScore.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -32,6 +33,8 @@ class IGameCallback;
 class DLL_LINKAGE CampaignRegions
 {
 	std::string campPrefix;
+	std::vector<std::string> campSuffix;
+	std::string campBackground;
 	int colorSuffixLength;
 
 	struct DLL_LINKAGE RegionDescription
@@ -66,6 +69,11 @@ public:
 		h & campPrefix;
 		h & colorSuffixLength;
 		h & regions;
+		if (h.version >= Handler::Version::CAMPAIGN_REGIONS)
+		{
+			h & campSuffix;
+			h & campBackground;
+		}
 	}
 
 	static CampaignRegions fromJson(const JsonNode & node);
@@ -80,13 +88,17 @@ class DLL_LINKAGE CampaignHeader : public boost::noncopyable
 	CampaignRegions campaignRegions;
 	MetaString name;
 	MetaString description;
+	MetaString author;
+	MetaString authorContact;
+	MetaString campaignVersion;
+	std::time_t creationDateTime;
 	AudioPath music;
 	std::string filename;
 	std::string modName;
 	std::string encoding;
 
 	int numberOfScenarios = 0;
-	bool difficultyChoosenByPlayer = false;
+	bool difficultyChosenByPlayer = false;
 
 	void loadLegacyData(ui8 campId);
 
@@ -98,6 +110,10 @@ public:
 
 	std::string getDescriptionTranslated() const;
 	std::string getNameTranslated() const;
+	std::string getAuthor() const;
+	std::string getAuthorContact() const;
+	std::string getCampaignVersion() const;
+	time_t getCreationDateTime() const;
 	std::string getFilename() const;
 	std::string getModName() const;
 	std::string getEncoding() const;
@@ -113,7 +129,14 @@ public:
 		h & numberOfScenarios;
 		h & name;
 		h & description;
-		h & difficultyChoosenByPlayer;
+		if (h.version >= Handler::Version::MAP_FORMAT_ADDITIONAL_INFOS)
+		{
+			h & author;
+			h & authorContact;
+			h & campaignVersion;
+			h & creationDateTime;
+		}
+		h & difficultyChosenByPlayer;
 		h & filename;
 		h & modName;
 		h & music;
@@ -214,7 +237,7 @@ struct DLL_LINKAGE CampaignScenario
 };
 
 /// Class that represents loaded campaign information
-class DLL_LINKAGE Campaign : public CampaignHeader
+class DLL_LINKAGE Campaign : public CampaignHeader, public Serializeable
 {
 	friend class CampaignHandler;
 
@@ -307,6 +330,8 @@ public:
 
 	std::string campaignSet;
 
+	std::vector<HighScoreParameter> highscoreParameters;
+
 	template <typename Handler> void serialize(Handler &h)
 	{
 		h & static_cast<Campaign&>(*this);
@@ -319,6 +344,8 @@ public:
 		h & campaignSet;
 		if (h.version >= Handler::Version::CAMPAIGN_MAP_TRANSLATIONS)
 			h & mapTranslations;
+		if (h.version >= Handler::Version::HIGHSCORE_PARAMETERS)
+			h & highscoreParameters;
 	}
 };
 

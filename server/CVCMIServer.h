@@ -93,7 +93,7 @@ public:
 	void announcePack(std::unique_ptr<CPackForLobby> pack);
 	bool passHost(int toConnectionId);
 
-	void announceTxt(MetaString txt, const std::string & playerName = "system");
+	void announceTxt(const MetaString & txt, const std::string & playerName = "system");
 	void announceTxt(const std::string & txt, const std::string & playerName = "system");
 
 	void setPlayerConnectedId(PlayerSettings & pset, ui8 player) const;
@@ -103,7 +103,7 @@ public:
 	void clientDisconnected(std::shared_ptr<CConnection> c);
 	void reconnectPlayer(int connId);
 
-	void announceMessage(MetaString txt);
+	void announceMessage(const MetaString & txt);
 	void announceMessage(const std::string & txt);
 
 	void handleReceivedPack(std::unique_ptr<CPackForLobby> pack);
@@ -118,6 +118,7 @@ public:
 	// Work with LobbyInfo
 	void setPlayer(PlayerColor clickedColor);
 	void setPlayerName(PlayerColor player, std::string name);
+	void setPlayerHandicap(PlayerColor player, Handicap handicap);
 	void optionNextHero(PlayerColor player, int dir); //dir == -1 or +1
 	void optionSetHero(PlayerColor player, HeroTypeID id);
 	HeroTypeID nextAllowedHero(PlayerColor player, HeroTypeID id, int direction);

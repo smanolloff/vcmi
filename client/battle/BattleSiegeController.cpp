@@ -17,10 +17,10 @@
 #include "BattleFieldController.h"
 #include "BattleRenderer.h"
 
-#include "../CMusicHandler.h"
 #include "../CGameInfo.h"
 #include "../CPlayerInterface.h"
 #include "../gui/CGuiHandler.h"
+#include "../media/ISoundPlayer.h"
 #include "../render/Canvas.h"
 #include "../render/IImage.h"
 #include "../render/IRenderHandler.h"
@@ -126,7 +126,7 @@ ImagePath BattleSiegeController::getBattleBackgroundName() const
 	return ImagePath::builtinTODO(prefix + "BACK.BMP");
 }
 
-bool BattleSiegeController::getWallPieceExistance(EWallVisual::EWallVisual what) const
+bool BattleSiegeController::getWallPieceExistence(EWallVisual::EWallVisual what) const
 {
 	//FIXME: use this instead of buildings test?
 	//ui8 siegeLevel = owner.curInt->cb->battleGetSiegeLevel();
@@ -179,16 +179,16 @@ BattleSiegeController::BattleSiegeController(BattleInterface & owner, const CGTo
 		if ( g == EWallVisual::GATE ) // gate is initially closed and has no image to display in this state
 			continue;
 
-		if ( !getWallPieceExistance(EWallVisual::EWallVisual(g)) )
+		if ( !getWallPieceExistence(EWallVisual::EWallVisual(g)) )
 			continue;
 
-		wallPieceImages[g] = GH.renderHandler().loadImage(getWallPieceImageName(EWallVisual::EWallVisual(g), EWallState::REINFORCED));
+		wallPieceImages[g] = GH.renderHandler().loadImage(getWallPieceImageName(EWallVisual::EWallVisual(g), EWallState::REINFORCED), EImageBlitMode::COLORKEY);
 	}
 }
 
 const CCreature *BattleSiegeController::getTurretCreature() const
 {
-	return CGI->creh->objects[town->town->clientInfo.siegeShooter];
+	return town->town->clientInfo.siegeShooter.toCreature();
 }
 
 Point BattleSiegeController::getTurretCreaturePosition( BattleHex position ) const
@@ -248,7 +248,7 @@ void BattleSiegeController::gateStateChanged(const EGateState state)
 		wallPieceImages[EWallVisual::GATE] = nullptr;
 
 	if (stateId != EWallState::NONE)
-		wallPieceImages[EWallVisual::GATE] = GH.renderHandler().loadImage(getWallPieceImageName(EWallVisual::GATE,  stateId));
+		wallPieceImages[EWallVisual::GATE] = GH.renderHandler().loadImage(getWallPieceImageName(EWallVisual::GATE,  stateId), EImageBlitMode::COLORKEY);
 
 	if (playSound)
 		CCS->soundh->playSound(soundBase::DRAWBRG);
@@ -256,10 +256,10 @@ void BattleSiegeController::gateStateChanged(const EGateState state)
 
 void BattleSiegeController::showAbsoluteObstacles(Canvas & canvas)
 {
-	if (getWallPieceExistance(EWallVisual::MOAT))
+	if (getWallPieceExistence(EWallVisual::MOAT))
 		showWallPiece(canvas, EWallVisual::MOAT);
 
-	if (getWallPieceExistance(EWallVisual::MOAT_BANK))
+	if (getWallPieceExistence(EWallVisual::MOAT_BANK))
 		showWallPiece(canvas, EWallVisual::MOAT_BANK);
 }
 
@@ -292,7 +292,7 @@ void BattleSiegeController::collectRenderableObjects(BattleRenderer & renderer)
 	{
 		auto wallPiece = EWallVisual::EWallVisual(i);
 
-		if ( !getWallPieceExistance(wallPiece))
+		if ( !getWallPieceExistence(wallPiece))
 			continue;
 
 		if ( getWallPiecePosition(wallPiece) == BattleHex::INVALID)
@@ -357,7 +357,7 @@ void BattleSiegeController::stackIsCatapulting(const CatapultAttack & ca)
 
 		auto wallState = EWallState(owner.getBattle()->battleGetWallState(attackInfo.attackedPart));
 
-		wallPieceImages[wallId] = GH.renderHandler().loadImage(getWallPieceImageName(EWallVisual::EWallVisual(wallId), wallState));
+		wallPieceImages[wallId] = GH.renderHandler().loadImage(getWallPieceImageName(EWallVisual::EWallVisual(wallId), wallState), EImageBlitMode::COLORKEY);
 	}
 }
 

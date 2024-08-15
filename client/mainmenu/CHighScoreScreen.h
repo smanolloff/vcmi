@@ -9,39 +9,17 @@
  */
 #pragma once
 #include "../windows/CWindowObject.h"
+#include "../../lib/gameState/HighScore.h"
 
 class CButton;
 class CLabel;
 class CMultiLineLabel;
 class CAnimImage;
 class CTextInput;
+class VideoWidgetBase;
 class CFilledTexture;
 
 class TransparentFilledRectangle;
-
-class HighScoreParameter
-{
-public:
-	int difficulty;
-	int day;
-	int townAmount;
-	bool usedCheat;
-	bool hasGrail;
-	bool allDefeated;
-	std::string campaignName;
-	std::string scenarioName;
-	std::string playerName;
-};
-
-class HighScoreCalculation
-{
-public:
-	std::vector<HighScoreParameter> parameters = std::vector<HighScoreParameter>();
-	bool isCampaign = false;
-
-	auto calculate();
-	static CreatureID getCreatureForPoints(int points, bool campaign);
-};
 
 class CHighScoreScreen : public CWindowObject
 {
@@ -95,10 +73,9 @@ class CHighScoreInputScreen : public CWindowObject
 	std::vector<std::shared_ptr<CMultiLineLabel>> texts;
 	std::shared_ptr<CHighScoreInput> input;
 	std::shared_ptr<TransparentFilledRectangle> background;
+	std::shared_ptr<VideoWidgetBase> videoPlayer;
 	std::shared_ptr<CFilledTexture> backgroundAroundMenu;
 
-	std::string video;
-	int videoSoundHandle;
 	bool won;
 	HighScoreCalculation calc;
 public:
@@ -106,9 +83,7 @@ public:
 
 	int addEntry(std::string text);
 
-	void show(Canvas & to) override;
-	void activate() override;
-	void deactivate() override;
 	void clickPressed(const Point & cursorPosition) override;
 	void keyPressed(EShortcut key) override;
+	void show(Canvas & to) override;
 };

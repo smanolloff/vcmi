@@ -17,16 +17,16 @@
 #include "ModIncompatibility.h"
 
 #include "../CCreatureHandler.h"
-#include "../CGeneralTextHandler.h"
 #include "../CStopWatch.h"
 #include "../GameSettings.h"
-#include "../Languages.h"
-#include "../MetaString.h"
 #include "../ScriptHandler.h"
 #include "../constants/StringConstants.h"
 #include "../filesystem/Filesystem.h"
 #include "../json/JsonUtils.h"
 #include "../spells/CSpellHandler.h"
+#include "../texts/CGeneralTextHandler.h"
+#include "../texts/Languages.h"
+#include "../VCMI_Lib.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -119,7 +119,7 @@ std::vector <TModID> CModHandler::validateAndSortDependencies(std::vector <TModI
 		{
 			if(isResolved(allMods.at(*it)))
 			{
-				resolvedOnCurrentTreeLevel.insert(*it); // Not to the resolvedModIDs, so current node childs will be resolved on the next iteration
+				resolvedOnCurrentTreeLevel.insert(*it); // Not to the resolvedModIDs, so current node children will be resolved on the next iteration
 				sortedValidMods.push_back(*it);
 				it = modsToResolve.erase(it);
 				continue;

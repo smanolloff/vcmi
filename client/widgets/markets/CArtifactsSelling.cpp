@@ -22,10 +22,12 @@
 #include "../../../CCallback.h"
 
 #include "../../../lib/CArtifactInstance.h"
-#include "../../../lib/CGeneralTextHandler.h"
+#include "../../../lib/entities/building/CBuilding.h"
+#include "../../../lib/entities/faction/CTownHandler.h"
 #include "../../../lib/mapObjects/CGHeroInstance.h"
 #include "../../../lib/mapObjects/CGMarket.h"
 #include "../../../lib/mapObjects/CGTownInstance.h"
+#include "../../../lib/texts/CGeneralTextHandler.h"
 
 CArtifactsSelling::CArtifactsSelling(const IMarket * market, const CGHeroInstance * hero)
 	: CMarketBase(market, hero)
@@ -33,7 +35,7 @@ CArtifactsSelling::CArtifactsSelling(const IMarket * market, const CGHeroInstanc
 		[this](const std::shared_ptr<CTradeableItem> & resSlot){CArtifactsSelling::onSlotClickPressed(resSlot, offerTradePanel);},
 		[this](){CArtifactsSelling::updateSubtitles();})
 {
-	OBJECT_CONSTRUCTION_CUSTOM_CAPTURING(255 - DISPOSE);
+	OBJECT_CONSTRUCTION;
 
 	std::string title;
 	if(const auto townMarket = dynamic_cast<const CGTownInstance*>(market))
@@ -56,14 +58,18 @@ CArtifactsSelling::CArtifactsSelling(const IMarket * market, const CGHeroInstanc
 	// Hero's artifacts
 	heroArts = std::make_shared<CArtifactsOfHeroMarket>(Point(-361, 46), offerTradePanel->selectionWidth);
 	heroArts->setHero(hero);
-	heroArts->selectArtCallback = [this](const CArtPlace * artPlace)
+	heroArts->onSelectArtCallback = [this](const CArtPlace * artPlace)
 	{
 		assert(artPlace);
 		selectedHeroSlot = artPlace->slot;
 		CArtifactsSelling::highlightingChanged();
 		CIntObject::redraw();
 	};
-
+	heroArts->onClickNotTradableCallback = []()
+	{
+		// This item can't be traded
+		LOCPLINT->showInfoDialog(CGI->generaltexth->allTexts[21]);
+	};
 	CArtifactsSelling::updateShowcases();
 	CArtifactsSelling::deselect();
 }

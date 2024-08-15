@@ -17,6 +17,7 @@
 #include "../lobby/CBonusSelection.h"
 #include "../lobby/CSelectionBase.h"
 #include "../lobby/CLobbyScreen.h"
+#include "../media/IMusicPlayer.h"
 #include "../gui/CursorHandler.h"
 #include "../windows/GUIClasses.h"
 #include "../gui/CGuiHandler.h"
@@ -33,19 +34,18 @@
 #include "../widgets/MiscWidgets.h"
 #include "../widgets/ObjectLists.h"
 #include "../widgets/TextControls.h"
+#include "../widgets/VideoWidget.h"
 #include "../windows/InfoWindows.h"
 #include "../CServerHandler.h"
 
 #include "../CGameInfo.h"
-#include "../CMusicHandler.h"
-#include "../CVideoHandler.h"
 #include "../CPlayerInterface.h"
 #include "../Client.h"
 #include "../CMT.h"
 
 #include "../../CCallback.h"
 
-#include "../../lib/CGeneralTextHandler.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/campaign/CampaignHandler.h"
 #include "../../lib/serializer/CTypeList.h"
 #include "../../lib/filesystem/Filesystem.h"
@@ -73,7 +73,7 @@ static void do_quit()
 CMenuScreen::CMenuScreen(const JsonNode & configNode)
 	: CWindowObject(BORDERED), config(configNode)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	background = std::make_shared<CPicture>(ImagePath::fromJson(config["background"]));
 	if(config["scalable"].Bool())
@@ -91,8 +91,14 @@ CMenuScreen::CMenuScreen(const JsonNode & configNode)
 	menuNameToEntry.push_back("credits");
 
 	tabs = std::make_shared<CTabbedInt>(std::bind(&CMenuScreen::createTab, this, _1));
-	if(config["video"].isNull())
+	if(!config["video"].isNull())
+	{
+		Point videoPosition(config["video"]["x"].Integer(), config["video"]["y"].Integer());
+		videoPlayer = std::make_shared<VideoWidget>(videoPosition, VideoPath::fromJson(config["video"]["name"]), false);
+	}
+	else
 		tabs->setRedrawParent(true);
+
 }
 
 std::shared_ptr<CIntObject> CMenuScreen::createTab(size_t index)
@@ -105,30 +111,14 @@ std::shared_ptr<CIntObject> CMenuScreen::createTab(size_t index)
 
 void CMenuScreen::show(Canvas & to)
 {
-	if(!config["video"].isNull())
-	{
-		// redraw order: background -> video -> buttons and pictures
-		background->showAll(to);
-		CCS->videoh->update((int)config["video"]["x"].Float() + pos.x, (int)config["video"]["y"].Float() + pos.y, to.getInternalSurface(), true, false);
-		tabs->showAll(to);
-	}
-	CIntObject::show(to);
+	// TODO: avoid excessive redraws
+	CIntObject::showAll(to);
 }
 
 void CMenuScreen::activate()
 {
 	CCS->musich->playMusic(AudioPath::builtin("Music/MainMenu"), true, true);
-	if(!config["video"].isNull())
-		CCS->videoh->open(VideoPath::fromJson(config["video"]["name"]));
 	CIntObject::activate();
-}
-
-void CMenuScreen::deactivate()
-{
-	if(!config["video"].isNull())
-		CCS->videoh->close();
-
-	CIntObject::deactivate();
 }
 
 void CMenuScreen::switchToTab(size_t index)
@@ -146,7 +136,7 @@ size_t CMenuScreen::getActiveTab() const
 	return tabs->getActive();
 }
 
-//funciton for std::string -> std::function conversion for main menu
+//function for std::string -> std::function conversion for main menu
 static std::function<void()> genCommand(CMenuScreen * menu, std::vector<std::string> menuType, const std::string & string)
 {
 	static const std::vector<std::string> commandType = {"to", "campaigns", "start", "load", "exit", "highscores"};
@@ -255,7 +245,7 @@ std::shared_ptr<CButton> CMenuEntry::createButton(CMenuScreen * parent, const Js
 
 CMenuEntry::CMenuEntry(CMenuScreen * parent, const JsonNode & config)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	setRedrawParent(true);
 	pos = parent->pos;
 
@@ -299,9 +289,8 @@ CMainMenu::CMainMenu()
 	pos.w = GH.screenDimensions().x;
 	pos.h = GH.screenDimensions().y;
 
-	GH.defActionsDef = 63;
 	menu = std::make_shared<CMenuScreen>(CMainMenuConfig::get().getConfig()["window"]);
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	backgroundAroundMenu = std::make_shared<CFilledTexture>(ImagePath::builtin("DIBOXBCK"), pos);
 }
 
@@ -445,7 +434,7 @@ std::shared_ptr<CPicture> CMainMenu::createPicture(const JsonNode & config)
 CMultiMode::CMultiMode(ESelectionScreen ScreenType)
 	: screenType(ScreenType)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 
 	background = std::make_shared<CPicture>(ImagePath::builtin("MUPOPUP.bmp"));
 	pos = background->center(); //center, window has size of bg graphic
@@ -454,7 +443,7 @@ CMultiMode::CMultiMode(ESelectionScreen ScreenType)
 
 	statusBar = CGStatusBar::create(std::make_shared<CPicture>(background->getSurface(), Rect(7, 465, 440, 18), 7, 465));
 	playerName = std::make_shared<CTextInput>(Rect(19, 436, 334, 16), background->getSurface());
-	playerName->setText(getPlayerName());
+	playerName->setText(getPlayersNames()[0]);
 	playerName->setCallback(std::bind(&CMultiMode::onNameChange, this, _1));
 
 	buttonHotseat = std::make_shared<CButton>(Point(373, 78 + 57 * 0), AnimationPath::builtin("MUBHOT.DEF"), CGI->generaltexth->zelp[266], std::bind(&CMultiMode::hostTCP, this), EShortcut::MAIN_MENU_HOTSEAT);
@@ -476,22 +465,35 @@ void CMultiMode::hostTCP()
 {
 	auto savedScreenType = screenType;
 	close();
-	GH.windows().createAndPushWindow<CMultiPlayers>(getPlayerName(), savedScreenType, true, ELoadMode::MULTI);
+	GH.windows().createAndPushWindow<CMultiPlayers>(getPlayersNames(), savedScreenType, true, ELoadMode::MULTI);
 }
 
 void CMultiMode::joinTCP()
 {
 	auto savedScreenType = screenType;
 	close();
-	GH.windows().createAndPushWindow<CMultiPlayers>(getPlayerName(), savedScreenType, false, ELoadMode::MULTI);
+	GH.windows().createAndPushWindow<CMultiPlayers>(getPlayersNames(), savedScreenType, false, ELoadMode::MULTI);
 }
 
-std::string CMultiMode::getPlayerName()
+std::vector<std::string> CMultiMode::getPlayersNames()
 {
-	std::string name = settings["general"]["playerName"].String();
-	if(name == "Player")
-		name = CGI->generaltexth->translate("core.genrltxt.434");
-	return name;
+	std::vector<std::string> playerNames;
+
+	std::string playerNameStr = settings["general"]["playerName"].String();
+	if (playerNameStr == "Player")
+		playerNameStr = CGI->generaltexth->translate("core.genrltxt.434");
+	playerNames.push_back(playerNameStr);
+
+	for (const auto & playerName : settings["general"]["multiPlayerNames"].Vector())
+	{
+		const std::string &nameStr = playerName.String();
+		if (!nameStr.empty())
+		{
+			playerNames.push_back(nameStr);
+		}
+	}
+
+	return playerNames;
 }
 
 void CMultiMode::onNameChange(std::string newText)
@@ -500,10 +502,10 @@ void CMultiMode::onNameChange(std::string newText)
 	name->String() = newText;
 }
 
-CMultiPlayers::CMultiPlayers(const std::string & firstPlayer, ESelectionScreen ScreenType, bool Host, ELoadMode LoadMode)
+CMultiPlayers::CMultiPlayers(const std::vector<std::string> & playerNames, ESelectionScreen ScreenType, bool Host, ELoadMode LoadMode)
 	: loadMode(LoadMode), screenType(ScreenType), host(Host)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	background = std::make_shared<CPicture>(ImagePath::builtin("MUHOTSEA.bmp"));
 	pos = background->center(); //center, window has size of bg graphic
 
@@ -521,7 +523,10 @@ CMultiPlayers::CMultiPlayers(const std::string & firstPlayer, ESelectionScreen S
 	buttonCancel = std::make_shared<CButton>(Point(205, 338), AnimationPath::builtin("MUBCANC.DEF"), CGI->generaltexth->zelp[561], [=](){ close();}, EShortcut::GLOBAL_CANCEL);
 	statusBar = CGStatusBar::create(std::make_shared<CPicture>(background->getSurface(), Rect(7, 381, 348, 18), 7, 381));
 
-	inputNames[0]->setText(firstPlayer);
+	for(int i = 0; i < playerNames.size(); i++)
+	{
+		inputNames[i]->setText(playerNames[i]);
+	}
 #ifndef VCMI_MOBILE
 	inputNames[0]->giveFocus();
 #endif
@@ -533,22 +538,39 @@ void CMultiPlayers::onChange(std::string newText)
 
 void CMultiPlayers::enterSelectionScreen()
 {
-	std::vector<std::string> names;
-	for(auto name : inputNames)
+	std::vector<std::string> playerNames;
+	for(auto playerName : inputNames)
 	{
-		if(name->getText().length())
-			names.push_back(name->getText());
+		if (playerName->getText().length())
+			playerNames.push_back(playerName->getText());
 	}
 
-	Settings name = settings.write["general"]["playerName"];
-	name->String() = names[0];
+	Settings playerName = settings.write["general"]["playerName"];
+	Settings multiPlayerNames = settings.write["general"]["multiPlayerNames"];
+	multiPlayerNames->Vector().clear();
+	if (!playerNames.empty())
+	{
+		playerName->String() = playerNames.front();
+		for (auto playerNameIt = playerNames.begin()+1; playerNameIt != playerNames.end(); playerNameIt++)
+		{
+			multiPlayerNames->Vector().push_back(JsonNode(*playerNameIt));
+		}
+	}
+	else
+	{
+		// Without the check the saving crashes directly.
+		// When empty reset the player's name. This would translate to it being
+		// the default for the next run. But enables deleting players, by just
+		// deleting the names, otherwise some UI element should have been added.
+		playerName->clear();
+	}
 
-	CMainMenu::openLobby(screenType, host, names, loadMode);
+	CMainMenu::openLobby(screenType, host, playerNames, loadMode);
 }
 
 CSimpleJoinScreen::CSimpleJoinScreen(bool host)
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	background = std::make_shared<CPicture>(ImagePath::builtin("MUDIALOG.bmp")); // address background
 	pos = background->center(); //center, window has size of bg graphic (x,y = 396,278 w=232 h=212)
 
@@ -609,7 +631,7 @@ void CSimpleJoinScreen::startConnection(const std::string & addr, ui16 port)
 CLoadingScreen::CLoadingScreen()
 	: CWindowObject(BORDERED, getBackground())
 {
-	OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	OBJECT_CONSTRUCTION;
 	
 	addUsedEvents(TIME);
 	

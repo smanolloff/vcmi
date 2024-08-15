@@ -15,7 +15,7 @@
 #include "ObjectTemplate.h"
 
 #include "../gameState/CGameState.h"
-#include "../CGeneralTextHandler.h"
+#include "../texts/CGeneralTextHandler.h"
 #include "../IGameCallback.h"
 #include "../constants/StringConstants.h"
 #include "../TerrainHandler.h"
@@ -24,6 +24,8 @@
 #include "../mapping/CMap.h"
 #include "../networkPacks/PacksForClient.h"
 #include "../serializer/JsonSerializeFormat.h"
+
+#include <vstd/RNG.h>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -164,12 +166,12 @@ void CGObjectInstance::setType(MapObjectID newID, MapObjectSubID newSubID)
 	cb->gameState()->map->addBlockVisTiles(this);
 }
 
-void CGObjectInstance::pickRandomObject(CRandomGenerator & rand)
+void CGObjectInstance::pickRandomObject(vstd::RNG & rand)
 {
 	// no-op
 }
 
-void CGObjectInstance::initObj(CRandomGenerator & rand)
+void CGObjectInstance::initObj(vstd::RNG & rand)
 {
 	// no-op
 }
@@ -232,7 +234,7 @@ std::string CGObjectInstance::getObjectName() const
 	return VLC->objtypeh->getObjectName(ID, subID);
 }
 
-std::optional<AudioPath> CGObjectInstance::getAmbientSound() const
+std::optional<AudioPath> CGObjectInstance::getAmbientSound(vstd::RNG & rng) const
 {
 	const auto & sounds = VLC->objtypeh->getObjectSounds(ID, subID).ambient;
 	if(!sounds.empty())
@@ -241,20 +243,20 @@ std::optional<AudioPath> CGObjectInstance::getAmbientSound() const
 	return std::nullopt;
 }
 
-std::optional<AudioPath> CGObjectInstance::getVisitSound() const
+std::optional<AudioPath> CGObjectInstance::getVisitSound(vstd::RNG & rng) const
 {
 	const auto & sounds = VLC->objtypeh->getObjectSounds(ID, subID).visit;
 	if(!sounds.empty())
-		return *RandomGeneratorUtil::nextItem(sounds, CRandomGenerator::getDefault());
+		return *RandomGeneratorUtil::nextItem(sounds, rng);
 
 	return std::nullopt;
 }
 
-std::optional<AudioPath> CGObjectInstance::getRemovalSound() const
+std::optional<AudioPath> CGObjectInstance::getRemovalSound(vstd::RNG & rng) const
 {
 	const auto & sounds = VLC->objtypeh->getObjectSounds(ID, subID).removal;
 	if(!sounds.empty())
-		return *RandomGeneratorUtil::nextItem(sounds, CRandomGenerator::getDefault());
+		return *RandomGeneratorUtil::nextItem(sounds, rng);
 
 	return std::nullopt;
 }

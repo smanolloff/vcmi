@@ -17,10 +17,11 @@
 #include "../lib/CRandomGenerator.h"
 
 #include "../lib/campaign/CampaignState.h"
+#include "../lib/entities/faction/CTownHandler.h"
+#include "../lib/entities/faction/CFaction.h"
 #include "../lib/serializer/Connection.h"
 #include "../lib/mapping/CMapInfo.h"
 #include "../lib/mapping/CMapHeader.h"
-#include "../lib/CTownHandler.h"
 
 void ClientPermissionsCheckerNetPackVisitor::visitForLobby(CPackForLobby & pack)
 {
@@ -32,7 +33,7 @@ void ClientPermissionsCheckerNetPackVisitor::visitForLobby(CPackForLobby & pack)
 
 void ApplyOnServerAfterAnnounceNetPackVisitor::visitForLobby(CPackForLobby & pack)
 {
-	// Propogate options after every CLobbyPackToServer
+	// Propagate options after every CLobbyPackToServer
 	if(pack.isForServer())
 	{
 		srv.updateAndPropagateLobbyState();
@@ -342,6 +343,12 @@ void ApplyOnServerNetPackVisitor::visitLobbySetPlayer(LobbySetPlayer & pack)
 void ApplyOnServerNetPackVisitor::visitLobbySetPlayerName(LobbySetPlayerName & pack)
 {
 	srv.setPlayerName(pack.color, pack.name);
+	result = true;
+}
+
+void ApplyOnServerNetPackVisitor::visitLobbySetPlayerHandicap(LobbySetPlayerHandicap & pack)
+{
+	srv.setPlayerHandicap(pack.color, pack.handicap);
 	result = true;
 }
 

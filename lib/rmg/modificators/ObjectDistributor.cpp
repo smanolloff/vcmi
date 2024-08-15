@@ -25,6 +25,8 @@
 #include "../Functions.h"
 #include "../RmgObject.h"
 
+#include <vstd/RNG.h>
+
 VCMI_LIB_NAMESPACE_BEGIN
 
 void ObjectDistributor::process()
@@ -157,7 +159,7 @@ void ObjectDistributor::distributePrisons()
 		}
 	}
 
-	size_t allowedPrisons = prisonHeroPlacer->getPrisonsRemaning();
+	size_t allowedPrisons = prisonHeroPlacer->getPrisonsRemaining();
 	for (int i = zones.size() - 1; i >= 0; i--)
 	{
 		auto zone = zones[i].second;

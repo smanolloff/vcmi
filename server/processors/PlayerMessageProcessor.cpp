@@ -19,6 +19,7 @@
 #include "../../lib/CHeroHandler.h"
 #include "../../lib/CPlayerState.h"
 #include "../../lib/StartInfo.h"
+#include "../../lib/entities/building/CBuilding.h"
 #include "../../lib/gameState/CGameState.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
@@ -28,6 +29,7 @@
 #include "../../lib/networkPacks/PacksForClient.h"
 #include "../../lib/networkPacks/StackLocation.h"
 #include "../../lib/serializer/Connection.h"
+#include "../lib/VCMIDirs.h"
 
 PlayerMessageProcessor::PlayerMessageProcessor(CGameHandler * gameHandler)
 	:gameHandler(gameHandler)
@@ -132,12 +134,30 @@ void PlayerMessageProcessor::commandCheaters(PlayerColor player, const std::vect
 		broadcastSystemMessage("No cheaters registered!");
 }
 
+void PlayerMessageProcessor::commandStatistic(PlayerColor player, const std::vector<std::string> & words)
+{
+	bool isHost = gameHandler->gameLobby()->isPlayerHost(player);
+	if(!isHost)
+		return;
+
+	const boost::filesystem::path outPath = VCMIDirs::get().userCachePath() / "statistic";
+	boost::filesystem::create_directories(outPath);
+
+	const boost::filesystem::path filePath = outPath / (vstd::getDateTimeISO8601Basic(std::time(nullptr)) + ".csv");
+	std::ofstream file(filePath.c_str());
+	std::string csv = gameHandler->gameState()->statistic.toCsv();
+	file << csv;
+
+	broadcastSystemMessage("Statistic files can be found in " + outPath.string() + " directory\n");
+}
+
 void PlayerMessageProcessor::commandHelp(PlayerColor player, const std::vector<std::string> & words)
 {
 	broadcastSystemMessage("Available commands to host:");
 	broadcastSystemMessage("'!exit' - immediately ends current game");
 	broadcastSystemMessage("'!kick <player>' - kick specified player from the game");
 	broadcastSystemMessage("'!save <filename>' - save game under specified filename");
+	broadcastSystemMessage("'!statistic' - save game statistics as csv file");
 	broadcastSystemMessage("Available commands to all players:");
 	broadcastSystemMessage("'!help' - display this help");
 	broadcastSystemMessage("'!cheaters' - list players that entered cheat command during game");
@@ -318,6 +338,8 @@ void PlayerMessageProcessor::handleCommand(PlayerColor player, const std::string
 		commandSave(player, words);
 	if(words[0] == "!cheaters")
 		commandCheaters(player, words);
+	if(words[0] == "!statistic")
+		commandStatistic(player, words);
 }
 
 void PlayerMessageProcessor::cheatGiveSpells(PlayerColor player, const CGHeroInstance * hero)
@@ -560,7 +582,7 @@ void PlayerMessageProcessor::cheatMapReveal(PlayerColor player, bool reveal)
 	for(int z = 0; z < mapSize.z; z++)
 		for(int x = 0; x < mapSize.x; x++)
 			for(int y = 0; y < mapSize.y; y++)
-				if(!(*fowMap)[z][x][y] || fc.mode == ETileVisibility::HIDDEN)
+				if(!fowMap[z][x][y] || fc.mode == ETileVisibility::HIDDEN)
 					hlp_tab[lastUnc++] = int3(x, y, z);
 
 	fc.tiles.insert(hlp_tab, hlp_tab + lastUnc);
@@ -811,7 +833,7 @@ void PlayerMessageProcessor::executeCheatCode(const std::string & cheatName, Pla
 		callbacks.at(cheatName)();
 }
 
-void PlayerMessageProcessor::sendSystemMessage(std::shared_ptr<CConnection> connection, MetaString message)
+void PlayerMessageProcessor::sendSystemMessage(std::shared_ptr<CConnection> connection, const MetaString & message)
 {
 	SystemMessage sm;
 	sm.text = message;

@@ -45,7 +45,7 @@ struct BattleScore
 struct AttackerValue
 {
 	float value;
-	bool isRetalitated;
+	bool isRetaliated;
 	BattleHex position;
 
 	AttackerValue();
@@ -148,7 +148,7 @@ public:
 		std::shared_ptr<CBattleInfoCallback> cb,
 		std::shared_ptr<Environment> env,
 		float strengthRatio): cb(cb), env(env) {
-		negativeEffectMultiplier = strengthRatio >= 1 ? 1 : strengthRatio;
+		negativeEffectMultiplier = strengthRatio >= 1 ? 1 : strengthRatio * strengthRatio;
 	}
 
 	EvaluationResult findBestTarget(

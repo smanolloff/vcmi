@@ -14,14 +14,17 @@
 
 #include "CSkillHandler.h"
 
-#include "CGeneralTextHandler.h"
+#include "constants/StringConstants.h"
 #include "filesystem/Filesystem.h"
 #include "json/JsonBonus.h"
 #include "json/JsonUtils.h"
 #include "modding/IdentifierStorage.h"
 #include "modding/ModUtility.h"
 #include "modding/ModScope.h"
-#include "constants/StringConstants.h"
+#include "texts/CGeneralTextHandler.h"
+#include "texts/CLegacyConfigParser.h"
+#include "texts/TextOperations.h"
+#include "VCMI_Lib.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -59,6 +62,11 @@ std::string CSkill::getNameTranslated() const
 std::string CSkill::getJsonKey() const
 {
 	return modScope + ':' + identifier;
+}
+
+std::string CSkill::getModScope() const
+{
+	return modScope;
 }
 
 std::string CSkill::getDescriptionTextID(int level) const
@@ -190,7 +198,7 @@ const std::vector<std::string> & CSkillHandler::getTypeNames() const
 	return typeNames;
 }
 
-CSkill * CSkillHandler::loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index)
+std::shared_ptr<CSkill> CSkillHandler::loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index)
 {
 	assert(identifier.find(':') == std::string::npos);
 	assert(!scope.empty());
@@ -199,7 +207,7 @@ CSkill * CSkillHandler::loadFromJson(const std::string & scope, const JsonNode &
 
 	major = json["obligatoryMajor"].Bool();
 	minor = json["obligatoryMinor"].Bool();
-	auto * skill = new CSkill(SecondarySkill((si32)index), identifier, major, minor);
+	auto skill = std::make_shared<CSkill>(SecondarySkill(index), identifier, major, minor);
 	skill->modScope = scope;
 
 	skill->onlyOnWaterMap = json["onlyOnWaterMap"].Bool();

@@ -18,7 +18,7 @@
 #include "../render/Graphics.h"
 #include "../render/IFont.h"
 
-#include "../../lib/TextOperations.h"
+#include "../../lib/texts/TextOperations.h"
 
 std::list<CFocusable *> CFocusable::focusables;
 CFocusable * CFocusable::inputWithFocus;
@@ -30,12 +30,12 @@ CTextInput::CTextInput(const Rect & Pos)
 	pos.h = Pos.h;
 	pos.w = Pos.w;
 
-	addUsedEvents(LCLICK | KEYBOARD | TEXTINPUT);
+	addUsedEvents(LCLICK | SHOW_POPUP | KEYBOARD | TEXTINPUT);
 }
 
 void CTextInput::createLabel(bool giveFocusToInput)
 {
-	OBJ_CONSTRUCTION;
+	OBJECT_CONSTRUCTION;
 	label = std::make_shared<CLabel>();
 	label->pos = pos;
 	label->alignment = originalAlignment;
@@ -59,7 +59,7 @@ CTextInput::CTextInput(const Rect & Pos, EFonts font, ETextAlignment alignment, 
 CTextInput::CTextInput(const Rect & Pos, const Point & bgOffset, const ImagePath & bgName)
 	: CTextInput(Pos)
 {
-	OBJ_CONSTRUCTION;
+	OBJECT_CONSTRUCTION;
 	if (!bgName.empty())
 		background = std::make_shared<CPicture>(bgName, bgOffset.x, bgOffset.y);
 	else
@@ -71,7 +71,7 @@ CTextInput::CTextInput(const Rect & Pos, const Point & bgOffset, const ImagePath
 CTextInput::CTextInput(const Rect & Pos, std::shared_ptr<IImage> srf)
 	: CTextInput(Pos)
 {
-	OBJ_CONSTRUCTION;
+	OBJECT_CONSTRUCTION;
 	background = std::make_shared<CPicture>(srf, Pos);
 	pos.w = background->pos.w;
 	pos.h = background->pos.h;
@@ -106,6 +106,11 @@ void CTextInput::setCallback(const TextEditedCallback & cb)
 	onTextEdited = cb;
 }
 
+void CTextInput::setPopupCallback(const std::function<void()> & cb)
+{
+	callbackPopup = cb;
+}
+
 void CTextInput::setFilterFilename()
 {
 	assert(!onTextFiltering);
@@ -117,9 +122,15 @@ void CTextInput::setFilterNumber(int minValue, int maxValue)
 	onTextFiltering = std::bind(&CTextInput::numberFilter, _1, _2, minValue, maxValue);
 }
 
-std::string CTextInput::getVisibleText()
+std::string CTextInput::getVisibleText() const
 {
 	return hasFocus() ? currentText + composedText + "_" : currentText;
+}
+
+void CTextInput::showPopupWindow(const Point & cursorPosition)
+{
+	if(callbackPopup)
+		callbackPopup();
 }
 
 void CTextInput::clickPressed(const Point & cursorPosition)
@@ -189,7 +200,7 @@ void CTextInput::updateLabel()
 	label->setText(visibleText);
 }
 
-void CTextInput::textInputed(const std::string & enteredText)
+void CTextInput::textInputted(const std::string & enteredText)
 {
 	if(!hasFocus())
 		return;
@@ -216,7 +227,6 @@ void CTextInput::textEdited(const std::string & enteredText)
 
 	composedText = enteredText;
 	updateLabel();
-	//onTextEdited(currentText + composedText);
 }
 
 void CTextInput::filenameFilter(std::string & text, const std::string &oldText)

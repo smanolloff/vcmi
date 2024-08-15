@@ -25,6 +25,7 @@ class SpellCastEnvironment;
 class CConnection;
 class CCommanderInstance;
 class EVictoryLossCheckResult;
+class CRandomGenerator;
 
 struct CPack;
 struct CPackForServer;
@@ -65,6 +66,7 @@ public:
 	std::unique_ptr<QueriesProcessor> queries;
 	std::unique_ptr<TurnOrderProcessor> turnOrder;
 	std::unique_ptr<TurnTimerHandler> turnTimerHandler;
+	std::unique_ptr<CRandomGenerator> randomNumberGenerator;
 
 	//use enums as parameters, because doMove(sth, true, false, true) is not readable
 	enum EGuardLook {CHECK_FOR_GUARDS, IGNORE_GUARDS};
@@ -94,6 +96,14 @@ public:
 	bool isAllowedExchange(ObjectInstanceID id1, ObjectInstanceID id2);
 	void giveSpells(const CGTownInstance *t, const CGHeroInstance *h);
 
+	// Helpers to create new object of specified type
+
+	CGObjectInstance * createNewObject(const int3 & visitablePosition, MapObjectID objectID, MapObjectSubID subID);
+	void createWanderingMonster(const int3 & visitablePosition, CreatureID creature);
+	void createBoat(const int3 & visitablePosition, BoatId type, PlayerColor initiator) override;
+	void createHole(const int3 & visitablePosition, PlayerColor initiator);
+	void newObject(CGObjectInstance * object, PlayerColor initiator);
+
 	explicit CGameHandler(CVCMIServer * lobby);
 	~CGameHandler();
 
@@ -102,7 +112,6 @@ public:
 	//do sth
 	void changeSpells(const CGHeroInstance * hero, bool give, const std::set<SpellID> &spells) override;
 	bool removeObject(const CGObjectInstance * obj, const PlayerColor & initiator) override;
-	void createObject(const int3 & visitablePosition, const PlayerColor & initiator, MapObjectID type, MapObjectSubID subtype) override;
 	void setOwner(const CGObjectInstance * obj, PlayerColor owner) override;
 	void giveExperience(const CGHeroInstance * hero, TExpType val) override;
 	void changePrimSkill(const CGHeroInstance * hero, PrimarySkill which, si64 val, bool abs=false) override;
@@ -164,6 +173,9 @@ public:
 	bool isVisitCoveredByAnotherQuery(const CGObjectInstance *obj, const CGHeroInstance *hero) override;
 	void setObjPropertyValue(ObjectInstanceID objid, ObjProperty prop, int32_t value) override;
 	void setObjPropertyID(ObjectInstanceID objid, ObjProperty prop, ObjPropertyID identifier) override;
+	void setBankObjectConfiguration(ObjectInstanceID objid, const BankConfig & configuration) override;
+	void setRewardableObjectConfiguration(ObjectInstanceID objid, const Rewardable::Configuration & configuration) override;
+	void setRewardableObjectConfiguration(ObjectInstanceID townInstanceID, BuildingID buildingID, const Rewardable::Configuration & configuration) override;
 	void showInfoDialog(InfoWindow * iw) override;
 
 	//////////////////////////////////////////////////////////////////////////
@@ -205,6 +217,7 @@ public:
 	bool upgradeCreature( ObjectInstanceID objid, SlotID pos, CreatureID upgID );
 	bool recruitCreatures(ObjectInstanceID objid, ObjectInstanceID dst, CreatureID crid, ui32 cram, si32 level, PlayerColor player);
 	bool buildStructure(ObjectInstanceID tid, BuildingID bid, bool force=false);//force - for events: no cost, no checkings
+	bool triggerTownSpecialBuildingAction(ObjectInstanceID tid, BuildingSubID::EBuildingSubID sid);
 	bool razeStructure(ObjectInstanceID tid, BuildingID bid);
 	bool disbandCreature( ObjectInstanceID id, SlotID pos );
 	bool arrangeStacks( ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player);
@@ -218,9 +231,10 @@ public:
 	void onPlayerTurnStarted(PlayerColor which);
 	void onPlayerTurnEnded(PlayerColor which);
 	void onNewTurn();
+	void addStatistics();
 
-	void handleTimeEvents();
-	void handleTownEvents(CGTownInstance *town, NewTurn &n);
+	void handleTimeEvents(PlayerColor player);
+	void handleTownEvents(CGTownInstance *town);
 	bool complain(const std::string &problem); //sends message to all clients, prints on the logs and return true
 	void objectVisited( const CGObjectInstance * obj, const CGHeroInstance * h );
 	void objectVisitEnded(const CObjectVisitQuery &query);
@@ -230,7 +244,7 @@ public:
 	template <typename Handler> void serialize(Handler &h)
 	{
 		h & QID;
-		h & getRandomGenerator();
+		h & *randomNumberGenerator;
 		h & *battles;
 		h & *heroPool;
 		h & *playerMessages;
@@ -279,7 +293,7 @@ public:
 	void checkVictoryLossConditions(const std::set<PlayerColor> & playerColors);
 	void checkVictoryLossConditionsForAll();
 
-	CRandomGenerator & getRandomGenerator();
+	vstd::RNG & getRandomGenerator() override;
 
 #if SCRIPTING_ENABLED
 	scripting::Pool * getGlobalContextPool() const override;

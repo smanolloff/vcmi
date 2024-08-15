@@ -17,7 +17,6 @@
 
 #include <vcmi/spells/Caster.h>
 
-#include "../CGeneralTextHandler.h"
 #include "../filesystem/Filesystem.h"
 
 #include "../constants/StringConstants.h"
@@ -28,9 +27,11 @@
 #include "../json/JsonBonus.h"
 #include "../json/JsonUtils.h"
 #include "../mapObjects/CGHeroInstance.h" //todo: remove
-#include "../serializer/CSerializer.h"
 #include "../modding/IdentifierStorage.h"
 #include "../modding/ModUtility.h"
+#include "../serializer/CSerializer.h"
+#include "../texts/CLegacyConfigParser.h"
+#include "../texts/CGeneralTextHandler.h"
 
 #include "ISpellMechanics.h"
 
@@ -197,6 +198,11 @@ std::string CSpell::getDescriptionTranslated(int32_t level) const
 std::string CSpell::getJsonKey() const
 {
 	return modScope + ':' + identifier;
+}
+
+std::string CSpell::getModScope() const
+{
+	return modScope;
 }
 
 int32_t CSpell::getIndex() const
@@ -556,7 +562,7 @@ CSpell::TargetInfo::TargetInfo(const CSpell * spell, const int level, spells::Mo
 	const auto & levelInfo = spell->getLevelInfo(level);
 
 	smart = levelInfo.smartTarget;
-	massive = levelInfo.range == "X";
+	massive = levelInfo.range.empty();
 	clearAffected = levelInfo.clearAffected;
 	clearTarget = levelInfo.clearTarget;
 }
@@ -676,7 +682,65 @@ const std::vector<std::string> & CSpellHandler::getTypeNames() const
 	return typeNames;
 }
 
-CSpell * CSpellHandler::loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index)
+std::vector<int> CSpellHandler::spellRangeInHexes(std::string input) const
+{
+	std::set<BattleHex> ret;
+	std::string rng = input + ','; //copy + artificial comma for easier handling
+
+	if(rng.size() >= 2 && rng[0] != 'X') //there is at least one hex in range (+artificial comma)
+	{
+		std::string number1;
+		std::string number2;
+		int beg = 0;
+		int end = 0;
+		bool readingFirst = true;
+		for(auto & elem : rng)
+		{
+			if(std::isdigit(elem) ) //reading number
+			{
+				if(readingFirst)
+					number1 += elem;
+				else
+					number2 += elem;
+			}
+			else if(elem == ',') //comma
+			{
+				//calculating variables
+				if(readingFirst)
+				{
+					beg = std::stoi(number1);
+					number1 = "";
+				}
+				else
+				{
+					end = std::stoi(number2);
+					number2 = "";
+				}
+				//obtaining new hexes
+				std::set<ui16> curLayer;
+				if(readingFirst)
+				{
+					ret.insert(beg);
+				}
+				else
+				{
+					for(int i = beg; i <= end; ++i)
+						ret.insert(i);
+				}
+			}
+			else if(elem == '-') //dash
+			{
+				beg = std::stoi(number1);
+				number1 = "";
+				readingFirst = false;
+			}
+		}
+	}
+
+	return std::vector<int>(ret.begin(), ret.end());
+}
+
+std::shared_ptr<CSpell> CSpellHandler::loadFromJson(const std::string & scope, const JsonNode & json, const std::string & identifier, size_t index)
 {
 	assert(identifier.find(':') == std::string::npos);
 	assert(!scope.empty());
@@ -685,7 +749,7 @@ CSpell * CSpellHandler::loadFromJson(const std::string & scope, const JsonNode &
 
 	SpellID id(static_cast<si32>(index));
 
-	auto * spell = new CSpell();
+	auto spell = std::make_shared<CSpell>();
 	spell->id = id;
 	spell->identifier = identifier;
 	spell->modScope = scope;
@@ -930,7 +994,7 @@ CSpell * CSpellHandler::loadFromJson(const std::string & scope, const JsonNode &
 		levelObject.smartTarget   = levelNode["targetModifier"]["smart"].Bool();
 		levelObject.clearTarget   = levelNode["targetModifier"]["clearTarget"].Bool();
 		levelObject.clearAffected = levelNode["targetModifier"]["clearAffected"].Bool();
-		levelObject.range         = levelNode["range"].String();
+		levelObject.range         = spellRangeInHexes(levelNode["range"].String());
 
 		for(const auto & elem : levelNode["effects"].Struct())
 		{

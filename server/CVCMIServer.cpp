@@ -17,10 +17,10 @@
 
 #include "../lib/CHeroHandler.h"
 #include "../lib/CPlayerState.h"
-#include "../lib/MetaString.h"
 #include "../lib/registerTypes/RegisterTypesLobbyPacks.h"
 #include "../lib/serializer/CMemorySerializer.h"
 #include "../lib/serializer/Connection.h"
+#include "../lib/texts/CGeneralTextHandler.h"
 
 // UUID generation
 #include <boost/uuid/uuid.hpp>
@@ -145,7 +145,9 @@ uint16_t CVCMIServer::prepare(bool connectToLobby) {
 
 uint16_t CVCMIServer::startAcceptingIncomingConnections()
 {
-	logNetwork->info("Port %d will be used", port);
+	port
+		? logNetwork->info("Port %d will be used", port)
+		: logNetwork->info("Randomly assigned port will be used");
 
 	// config port may be 0 => srvport will contain the OS-assigned port value
 	networkServer = networkHandler->createServerTCP(*this);
@@ -251,7 +253,6 @@ void CVCMIServer::prepareToRestart()
 	}
 
 	* si = * gh->gs->initialOpts;
-	si->seedPostInit = 0;
 	setState(EServerState::LOBBY);
 	if (si->campState)
 	{
@@ -394,7 +395,7 @@ void CVCMIServer::announcePack(std::unique_ptr<CPackForLobby> pack)
 	applier->getApplier(CTypeList::getInstance().getTypeID(pack.get()))->applyOnServerAfter(this, pack.get());
 }
 
-void CVCMIServer::announceMessage(MetaString txt)
+void CVCMIServer::announceMessage(const MetaString & txt)
 {
 	logNetwork->info("Show message: %s", txt.toString());
 	auto cm = std::make_unique<LobbyShowMessage>();
@@ -409,7 +410,7 @@ void CVCMIServer::announceMessage(const std::string & txt)
 	announceMessage(str);
 }
 
-void CVCMIServer::announceTxt(MetaString txt, const std::string & playerName)
+void CVCMIServer::announceTxt(const MetaString & txt, const std::string & playerName)
 {
 	logNetwork->info("%s says: %s", playerName, txt.toString());
 	auto cm = std::make_unique<LobbyChatMessage>();
@@ -623,8 +624,6 @@ void CVCMIServer::updateStartInfoOnMapChange(std::shared_ptr<CMapInfo> mapInfo, 
 				pset.heroNameTextId = pinfo.mainCustomHeroNameTextId;
 				pset.heroPortrait = pinfo.mainCustomHeroPortrait;
 			}
-
-			pset.handicap = PlayerSettings::NO_HANDICAP;
 		}
 
 		if(mi->isRandomMap && mapGenOpts)
@@ -696,7 +695,7 @@ void CVCMIServer::setPlayer(PlayerColor clickedColor)
 	//identify clicked player
 	int clickedNameID = 0; //number of player - zero means AI, assume it initially
 	if(clicked.isControlledByHuman())
-		clickedNameID = *(clicked.connectedPlayerIDs.begin()); //if not AI - set appropiate ID
+		clickedNameID = *(clicked.connectedPlayerIDs.begin()); //if not AI - set appropriate ID
 
 	if(clickedNameID > 0 && playerToRestore.id == clickedNameID) //player to restore is about to being replaced -> put him back to the old place
 	{
@@ -758,10 +757,64 @@ void CVCMIServer::setPlayerName(PlayerColor color, std::string name)
 	if(player.connectedPlayerIDs.empty())
 		return;
 
-	int nameID = *(player.connectedPlayerIDs.begin()); //if not AI - set appropiate ID
+	int nameID = *(player.connectedPlayerIDs.begin()); //if not AI - set appropriate ID
 
 	playerNames[nameID].name = name;
 	setPlayerConnectedId(player, nameID);
+}
+
+void CVCMIServer::setPlayerHandicap(PlayerColor color, Handicap handicap)
+{
+	if(color == PlayerColor::CANNOT_DETERMINE)
+		return;
+
+	si->playerInfos[color].handicap = handicap;
+
+	int humanPlayer = 0;
+	for (const auto & pi : si->playerInfos)
+		if(pi.second.isControlledByHuman())
+			humanPlayer++;
+
+	if(humanPlayer < 2) // Singleplayer
+		return;
+
+	MetaString str;
+	str.appendTextID("vcmi.lobby.handicap");
+	str.appendRawString(" ");
+	str.appendName(color);
+	str.appendRawString(":");
+
+	if(handicap.startBonus.empty() && handicap.percentIncome == 100 && handicap.percentGrowth == 100)
+	{
+		str.appendRawString(" ");
+		str.appendTextID("core.genrltxt.523");
+		announceTxt(str);
+		return;
+	}
+
+	for(auto & res : EGameResID::ALL_RESOURCES())
+		if(handicap.startBonus[res] != 0)
+		{
+			str.appendRawString(" ");
+			str.appendName(res);
+			str.appendRawString(":");
+			str.appendRawString(std::to_string(handicap.startBonus[res]));
+		}
+	if(handicap.percentIncome != 100)
+	{
+		str.appendRawString(" ");
+		str.appendTextID("core.jktext.32");
+		str.appendRawString(":");
+		str.appendRawString(std::to_string(handicap.percentIncome) + "%");
+	}
+	if(handicap.percentGrowth != 100)
+	{
+		str.appendRawString(" ");
+		str.appendTextID("core.genrltxt.194");
+		str.appendRawString(":");
+		str.appendRawString(std::to_string(handicap.percentGrowth) + "%");
+	}
+	announceTxt(str);
 }
 
 void CVCMIServer::optionNextCastle(PlayerColor player, int dir)
@@ -1001,7 +1054,7 @@ ui8 CVCMIServer::getIdOfFirstUnallocatedPlayer() const
 void CVCMIServer::multiplayerWelcomeMessage()
 {
 	int humanPlayer = 0;
-	for (auto & pi : si->playerInfos)
+	for (const auto & pi : si->playerInfos)
 		if(pi.second.isControlledByHuman())
 			humanPlayer++;
 
@@ -1010,11 +1063,44 @@ void CVCMIServer::multiplayerWelcomeMessage()
 
 	gh->playerMessages->broadcastSystemMessage("Use '!help' to list available commands");
 
+	for (const auto & pi : si->playerInfos)
+		if(!pi.second.handicap.startBonus.empty() || pi.second.handicap.percentIncome != 100 || pi.second.handicap.percentGrowth != 100)
+		{
+			MetaString str;
+			str.appendTextID("vcmi.lobby.handicap");
+			str.appendRawString(" ");
+			str.appendName(pi.first);
+			str.appendRawString(":");
+			for(auto & res : EGameResID::ALL_RESOURCES())
+				if(pi.second.handicap.startBonus[res] != 0)
+				{
+					str.appendRawString(" ");
+					str.appendName(res);
+					str.appendRawString(":");
+					str.appendRawString(std::to_string(pi.second.handicap.startBonus[res]));
+				}
+			if(pi.second.handicap.percentIncome != 100)
+			{
+				str.appendRawString(" ");
+				str.appendTextID("core.jktext.32");
+				str.appendRawString(":");
+				str.appendRawString(std::to_string(pi.second.handicap.percentIncome) + "%");
+			}
+			if(pi.second.handicap.percentGrowth != 100)
+			{
+				str.appendRawString(" ");
+				str.appendTextID("core.genrltxt.194");
+				str.appendRawString(":");
+				str.appendRawString(std::to_string(pi.second.handicap.percentGrowth) + "%");
+			}
+			gh->playerMessages->broadcastSystemMessage(str);
+		}
+
 	std::vector<std::string> optionIds;
 	if(si->extraOptionsInfo.cheatsAllowed)
-		optionIds.push_back("vcmi.optionsTab.cheatAllowed.hover");
+		optionIds.emplace_back("vcmi.optionsTab.cheatAllowed.hover");
 	if(si->extraOptionsInfo.unlimitedReplay)
-		optionIds.push_back("vcmi.optionsTab.unlimitedReplay.hover");
+		optionIds.emplace_back("vcmi.optionsTab.unlimitedReplay.hover");
 
 	if(!optionIds.size()) // No settings to publish
 		return;

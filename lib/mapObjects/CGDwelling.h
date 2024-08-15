@@ -33,7 +33,7 @@ public:
 class DLL_LINKAGE CGDwelling : public CArmedInstance
 {
 public:
-	typedef std::vector<std::pair<ui32, std::vector<CreatureID> > > TCreaturesSet;
+	using TCreaturesSet = std::vector<std::pair<ui32, std::vector<CreatureID> > >;
 
 	std::optional<CGDwellingRandomizationInfo> randomizationInfo; //random dwelling options; not serialized
 	TCreaturesSet creatures; //creatures[level] -> <vector of alternative ids (base creature and upgrades, creatures amount>
@@ -45,16 +45,16 @@ protected:
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
 
 private:
-	FactionID randomizeFaction(CRandomGenerator & rand);
-	int randomizeLevel(CRandomGenerator & rand);
+	FactionID randomizeFaction(vstd::RNG & rand);
+	int randomizeLevel(vstd::RNG & rand);
 
-	void pickRandomObject(CRandomGenerator & rand) override;
-	void initObj(CRandomGenerator & rand) override;
+	void pickRandomObject(vstd::RNG & rand) override;
+	void initObj(vstd::RNG & rand) override;
 	void onHeroVisit(const CGHeroInstance * h) const override;
-	void newTurn(CRandomGenerator & rand) const override;
+	void newTurn(vstd::RNG & rand) const override;
 	void setPropertyDer(ObjProperty what, ObjPropertyID identifier) override;
 	void battleFinished(const CGHeroInstance *hero, const BattleResult &result) const override;
-	void blockingDialogAnswered(const CGHeroInstance *hero, ui32 answer) const override;
+	void blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const override;
 	std::vector<Component> getPopupComponents(PlayerColor player) const override;
 
 	void updateGuards() const;

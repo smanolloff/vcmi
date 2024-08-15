@@ -136,7 +136,7 @@ void NetworkConnection::setAsyncWritesEnabled(bool on)
 
 void NetworkConnection::sendPacket(const std::vector<std::byte> & message)
 {
-	std::lock_guard<std::mutex> lock(writeMutex);
+	std::lock_guard lock(writeMutex);
 	std::vector<std::byte> headerVector(sizeof(uint32_t));
 	uint32_t messageSize = message.size();
 	std::memcpy(headerVector.data(), &messageSize, sizeof(uint32_t));
@@ -148,7 +148,7 @@ void NetworkConnection::sendPacket(const std::vector<std::byte> & message)
 
 		bool messageQueueEmpty = dataToSend.empty();
 		dataToSend.push_back(headerVector);
-		if (message.size() > 0)
+		if (!message.empty())
 			dataToSend.push_back(message);
 
 		if (messageQueueEmpty)
@@ -159,7 +159,7 @@ void NetworkConnection::sendPacket(const std::vector<std::byte> & message)
 	{
 		boost::system::error_code ec;
 		boost::asio::write(*socket, boost::asio::buffer(headerVector), ec );
-		if (message.size() > 0)
+		if (!message.empty())
 			boost::asio::write(*socket, boost::asio::buffer(message), ec );
 	}
 }
@@ -177,7 +177,7 @@ void NetworkConnection::doSendData()
 
 void NetworkConnection::onDataSent(const boost::system::error_code & ec)
 {
-	std::lock_guard<std::mutex> lock(writeMutex);
+	std::lock_guard lock(writeMutex);
 	dataToSend.pop_front();
 	if (ec)
 	{
