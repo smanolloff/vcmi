@@ -1795,7 +1795,7 @@ bool CPlayerInterface::capturedAllEvents()
 	return false;
 }
 
-void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool side)
+void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side)
 {
 	aiCombatOptions.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
 	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());

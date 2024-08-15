@@ -33,7 +33,7 @@
 #include "MLClient.h"
 
 #include "lib/filesystem/Filesystem.h"
-#include "lib/CGeneralTextHandler.h"
+#include "lib/texts/CGeneralTextHandler.h"
 #include "lib/VCMIDirs.h"
 #include "lib/VCMI_Lib.h"
 #include "lib/CConfigHandler.h"
@@ -46,11 +46,13 @@
 #include "lib/logging/CBasicLogConfigurator.h"
 #include "lib/CConsoleHandler.h"
 #include "lib/VCMIDirs.h"
+#include "media/CEmptyVideoPlayer.h"
+#include "media/CMusicHandler.h"
+#include "media/CSoundHandler.h"
+#include "media/CVideoHandler.h"
 #include "client/gui/CGuiHandler.h"
 #include "client/windows/CMessage.h"
 #include "client/CServerHandler.h"
-#include "client/CVideoHandler.h"
-#include "client/CMusicHandler.h"
 #include "client/ClientCommandManager.h"
 #include "client/gui/CursorHandler.h"
 #include "client/eventsSDL/InputHandler.h"
@@ -60,7 +62,7 @@
 #include "client/gui/WindowHandler.h"
 
 #include "lib/filesystem/Filesystem.h"
-#include "lib/CGeneralTextHandler.h"
+#include "lib/texts/CGeneralTextHandler.h"
 #include "lib/VCMIDirs.h"
 #include "lib/VCMI_Lib.h"
 #include "lib/CConfigHandler.h"
@@ -351,10 +353,8 @@ namespace ML {
         if (!headless) {
             CCS->videoh = new CEmptyVideoPlayer();
             CCS->soundh = new CSoundHandler();
-            CCS->soundh->init();
             CCS->soundh->setVolume((ui32)settings["general"]["sound"].Float());
             CCS->musich = new CMusicHandler();
-            CCS->musich->init();
             CCS->musich->setVolume((ui32)settings["general"]["music"].Float());
         }
 

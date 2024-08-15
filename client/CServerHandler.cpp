@@ -234,7 +234,6 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
-	si->seedToBeUsed = settings["server"]["seed"].Integer();
 
 	ML(si->mlconfig.init(settings));
 
