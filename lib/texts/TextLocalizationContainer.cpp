@@ -65,7 +65,7 @@ const std::string & TextLocalizationContainer::deserialize(const TextIdentifier 
 			if((*containerIter)->identifierExists(identifier))
 				return (*containerIter)->deserialize(identifier);
 
-		logGlobal->error("Unable to find localization for string '%s'", identifier.get());
+		logGlobal->warn("Unable to find localization for string '%s'", identifier.get());
 		return identifier.get();
 	}
 

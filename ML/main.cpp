@@ -60,15 +60,6 @@ namespace ML {
         return "Values: " + boost::algorithm::join(all, " | ");
     }
 
-
-    std::string demangle(const char* name) {
-        int status = -1;
-        char* demangledName = abi::__cxa_demangle(name, nullptr, nullptr, &status);
-        std::string result((status == 0) ? demangledName : name);
-        std::free(demangledName);
-        return result;
-    }
-
     InitArgs parse_args(int argc, char * argv[]) {
         int maxBattles = 0;
         int seed = 0;
