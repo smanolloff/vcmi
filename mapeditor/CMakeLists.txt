@@ -177,7 +177,7 @@ endif()
 # to always look for includes there:
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-if(ENABLE_SINGLE_APP_BUILD OR ANDROID)
+if(ANDROID)
 	add_library(vcmieditor OBJECT ${editor_QM})
 else()
 	add_executable(vcmieditor WIN32 ${editor_QM} ${editor_SRCS} ${editor_HEADERS} ${editor_UI_HEADERS} ${editor_ICON})

@@ -1,12 +1,13 @@
 {
 	"adventure" : {
-		"enemyMoveTime" : 100,
-		"heroMoveTime" : 25
+		"enemyMoveTime" : 50,
+		"heroMoveTime" : 25,
+		"scrollSpeedPixels" : 800
 	},
 	"battle" : {
 		"MMAI" : {
 			"leftModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Attacker model:v9/jit-agent.pt",
-			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Defender model:v5/jit-agent.pt",
+			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/agent.pt:v7164/jit-agent.pt",
 			"verbose" : true
 		},
 		"rangeLimitHighlightOnHover" : true,
@@ -18,7 +19,9 @@
 	},
 	"general" : {
 		"lastDifficulty" : 4,
-		"lastMap" : "MAPS/DELUGE",
+		"lastMap" : "MAPS/GYM/GENERATED/4096/4096-V3-100K-MOD",
+		"lastSave" : "SAVES/AUTOSAVE/DELUGE_20240816T232654/1",
+		"lastSettingsTab" : 1,
 		"music" : 0,
 		"sound" : 0
 	},
@@ -104,8 +107,7 @@
 					"level" : "error"
 				}
 			],
-			"format" : "[%t][%n] %l %m",
-			"threshold" : "trace"
+			"format" : "[%t][%n] %l %m"
 		},
 		"loggers" : [
 			{
@@ -143,6 +145,7 @@
 		]
 	},
 	"server" : {
+		"enemyAI" : "MMAI",
 		"friendlyAI" : "StupidAI",
 		"neutralAI" : "MMAI",
 		"playerAI" : "VCAI"

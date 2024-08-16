@@ -227,8 +227,8 @@ BattleInfo * BattleInfo::setupBattle(const int3 & tile, TerrainId terrain, const
 	}
 
 	//randomize obstacles
- 	if (town == nullptr && !creatureBank) //do it only when it's not siege and not creature bank
- 	{
+	if (town == nullptr && !creatureBank) //do it only when it's not siege and not creature bank
+	{
 		RandGen r{};
 		auto ourRand = [&](){ return r.rand(); };
 		seed ? r.srand(seed) : r.srand(tile);
