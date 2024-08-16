@@ -10,15 +10,15 @@
 	path = launcher/lib/innoextract
 	url = https://github.com/vcmi/innoextract.git
 	branch = vcmi
-[submodule "server/ML"]
-	path = server/ML
-	url = git@github.com:smanolloff/vcmi-mlserver.git
-[submodule "AI/MMAI"]
-	path = AI/MMAI
-	url = git@github.com:smanolloff/vcmi-MMAI.git
 [submodule "Mods/ML"]
 	path = Mods/ML
 	url = git@github.com:smanolloff/vcmi-mlmod.git
-[submodule "client/MMAI"]
-	path = client/MMAI
+[submodule "server/ML"]
+	path = server/ML
+	url = git@github.com:smanolloff/vcmi-mlserver.git
+[submodule "client/MMAILoader"]
+	path = client/MMAILoader
 	url = git@github.com:smanolloff/vcmi-mmailoader.git
+[submodule "AI/MMAI"]
+	path = AI/MMAI
+	url = git@github.com:smanolloff/vcmi-MMAI.git
