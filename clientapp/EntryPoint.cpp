@@ -48,6 +48,10 @@
 #include <SDL_system.h>
 #endif
 
+#ifdef ENABLE_MMAI
+#include "MMAILoader/Loader.h"
+#endif
+
 #if __MINGW32__
 #undef main
 #endif

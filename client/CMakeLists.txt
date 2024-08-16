@@ -415,13 +415,6 @@ else()
 	add_library(vcmiclientcommon STATIC ${vcmiclientcommon_SRCS} ${vcmiclientcommon_HEADERS})
 endif()
 
-if(ENABLE_MMAI)
-	add_subdirectory(MMAILoader)
-	add_dependencies(vcmiclientcommon mmailoader)
-	set_target_properties(vcmiclientcommon PROPERTIES COMPILE_FLAGS "-fPIC")
-	target_link_libraries(vcmiclientcommon PRIVATE mmailoader)
-endif()
-
 if(NOT ENABLE_STATIC_LIBS)
 	add_dependencies(vcmiclientcommon
 		BattleAI

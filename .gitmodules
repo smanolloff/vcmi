@@ -16,8 +16,8 @@
 [submodule "server/ML"]
 	path = server/ML
 	url = git@github.com:smanolloff/vcmi-mlserver.git
-[submodule "client/MMAILoader"]
-	path = client/MMAILoader
+[submodule "MMAILoader"]
+	path = MMAILoader
 	url = git@github.com:smanolloff/vcmi-mmailoader.git
 [submodule "AI/MMAI"]
 	path = AI/MMAI

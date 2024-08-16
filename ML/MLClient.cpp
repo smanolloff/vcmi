@@ -68,9 +68,9 @@
 #include "lib/CConfigHandler.h"
 #include "vstd/CLoggerBase.h"
 
-static CBasicLogConfigurator *logConfig;
-
 static std::optional<std::string> criticalInitializationError;
+std::atomic<bool> headlessQuit = false;
+CBasicLogConfigurator *logConfig;
 
 bool headless;
 std::string mapname;
