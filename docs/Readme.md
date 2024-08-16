@@ -31,13 +31,7 @@ In order to allow for easy integration into the core VCMI, the ML features are
 abstracted out as separate build targets, optionally excluded based on
 compile-time flags and tracked as git submodules:
 
-<img src="components.png" alt="components" height="500px">
-
-The W&B external component is optional. VCMI (the game itself) is required --
-it is a fork of VCMI with some modifications for RL training purposes and is
-managed in a [separate repo](https://github.com/smanolloff/vcmi), tracked as a
-[git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) located
-at `./vcmi`.
+<img src="components.png" alt="components" height="750px">
 
 ## Documentation
 
