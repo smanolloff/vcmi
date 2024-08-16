@@ -21,11 +21,11 @@ add_executable(mlclient-cli
   user_agents/agent-v3.h
 )
 
-add_dependencies(mlclient vcmiclient mmailoader)
+add_dependencies(mlclient vcmiclientcommon mmailoader)
 add_dependencies(mlclient-cli mlclient)
 
 target_link_libraries(mlclient PRIVATE SDL2::SDL2 SDL2::Image SDL2::Mixer SDL2::TTF)
-target_link_libraries(mlclient PUBLIC vcmi vcmiclient mmailoader)
+target_link_libraries(mlclient PUBLIC vcmi vcmiclientcommon mmailoader)
 target_link_libraries(mlclient-cli PRIVATE mlclient)
 
 vcmi_set_output_dir(mlclient "")
