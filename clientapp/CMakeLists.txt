@@ -31,7 +31,6 @@ target_include_directories(vcmiclient
 )
 
 if(ENABLE_MMAI)
-  add_subdirectory(MMAILoader)
   add_dependencies(vcmiclient mmailoader)
   set_target_properties(vcmiclient PROPERTIES COMPILE_FLAGS "-fPIC")
   target_link_libraries(vcmiclient PRIVATE mmailoader)

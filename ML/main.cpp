@@ -32,7 +32,7 @@
 #include "AI/MMAI/schema/v1/types.h"
 #include "AI/MMAI/schema/v1/constants.h"
 
-#include "MMAI/TorchModel.h"
+#include "MMAILoader/TorchModel.h"
 #include "user_agents/base.h"
 #include "user_agents/agent-v1.h"
 #include "user_agents/agent-v3.h"

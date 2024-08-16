@@ -10,10 +10,17 @@
 	"launcher" : {
 		"setupCompleted" : true
 	},
+	"adventure": {
+		"heroMoveTime": 25,
+		"enemyMoveTime": 100
+	},
 	"battle" : {
+		"speedFactor": 5,
+		"rangeLimitHighlightOnHover": true,
+		"stickyHeroInfoWindows": false,
 		"MMAI": {
-			"leftModel" : "/Users/simo/Projects/vcmi-gym/rl/models/agent.pt:v6301/jit-agent.pt",
-			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/agent.pt:v6301/jit-agent.pt",
+			"leftModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Attacker model:v9/jit-agent.pt",
+			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Defender model:v5/jit-agent.pt",
 			"verbose" : true
 		}
 	},
@@ -102,7 +109,7 @@
 		"loggers" : [
 			{
 				"domain" : "global",
-				"level" : "error"
+				"level" : "info"
 			},
 			{
 				"domain" : "stats",
@@ -110,7 +117,7 @@
 			},
 			{
 				"domain" : "ai",
-				"level" : "error"
+				"level" : "debug"
 			},
 			{
 				"domain" : "rng",
@@ -136,6 +143,7 @@
 	},
 	"server" : {
 		"friendlyAI" : "StupidAI",
-		"playerAI" : "MMAI"
+		"playerAI" : "VCAI",
+		"neutralAI" : "MMAI"
 	}
 }

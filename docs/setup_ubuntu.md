@@ -91,7 +91,7 @@ the appropriate settings for vcmi-gym:
 
 ```bash
 $ mkdir "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
-$ ln -s "$PWD"/client/ML/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
+$ ln -s "$PWD"/ML/{settings,modSettings,persistentStorage}.json "${XDG_CONFIG_HOME:-$HOME/.config}/vcmi"
 ```
 
 ### Manual test

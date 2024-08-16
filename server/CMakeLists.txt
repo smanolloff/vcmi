@@ -61,9 +61,9 @@ if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 endif()
 
 if(ENABLE_ML)
-  set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
 	add_subdirectory(ML)
 	add_dependencies(vcmiservercommon mlserverplugin)
+  set_target_properties(vcmiservercommon PROPERTIES COMPILE_FLAGS "-fPIC")
 	set(vcmiservercommon_LIBS mlserverplugin ${vcmiservercommon_LIBS})
 endif()
 

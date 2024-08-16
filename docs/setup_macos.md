@@ -41,7 +41,7 @@ same libtorch as the one used by vcmi-gym and installed by pip. Create this
 symlink (python version may vary):
 
 ```bash
-$ ln -s ../../../.venv/lib/python3.10/site-packages/torch client/ML/libtorch
+$ ln -s ../../.venv/lib/python3.10/site-packages/torch MMAILoader/libtorch
 ```
 
 ### Compile VCMI
@@ -114,7 +114,7 @@ Instead, symbolic links must be manually created to files which contain
 the appropriate settings for vcmi-gym:
 
 ```bash
-$ ln -s "$PWD"/client/ML/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
+$ ln -s "$PWD"/ML/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
 ```
 
 ### Manual test
@@ -122,13 +122,13 @@ $ ln -s "$PWD"/client/ML/{settings,modSettings,persistentStorage}.json "$HOME/Li
 Start a new game on the specified map (with GUI):
 
 ```bash
-$ rel/bin/mlclient-gui --map gym/A1.vmap
+$ rel/bin/mlclient-cli --map gym/A1.vmap
 ```
 
 ### Benchmark
 
 ```
-$ rel/bin/mlclient-headless --map gym/A1.vmap --loglevel-ai error --benchmark
+$ rel/bin/mlclient-cli --headless --map gym/A1.vmap --loglevel-ai error --benchmark
 ```
 
 This will run the game in headless mode and directly engage in a battle
@@ -153,7 +153,7 @@ Benchmark:
 
 > [!TIP]
 > If you also compiled the debug binary, you can benchmark it by running
-> `build/bin/mlclient-headless` with the same arguments and
+> `build/bin/mlclient-cli` with the same arguments and
 > observe the performance difference for yourself.
 
 ### Loading AI models
@@ -161,7 +161,7 @@ Benchmark:
 Launch the game and replace the default VCMI scripted AI with a pre-trained *real* AI:
 
 ```bash
-rel/bin/mlclient-gui --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
+rel/bin/mlclient-cli --map gym/A1.vmap --blue-ai MMAI_MODEL --blue-model /path/to/model.pt
 ```
 
 where `/path/to/model.pt` is a pre-trained Torch JIT model. If you don't have

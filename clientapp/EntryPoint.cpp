@@ -49,7 +49,7 @@
 #endif
 
 #ifdef ENABLE_MMAI
-#include "MMAILoader/Loader.h"
+#include "../MMAILoader/Loader.h"
 #endif
 
 #if __MINGW32__
@@ -284,11 +284,12 @@ int main(int argc, char * argv[])
 	auto aco = AICombatOptions();
 
 #ifdef ENABLE_MMAI
-	aco.other = std::make_any<MMAI::Schema::Baggage*>(MMAI::LoadModels(
-		settings["server"]["battle"]["MMAI"]["leftModel"].String(),
-		settings["server"]["battle"]["MMAI"]["rightModel"].String(),
-		settings["server"]["battle"]["MMAI"]["verbose"].Bool()
-	));
+	auto left = settings["battle"]["MMAI"]["leftModel"].String();
+	auto right = settings["battle"]["MMAI"]["rightModel"].String();
+	auto verbose = settings["battle"]["MMAI"]["verbose"].Bool();
+	logGlobal->info("Loading pre-trained MMAI left-side model: " + left);
+	logGlobal->info("Loading pre-trained MMAI right-side model: " + right);
+	aco.other = std::make_any<MMAI::Schema::Baggage*>(MMAI::LoadModels(left, right, verbose));
 #endif
 
 	CCS = new CClientState();
