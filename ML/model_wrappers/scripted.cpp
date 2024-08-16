@@ -15,11 +15,18 @@
 // =============================================================================
 
 #include "scripted.h"
+#include "ML/MLClient.h"
+#include <stdexcept>
 
 namespace ML {
     namespace ModelWrappers {
         Scripted::Scripted(std::string keyword)
-        : keyword(keyword) {};
+        : keyword(keyword) {
+            auto it = std::find(AIS.begin(), AIS.end(), keyword);
+            if (it == AIS.end()) {
+                throw std::runtime_error("Unsupported scripted AI keyword: " + keyword);
+            }
+        };
 
         std::string Scripted::getName() {
             return keyword;

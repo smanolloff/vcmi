@@ -20,7 +20,7 @@
 
 namespace ML {
     namespace ModelWrappers {
-        class DLL_LINKAGE Function : public MMAI::Schema::IModel {
+        class MMAI_DLL_LINKAGE Function : public MMAI::Schema::IModel {
         public:
             Function(
                 int version,

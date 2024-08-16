@@ -18,7 +18,6 @@
 #include <string>
 #include <functional>
 #include "AI/MMAI/schema/schema.h"
-#include "Global.h"
 
 namespace ML {
     namespace fs = std::filesystem;
@@ -43,14 +42,14 @@ namespace ML {
     // TODO: rename to left/right
     const std::vector<std::string> STATPERSPECTIVES = {"disabled", "red", "blue"};
 
-    DLL_LINKAGE MMAI::Schema::IModel* MakeScriptedModel(std::string keyword);
-    DLL_LINKAGE MMAI::Schema::IModel* MakeUserModel(
+    MMAI_DLL_LINKAGE MMAI::Schema::IModel* MakeScriptedModel(std::string keyword);
+    MMAI_DLL_LINKAGE MMAI::Schema::IModel* MakeUserModel(
         int version,
         std::function<int(const MMAI::Schema::IState*)> getAction,
         std::function<double(const MMAI::Schema::IState*)> getState
     );
 
-    struct DLL_LINKAGE InitArgs {
+    struct MMAI_DLL_LINKAGE InitArgs {
         InitArgs() = delete;
         InitArgs(
             std::string mapname,
@@ -117,7 +116,7 @@ namespace ML {
         const bool headless;
     };
 
-    void DLL_LINKAGE init_vcmi(InitArgs &a);
-    void DLL_LINKAGE start_vcmi();
+    void MMAI_DLL_LINKAGE init_vcmi(InitArgs &a);
+    void MMAI_DLL_LINKAGE start_vcmi();
 }
 [[noreturn]] void handleFatalError(const std::string & message, bool terminate);

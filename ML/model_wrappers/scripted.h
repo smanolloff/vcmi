@@ -20,7 +20,7 @@
 
 namespace ML {
     namespace ModelWrappers {
-        class DLL_LINKAGE Scripted : public MMAI::Schema::IModel {
+        class MMAI_DLL_LINKAGE Scripted : public MMAI::Schema::IModel {
         public:
             Scripted(std::string keyword);
 

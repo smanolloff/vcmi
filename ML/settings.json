@@ -1,28 +1,29 @@
 {
+	"adventure" : {
+		"enemyMoveTime" : 100,
+		"heroMoveTime" : 25
+	},
+	"battle" : {
+		"MMAI" : {
+			"leftModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Attacker model:v9/jit-agent.pt",
+			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Defender model:v5/jit-agent.pt",
+			"verbose" : true
+		},
+		"rangeLimitHighlightOnHover" : true,
+		"speedFactor" : 5,
+		"stickyHeroInfoWindows" : false
+	},
 	"gameTweaks" : {
 		"skipBattleIntroMusic" : true
 	},
 	"general" : {
-		"lastMap" : "MAPS/TEST-BATTLE-QUEUE",
+		"lastDifficulty" : 4,
+		"lastMap" : "MAPS/DELUGE",
 		"music" : 0,
 		"sound" : 0
 	},
 	"launcher" : {
 		"setupCompleted" : true
-	},
-	"adventure": {
-		"heroMoveTime": 25,
-		"enemyMoveTime": 100
-	},
-	"battle" : {
-		"speedFactor": 5,
-		"rangeLimitHighlightOnHover": true,
-		"stickyHeroInfoWindows": false,
-		"MMAI": {
-			"leftModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Attacker model:v9/jit-agent.pt",
-			"rightModel" : "/Users/simo/Projects/vcmi-gym/rl/models/Defender model:v5/jit-agent.pt",
-			"verbose" : true
-		}
 	},
 	"logging" : {
 		"console" : {
@@ -117,7 +118,7 @@
 			},
 			{
 				"domain" : "ai",
-				"level" : "debug"
+				"level" : "trace"
 			},
 			{
 				"domain" : "rng",
@@ -143,7 +144,7 @@
 	},
 	"server" : {
 		"friendlyAI" : "StupidAI",
-		"playerAI" : "VCAI",
-		"neutralAI" : "MMAI"
+		"neutralAI" : "MMAI",
+		"playerAI" : "VCAI"
 	}
 }

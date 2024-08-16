@@ -15,7 +15,9 @@
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
 
-#include ML("server/ML/ServerPlugin.h")
+#ifdef ENABLE_ML
+#include "server/ML/ServerPlugin.h"
+#endif
 
 VCMI_LIB_NAMESPACE_BEGIN
 
