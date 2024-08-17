@@ -17,6 +17,7 @@
 #pragma once
 #include <string>
 #include <functional>
+#include <filesystem>
 #include "AI/MMAI/schema/schema.h"
 
 namespace ML {
