@@ -14,6 +14,7 @@
 #include "../lib/IGameCallback.h"
 #include "../lib/LoadProgress.h"
 #include "../lib/ScriptHandler.h"
+#include "../lib/gameState/GameStatistics.h"
 
 #ifdef ENABLE_ML
 #include "server/ML/ServerPlugin.h"
@@ -233,7 +234,7 @@ public:
 	void onPlayerTurnStarted(PlayerColor which);
 	void onPlayerTurnEnded(PlayerColor which);
 	void onNewTurn();
-	void addStatistics();
+	void addStatistics(StatisticDataSet &stat) const;
 
 	void handleTimeEvents(PlayerColor player);
 	void handleTownEvents(CGTownInstance *town);

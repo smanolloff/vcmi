@@ -531,7 +531,7 @@ if(ENABLE_LAUNCHER OR ENABLE_EDITOR)
 	endif()
 endif()
 
-if(ENABLE_CLIENT)
+if(NOT ENABLE_MINIMAL_LIB)
 	find_package(TBB REQUIRED)
 endif()
 
@@ -743,6 +743,10 @@ endif()
 
 
 if(WIN32)
+	if(TBB_FOUND AND MSVC)
+		   install_vcpkg_imported_tgt(TBB::tbb)
+	endif()
+
 	if(USING_CONAN)
 		#Conan imports enabled
 		vcmi_install_conan_deps("\${CMAKE_INSTALL_PREFIX}")
