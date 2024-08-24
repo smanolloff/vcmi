@@ -14,6 +14,7 @@
 // limitations under the License.
 // =============================================================================
 
+#include "CMT.h"
 #include "Global.h"
 #include "AI/MMAI/schema/base.h"
 #include "AI/MMAI/schema/v1/constants.h"
@@ -46,6 +47,7 @@
 #include "lib/logging/CBasicLogConfigurator.h"
 #include "lib/CConsoleHandler.h"
 #include "lib/VCMIDirs.h"
+#include "mainmenu/CMainMenu.h"
 #include "media/CEmptyVideoPlayer.h"
 #include "media/CMusicHandler.h"
 #include "media/CSoundHandler.h"
@@ -66,6 +68,7 @@
 #include "lib/VCMIDirs.h"
 #include "lib/VCMI_Lib.h"
 #include "lib/CConfigHandler.h"
+#include "render/IRenderHandler.h"
 #include "vstd/CLoggerBase.h"
 
 static std::optional<std::string> criticalInitializationError;
@@ -73,6 +76,7 @@ std::atomic<bool> headlessQuit = false;
 CBasicLogConfigurator *logConfig;
 
 bool headless;
+std::atomic<bool> shuttingDown = false;
 std::string mapname;
 MMAI::Schema::Baggage * baggage;
 
@@ -89,6 +93,60 @@ MMAI::Schema::Baggage * baggage;
 #endif
 
 namespace ML {
+    void shutdown_vcmi() {
+        shuttingDown = true;
+        CSH->endNetwork();
+
+        if(!settings["session"]["headless"].Bool())
+        {
+            if(CSH->client)
+                CSH->endGameplay();
+
+            GH.windows().clear();
+        }
+
+        vstd::clear_pointer(CSH);
+
+        CMM.reset();
+
+        if(!settings["session"]["headless"].Bool())
+        {
+            // cleanup, mostly to remove false leaks from analyzer
+            if(CCS)
+            {
+                delete CCS->consoleh;
+                delete CCS->curh;
+                delete CCS->videoh;
+                delete CCS->musich;
+                delete CCS->soundh;
+
+                vstd::clear_pointer(CCS);
+            }
+            CMessage::dispose();
+
+            vstd::clear_pointer(graphics);
+        }
+
+        vstd::clear_pointer(VLC);
+
+        // sometimes leads to a hang. TODO: investigate
+        //vstd::clear_pointer(console);// should be removed after everything else since used by logging
+
+        if(!settings["session"]["headless"].Bool())
+            GH.screenHandler().close();
+
+        if(logConfig != nullptr)
+        {
+            logConfig->deconfigure();
+            delete logConfig;
+            logConfig = nullptr;
+        }
+
+        std::cout << "VCMI FINISHED UNLOADING\n";
+        // std::cout << "Ending...\n";
+        // quitApplicationImmediately(0);
+    }
+
     void validateValue(std::string name, std::string value, std::vector<std::string> values) {
         if (std::find(values.begin(), values.end(), value) != values.end())
             return;
@@ -385,6 +443,7 @@ namespace ML {
 
         if (!headless) {
             graphics = new Graphics(); // should be before curh
+            GH.renderHandler().onLibraryLoadingFinished(CGI);
             CCS->curh = new CursorHandler();
             CMessage::init();
             CCS->curh->show();
@@ -405,9 +464,9 @@ namespace ML {
         auto t = boost::thread(&CServerHandler::debugStartTest, CSH, mapname, false);
 
         if(headless) {
-            while(true) {
-                std::this_thread::sleep_for(std::chrono::seconds(5));
-            }
+            while(!shuttingDown)
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            t.join();
         } else {
             GH.screenHandler().clearScreen();
             while(true) {

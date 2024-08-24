@@ -119,5 +119,6 @@ namespace ML {
 
     void MMAI_DLL_LINKAGE init_vcmi(InitArgs &a);
     void MMAI_DLL_LINKAGE start_vcmi();
+    void MMAI_DLL_LINKAGE shutdown_vcmi();
 }
 [[noreturn]] void handleFatalError(const std::string & message, bool terminate);

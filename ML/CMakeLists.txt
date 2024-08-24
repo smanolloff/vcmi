@@ -19,6 +19,8 @@ add_executable(mlclient-cli
   user_agents/agent-v1.h
   user_agents/agent-v3.cpp
   user_agents/agent-v3.h
+  user_agents/agent-v4.cpp
+  user_agents/agent-v4.h
 )
 
 add_dependencies(mlclient vcmiclientcommon mmailoader)

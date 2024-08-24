@@ -36,6 +36,7 @@
 #include "user_agents/base.h"
 #include "user_agents/agent-v1.h"
 #include "user_agents/agent-v3.h"
+#include "user_agents/agent-v4.h"
 
 
 namespace po = boost::program_options;
@@ -255,7 +256,7 @@ namespace ML {
         auto autorender = true;
 
         if (leftAi == AI_MMAI_USER) {
-            leftModel = new UserAgents::AgentV3(benchmark, interactive, autorender, printModelPredictions, recordings);
+            leftModel = new UserAgents::AgentV4(benchmark, interactive, autorender, printModelPredictions, recordings);
             // prevent double render if both models are MMAI_USER
             autorender = false;
         } else if (leftAi == AI_MMAI_MODEL) {
@@ -265,7 +266,7 @@ namespace ML {
         }
 
         if (rightAi == AI_MMAI_USER) {
-            rightModel = new UserAgents::AgentV3(benchmark, interactive, autorender, printModelPredictions, recordings);
+            rightModel = new UserAgents::AgentV4(benchmark, interactive, autorender, printModelPredictions, recordings);
         } else if (rightAi == AI_MMAI_MODEL) {
             rightModel = new MMAI::TorchModel(omap.at("right-model"), false);
         } else {

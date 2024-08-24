@@ -54,7 +54,6 @@ $ cmake -S . -B rel -Wno-dev \
     -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
     -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=0 \
-    -D ENABLE_SINGLE_APP_BUILD=1 \
     -D ENABLE_CCACHE=1 \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
@@ -73,7 +72,6 @@ $ cmake -S . -B build -Wno-dev \
     -D CMAKE_TOOLCHAIN_FILE=conan-generated/conan_toolchain.cmake \
     -D CMAKE_BUILD_TYPE=Debug \
     -D CMAKE_EXPORT_COMPILE_COMMANDS=1 \
-    -D ENABLE_SINGLE_APP_BUILD=1 \
     -D ENABLE_CCACHE=1 \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
