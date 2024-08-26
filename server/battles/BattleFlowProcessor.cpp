@@ -303,11 +303,36 @@ void BattleFlowProcessor::activateNextStack(const CBattleInfoCallback & battle)
 
 		if (!next)
 		{
+			/*
+			 * XXX: Temporary fix until a decision is reached here:
+			 * 	    https://github.com/vcmi/vcmi/pull/4519
+			 *
+			 * Original code:
+			 *
+			 * // No stacks to move - start next round
+			 * startNextRound(battle, false);
+			 * next = getNextStack(battle);
+			 * if (!next)
+			 *   throw std::runtime_error("Failed to find valid stack to act!");
+			 *
+			 */
+
+			// Temp fix:
 			// No stacks to move - start next round
-			startNextRound(battle, false);
-			next = getNextStack(battle);
-			if (!next)
-				throw std::runtime_error("Failed to find valid stack to act!");
+			// If no units are able to act, wait up to 3 rounds
+			// Example: scorpicore + medusa
+			// Scorpicore paralyzes medusa, medusa retaliates
+			// and petrifies scopricore => no units can act for 3 rounds
+			int skippedRounds = 0;
+			while(true)
+			{
+				startNextRound(battle, false);
+				next = getNextStack(battle);
+				if (next) break;
+				if (++skippedRounds == 3)
+					throw std::runtime_error("Failed to find valid stack to act for 3 consecutive rounds!");
+				// else no active stacks => next round
+			}
 		}
 
 		BattleUnitsChanged removeGhosts;
