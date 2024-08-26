@@ -19,6 +19,8 @@
 #include "AI/MMAI/schema/base.h"
 #include "AI/MMAI/schema/v1/constants.h"
 #include <algorithm>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 #include <cstdio>
 #include <iostream>
@@ -76,7 +78,10 @@ std::atomic<bool> headlessQuit = false;
 CBasicLogConfigurator *logConfig;
 
 bool headless;
-std::atomic<bool> shuttingDown = false;
+std::mutex mutex_shutdown;
+std::condition_variable cond_shutdown;
+bool flag_shutdown = false;
+
 std::string mapname;
 MMAI::Schema::Baggage * baggage;
 
@@ -94,7 +99,10 @@ MMAI::Schema::Baggage * baggage;
 
 namespace ML {
     void shutdown_vcmi() {
-        shuttingDown = true;
+        auto l = std::lock_guard(mutex_shutdown);
+        cond_shutdown.notify_all();
+        flag_shutdown = true;
+
         CSH->endNetwork();
 
         if(!settings["session"]["headless"].Bool())
@@ -142,7 +150,6 @@ namespace ML {
             logConfig = nullptr;
         }
 
-        std::cout << "VCMI FINISHED UNLOADING\n";
         // std::cout << "Ending...\n";
         // quitApplicationImmediately(0);
     }
@@ -451,6 +458,7 @@ namespace ML {
     }
 
     void start_vcmi() {
+        auto l = std::unique_lock(mutex_shutdown);
         if (mapname == "")
             throw std::runtime_error("call init_vcmi first");
 
@@ -463,13 +471,14 @@ namespace ML {
 
         auto t = boost::thread(&CServerHandler::debugStartTest, CSH, mapname, false);
 
-        if(headless) {
-            while(!shuttingDown)
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        if(headless)
+         {
+            cond_shutdown.wait(l);
+            std::cout << "VCMI shutdown complete.\n";
             t.join();
         } else {
             GH.screenHandler().clearScreen();
-            while(true) {
+            while(!cond_shutdown.wait_for(l, std::chrono::seconds(0), []{ return flag_shutdown; })) {
                 GH.input().fetchEvents();
                 GH.renderFrame();
             }
