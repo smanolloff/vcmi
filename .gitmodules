@@ -22,3 +22,6 @@
 [submodule "AI/MMAI"]
 	path = AI/MMAI
 	url = git@github.com:smanolloff/vcmi-MMAI.git
+[submodule "ML"]
+	path = ML
+	url = git@github.com:smanolloff/vcmi-mlclient.git
