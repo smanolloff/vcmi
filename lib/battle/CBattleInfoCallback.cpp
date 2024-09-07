@@ -18,6 +18,7 @@
 #include "CObstacleInstance.h"
 #include "DamageCalculator.h"
 #include "PossiblePlayerBattleAction.h"
+#include "../entities/building/TownFortifications.h"
 #include "../spells/ObstacleCasterProxy.h"
 #include "../spells/ISpellMechanics.h"
 #include "../spells/Problem.h"
@@ -237,7 +238,7 @@ bool CBattleInfoCallback::battleHasPenaltyOnLine(BattleHex from, BattleHex dest,
 bool CBattleInfoCallback::battleHasWallPenalty(const IBonusBearer * shooter, BattleHex shooterPosition, BattleHex destHex) const
 {
 	RETURN_IF_NOT_BATTLE(false);
-	if(!battleGetSiegeLevel())
+	if(battleGetFortifications().wallsHealth == 0)
 		return false;
 
 	const std::string cachingStrNoWallPenalty = "type_NO_WALL_PENALTY";
@@ -288,7 +289,7 @@ std::vector<PossiblePlayerBattleAction> CBattleInfoCallback::getClientActionsFor
 			allowedActionList.push_back(PossiblePlayerBattleAction::MOVE_STACK);
 
 		const auto * siegedTown = battleGetDefendedTown();
-		if(siegedTown && siegedTown->hasFort() && stack->hasBonusOfType(BonusType::CATAPULT)) //TODO: check shots
+		if(siegedTown && siegedTown->fortificationsLevel().wallsHealth > 0 && stack->hasBonusOfType(BonusType::CATAPULT)) //TODO: check shots
 			allowedActionList.push_back(PossiblePlayerBattleAction::CATAPULT);
 		if(stack->hasBonusOfType(BonusType::HEALER))
 			allowedActionList.push_back(PossiblePlayerBattleAction::HEAL);
@@ -943,7 +944,7 @@ AccessibilityInfo CBattleInfoCallback::getAccessibility() const
 	}
 
 	//gate -> should be before stacks
-	if(battleGetSiegeLevel() > 0)
+	if(battleGetFortifications().wallsHealth > 0)
 	{
 		EAccessibility accessibility = EAccessibility::ACCESSIBLE;
 		switch(battleGetGateState())
@@ -975,7 +976,7 @@ AccessibilityInfo CBattleInfoCallback::getAccessibility() const
 	}
 
 	//walls
-	if(battleGetSiegeLevel() > 0)
+	if(battleGetFortifications().wallsHealth > 0)
 	{
 		static const int permanentlyLocked[] = {12, 45, 62, 112, 147, 165};
 		for(auto hex : permanentlyLocked)
@@ -1051,17 +1052,30 @@ ReachabilityInfo CBattleInfoCallback::makeBFS(const AccessibilityInfo &accessibi
 		if(isInObstacle(curHex, obstacles, checkParams))
 			continue;
 
-		const int costToNeighbour = ret.distances[curHex.hex] + 1;
+		const int costToNeighbour = ret.distances.at(curHex.hex) + 1;
+
 		for(BattleHex neighbour : BattleHex::neighbouringTilesCache[curHex.hex])
 		{
 			if(neighbour.isValid())
 			{
+				auto additionalCost = 0;
+
+				if(params.bypassEnemyStacks)
+				{
+					auto enemyToBypass = params.destructibleEnemyTurns.find(neighbour);
+
+					if(enemyToBypass != params.destructibleEnemyTurns.end())
+					{
+						additionalCost = enemyToBypass->second;
+					}
+				}
+
 				const int costFoundSoFar = ret.distances[neighbour.hex];
 
-				if(accessibleCache[neighbour.hex] && costToNeighbour < costFoundSoFar)
+				if(accessibleCache[neighbour.hex] && costToNeighbour + additionalCost < costFoundSoFar)
 				{
 					hexq.push(neighbour);
-					ret.distances[neighbour.hex] = costToNeighbour;
+					ret.distances[neighbour.hex] = costToNeighbour + additionalCost;
 					ret.predecessors[neighbour.hex] = curHex;
 				}
 			}
@@ -1236,7 +1250,13 @@ ReachabilityInfo CBattleInfoCallback::getReachability(const ReachabilityInfo::Pa
 	if(params.flying)
 		return getFlyingReachability(params);
 	else
-		return makeBFS(getAccessibility(params.knownAccessible), params);
+	{
+		auto accessibility = getAccessibility(params.knownAccessible);
+
+		accessibility.destructibleEnemyTurns = params.destructibleEnemyTurns;
+
+		return makeBFS(accessibility, params);
+	}
 }
 
 ReachabilityInfo CBattleInfoCallback::getFlyingReachability(const ReachabilityInfo::Parameters &params) const
@@ -1600,7 +1620,7 @@ bool CBattleInfoCallback::isWallPartAttackable(EWallPart wallPart) const
 	if(isWallPartPotentiallyAttackable(wallPart))
 	{
 		auto wallState = battleGetWallState(wallPart);
-		return (wallState == EWallState::REINFORCED || wallState == EWallState::INTACT || wallState == EWallState::DAMAGED);
+		return (wallState != EWallState::NONE && wallState != EWallState::DESTROYED);
 	}
 	return false;
 }

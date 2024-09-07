@@ -182,10 +182,6 @@ void CGDwelling::initObj(vstd::RNG & rand)
 	case Obj::CREATURE_GENERATOR4:
 		{
 			getObjectHandler()->configureObject(this, rand);
-
-			if (getOwner() != PlayerColor::NEUTRAL)
-				cb->gameState()->players[getOwner()].dwellings.emplace_back(this);
-
 			assert(!creatures.empty());
 			assert(!creatures[0].second.empty());
 			break;
@@ -211,19 +207,6 @@ void CGDwelling::setPropertyDer(ObjProperty what, ObjPropertyID identifier)
 {
 	switch (what)
 	{
-		case ObjProperty::OWNER: //change owner
-			if (ID == Obj::CREATURE_GENERATOR1 || ID == Obj::CREATURE_GENERATOR2
-				|| ID == Obj::CREATURE_GENERATOR3 || ID == Obj::CREATURE_GENERATOR4)
-			{
-				if (tempOwner != PlayerColor::NEUTRAL)
-				{
-					std::vector<ConstTransitivePtr<CGDwelling> >* dwellings = &cb->gameState()->players[tempOwner].dwellings;
-					dwellings->erase (std::find(dwellings->begin(), dwellings->end(), this));
-				}
-				if (identifier.as<PlayerColor>().isValidPlayer())
-					cb->gameState()->players[identifier.as<PlayerColor>()].dwellings.emplace_back(this);
-			}
-			break;
 		case ObjProperty::AVAILABLE_CREATURE:
 			creatures.resize(1);
 			creatures[0].second.resize(1);
@@ -261,7 +244,7 @@ void CGDwelling::onHeroVisit( const CGHeroInstance * h ) const
 		else
 			bd.text.replaceLocalString(EMetaText::ARRAY_TXT, 173 + (int)Slots().begin()->second->getQuantityID()*3);
 		bd.text.replaceName(*Slots().begin()->second);
-		cb->showBlockingDialog(&bd);
+		cb->showBlockingDialog(this, &bd);
 		return;
 	}
 
@@ -297,7 +280,7 @@ void CGDwelling::onHeroVisit( const CGHeroInstance * h ) const
 		bd.flags |= BlockingDialog::SAFE_TO_AUTOACCEPT;
 	}
 
-	cb->showBlockingDialog(&bd);
+	cb->showBlockingDialog(this, &bd);
 }
 
 void CGDwelling::newTurn(vstd::RNG & rand) const
@@ -549,6 +532,35 @@ void CGDwelling::serializeJsonOptions(JsonSerializeFormat & handler)
 		serializeJsonOwner(handler);
 		break;
 	}
+}
+
+const IOwnableObject * CGDwelling::asOwnable() const
+{
+	switch (ID.toEnum())
+	{
+		case Obj::WAR_MACHINE_FACTORY:
+		case Obj::REFUGEE_CAMP:
+			return nullptr; // can't be owned
+		default:
+			return this;
+	}
+}
+
+ResourceSet CGDwelling::dailyIncome() const
+{
+	return {};
+}
+
+std::vector<CreatureID> CGDwelling::providedCreatures() const
+{
+	if (ID == Obj::WAR_MACHINE_FACTORY || ID == Obj::REFUGEE_CAMP)
+		return {};
+
+	std::vector<CreatureID> result;
+	for (const auto & level : creatures)
+		result.insert(result.end(), level.second.begin(), level.second.end());
+
+	return result;
 }
 
 VCMI_LIB_NAMESPACE_END

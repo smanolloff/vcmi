@@ -83,6 +83,7 @@ set(vcmiclientcommon_SRCS
 	media/CSoundHandler.cpp
 	media/CVideoHandler.cpp
 
+	render/AssetGenerator.cpp
 	render/CAnimation.cpp
 	render/CBitmapHandler.cpp
 	render/CDefFile.cpp
@@ -177,7 +178,6 @@ set(vcmiclientcommon_SRCS
 
 	ArtifactsUIController.cpp
 	CGameInfo.cpp
-	CMT.cpp
 	CPlayerInterface.cpp
 	PlayerLocalState.cpp
 	CServerHandler.cpp
@@ -285,6 +285,7 @@ set(vcmiclientcommon_HEADERS
 	media/ISoundPlayer.h
 	media/IVideoPlayer.h
 
+	render/AssetGenerator.h
 	render/CAnimation.h
 	render/CBitmapHandler.h
 	render/CDefFile.h

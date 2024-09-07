@@ -24,6 +24,7 @@
 #include "../../lib/battle/BattleAction.h"
 #include "../../lib/battle/BattleStateInfoForRetreat.h"
 #include "../../lib/battle/CObstacleInstance.h"
+#include "../../lib/StartInfo.h"
 #include "../../lib/CStack.h" // TODO: remove
                               // Eventually only IBattleInfoCallback and battle::Unit should be used,
                               // CUnitState should be private and CStack should be removed completely
@@ -118,6 +119,11 @@ static float getStrengthRatio(std::shared_ptr<CBattleInfoCallback> cb, BattleSid
 	return enemy == 0 ? 1.0f : static_cast<float>(our) / enemy;
 }
 
+int getSimulationTurnsCount(const StartInfo * startInfo)
+{
+	return startInfo->difficulty < 4 ? 2 : 10;
+}
+
 void CBattleAI::activeStack(const BattleID & battleID, const CStack * stack )
 {
 	LOG_TRACE_PARAMS(logAi, "stack: %s", stack->nodeName());
@@ -150,7 +156,10 @@ void CBattleAI::activeStack(const BattleID & battleID, const CStack * stack )
 		logAi->trace("Build evaluator and targets");
 #endif
 
-		BattleEvaluator evaluator(env, cb, stack, playerID, battleID, side, getStrengthRatio(cb->getBattle(battleID), side));
+		BattleEvaluator evaluator(
+			env, cb, stack, playerID, battleID, side, 
+			getStrengthRatio(cb->getBattle(battleID), side),
+			getSimulationTurnsCount(env->game()->getStartInfo()));
 
 		result = evaluator.selectStackAction(stack);
 
@@ -216,7 +225,7 @@ BattleAction CBattleAI::useCatapult(const BattleID & battleID, const CStack * st
 		{
 			auto wallState = cb->getBattle(battleID)->battleGetWallState(wallPart);
 
-			if(wallState == EWallState::REINFORCED || wallState == EWallState::INTACT || wallState == EWallState::DAMAGED)
+			if(wallState != EWallState::NONE && wallState != EWallState::DESTROYED)
 			{
 				targetHex = cb->getBattle(battleID)->wallPartToBattleHex(wallPart);
 				break;

@@ -28,7 +28,6 @@
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 #include "../../lib/networkPacks/PacksForClient.h"
-#include "../../lib/serializer/Cast.h"
 #include "../../lib/spells/CSpellHandler.h"
 #include "../../client/CMT.h"
 
@@ -83,7 +82,7 @@ CasualtiesAfterBattle::CasualtiesAfterBattle(const CBattleInfoCallback & battle,
 			else if(warMachine != ArtifactID::CATAPULT && st->getCount() <= 0)
 			{
 				logGlobal->debug("War machine has been destroyed");
-				auto hero = dynamic_ptr_cast<CGHeroInstance> (army);
+				auto hero = dynamic_cast<const CGHeroInstance*> (army);
 				if (hero)
 					removedWarMachines.push_back (ArtifactLocation(hero->id, hero->getArtPos(warMachine, true)));
 				else
@@ -488,7 +487,7 @@ void BattleResultProcessor::endBattleConfirm(const CBattleInfoCallback & battle)
 		if(!finishingBattle->isDraw())
 		{
 			ConstTransitivePtr<CGHeroInstance> strongestHero = nullptr;
-			for(auto & hero : gameHandler->gameState()->getPlayerState(finishingBattle->loser)->heroes)
+			for(auto & hero : gameHandler->gameState()->getPlayerState(finishingBattle->loser)->getHeroes())
 				if(!strongestHero || hero->exp > strongestHero->exp)
 					strongestHero = hero;
 			if(strongestHero->id == finishingBattle->loserHero->id && strongestHero->level > 5)

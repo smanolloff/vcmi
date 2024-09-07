@@ -299,6 +299,34 @@ void CTownHandler::loadBuilding(CTown * town, const std::string & stringID, cons
 	ret->resources = TResources(source["cost"]);
 	ret->produce =   TResources(source["produce"]);
 
+	ret->manualHeroVisit = source["manualHeroVisit"].Bool();
+	ret->upgradeReplacesBonuses = source["upgradeReplacesBonuses"].Bool();
+
+	const JsonNode & fortifications = source["fortifications"];
+	if (!fortifications.isNull())
+	{
+		VLC->identifiers()->requestIdentifierOptional("creature", fortifications["citadelShooter"], [=](si32 identifier)
+		{
+			ret->fortifications.citadelShooter = CreatureID(identifier);
+		});
+
+		VLC->identifiers()->requestIdentifierOptional("creature", fortifications["upperTowerShooter"], [=](si32 identifier)
+		{
+			ret->fortifications.upperTowerShooter = CreatureID(identifier);
+		});
+
+		VLC->identifiers()->requestIdentifierOptional("creature", fortifications["lowerTowerShooter"], [=](si32 identifier)
+		{
+			ret->fortifications.lowerTowerShooter = CreatureID(identifier);
+		});
+
+		ret->fortifications.wallsHealth = fortifications["wallsHealth"].Integer();
+		ret->fortifications.citadelHealth = fortifications["citadelHealth"].Integer();
+		ret->fortifications.upperTowerHealth = fortifications["upperTowerHealth"].Integer();
+		ret->fortifications.lowerTowerHealth = fortifications["lowerTowerHealth"].Integer();
+		ret->fortifications.hasMoat = fortifications["hasMoat"].Bool();
+	}
+
 	loadBuildingBonuses(source["bonuses"], ret->buildingBonuses, ret);
 
 	if(!source["configuration"].isNull())
@@ -324,6 +352,14 @@ void CTownHandler::loadBuilding(CTown * town, const std::string & stringID, cons
 	}
 	loadBuildingRequirements(ret, source["requires"], requirementsToLoad);
 
+	if (!source["warMachine"].isNull())
+	{
+		VLC->identifiers()->requestIdentifier("artifact", source["warMachine"], [=](si32 identifier)
+		{
+			ret->warMachine = ArtifactID(identifier);
+		});
+	}
+
 	if (!source["upgrades"].isNull())
 	{
 		// building id and upgrades can't be the same
@@ -342,6 +378,11 @@ void CTownHandler::loadBuilding(CTown * town, const std::string & stringID, cons
 		ret->upgrade = BuildingID::NONE;
 
 	ret->town->buildings[ret->bid] = ret;
+	for(const auto & element : source["marketModes"].Vector())
+	{
+		if(MappedKeys::MARKET_NAMES_TO_TYPES.count(element.String()))
+			ret->marketModes.insert(MappedKeys::MARKET_NAMES_TO_TYPES.at(element.String()));
+	}
 
 	registerObject(source.getModScope(), ret->town->getBuildingScope(), ret->identifier, ret->bid.getNum());
 }
@@ -464,7 +505,9 @@ void CTownHandler::loadSiegeScreen(CTown &town, const JsonNode & source) const
 				, town.faction->getNameTranslated()
 				, (*VLC->creh)[crId]->getNameSingularTranslated());
 
-		town.clientInfo.siegeShooter = crId;
+		town.fortifications.citadelShooter = crId;
+		town.fortifications.upperTowerShooter = crId;
+		town.fortifications.lowerTowerShooter = crId;
 	});
 
 	auto & pos = town.clientInfo.siegePositions;
@@ -547,7 +590,13 @@ void CTownHandler::loadTown(CTown * town, const JsonNode & source)
 	else
 		town->primaryRes = GameResID(resIter - std::begin(GameConstants::RESOURCE_NAMES));
 
-	warMachinesToLoad[town] = source["warMachine"];
+	if (!source["warMachine"].isNull())
+	{
+		VLC->identifiers()->requestIdentifier( "creature", source["warMachine"], [=](si32 creatureID)
+		{
+			town->warMachineDeprecated = creatureID;
+		});
+	}
 
 	town->mageLevel = static_cast<ui32>(source["mageGuild"].Float());
 
@@ -562,14 +611,14 @@ void CTownHandler::loadTown(CTown * town, const JsonNode & source)
 	{
 		VLC->identifiers()->requestIdentifier( "spell", source["moatAbility"], [=](si32 ability)
 		{
-			town->moatAbility = SpellID(ability);
+			town->fortifications.moatSpell = SpellID(ability);
 		});
 	}
 	else
 	{
 		VLC->identifiers()->requestIdentifier( source.getModScope(), "spell", "castleMoat", [=](si32 ability)
 		{
-			town->moatAbility = SpellID(ability);
+			town->fortifications.moatSpell = SpellID(ability);
 		});
 	}
 
@@ -843,7 +892,6 @@ void CTownHandler::beforeValidate(JsonNode & object)
 void CTownHandler::afterLoadFinalization()
 {
 	initializeRequirements();
-	initializeWarMachines();
 }
 
 void CTownHandler::initializeRequirements()
@@ -871,27 +919,6 @@ void CTownHandler::initializeRequirements()
 		});
 	}
 	requirementsToLoad.clear();
-}
-
-void CTownHandler::initializeWarMachines()
-{
-	// must be done separately after all objects are loaded
-	for(auto & p : warMachinesToLoad)
-	{
-		CTown * t = p.first;
-		JsonNode creatureKey = p.second;
-
-		auto ret = VLC->identifiers()->getIdentifier("creature", creatureKey, false);
-
-		if(ret)
-		{
-			const CCreature * creature = CreatureID(*ret).toCreature();
-
-			t->warMachine = creature->warMachine;
-		}
-	}
-
-	warMachinesToLoad.clear();
 }
 
 std::set<FactionID> CTownHandler::getDefaultAllowed() const

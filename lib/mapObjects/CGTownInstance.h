@@ -19,6 +19,7 @@ VCMI_LIB_NAMESPACE_BEGIN
 class CCastleEvent;
 class CTown;
 class TownBuildingInstance;
+struct TownFortifications;
 class TownRewardableBuildingInstance;
 struct DamageRange;
 
@@ -52,6 +53,8 @@ class DLL_LINKAGE CGTownInstance : public CGDwelling, public IShipyard, public I
 	std::string nameTextId; // name of town
 
 	std::map<BuildingID, TownRewardableBuildingInstance*> convertOldBuildings(std::vector<TownRewardableBuildingInstance*> oldVector);
+	std::set<BuildingID> builtBuildings;
+
 public:
 	using CGDwelling::getPosition;
 
@@ -65,7 +68,6 @@ public:
 	ui32 identifier; //special identifier from h3m (only > RoE maps)
 	PlayerColor alignmentToPlayer; // if set to non-neutral, random town will have same faction as specified player
 	std::set<BuildingID> forbiddenBuildings;
-	std::set<BuildingID> builtBuildings;
 	std::map<BuildingID, TownRewardableBuildingInstance*> rewardableBuildings;
 	std::vector<SpellID> possibleSpells, obligatorySpells;
 	std::vector<std::vector<SpellID> > spells; //spells[level] -> vector of spells, first will be available in guild
@@ -152,15 +154,16 @@ public:
 	EGeneratorState shipyardStatus() const override;
 	const IObjectInterface * getObject() const override;
 	int getMarketEfficiency() const override; //=market count
-	bool allowsTrade(EMarketMode mode) const override;
+	std::set<EMarketMode> availableModes() const override;
 	std::vector<TradeItemBuy> availableItemsIds(EMarketMode mode) const override;
-
+	ObjectInstanceID getObjInstanceID() const override;
 	void updateAppearance();
 
 	//////////////////////////////////////////////////////////////////////////
 
 	bool needsLastStack() const override;
 	CGTownInstance::EFortLevel fortLevel() const;
+	TownFortifications fortificationsLevel() const;
 	int hallLevel() const; // -1 - none, 0 - village, 1 - town, 2 - city, 3 - capitol
 	int mageGuildLevel() const; // -1 - none, 0 - village, 1 - town, 2 - city, 3 - capitol
 	int getHordeLevel(const int & HID) const; //HID - 0 or 1; returns creature level or -1 if that horde structure is not present
@@ -174,9 +177,15 @@ public:
 	//checks if building is constructed and town has same subID
 	bool hasBuilt(const BuildingID & buildingID) const;
 	bool hasBuilt(const BuildingID & buildingID, FactionID townID) const;
+	void addBuilding(const BuildingID & buildingID);
+	void removeBuilding(const BuildingID & buildingID);
+	void removeAllBuildings();
+	std::set<BuildingID> getBuildings() const;
 
 	TResources getBuildingCost(const BuildingID & buildingID) const;
-	TResources dailyIncome() const; //calculates daily income of this town
+	ResourceSet dailyIncome() const override;
+	std::vector<CreatureID> providedCreatures() const override;
+
 	int spellsAtLevel(int level, bool checkGuild) const; //levels are counted from 1 (1 - 5)
 	bool armedGarrison() const; //true if town has creatures in garrison or garrisoned hero
 	int getTownLevel() const;
@@ -200,6 +209,11 @@ public:
 	/// INativeTerrainProvider
 	FactionID getFaction() const override;
 	TerrainId getNativeTerrain() const override;
+
+	/// Returns ID of war machine that is produced by specified building or NONE if this is not built or if building does not produce war machines
+	ArtifactID getWarMachineInBuilding(BuildingID) const;
+	/// Returns true if provided war machine is available in any of built buildings of this town
+	bool isWarMachineAvailable(ArtifactID) const;
 
 	CGTownInstance(IGameCallback *cb);
 	virtual ~CGTownInstance();
@@ -225,15 +239,15 @@ public:
 protected:
 	void setPropertyDer(ObjProperty what, ObjPropertyID identifier) override;
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
-	void blockingDialogAnswered(const CGHeroInstance *hero, int32_t answer) const override;
 
 private:
 	FactionID randomizeFaction(vstd::RNG & rand);
 	void setOwner(const PlayerColor & owner) const;
 	void onTownCaptured(const PlayerColor & winner) const;
-	int getDwellingBonus(const std::vector<CreatureID>& creatureIds, const std::vector<ConstTransitivePtr<CGDwelling> >& dwellings) const;
+	int getDwellingBonus(const std::vector<CreatureID>& creatureIds, const std::vector<const CGObjectInstance* >& dwellings) const;
 	bool townEnvisagesBuilding(BuildingSubID::EBuildingSubID bid) const;
 	void initializeConfigurableBuildings(vstd::RNG & rand);
+	void initializeNeutralTownGarrison(vstd::RNG & rand);
 };
 
 VCMI_LIB_NAMESPACE_END

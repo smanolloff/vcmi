@@ -9,6 +9,8 @@
  */
 #pragma once
 
+#include "TownFortifications.h"
+
 #include "../../constants/EntityIdentifiers.h"
 #include "../../LogicalExpression.h"
 #include "../../ResourceSet.h"
@@ -34,11 +36,15 @@ public:
 	TResources resources;
 	TResources produce;
 	TRequired requirements;
+	ArtifactID warMachine;
+	TownFortifications fortifications;
+	std::set<EMarketMode> marketModes;
 
 	BuildingID bid; //structure ID
 	BuildingID upgrade; /// indicates that building "upgrade" can be improved by this, -1 = empty
 	BuildingSubID::EBuildingSubID subId; /// subtype for special buildings, -1 = the building is not special
 	bool upgradeReplacesBonuses = false;
+	bool manualHeroVisit = false;
 	BonusList buildingBonuses;
 
 	Rewardable::Info rewardableObjectInfo; ///configurable rewards for special buildings
@@ -85,7 +91,7 @@ public:
 	STRONG_INLINE
 		bool IsTradeBuilding() const
 	{
-		return bid == BuildingID::MARKETPLACE || subId == BuildingSubID::ARTIFACT_MERCHANT || subId == BuildingSubID::FREELANCERS_GUILD;
+		return !marketModes.empty();
 	}
 
 	void addNewBonus(const std::shared_ptr<Bonus> & b, BonusList & bonusList) const;

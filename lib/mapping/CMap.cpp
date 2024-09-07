@@ -332,11 +332,6 @@ bool CMap::isCoastalTile(const int3 & pos) const
 	return false;
 }
 
-bool CMap::isInTheMap(const int3 & pos) const
-{
-	return pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < width && pos.y < height && pos.z <= (twoLevel ? 1 : 0);
-}
-
 TerrainTile & CMap::getTile(const int3 & tile)
 {
 	assert(isInTheMap(tile));
@@ -524,10 +519,26 @@ void CMap::checkForObjectives()
 	}
 }
 
+void CMap::addNewArtifactInstance(CArtifactSet & artSet)
+{
+	for(const auto & [slot, slotInfo] : artSet.artifactsWorn)
+	{
+		if(!slotInfo.locked && slotInfo.getArt())
+			addNewArtifactInstance(slotInfo.artifact);
+	}
+	for(const auto & slotInfo : artSet.artifactsInBackpack)
+		addNewArtifactInstance(slotInfo.artifact);
+}
+
 void CMap::addNewArtifactInstance(ConstTransitivePtr<CArtifactInstance> art)
 {
+	assert(art);
+	assert(art->getId() == -1);
 	art->setId(static_cast<ArtifactInstanceID>(artInstances.size()));
 	artInstances.emplace_back(art);
+		
+	for(const auto & partInfo : art->getPartsInfo())
+		addNewArtifactInstance(partInfo.art);
 }
 
 void CMap::eraseArtifactInstance(CArtifactInstance * art)

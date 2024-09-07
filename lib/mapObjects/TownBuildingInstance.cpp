@@ -50,6 +50,11 @@ MapObjectSubID TownBuildingInstance::getObjTypeIndex() const
 	return 0;
 }
 
+const IOwnableObject * TownBuildingInstance::asOwnable() const
+{
+	return nullptr;
+}
+
 int3 TownBuildingInstance::visitablePos() const
 {
 	return town->visitablePos();
@@ -216,7 +221,7 @@ void TownRewardableBuildingInstance::onHeroVisit(const CGHeroInstance *h) const
 		if (rewards.size() == 1)
 			configuration.info.at(rewards.front()).reward.loadComponents(sd.components, h);
 
-		cb->showBlockingDialog(&sd);
+		cb->showBlockingDialog(this, &sd);
 	};
 	
 	if(!town->hasBuilt(getBuildingType()))

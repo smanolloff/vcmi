@@ -78,7 +78,7 @@ public:
 	virtual void visitBulkRebalanceStacks(BulkRebalanceStacks & pack) {}
 	virtual void visitBulkSmartRebalanceStacks(BulkSmartRebalanceStacks & pack) {}
 	virtual void visitPutArtifact(PutArtifact & pack) {}
-	virtual void visitEraseArtifact(EraseArtifact & pack) {}
+	virtual void visitEraseArtifact(BulkEraseArtifacts & pack) {}
 	virtual void visitBulkMoveArtifacts(BulkMoveArtifacts & pack) {}
 	virtual void visitAssembledArtifact(AssembledArtifact & pack) {}
 	virtual void visitDisassembledArtifact(DisassembledArtifact & pack) {}
@@ -126,7 +126,7 @@ public:
 	virtual void visitBulkSmartSplitStack(BulkSmartSplitStack & pack) {}
 	virtual void visitDisbandCreature(DisbandCreature & pack) {}
 	virtual void visitBuildStructure(BuildStructure & pack) {}
-	virtual void visitTriggerTownSpecialBuildingAction(TriggerTownSpecialBuildingAction & pack) {}
+	virtual void visitVisitTownBuilding(VisitTownBuilding & pack) {}
 	virtual void visitRazeStructure(RazeStructure & pack) {}
 	virtual void visitRecruitCreatures(RecruitCreatures & pack) {}
 	virtual void visitUpgradeCreature(UpgradeCreature & pack) {}

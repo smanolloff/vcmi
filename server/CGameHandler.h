@@ -44,8 +44,6 @@ namespace scripting
 }
 #endif
 
-template<typename T> class CApplier;
-
 VCMI_LIB_NAMESPACE_END
 
 class HeroPoolProcessor;
@@ -57,11 +55,11 @@ class TurnOrderProcessor;
 class TurnTimerHandler;
 class QueriesProcessor;
 class CObjectVisitQuery;
+class NewTurnProcessor;
 
 class CGameHandler : public IGameCallback, public Environment
 {
 	CVCMIServer * lobby;
-	std::shared_ptr<CApplier<CBaseForGHApply>> applier;
 
 public:
 	std::unique_ptr<HeroPoolProcessor> heroPool;
@@ -69,6 +67,7 @@ public:
 	std::unique_ptr<QueriesProcessor> queries;
 	std::unique_ptr<TurnOrderProcessor> turnOrder;
 	std::unique_ptr<TurnTimerHandler> turnTimerHandler;
+	std::unique_ptr<NewTurnProcessor> newTurnProcessor;
 	std::unique_ptr<CRandomGenerator> randomNumberGenerator;
 
 	//use enums as parameters, because doMove(sth, true, false, true) is not readable
@@ -120,7 +119,7 @@ public:
 	void changePrimSkill(const CGHeroInstance * hero, PrimarySkill which, si64 val, bool abs=false) override;
 	void changeSecSkill(const CGHeroInstance * hero, SecondarySkill which, int val, bool abs=false) override;
 
-	void showBlockingDialog(BlockingDialog *iw) override;
+	void showBlockingDialog(const IObjectInterface * caller, BlockingDialog *iw) override;
 	void showTeleportDialog(TeleportDialog *iw) override;
 	void showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID hid, bool removableUnits) override;
 	void showObjectWindow(const CGObjectInstance * object, EOpenWindowMode window, const CGHeroInstance * visitor, bool addQuery) override;
@@ -140,9 +139,12 @@ public:
 
 	void removeAfterVisit(const CGObjectInstance *object) override;
 
-	bool giveHeroNewArtifact(const CGHeroInstance * h, const CArtifact * artType, ArtifactPosition pos = ArtifactPosition::FIRST_AVAILABLE) override;
+	bool giveHeroNewArtifact(const CGHeroInstance * h, const CArtifact * artType, const SpellID & spellId, const ArtifactPosition & pos);
+	bool giveHeroNewArtifact(const CGHeroInstance * h, const ArtifactID & artId, const ArtifactPosition & pos) override;
+	bool giveHeroNewScroll(const CGHeroInstance * h, const SpellID & spellId, const ArtifactPosition & pos) override;
 	bool putArtifact(const ArtifactLocation & al, const CArtifactInstance * art, std::optional<bool> askAssemble) override;
 	void removeArtifact(const ArtifactLocation &al) override;
+	void removeArtifact(const ObjectInstanceID & srcId, const std::vector<ArtifactPosition> & slotsPack);
 	bool moveArtifact(const PlayerColor & player, const ArtifactLocation & src, const ArtifactLocation & dst) override;
 	bool bulkMoveArtifacts(const PlayerColor & player, ObjectInstanceID srcId, ObjectInstanceID dstId, bool swap, bool equipped, bool backpack);
 	bool scrollBackpackArtifacts(const PlayerColor & player, const ObjectInstanceID heroID, bool left);
@@ -166,7 +168,7 @@ public:
 	void heroExchange(ObjectInstanceID hero1, ObjectInstanceID hero2) override;
 
 	void changeFogOfWar(int3 center, ui32 radius, PlayerColor player, ETileVisibility mode) override;
-	void changeFogOfWar(std::unordered_set<int3> &tiles, PlayerColor player,ETileVisibility mode) override;
+	void changeFogOfWar(const std::unordered_set<int3> &tiles, PlayerColor player,ETileVisibility mode) override;
 	
 	void castSpell(const spells::Caster * caster, SpellID spellID, const int3 &pos) override;
 
@@ -220,7 +222,7 @@ public:
 	bool upgradeCreature( ObjectInstanceID objid, SlotID pos, CreatureID upgID );
 	bool recruitCreatures(ObjectInstanceID objid, ObjectInstanceID dst, CreatureID crid, ui32 cram, si32 level, PlayerColor player);
 	bool buildStructure(ObjectInstanceID tid, BuildingID bid, bool force=false);//force - for events: no cost, no checkings
-	bool triggerTownSpecialBuildingAction(ObjectInstanceID tid, BuildingSubID::EBuildingSubID sid);
+	bool visitTownBuilding(ObjectInstanceID tid, BuildingID bid);
 	bool razeStructure(ObjectInstanceID tid, BuildingID bid);
 	bool disbandCreature( ObjectInstanceID id, SlotID pos );
 	bool arrangeStacks( ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player);
@@ -236,11 +238,9 @@ public:
 	void onNewTurn();
 	void addStatistics(StatisticDataSet &stat) const;
 
-	void handleTimeEvents(PlayerColor player);
-	void handleTownEvents(CGTownInstance *town);
 	bool complain(const std::string &problem); //sends message to all clients, prints on the logs and return true
 	void objectVisited( const CGObjectInstance * obj, const CGHeroInstance * h );
-	void objectVisitEnded(const CObjectVisitQuery &query);
+	void objectVisitEnded(const CGHeroInstance *h, PlayerColor player);
 	bool dig(const CGHeroInstance *h);
 	void moveArmy(const CArmedInstance *src, const CArmedInstance *dst, bool allowMerging);
 
@@ -252,9 +252,7 @@ public:
 		h & *heroPool;
 		h & *playerMessages;
 		h & *turnOrder;
-
-		if (h.version >= Handler::Version::TURN_TIMERS_STATE)
-			h & *turnTimerHandler;
+		h & *turnTimerHandler;
 
 #if SCRIPTING_ENABLED
 		JsonNode scriptsState;
@@ -288,7 +286,7 @@ public:
 
 	void start(bool resume);
 	void tick(int millisecondsPassed);
-	bool sacrificeArtifact(const IMarket * m, const CGHeroInstance * hero, const std::vector<ArtifactInstanceID> & arts);
+	bool sacrificeArtifact(const IMarket * market, const CGHeroInstance * hero, const std::vector<ArtifactInstanceID> & arts);
 	void spawnWanderingMonsters(CreatureID creatureID);
 
 	// Check for victory and loss conditions
