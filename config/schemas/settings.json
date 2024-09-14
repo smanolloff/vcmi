@@ -452,7 +452,7 @@
 					"type" : "object",
 					"additionalProperties" : false,
 					"default" : {},
-					"required" : ["leftModel", "rightModel", "verbose"],
+					"required" : ["leftModel", "rightModel", "fallback"],
 					"properties" : {
 						"leftModel" : {
 							"type" : "string",
@@ -462,9 +462,9 @@
 							"type" : "string",
 							"default" : ""
 						},
-						"verbose" : {
-							"type" : "boolean",
-							"default" : false
+						"fallback" : {
+							"type" : "string",
+							"default" : "StupidAI"
 						}
 					}
 				},

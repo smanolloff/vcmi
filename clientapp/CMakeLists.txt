@@ -42,12 +42,6 @@ target_include_directories(vcmiclient
 	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-if(ENABLE_MMAI)
-  add_dependencies(vcmiclient mmailoader)
-  set_target_properties(vcmiclient PROPERTIES COMPILE_FLAGS "-fPIC")
-  target_link_libraries(vcmiclient PRIVATE mmailoader)
-endif()
-
 if(WIN32)
 	target_sources(vcmiclient PRIVATE "VCMI_client.rc")
 	set_target_properties(vcmiclient

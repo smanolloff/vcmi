@@ -52,10 +52,6 @@
 #include <SDL_system.h>
 #endif
 
-#ifdef ENABLE_MMAI
-#include "../MMAILoader/Loader.h"
-#endif
-
 #if __MINGW32__
 #undef main
 #endif
@@ -286,20 +282,9 @@ int main(int argc, char * argv[])
 	if(!settings["session"]["headless"].Bool())
 		GH.init();
 
-	auto aco = AICombatOptions();
-
-#ifdef ENABLE_MMAI
-	auto left = settings["battle"]["MMAI"]["leftModel"].String();
-	auto right = settings["battle"]["MMAI"]["rightModel"].String();
-	auto verbose = settings["battle"]["MMAI"]["verbose"].Bool();
-	logGlobal->info("Loading pre-trained MMAI left-side model: " + left);
-	logGlobal->info("Loading pre-trained MMAI right-side model: " + right);
-	aco.other = std::make_any<MMAI::Schema::Baggage*>(MMAI::LoadModels(left, right, verbose));
-#endif
-
 	CCS = new CClientState();
 	CGI = new CGameInfo(); //contains all global information about game (texts, lodHandlers, map handler etc.)
-	CSH = new CServerHandler(aco);
+	CSH = new CServerHandler();
 	
 	// Initialize video
 #ifdef DISABLE_VIDEO

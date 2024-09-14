@@ -708,10 +708,6 @@ if(ENABLE_ML)
 	add_subdirectory(ML)
 endif()
 
-if(ENABLE_MMAI)
-  add_subdirectory(MMAILoader)
-endif()
-
 #######################################
 #        Installation section         #
 #######################################

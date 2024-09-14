@@ -41,7 +41,7 @@ same libtorch as the one used by vcmi-gym and installed by pip. Create this
 symlink (python version may vary):
 
 ```bash
-$ ln -s ../../.venv/lib/python3.10/site-packages/torch MMAILoader/libtorch
+$ ln -s ../../../../../.venv/lib/python3.10/site-packages/torch AI/MMAI/BAI/model/libtorch
 ```
 
 ### Compile VCMI

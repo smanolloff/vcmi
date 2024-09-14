@@ -145,7 +145,7 @@ public:
 	std::unique_ptr<CStopWatch> th;
 	std::unique_ptr<CClient> client;
 
-	CServerHandler(AICombatOptions aiCombatOptions);
+	CServerHandler(AICombatOptions aiCombatOptions = {});
 	~CServerHandler();
 	
 	void resetStateForLobby(EStartMode mode, ESelectionScreen screen, EServerMode serverMode, const std::vector<std::string> & playerNames);

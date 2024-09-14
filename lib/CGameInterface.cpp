@@ -106,8 +106,9 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 {
 	if(libpath.stem() == "libNullkiller") {
 		return std::make_shared<NKAI::AIGateway>();
-#ifdef ENABLE_MMAI
+#ifdef ENABLE_ML
 	} else if(libpath.stem() == "libMMAI") {
+		// AAI is used for ML only, not during regular gameplay
 		return std::make_shared<MMAI::AAI>();
 #endif
 	}

@@ -12,11 +12,12 @@
 struct AICombatOptions
 {
 	bool enableSpellsUsage = true;
+
 	//TODO: below options exist in original H3, consider usefulness of mixed human-AI combat when enabling autocombat inside battle
-//	bool enableUnitsUsage = true;
-//	bool enableCatapultUsage = true;
-//	bool enableBallistaUsage = true;
-//	bool enableFirstAidTendUsage = true;
+	// bool enableUnitsUsage = true;
+	// bool enableCatapultUsage = true;
+	// bool enableBallistaUsage = true;
+	// bool enableFirstAidTendUsage = true;
 
 	// AI-specific options are transported as std::any as they may
 	// include arbitary types which are not known here
