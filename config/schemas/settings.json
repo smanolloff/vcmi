@@ -389,7 +389,7 @@
 			"type" : "object",
 			"additionalProperties" : false,
 			"default" : {},
-			"required" : [ "speedFactor", "mouseShadow", "cellBorders", "stackRange", "movementHighlightOnHover", "rangeLimitHighlightOnHover", "showQueue", "swipeAttackDistance", "queueSize", "stickyHeroInfoWindows", "enableAutocombatSpells", "endWithAutocombat", "queueSmallSlots", "queueSmallOutside", "MMAI", "enableQuickSpellPanel" ],
+			"required" : [ "speedFactor", "mouseShadow", "cellBorders", "stackRange", "movementHighlightOnHover", "rangeLimitHighlightOnHover", "showQueue", "swipeAttackDistance", "queueSize", "stickyHeroInfoWindows", "enableAutocombatSpells", "endWithAutocombat", "queueSmallSlots", "queueSmallOutside", "enableQuickSpellPanel" ],
 			"properties" : {
 				"speedFactor" : {
 					"type" : "number",
@@ -447,26 +447,6 @@
 				"queueSmallOutside" : {
 					"type": "boolean",
 					"default": false
-				},
-				"MMAI" : {
-					"type" : "object",
-					"additionalProperties" : false,
-					"default" : {},
-					"required" : ["leftModel", "rightModel", "fallback"],
-					"properties" : {
-						"leftModel" : {
-							"type" : "string",
-							"default" : ""
-						},
-						"rightModel" : {
-							"type" : "string",
-							"default" : ""
-						},
-						"fallback" : {
-							"type" : "string",
-							"default" : "StupidAI"
-						}
-					}
 				},
 				"enableQuickSpellPanel" : {
 					"type": "boolean",
