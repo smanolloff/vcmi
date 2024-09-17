@@ -13,14 +13,13 @@ class VCMI(ConanFile):
     _libRequires = [
         "boost/[^1.69]",
         "minizip/[~1.2.12]",
-        "onetbb/[^2021.3]",
     ]
     _clientRequires = [
         "sdl/[~2.26.1 || >=2.0.20 <=2.22.0]", # versions in between have broken sound
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-        "onetbb/[^2021.3]",
+        "onetbb/[^2021.7 <2021.10]",  # 2021.10+ breaks mobile builds due to added hwloc dependency
         "xz_utils/[>=5.2.5]", # Required for innoextract
     ]
     _MMAIRequires = [
@@ -31,7 +30,6 @@ class VCMI(ConanFile):
     ]
 
     requires = _libRequires + _clientRequires + _MMAIRequires + _MLRequires
-
 
     options = {
         "default_options_of_requirements": [True, False],
@@ -47,7 +45,6 @@ class VCMI(ConanFile):
 
         "boost/*:shared": True,
         "minizip/*:shared": True,
-        "onetbb/*:shared": True,
         "llvm-openmp/*:shared": True,
         "sqlite/*:shared": True,
     }
