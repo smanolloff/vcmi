@@ -1,5 +1,0 @@
-{
-  "leftModel" : "Attacker model:v9/jit-agent.pt",
-  "rightModel" : "Defender model:v5/jit-agent.pt",
-  "fallback": "StupidAI"
-}

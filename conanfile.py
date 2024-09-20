@@ -19,17 +19,14 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-        "onetbb/[^2021.7 <2021.10]",  # 2021.10+ breaks mobile builds due to added hwloc dependency
+        "onetbb/2020.3.3",
         "xz_utils/[>=5.2.5]", # Required for innoextract
-    ]
-    _MMAIRequires = [
-        "llvm-openmp/17.0.6",
     ]
     _MLRequires = [
         "sqlite3/[~3.45.3]",
     ]
 
-    requires = _libRequires + _clientRequires + _MMAIRequires + _MLRequires
+    requires = _libRequires + _clientRequires + _MLRequires
 
     options = {
         "default_options_of_requirements": [True, False],

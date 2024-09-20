@@ -117,6 +117,14 @@ void CSettingsView::loadSettings()
 	else
 		ui->comboBoxFullScreen->setCurrentIndex(settings["video"]["fullscreen"].Bool());
 #endif
+
+#ifndef ENABLE_MMAI
+	for (auto &box : {comboBoxFriendlyAI, comboBoxNeutralAI, comboBoxEnemyAI}) {
+	    int index = box->findText("MMAI");
+	    if (index != -1) box->removeItem(index);
+	}
+#endif
+
 	fillValidScalingRange();
 
 	ui->spinBoxInterfaceScaling->setValue(settings["video"]["resolution"]["scaling"].Float());
