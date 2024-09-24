@@ -86,11 +86,6 @@
            <string notr="true">StupidAI</string>
           </property>
          </item>
-         <item>
-          <property name="text">
-           <string notr="true">MMAI</string>
-          </property>
-         </item>
         </widget>
        </item>
        <item row="39" column="0">
@@ -643,11 +638,6 @@ Fullscreen Exclusive Mode - game will cover entirety of your screen and will use
            <string notr="true">StupidAI</string>
           </property>
          </item>
-         <item>
-          <property name="text">
-           <string notr="true">MMAI</string>
-          </property>
-         </item>
         </widget>
        </item>
        <item row="49" column="0">
@@ -924,11 +914,6 @@ Fullscreen Exclusive Mode - game will cover entirety of your screen and will use
          <item>
           <property name="text">
            <string notr="true">StupidAI</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string notr="true">MMAI</string>
           </property>
          </item>
         </widget>

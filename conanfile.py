@@ -11,7 +11,7 @@ class VCMI(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     _libRequires = [
-        "boost/[^1.69]",
+        "boost/[^1.69, <1.85.0]",
         "minizip/[~1.2.12]",
     ]
     _clientRequires = [

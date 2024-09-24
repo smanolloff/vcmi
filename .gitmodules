@@ -25,3 +25,6 @@
 [submodule "ML"]
 	path = ML
 	url = git@github.com:smanolloff/vcmi-mlclient.git
+[submodule "Mods/MMAI"]
+	path = Mods/MMAI
+	url = git@github.com:smanolloff/MMAI-mod.git

@@ -405,7 +405,7 @@
             "configuration": "Release",
             "targets": ["vcmiclient"],
             "nativeToolOptions": [
-                "CODE_SIGNING_ALLOWED_FOR_APPS=NO"
+                "CODE_SIGNING_ALLOWED_FOR_APPS=YES"
             ]
         },
         {
