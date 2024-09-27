@@ -302,6 +302,7 @@
             "description": "VCMI Android daily build",
             "inherits": "android-conan-ninja-release",
             "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
                 "ANDROID_GRADLE_PROPERTIES": "applicationIdSuffix=.daily;signingConfig=dailySigning;applicationLabel=VCMI daily"
             }
         }

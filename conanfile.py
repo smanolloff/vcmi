@@ -11,7 +11,8 @@ class VCMI(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     _libRequires = [
-        "boost/[^1.69, <1.85.0]",
+        # "boost/[^1.69, <1.86.0]",
+        "boost/1.79.0",
         "minizip/[~1.2.12]",
     ]
     _clientRequires = [
@@ -19,7 +20,7 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-        "onetbb/2020.3.3",
+        "onetbb/2021.12.0",
         "xz_utils/[>=5.2.5]", # Required for innoextract
     ]
     _MLRequires = [
@@ -69,6 +70,10 @@ class VCMI(ConanFile):
         if self.options.default_options_of_requirements:
             return
 
+        self.options["onetbb"].tbbmalloc = False
+        self.options["onetbb"].tbbproxy = False
+        self.options["onetbb"].tbbbind = False
+
         # we need only the following Boost parts:
         # date_time filesystem iostreams locale program_options system thread
         # some other parts are also enabled because they're dependents
@@ -91,6 +96,9 @@ class VCMI(ConanFile):
         self.options["boost"].without_timer = True
         self.options["boost"].without_type_erasure = True
         self.options["boost"].without_wave = True
+
+        if self.settings.os == "Android":
+            self.options["boost"].i18n_backend_iconv = "libiconv"
 
         self.options["ffmpeg"].disable_all_bitstream_filters = True
         self.options["ffmpeg"].disable_all_decoders = True
@@ -266,6 +274,7 @@ class VCMI(ConanFile):
                 self.requires(f"{lib}@vcmi/apple", override=True)
         elif self.settings.os == "Android":
             self.requires("zlib/1.2.12@vcmi/android", override=True)
+            self.requires("libiconv/[~1.17]", override=True) # ffmpeg / sdl
         else:
             self.requires("zlib/[~1.2.13]", override=True) # minizip / Qt
             self.requires("libiconv/[~1.17]", override=True) # ffmpeg / sdl
