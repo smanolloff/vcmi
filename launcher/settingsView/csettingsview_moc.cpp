@@ -131,9 +131,9 @@ void CSettingsView::loadSettings()
 	ui->spinBoxFramerateLimit->setDisabled(settings["video"]["vsync"].Bool());
 	ui->sliderReservedArea->setValue(std::round(settings["video"]["reservedWidth"].Float() * 100));
 
-	ui->comboBoxFriendlyAI->setCurrentText(QString::fromStdString(settings["server"]["friendlyAI"].String()));
-	ui->comboBoxNeutralAI->setCurrentText(QString::fromStdString(settings["server"]["neutralAI"].String()));
-	ui->comboBoxEnemyAI->setCurrentText(QString::fromStdString(settings["server"]["enemyAI"].String()));
+	ui->comboBoxFriendlyAI->setCurrentText(QString::fromStdString(std::string("MMAI")));
+	ui->comboBoxNeutralAI->setCurrentText(QString::fromStdString(std::string("MMAI")));
+	ui->comboBoxEnemyAI->setCurrentText(QString::fromStdString(std::string("MMAI")));
 
 	ui->comboBoxEnemyPlayerAI->setCurrentText(QString::fromStdString(settings["server"]["playerAI"].String()));
 	ui->comboBoxAlliedPlayerAI->setCurrentText(QString::fromStdString(settings["server"]["alliedAI"].String()));

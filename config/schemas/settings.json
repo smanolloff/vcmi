@@ -490,15 +490,15 @@
 				},
 				"friendlyAI" : {
 					"type" : "string",
-					"default" : "BattleAI"
+					"default" : "MMAI"
 				},
 				"neutralAI" : {
 					"type" : "string",
-					"default" : "StupidAI"
+					"default" : "MMAI"
 				},
 				"enemyAI" : {
 					"type" : "string",
-					"default" : "BattleAI"
+					"default" : "MMAI"
 				}
 			}
 		},

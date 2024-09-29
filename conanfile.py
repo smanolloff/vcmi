@@ -11,8 +11,8 @@ class VCMI(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     _libRequires = [
-        # "boost/[^1.69, <1.86.0]",
-        "boost/1.79.0",
+        "boost/[^1.69, <1.86.0]",
+        # "boost/1.79.0",
         "minizip/[~1.2.12]",
     ]
     _clientRequires = [
@@ -274,7 +274,6 @@ class VCMI(ConanFile):
                 self.requires(f"{lib}@vcmi/apple", override=True)
         elif self.settings.os == "Android":
             self.requires("zlib/1.2.12@vcmi/android", override=True)
-            self.requires("libiconv/[~1.17]", override=True) # ffmpeg / sdl
         else:
             self.requires("zlib/[~1.2.13]", override=True) # minizip / Qt
             self.requires("libiconv/[~1.17]", override=True) # ffmpeg / sdl
