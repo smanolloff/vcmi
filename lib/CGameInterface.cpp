@@ -73,7 +73,7 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 
 	if (!dll)
 	{
-		logGlobal->error("Cannot open dynamic library (%s): %s. Throwing...", libpath.string(), dlerror());
+		logGlobal->error("Cannot open dynamic library (%s). Throwing...", libpath.string());
 		throw std::runtime_error("Cannot open dynamic library");
 	}
 	else if(!getName || !getAI)
