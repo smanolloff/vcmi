@@ -53,9 +53,6 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 #endif
-	logGlobal->error("LOADING LIBRARY: %s / %s", libpath.c_str(), libpath.string());
-	SetDllDirectoryW(L"D:\\libtorch-win-shared-with-deps-2.4.1+cpu\\libtorch\\lib");
-
 	HMODULE dll = LoadLibraryW(libpath.c_str());
 	if (dll)
 	{
@@ -78,16 +75,12 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 	{
 #ifdef VCMI_WINDOWS
     DWORD errorCode = GetLastError();
-    std::wcout << L"LoadLibraryW failed with error code: " << errorCode << std::endl;
-
 		LPWSTR messageBuffer = nullptr;
 		size_t size = FormatMessageW(
 		    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		    NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&messageBuffer, 0, NULL);
-
-		std::wcout << L"LoadLibraryW failed: " << messageBuffer << std::endl;
+		std::wcerr << L"LoadLibraryW failed: error code " << errorCode << ": " << messageBuffer << std::endl;
 		LocalFree(messageBuffer);
-
 #endif
 
 		logGlobal->error("Cannot open dynamic library (%s). Throwing...", libpath.string());
