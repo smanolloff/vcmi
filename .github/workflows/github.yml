@@ -10,6 +10,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - platform: linux-mmai
@@ -158,7 +159,9 @@ jobs:
         submodules: recursive
 
     - name: Dependencies
-      run: source '${{github.workspace}}/CI/${{matrix.platform}}/before_install.sh'
+      run: |
+        set -x
+        source '${{github.workspace}}/CI/${{matrix.platform}}/before_install.sh'
       env:
         VCMI_BUILD_PLATFORM: x64
 
@@ -181,6 +184,7 @@ jobs:
     - name: Conan setup
       if: "${{ matrix.conan_profile != '' }}"
       run: |
+        set -x
         pip3 install 'conan<2.0'
         conan profile new default --detect
         conan install . \
@@ -202,10 +206,13 @@ jobs:
     # a hack to build ID for x64 build in order for Google Play to allow upload of both 32 and 64 bit builds
     - name: Bump Android x64 build ID
       if: ${{ matrix.platform == 'android-64' }}
-      run: perl -i -pe 's/versionCode (\d+)/$x=$1+1; "versionCode $x"/e' android/vcmi-app/build.gradle
+      run: |
+        set -x
+        perl -i -pe 's/versionCode (\d+)/$x=$1+1; "versionCode $x"/e' android/vcmi-app/build.gradle
 
     - name: Build Number
       run: |
+        set -x
         source '${{github.workspace}}/CI/get_package_name.sh'
         if [ '${{ matrix.artifact_platform }}' ]; then
           VCMI_PACKAGE_FILE_NAME+="-${{ matrix.artifact_platform }}"
@@ -218,6 +225,7 @@ jobs:
 
     - name: Configure
       run: |
+        set -x
         if [[ ${{matrix.preset}} == linux-gcc-test ]]
         then
             cmake -DENABLE_CCACHE:BOOL=ON -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 --preset ${{ matrix.preset }}
@@ -233,6 +241,7 @@ jobs:
 
     - name: Build
       run: |
+        set -x
         cmake --build --preset ${{matrix.preset}}
       env:
         ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -241,6 +250,7 @@ jobs:
     - name: Kill XProtect to work around CPack issue on macOS
       if: ${{ startsWith(matrix.platform, 'mac') }}
       run: |
+        set -x
         # Cf. https://github.com/actions/runner-images/issues/7522#issuecomment-1556766641
         echo Killing...; sudo pkill -9 XProtect >/dev/null || true;
         echo "Waiting..."; counter=0; while pgrep XProtect && ((counter < 20)); do sleep 3; ((counter++)); done
@@ -250,6 +260,7 @@ jobs:
       id: cpack
       if: ${{ matrix.pack == 1 }}
       run: |
+        set -x
         cd '${{github.workspace}}/out/build/${{matrix.preset}}'
         CPACK_PATH=`which -a cpack | grep -m1 -v -i chocolatey`
         counter=0; until "$CPACK_PATH" -C ${{matrix.pack_type}} ${{ matrix.cpack_args }} || ((counter > 20)); do sleep 3; ((counter++)); done
@@ -268,6 +279,7 @@ jobs:
     - name: Find Android package
       if: ${{ startsWith(matrix.platform, 'android') }}
       run: |
+        set -x
         builtApkPath="$(ls ${{ github.workspace }}/out/build/${{ matrix.preset }}/android-build/vcmi-app/build/outputs/apk/release/*.${{ matrix.extension }})"
         builtAabPath="$(ls ${{ github.workspace }}/out/build/${{ matrix.preset }}/android-build/vcmi-app/build/outputs/bundle/release/*.aab)"
         ANDROID_APK_PATH="${{ github.workspace }}/$VCMI_PACKAGE_FILE_NAME.${{ matrix.extension }}"
