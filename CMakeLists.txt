@@ -91,8 +91,8 @@ else()
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and launcher as single executable" OFF)
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
-	option(ENABLE_ML "Enable extensions for AI training" OFF)
-	option(ENABLE_MMAI "Enable extensions for loading pre-trained AI models" OFF)
+	option(ENABLE_MMAI "Enable compilation of ML-powered AI" OFF)
+	option(ENABLE_ML "Enable compilation of extensions for AI training" OFF)
 endif()
 
 # ERM depends on LUA implicitly

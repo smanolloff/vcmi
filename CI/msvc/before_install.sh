@@ -5,3 +5,7 @@ curl -LfsS -o "vcpkg-export-${VCMI_BUILD_PLATFORM}-windows-v143.7z" \
 #rm -r -f vcpkg/installed/${VCMI_BUILD_PLATFORM}-windows/debug
 #mkdir -p vcpkg/installed/${VCMI_BUILD_PLATFORM}-windows/debug/bin
 #cp vcpkg/installed/${VCMI_BUILD_PLATFORM}-windows/bin/* vcpkg/installed/${VCMI_BUILD_PLATFORM}-windows/debug/bin
+
+if [ "$MMAI" = "1" ]; then
+  . CI/fetch_libtorch.sh "v1.0.0" "win-x64"
+fi

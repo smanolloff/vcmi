@@ -12,3 +12,7 @@ libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
 qtbase5-dev \
 ninja-build zlib1g-dev libavformat-dev libswscale-dev libtbb-dev libluajit-5.1-dev \
 libminizip-dev libfuzzylite-dev qttools5-dev libsqlite3-dev # Optional dependencies
+
+if [ "$MMAI" = "1" ]; then
+  . CI/fetch_libtorch.sh "v1.0.0" "linux-x64"
+fi
