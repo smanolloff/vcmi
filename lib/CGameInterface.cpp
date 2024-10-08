@@ -81,6 +81,8 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 		    NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&messageBuffer, 0, NULL);
 		std::wcerr << L"LoadLibraryW failed: error code " << errorCode << ": " << messageBuffer << std::endl;
 		LocalFree(messageBuffer);
+#else
+		fprintf(stderr, "dlopen failed: %s\n", dlerror());
 #endif
 
 		logGlobal->error("Cannot open dynamic library (%s). Throwing...", libpath.string());
