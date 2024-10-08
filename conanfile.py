@@ -87,9 +87,6 @@ class VCMI(ConanFile):
         self.options["boost"].without_type_erasure = True
         self.options["boost"].without_wave = True
 
-        if self.settings.os == "Android":
-            self.options["boost"].i18n_backend_iconv = "libiconv"
-
         self.options["ffmpeg"].disable_all_bitstream_filters = True
         self.options["ffmpeg"].disable_all_decoders = True
         self.options["ffmpeg"].disable_all_demuxers = True
