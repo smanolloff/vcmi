@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ "$MMAI" = "1" ]; then
-  . CI/fetch_libtorch.sh "v1.0.0" "win-x64"
+  . CI/fetch_libtorch.sh "v1.0" "win-x64"
 fi
 
 curl -LfsS -o "vcpkg-export-${VCMI_BUILD_PLATFORM}-windows-v143.7z" \
