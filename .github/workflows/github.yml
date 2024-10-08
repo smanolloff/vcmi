@@ -162,6 +162,17 @@ jobs:
       env:
         VCMI_BUILD_PLATFORM: x64
 
+    - name: ccache for everything but PRs
+      uses: hendrikmuhs/ccache-action@v1.2
+      if: ${{ (github.repository == 'vcmi/vcmi' && github.event.number == '' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')) ||  github.repository != 'vcmi/vcmi' }}
+      with:
+        key: ${{ matrix.preset }}-no-PR
+        restore-keys: |
+          ${{ matrix.preset }}-no-PR
+        # actual cache takes up less space, at most ~1 GB
+        max-size: "5G"
+        verbose: 2
+
     - uses: actions/setup-python@v5
       if: "${{ matrix.conan_profile != '' }}"
       with:
