@@ -22,11 +22,8 @@ class VCMI(ConanFile):
         "onetbb/2021.12.0",
         "xz_utils/[>=5.2.5]", # Required for innoextract
     ]
-    _MLRequires = [
-        "sqlite3/[~3.45.3]",
-    ]
 
-    requires = _libRequires + _clientRequires + _MLRequires
+    requires = _libRequires + _clientRequires
 
     options = {
         "default_options_of_requirements": [True, False],
