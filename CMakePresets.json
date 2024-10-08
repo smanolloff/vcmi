@@ -108,6 +108,21 @@
             }
         },
         {
+            "name": "linux-mmai-gcc-debug",
+            "displayName": "GCC x86_64-pc-linux-gnu (debug)",
+            "description": "VCMI Linux GCC (Debug)",
+            "inherits": "linux-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ENABLE_LUA" : "ON",
+                "CMAKE_C_COMPILER": "/usr/bin/gcc",
+                "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+                "ENABLE_MMAI" : "ON",
+                "ENABLE_LIBTORCH" : "ON",
+                "LIBTORCH_PATH" : "${sourceDir}/libtorch"
+            }
+        },
+        {
             "name": "linux-clang-test",
             "displayName": "Clang x86_64-pc-linux-gnu with unit testing",
             "description": "VCMI Linux Clang",
@@ -351,6 +366,11 @@
         {
             "name": "linux-gcc-debug",
             "configurePreset": "linux-gcc-debug",
+            "inherits": "default-debug"
+        },
+        {
+            "name": "linux-mmai-gcc-debug",
+            "configurePreset": "linux-mmai-gcc-debug",
             "inherits": "default-debug"
         },
         {

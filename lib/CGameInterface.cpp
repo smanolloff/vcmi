@@ -74,7 +74,7 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 	if (!dll)
 	{
 #ifdef VCMI_WINDOWS
-    DWORD errorCode = GetLastError();
+		DWORD errorCode = GetLastError();
 		LPWSTR messageBuffer = nullptr;
 		size_t size = FormatMessageW(
 		    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,

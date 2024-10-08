@@ -11,8 +11,7 @@ class VCMI(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     _libRequires = [
-        "boost/[^1.69, <1.86.0]",
-        # "boost/1.79.0",
+        "boost/[^1.69]",
         "minizip/[~1.2.12]",
     ]
     _clientRequires = [
@@ -72,7 +71,7 @@ class VCMI(ConanFile):
 
         self.options["onetbb"].tbbmalloc = False
         self.options["onetbb"].tbbproxy = False
-        self.options["onetbb"].tbbbind = False
+        # self.options["onetbb"].tbbbind = False
 
         # we need only the following Boost parts:
         # date_time filesystem iostreams locale program_options system thread
