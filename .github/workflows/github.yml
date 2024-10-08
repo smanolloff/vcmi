@@ -99,7 +99,7 @@ jobs:
           # MMAI builds
           #
 
-          - platform: linux-gcc
+          - platform: linux
             os: ubuntu-20.04
             test: 0
             preset: linux-gcc-debug
@@ -129,15 +129,6 @@ jobs:
             artifact_platform: arm
             mmai: 1
 
-          - platform: msvc
-            os: windows-latest
-            test: 0
-            pack: 1
-            pack_type: RelWithDebInfo
-            extension: exe
-            preset: windows-msvc-release
-            mmai: 1
-
           - platform: ios
             os: macos-13
             test: 0
@@ -147,6 +138,15 @@ jobs:
             preset: ios-release-conan-ccache
             conan_profile: ios-arm64
             conan_options: --options with_apple_system_libs=True
+            mmai: 1
+
+          - platform: msvc
+            os: windows-latest
+            test: 0
+            pack: 1
+            pack_type: RelWithDebInfo
+            extension: exe
+            preset: windows-msvc-release
             mmai: 1
 
           - platform: android-64
