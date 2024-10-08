@@ -117,9 +117,7 @@
                 "ENABLE_LUA" : "ON",
                 "CMAKE_C_COMPILER": "/usr/bin/gcc",
                 "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-                "ENABLE_MMAI" : "ON",
-                "ENABLE_LIBTORCH" : "ON",
-                "LIBTORCH_PATH" : "${sourceDir}/libtorch"
+                "ENABLE_MMAI" : "ON"
             }
         },
         {
@@ -294,9 +292,7 @@
             "cacheVariables": {
                 "ENABLE_PCH" : "OFF",
                 "ENABLE_CCACHE": "ON",
-                "ENABLE_MMAI" : "ON",
-                "ENABLE_LIBTORCH" : "ON",
-                "LIBTORCH_PATH" : "${sourceDir}/libtorch"
+                "ENABLE_MMAI" : "ON"
             }
         },
         {
