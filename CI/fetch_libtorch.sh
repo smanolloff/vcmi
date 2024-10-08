@@ -6,4 +6,4 @@ ARCHIVE_URL="https://github.com/smanolloff/vcmi-libtorch-builds/releases/downloa
 
 curl -fL "$ARCHIVE_URL" | tar -xJ -C AI/MMAI
 
-[ -d libtorch ] || { ls -lah; echo "failed extract libtorch"; exit 1; }
+[ -d AI/MMAI/libtorch ] || { ls -lah AI/MMAI; echo "failed extract libtorch"; exit 1; }
