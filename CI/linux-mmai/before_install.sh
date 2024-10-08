@@ -4,9 +4,8 @@ set -eux
 
 . CI/linux/before_install.sh
 
-FILE_NAME=vcmi-libtorch-v2.4.1-ios-arm64-v0.0.0-test.txz
-DOWNLOAD_URL="https://github.com/smanolloff/vcmi-libtorch-builds/releases/download/v1.0/$FILE_NAME"
-curl -fLo libtorch.txz.zip "$DOWNLOAD_URL"
-unzip -p libtorch.txz.zip | tar -xz -
+FILE_NAME=vcmi-libtorch-linux-x64.txz
+DOWNLOAD_URL="https://github.com/smanolloff/vcmi-libtorch-builds/releases/download/v0.0.0-test/$FILE_NAME"
+curl -fL libtorch.txz "$DOWNLOAD_URL" | tar -xz -
 
 [ -d libtorch ] || { ls -lah; echo "failed extract libtorch"; exit 1; }
