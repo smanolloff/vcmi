@@ -19,7 +19,7 @@ class VCMI(ConanFile):
         "sdl_image/[~2.0.5]",
         "sdl_mixer/[~2.0.4]",
         "sdl_ttf/[~2.0.18]",
-        "onetbb/2021.12.0",
+        "onetbb/[^2021.7 <2021.10]",  # 2021.10+ breaks mobile builds due to added hwloc dependency
         "xz_utils/[>=5.2.5]", # Required for innoextract
     ]
 
@@ -39,8 +39,6 @@ class VCMI(ConanFile):
 
         "boost/*:shared": True,
         "minizip/*:shared": True,
-        "llvm-openmp/*:shared": True,
-        "sqlite/*:shared": True,
     }
 
     def configure(self):
@@ -65,10 +63,6 @@ class VCMI(ConanFile):
 
         if self.options.default_options_of_requirements:
             return
-
-        self.options["onetbb"].tbbmalloc = False
-        self.options["onetbb"].tbbproxy = False
-        # self.options["onetbb"].tbbbind = False
 
         # we need only the following Boost parts:
         # date_time filesystem iostreams locale program_options system thread
