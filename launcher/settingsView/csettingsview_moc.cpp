@@ -127,9 +127,11 @@ void CSettingsView::loadSettings()
 #endif
 
 #ifdef ENABLE_MMAI
-    ui->comboBoxFriendlyAI->addItem("MMAI");
-    ui->comboBoxNeutralAI->addItem("MMAI");
-    ui->comboBoxEnemyAI->addItem("MMAI");
+	auto value = "MMAI";
+	auto label = "MMAI (experimental)";
+	for (auto &b : {ui->comboBoxFriendlyAI, ui->comboBoxNeutralAI, ui->comboBoxEnemyAI}) {
+		b->addItem(label, value);
+	}
 #endif
 
 	fillValidScalingRange();
@@ -434,19 +436,28 @@ void CSettingsView::on_comboBoxDisplayIndex_currentIndexChanged(int index)
 void CSettingsView::on_comboBoxFriendlyAI_currentTextChanged(const QString & arg1)
 {
 	Settings node = settings.write["server"]["friendlyAI"];
-	node->String() = arg1.toUtf8().data();
+	auto qstr = ui->comboBoxFriendlyAI->currentData().toString();
+	if (qstr.isEmpty())
+		qstr = arg1;
+	node->String() = qstr.toUtf8().data();
 }
 
 void CSettingsView::on_comboBoxNeutralAI_currentTextChanged(const QString & arg1)
 {
 	Settings node = settings.write["server"]["neutralAI"];
-	node->String() = arg1.toUtf8().data();
+	auto qstr = ui->comboBoxNeutralAI->currentData().toString();
+	if (qstr.isEmpty())
+		qstr = arg1;
+	node->String() = qstr.toUtf8().data();
 }
 
 void CSettingsView::on_comboBoxEnemyAI_currentTextChanged(const QString & arg1)
 {
 	Settings node = settings.write["server"]["enemyAI"];
-	node->String() = arg1.toUtf8().data();
+	auto qstr = ui->comboBoxEnemyAI->currentData().toString();
+	if (qstr.isEmpty())
+		qstr = arg1;
+	node->String() = qstr.toUtf8().data();
 }
 
 void CSettingsView::on_spinBoxNetworkPort_valueChanged(int arg1)
