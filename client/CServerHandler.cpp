@@ -801,11 +801,6 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 	else
 		startLocalServerAndConnect(false);
 
-	while(!logicConnection) {
-		logNetwork->debug("Connection to server not available, sleeping 100ms...");
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-	}
-
 	boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 
 	while(!settings["session"]["headless"].Bool() && !GH.windows().topWindow<CLobbyScreen>())
@@ -816,7 +811,6 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		setMapInfo(mapInfo);
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 	}
-
 	// "Click" on color to remove us from it
 	setPlayer(myFirstColor());
 	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)

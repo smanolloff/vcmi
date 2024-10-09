@@ -13,7 +13,6 @@
 #include "Client.h"
 #include "CPlayerInterface.h"
 #include "CGameInfo.h"
-#include "mapObjects/CGHeroInstance.h"
 #include "windows/GUIClasses.h"
 #include "windows/CCastleInterface.h"
 #include "mapView/mapHandler.h"
