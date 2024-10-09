@@ -82,10 +82,8 @@ void BattleProcessor::restartBattle(const BattleID & battleID, const CArmedInsta
 
 		lastBattleQuery->result = std::nullopt;
 
-#ifndef ENABLE_ML // side swapping for ML violates these asserts
 		assert(lastBattleQuery->belligerents[BattleSide::ATTACKER] == battle->getSide(BattleSide::ATTACKER).armyObject);
 		assert(lastBattleQuery->belligerents[BattleSide::DEFENDER] == battle->getSide(BattleSide::DEFENDER).armyObject);
-#endif
 	}
 
 	BattleCancelled bc;
@@ -100,7 +98,6 @@ void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInsta
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
-	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
 
 	BattleSideArray<const CArmedInstance *> armies{army1, army2};
 	BattleSideArray<const CGHeroInstance*>heroes{hero1, hero2};
@@ -166,12 +163,9 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 	if (heroes[BattleSide::ATTACKER] && heroes[BattleSide::ATTACKER]->boat && heroes[BattleSide::DEFENDER] && heroes[BattleSide::DEFENDER]->boat)
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
-	ui32 seed = 0;
-	ML(gameHandler->mlplugin->setupBattleHook(town, seed));
-
 	//send info about battles
 	BattleStart bs;
-	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, layout, town, seed);
+	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, layout, town);
 	bs.battleID = gameHandler->gameState()->nextBattleID;
 
 	engageIntoBattle(bs.info->getSide(BattleSide::ATTACKER).color);
@@ -185,7 +179,6 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
 	bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
-	ML(bs.info->replayAllowed = true);
 
 	gameHandler->sendAndApply(bs);
 

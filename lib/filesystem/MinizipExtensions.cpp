@@ -79,7 +79,7 @@ inline int streamProxyClose(voidpf opaque, voidpf stream)
 
 	auto * actualStream = static_cast<Stream *>(stream);
 
-	// logGlobal->trace("Proxy stream closed");
+	logGlobal->trace("Proxy stream closed");
 
 	actualStream->seek(0);
 

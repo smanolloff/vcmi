@@ -60,13 +60,11 @@ bool BattleActionProcessor::doWaitAction(const CBattleInfoCallback & battle, con
 
 bool BattleActionProcessor::doRetreatAction(const CBattleInfoCallback & battle, const BattleAction & ba)
 {
-#ifndef ML // retreat is used for restarting *any* battle in ML
 	if (!battle.battleCanFlee(battle.sideToPlayer(ba.side)))
 	{
 		gameHandler->complain("Cannot retreat!");
 		return false;
 	}
-#endif
 
 	owner->setBattleResult(battle, EBattleResult::ESCAPE, battle.otherSide(ba.side));
 	return true;

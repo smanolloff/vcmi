@@ -17,10 +17,6 @@
 #include "../lib/gameState/GameStatistics.h"
 #include "../lib/networkPacks/PacksForServer.h"
 
-#ifdef ENABLE_ML
-#include "server/ML/ServerPlugin.h"
-#endif
-
 VCMI_LIB_NAMESPACE_BEGIN
 
 struct SideInBattle;
@@ -83,8 +79,6 @@ public:
 	ui32 QID;
 
 	SpellCastEnvironment * spellEnv;
-
-	ML(std::shared_ptr<ML::ServerPlugin> mlplugin);
 
 	const Services * services() const override;
 	const BattleCb * battle(const BattleID & battleID) const override;

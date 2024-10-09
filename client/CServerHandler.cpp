@@ -187,8 +187,6 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
 
-	ML(si->mlconfig.init(settings));
-
 	logNetwork->trace("\tStarting local server");
 	uint16_t srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
 	logNetwork->trace("\tConnecting to local server");
@@ -808,13 +806,10 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 	}
 
-	// XXX: sendStartGame triggers rendering of the loading screen. However,
-	// 		if main menu screen is still rendering, a crash will occur since
-	// 		GH.createdObj will get modified concurrently by 2 threads.
-	//  	Unfortunately, there seems to be no easy way to check if rendering
-	// 		of the main menu has completed, so we just sleep it out.
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+
 	while(!settings["session"]["headless"].Bool() && !GH.windows().topWindow<CLobbyScreen>())
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 
 	while(!mi || mapInfo->fileURI != mi->fileURI)
 	{
@@ -822,13 +817,10 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 	}
 
-	if(settings["session"]["onlyai"].Bool())
-	{
-		// "Click" on color to remove us from it
-		setPlayer(myFirstColor());
-		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
-	}
+	// "Click" on color to remove us from it
+	setPlayer(myFirstColor());
+	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 
 	while(true)
 	{

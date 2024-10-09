@@ -96,7 +96,6 @@ DLL_LINKAGE vstd::CLoggerBase * logNetwork = CLogger::getLogger(CLoggerDomain("n
 DLL_LINKAGE vstd::CLoggerBase * logAi = CLogger::getLogger(CLoggerDomain("ai"));
 DLL_LINKAGE vstd::CLoggerBase * logAnim = CLogger::getLogger(CLoggerDomain("animation"));
 DLL_LINKAGE vstd::CLoggerBase * logMod = CLogger::getLogger(CLoggerDomain("mod"));
-DLL_LINKAGE vstd::CLoggerBase * logStats = CLogger::getLogger(CLoggerDomain("stats"));
 DLL_LINKAGE vstd::CLoggerBase * logRng = CLogger::getLogger(CLoggerDomain("rng"));
 
 CLogger * CLogger::getLogger(const CLoggerDomain & domain)
@@ -109,7 +108,7 @@ CLogger * CLogger::getLogger(const CLoggerDomain & domain)
 		logger = new CLogger(domain);
 		if(domain.isGlobalDomain())
 		{
-			logger->setLevel(IFML(ELogLevel::WARN, ELogLevel::TRACE));
+			logger->setLevel(ELogLevel::TRACE);
 		}
 		CLogManager::get().addLogger(logger);
 		if (logGlobal != nullptr)

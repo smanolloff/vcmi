@@ -509,10 +509,8 @@ void CModHandler::afterLoad(bool onlyEssential)
 
 	if(!onlyEssential)
 	{
-#ifndef ENABLE_ML
 		std::fstream file(CResourceHandler::get()->getResourceName(ResourcePath("config/modSettings.json"))->c_str(), std::ofstream::out | std::ofstream::trunc);
 		file << modSettings.toString();
-#endif
 	}
 }
 
