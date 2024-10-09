@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ "$MMAI" = "1" ]; then
+  . CI/fetch_libtorch.sh "v1.0" "linux-x64"
+fi
+
 sudo apt remove needrestart
 sudo apt-get update
 

@@ -21,6 +21,7 @@
 #include "adventureMap/CInGameConsole.h"
 #include "adventureMap/CList.h"
 
+#include "battle/AICombatOptions.h"
 #include "battle/BattleEffectsController.h"
 #include "battle/BattleFieldController.h"
 #include "battle/BattleInterface.h"
@@ -157,10 +158,11 @@ CPlayerInterface::~CPlayerInterface()
 	if (LOCPLINT == this)
 		LOCPLINT = nullptr;
 }
-void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB)
+void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions_)
 {
 	cb = CB;
 	env = ENV;
+	aiCombatOptions = aiCombatOptions_;
 
 	CCS->musich->loadTerrainMusicThemes();
 	initializeHeroTownList();
@@ -629,15 +631,7 @@ void CPlayerInterface::battleStart(const BattleID & battleID, const CCreatureSet
 
 	if ((replayAllowed && useQuickCombat) || forceQuickCombat)
 	{
-		autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
-
-		AutocombatPreferences autocombatPreferences = AutocombatPreferences();
-		autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-
-		autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
-		autofightingAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, false);
-		isAutoFightOn = true;
-		cb->registerBattleInterface(autofightingAI);
+		prepareAutoFightingAI(battleID, army1, army2, tile, hero1, hero2, side);
 	}
 
 	waitForAllDialogs();
@@ -1797,6 +1791,16 @@ bool CPlayerInterface::capturedAllEvents()
 	}
 
 	return false;
+}
+
+void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side)
+{
+	aiCombatOptions.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
+	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
+	autofightingAI->initBattleInterface(env, cb, aiCombatOptions);
+	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
+	isAutoFightOn = true;
+	cb->registerBattleInterface(autofightingAI);
 }
 
 void CPlayerInterface::showWorldViewEx(const std::vector<ObjectPosInfo>& objectPositions, bool showTerrain)

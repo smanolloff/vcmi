@@ -1,3 +1,9 @@
+#!/bin/sh
+
+if [ "$MMAI" = "1" ]; then
+  . CI/fetch_libtorch.sh "v1.0" "win-x64"
+fi
+
 curl -LfsS -o "vcpkg-export-${VCMI_BUILD_PLATFORM}-windows-v143.7z" \
 	"https://github.com/vcmi/vcmi-deps-windows/releases/download/v1.7/vcpkg-export-${VCMI_BUILD_PLATFORM}-windows-v143.7z"
 7z x "vcpkg-export-${VCMI_BUILD_PLATFORM}-windows-v143.7z"

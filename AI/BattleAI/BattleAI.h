@@ -12,6 +12,7 @@
 #include "../../lib/battle/ReachabilityInfo.h"
 #include "PossibleSpellcast.h"
 #include "PotentialTargets.h"
+#include "battle/AICombatOptions.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -68,8 +69,7 @@ public:
 	CBattleAI();
 	~CBattleAI();
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
 
 	void activeStack(const BattleID & battleID, const CStack * stack) override; //called when it's turn of that stack
 	void yourTacticPhase(const BattleID & battleID, int distance) override;
@@ -95,5 +95,5 @@ public:
 	//void battleTriggerEffect(const BattleTriggerEffect & bte) override;
 	//void battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side) override; //called by engine when battle starts; side=0 - left, side=1 - right
 	//void battleCatapultAttacked(const CatapultAttack & ca) override; //called when catapult makes an attack
-	AutocombatPreferences autobattlePreferences = AutocombatPreferences();
+	AICombatOptions aiCombatOptions;
 };

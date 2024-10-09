@@ -82,6 +82,7 @@ if(APPLE_IOS OR ANDROID)
 	set(ENABLE_LOBBY OFF)
 	set(ENABLE_SERVER OFF)
 	set(COPY_CONFIG_ON_BUILD OFF)
+	set(ENABLE_ML OFF)
 else()
 	option(ENABLE_MONOLITHIC_INSTALL "Install everything in single directory on Linux and Mac" OFF) # Used for Snap packages and also useful for debugging
 	option(COPY_CONFIG_ON_BUILD "Copies config folder into output directory at building phase" ON)
@@ -90,6 +91,8 @@ else()
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and launcher as single executable" OFF)
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
+	option(ENABLE_MMAI "Enable compilation of ML-powered AI" OFF)
+	option(ENABLE_ML "Enable compilation of extensions for AI training" OFF)
 endif()
 
 # ERM depends on LUA implicitly
@@ -258,6 +261,15 @@ endif()
 
 if(ENABLE_GOLDMASTER)
 	add_definitions(-DENABLE_GOLDMASTER)
+endif()
+
+if(ENABLE_ML)
+	add_definitions(-DENABLE_ML)
+	set(ENABLE_MMAI ON)
+endif()
+
+if(ENABLE_MMAI)
+	add_definitions(-DENABLE_MMAI)
 endif()
 
 if(APPLE_IOS)
@@ -464,7 +476,6 @@ endif()
 ############################################
 #        Finding packages                  #
 ############################################
-
 set(BOOST_COMPONENTS date_time filesystem locale program_options system thread)
 if(ENABLE_INNOEXTRACT)
 	list(APPEND BOOST_COMPONENTS iostreams)
@@ -692,6 +703,10 @@ if(ENABLE_TEST)
 	add_subdirectory(test)
 endif()
 
+if(ENABLE_ML)
+	add_subdirectory(ML)
+endif()
+
 #######################################
 #        Installation section         #
 #######################################
@@ -805,6 +820,8 @@ else()
 	set(CPACK_PACKAGE_FILE_NAME "${PACKAGE_FILE_NAME}")
 endif()
 set(CPACK_PACKAGE_VENDOR "VCMI team")
+
+add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
 
 if(WIN32)
 	# Note: due to NSI script generation process all of the backward slashes here are useful

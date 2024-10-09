@@ -19,6 +19,9 @@
 # include "AI/BattleAI/BattleAI.h"
 # include "AI/StupidAI/StupidAI.h"
 # include "AI/EmptyAI/CEmptyAI.h"
+# ifdef ENABLE_MMAI
+#  include "AI/MMAI/MMAI.h"
+# endif // ENABLE_MMAI
 #else
 # ifdef VCMI_WINDOWS
 #  include <windows.h> //for .dll libs
@@ -70,6 +73,18 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 
 	if (!dll)
 	{
+#ifdef VCMI_WINDOWS
+		DWORD errorCode = GetLastError();
+		LPWSTR messageBuffer = nullptr;
+		size_t size = FormatMessageW(
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		    NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&messageBuffer, 0, NULL);
+		std::wcerr << L"LoadLibraryW failed: error code " << errorCode << ": " << messageBuffer << std::endl;
+		LocalFree(messageBuffer);
+#else
+		fprintf(stderr, "dlopen failed: %s\n", dlerror());
+#endif
+
 		logGlobal->error("Cannot open dynamic library (%s). Throwing...", libpath.string());
 		throw std::runtime_error("Cannot open dynamic library");
 	}
@@ -103,6 +118,11 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 {
 	if(libpath.stem() == "libNullkiller") {
 		return std::make_shared<NKAI::AIGateway>();
+#ifdef ENABLE_ML
+	} else if(libpath.stem() == "libMMAI") {
+		// AAI is used for ML only, not during regular gameplay
+		return std::make_shared<MMAI::AAI>();
+#endif
 	}
 	else{
 		return std::make_shared<VCAI>();
@@ -116,6 +136,10 @@ std::shared_ptr<CBattleGameInterface> createAny(const boost::filesystem::path & 
 		return std::make_shared<CBattleAI>();
 	else if(libpath.stem() == "libStupidAI")
 		return std::make_shared<CStupidAI>();
+#ifdef ENABLE_MMAI
+	else if(libpath.stem() == "libMMAI")
+		return std::make_shared<MMAI::BAI::Router>();
+#endif
 	return std::make_shared<CEmptyAI>();
 }
 
@@ -170,7 +194,7 @@ void CAdventureAI::battleStart(const BattleID & battleID, const CCreatureSet * a
 	assert(!battleAI);
 	assert(cbc);
 	battleAI = CDynLibHandler::getNewBattleAI(getBattleAIName());
-	battleAI->initBattleInterface(env, cbc);
+	battleAI->initBattleInterface(env, cbc, aiCombatOptions);
 	battleAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 

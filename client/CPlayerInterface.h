@@ -89,7 +89,7 @@ public: // TODO: make private
 protected: // Call-ins from server, should not be called directly, but only via GameInterface
 
 	void update() override;
-	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB) override;
+	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions) override;
 
 	void garrisonsChanged(ObjectInstanceID id1, ObjectInstanceID id2) override;
 	void buildChanged(const CGTownInstance *town, BuildingID buildingID, int what) override; //what: 1 - built, 2 - demolished
@@ -201,6 +201,8 @@ public: // public interface for use by client via LOCPLINT access
 
 	///returns true if all events are processed internally
 	bool capturedAllEvents();
+
+	void prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side);
 
 	CPlayerInterface(PlayerColor Player);
 	~CPlayerInterface();

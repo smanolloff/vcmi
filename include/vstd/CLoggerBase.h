@@ -64,6 +64,8 @@ public:
 	virtual bool isDebugEnabled() const = 0;
 	virtual bool isTraceEnabled() const = 0;
 
+	virtual ELogLevel::ELogLevel getLevel() const = 0;
+
 	template<typename T, typename ... Args>
 	void log(ELogLevel::ELogLevel level, const std::string & format, T t, Args ... args) const
 	{
@@ -194,5 +196,6 @@ extern DLL_LINKAGE vstd::CLoggerBase * logAi;
 extern DLL_LINKAGE vstd::CLoggerBase * logAnim;
 extern DLL_LINKAGE vstd::CLoggerBase * logMod;
 extern DLL_LINKAGE vstd::CLoggerBase * logRng;
+extern DLL_LINKAGE vstd::CLoggerBase * logStats;
 
 VCMI_LIB_NAMESPACE_END

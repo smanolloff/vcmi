@@ -1,13 +1,6 @@
 name: VCMI
 
 on:
-  push:
-    branches:
-      - features/*
-      - beta
-      - master
-      - develop
-  pull_request:
   workflow_dispatch:
 
 env:
@@ -19,18 +12,97 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: linux-qt6
-            os: ubuntu-24.04
+          # - platform: linux-qt6
+          #   os: ubuntu-24.04
+          #   test: 0
+          #   preset: linux-clang-test
+          # - platform: linux
+          #   os: ubuntu-24.04
+          #   test: 1
+          #   preset: linux-gcc-test
+          # - platform: linux
+          #   os: ubuntu-20.04
+          #   test: 0
+          #   preset: linux-gcc-debug
+          # - platform: mac-intel
+          #   os: macos-13
+          #   test: 0
+          #   pack: 1
+          #   pack_type: Release
+          #   extension: dmg
+          #   preset: macos-conan-ninja-release
+          #   conan_profile: macos-intel
+          #   conan_options: --options with_apple_system_libs=True
+          #   artifact_platform: intel
+          # - platform: mac-arm
+          #   os: macos-13
+          #   test: 0
+          #   pack: 1
+          #   pack_type: Release
+          #   extension: dmg
+          #   preset: macos-arm-conan-ninja-release
+          #   conan_profile: macos-arm
+          #   conan_options: --options with_apple_system_libs=True
+          #   artifact_platform: arm
+          - platform: ios
+            os: macos-13
             test: 0
-            preset: linux-clang-test
-          - platform: linux
-            os: ubuntu-24.04
-            test: 1
-            preset: linux-gcc-test
+            pack: 1
+            pack_type: Release
+            extension: ipa
+            preset: ios-release-conan-ccache
+            conan_profile: ios-arm64
+            conan_options: --options with_apple_system_libs=True
+          # - platform: msvc
+          #   os: windows-latest
+          #   test: 0
+          #   pack: 1
+          #   pack_type: RelWithDebInfo
+          #   extension: exe
+          #   preset: windows-msvc-release
+          # - platform: mingw
+          #   os: ubuntu-22.04
+          #   test: 0
+          #   pack: 1
+          #   pack_type: Release
+          #   extension: exe
+          #   cpack_args: -D CPACK_NSIS_EXECUTABLE=`which makensis`
+          #   cmake_args: -G Ninja
+          #   preset: windows-mingw-conan-linux
+          #   conan_profile: mingw64-linux.jinja
+          # - platform: mingw-32
+          #   os: ubuntu-22.04
+          #   test: 0
+          #   pack: 1
+          #   pack_type: Release
+          #   extension: exe
+          #   cpack_args: -D CPACK_NSIS_EXECUTABLE=`which makensis`
+          #   cmake_args: -G Ninja
+          #   preset: windows-mingw-conan-linux
+          #   conan_profile: mingw32-linux.jinja
+          # - platform: android-32
+          #   os: macos-14
+          #   extension: apk
+          #   preset: android-conan-ninja-release
+          #   conan_profile: android-32
+          #   conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
+          #   artifact_platform: armeabi-v7a
+          # - platform: android-64
+          #   os: macos-14
+          #   extension: apk
+          #   preset: android-conan-ninja-release
+          #   conan_profile: android-64
+          #   conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
+          #   artifact_platform: arm64-v8a
+
+          #
+          # MMAI builds
+          #
           - platform: linux
             os: ubuntu-20.04
             test: 0
             preset: linux-gcc-debug
+            mmai: 1
           - platform: mac-intel
             os: macos-13
             test: 0
@@ -41,6 +113,7 @@ jobs:
             conan_profile: macos-intel
             conan_options: --options with_apple_system_libs=True
             artifact_platform: intel
+            mmai: 1
           - platform: mac-arm
             os: macos-13
             test: 0
@@ -51,6 +124,7 @@ jobs:
             conan_profile: macos-arm
             conan_options: --options with_apple_system_libs=True
             artifact_platform: arm
+            mmai: 1
           - platform: ios
             os: macos-13
             test: 0
@@ -60,6 +134,7 @@ jobs:
             preset: ios-release-conan-ccache
             conan_profile: ios-arm64
             conan_options: --options with_apple_system_libs=True
+            mmai: 1
           - platform: msvc
             os: windows-latest
             test: 0
@@ -67,33 +142,7 @@ jobs:
             pack_type: RelWithDebInfo
             extension: exe
             preset: windows-msvc-release
-          - platform: mingw
-            os: ubuntu-22.04
-            test: 0
-            pack: 1
-            pack_type: Release
-            extension: exe
-            cpack_args: -D CPACK_NSIS_EXECUTABLE=`which makensis`
-            cmake_args: -G Ninja
-            preset: windows-mingw-conan-linux
-            conan_profile: mingw64-linux.jinja
-          - platform: mingw-32
-            os: ubuntu-22.04
-            test: 0
-            pack: 1
-            pack_type: Release
-            extension: exe
-            cpack_args: -D CPACK_NSIS_EXECUTABLE=`which makensis`
-            cmake_args: -G Ninja
-            preset: windows-mingw-conan-linux
-            conan_profile: mingw32-linux.jinja
-          - platform: android-32
-            os: macos-14
-            extension: apk
-            preset: android-conan-ninja-release
-            conan_profile: android-32
-            conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
-            artifact_platform: armeabi-v7a
+            mmai: 1
           - platform: android-64
             os: macos-14
             extension: apk
@@ -101,6 +150,8 @@ jobs:
             conan_profile: android-64
             conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
             artifact_platform: arm64-v8a
+            mmai: 1
+
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -112,9 +163,12 @@ jobs:
         submodules: recursive
 
     - name: Dependencies
-      run: source '${{github.workspace}}/CI/${{matrix.platform}}/before_install.sh'
+      run: |
+        set -x
+        source '${{github.workspace}}/CI/${{matrix.platform}}/before_install.sh'
       env:
         VCMI_BUILD_PLATFORM: x64
+        MMAI: ${{matrix.mmai}}
 
     # ensure the ccache for each PR is separate so they don't interfere with each other
     # fall back to ccache of the vcmi/vcmi repo if no PR-specific ccache is found
@@ -146,6 +200,7 @@ jobs:
         HEROES_3_DATA_PASSWORD: ${{ secrets.HEROES_3_DATA_PASSWORD }}
       if: ${{ env.HEROES_3_DATA_PASSWORD != '' && matrix.test == 1 }}
       run: |
+        set -x
         if [[ ${{github.repository_owner}} == vcmi ]]
         then
             data_url="https://github.com/vcmi-mods/vcmi-test-data/releases/download/v1.0/h3_assets.zip"
@@ -165,6 +220,7 @@ jobs:
     - name: Conan setup
       if: "${{ matrix.conan_profile != '' }}"
       run: |
+        set -x
         pip3 install 'conan<2.0'
         conan profile new default --detect
         conan install . \
@@ -186,11 +242,17 @@ jobs:
     # a hack to build ID for x64 build in order for Google Play to allow upload of both 32 and 64 bit builds
     - name: Bump Android x64 build ID
       if: ${{ matrix.platform == 'android-64' }}
-      run: perl -i -pe 's/versionCode (\d+)/$x=$1+1; "versionCode $x"/e' android/vcmi-app/build.gradle
+      run: |
+        set -x
+        perl -i -pe 's/versionCode (\d+)/$x=$1+1; "versionCode $x"/e' android/vcmi-app/build.gradle
 
     - name: Build Number
       run: |
+        set -x
         source '${{github.workspace}}/CI/get_package_name.sh'
+        if [ "${{matrix.mmai}}" == "1" ]; then
+          VCMI_PACKAGE_FILE_NAME+="-mmai"
+        fi
         if [ '${{ matrix.artifact_platform }}' ]; then
           VCMI_PACKAGE_FILE_NAME+="-${{ matrix.artifact_platform }}"
         fi
@@ -202,21 +264,30 @@ jobs:
 
     - name: Configure
       run: |
+        set -x
+        if [ "${{matrix.mmai}}" == "1" ]
+        then
+          MMAI_FLAGS="-DENABLE_MMAI=ON"
+        else
+          MMAI_FLAGS=""
+        fi
+
         if [[ ${{matrix.preset}} == linux-gcc-test ]]
         then
-            cmake -DENABLE_CCACHE:BOOL=ON -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 --preset ${{ matrix.preset }}
+            cmake -DENABLE_CCACHE:BOOL=ON -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 $MMAI_FLAGS --preset ${{ matrix.preset }}
         elif [[ (${{matrix.preset}} == android-conan-ninja-release) && (${{github.ref}} != 'refs/heads/master') ]]
         then
-            cmake -DENABLE_CCACHE:BOOL=ON -DANDROID_GRADLE_PROPERTIES="applicationIdSuffix=.daily;signingConfig=dailySigning;applicationLabel=VCMI daily" --preset ${{ matrix.preset }}
+            cmake -DENABLE_CCACHE:BOOL=ON -DANDROID_GRADLE_PROPERTIES="applicationIdSuffix=.daily;signingConfig=dailySigning;applicationLabel=VCMI daily" $MMAI_FLAGS --preset ${{ matrix.preset }}
         elif [[ ${{matrix.platform}} != msvc ]]
         then
-            cmake -DENABLE_CCACHE:BOOL=ON --preset ${{ matrix.preset }}
+            cmake -DENABLE_CCACHE:BOOL=ON $MMAI_FLAGS --preset ${{ matrix.preset }}
         else
-            cmake --preset ${{ matrix.preset }}
+            cmake $MMAI_FLAGS --preset ${{ matrix.preset }}
         fi
 
     - name: Build
       run: |
+        set -x
         cmake --build --preset ${{matrix.preset}}
       env:
         ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -227,11 +298,13 @@ jobs:
         HEROES_3_DATA_PASSWORD: ${{ secrets.HEROES_3_DATA_PASSWORD }}
       if: ${{ env.HEROES_3_DATA_PASSWORD != '' && matrix.test == 1 }}
       run: |
+        set -x
         ctest --preset ${{matrix.preset}}
 
     - name: Kill XProtect to work around CPack issue on macOS
       if: ${{ startsWith(matrix.platform, 'mac') }}
       run: |
+        set -x
         # Cf. https://github.com/actions/runner-images/issues/7522#issuecomment-1556766641
         echo Killing...; sudo pkill -9 XProtect >/dev/null || true;
         echo "Waiting..."; counter=0; while pgrep XProtect && ((counter < 20)); do sleep 3; ((counter++)); done
@@ -241,6 +314,7 @@ jobs:
       id: cpack
       if: ${{ matrix.pack == 1 }}
       run: |
+        set -x
         cd '${{github.workspace}}/out/build/${{matrix.preset}}'
         CPACK_PATH=`which -a cpack | grep -m1 -v -i chocolatey`
         counter=0; until "$CPACK_PATH" -C ${{matrix.pack_type}} ${{ matrix.cpack_args }} || ((counter > 20)); do sleep 3; ((counter++)); done
@@ -259,6 +333,7 @@ jobs:
     - name: Find Android package
       if: ${{ startsWith(matrix.platform, 'android') }}
       run: |
+        set -x
         builtApkPath="$(ls ${{ github.workspace }}/out/build/${{ matrix.preset }}/android-build/vcmi-app/build/outputs/apk/release/*.${{ matrix.extension }})"
         builtAabPath="$(ls ${{ github.workspace }}/out/build/${{ matrix.preset }}/android-build/vcmi-app/build/outputs/bundle/release/*.aab)"
         ANDROID_APK_PATH="${{ github.workspace }}/$VCMI_PACKAGE_FILE_NAME.${{ matrix.extension }}"
@@ -296,6 +371,7 @@ jobs:
       if: ${{ (matrix.pack == 1 || startsWith(matrix.platform, 'android')) && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/features/')) && matrix.platform != 'msvc' && matrix.platform != 'mingw-32' }}
       continue-on-error: true
       run: |
+        set -x
         if [ -z '${{ env.ANDROID_APK_PATH }}' ] ; then
           cd '${{github.workspace}}/out/build/${{matrix.preset}}'
         fi
@@ -317,11 +393,13 @@ jobs:
 
         - name: Build Number
           run: |
+            set -x
             source '${{github.workspace}}/CI/get_package_name.sh'
             echo VCMI_PACKAGE_FILE_NAME="$VCMI_PACKAGE_FILE_NAME" >> $GITHUB_ENV
             
         - name: Create source code archive (including submodules)
           run: |
+            set -x
             git archive HEAD -o "release.tar" --worktree-attributes -v
             git submodule update --init --recursive
             git submodule --quiet foreach 'cd "$toplevel"; tar -rvf "release.tar" "$sm_path"'
@@ -350,10 +428,21 @@ jobs:
 
         - name: Ensure LF line endings
           run: |
-            find . -path ./.git -prune -o -path ./AI/FuzzyLite -prune -o -path ./test/googletest \
-            -o -path ./osx  -prune -o -type f \
-            -not -name '*.png' -and -not -name '*.ttf' -and -not -name '*.wav' -and -not -name '*.webm' -and -not -name '*.ico' -and -not -name '*.bat' -print0 | \
-            { ! xargs -0 grep -l -z -P '\r\n'; }
+            set -x
+            find . \( \
+                -path '*/.git' -o \
+                -path ./AI/FuzzyLite -o \
+                -path ./test/googletest -o \
+                -path ./osx
+              \) -prune -o -type f -not \( \
+                -name '*.png' -or \
+                -name '*.ttf' -or \
+                -name '*.wav' -or \
+                -name '*.webm' -or \
+                -name '*.ico' -or \
+                -name '*.bat' -or \
+                -name '*.pt' \
+              \) -print0 | xargs -0 grep -lzE '\r\n'
 
         - name: Validate JSON
           run: |

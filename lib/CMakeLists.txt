@@ -402,7 +402,7 @@ set(lib_MAIN_HEADERS
 	../include/vcmi/Team.h
 
 	battle/AccessibilityInfo.h
-	battle/AutocombatPreferences.h
+	battle/AICombatOptions.h
 	battle/BattleAction.h
 	battle/BattleAttackInfo.h
 	battle/BattleHex.h
@@ -751,6 +751,9 @@ if(ENABLE_STATIC_LIBS AND ENABLE_CLIENT)
 	)
 	if(ENABLE_NULLKILLER_AI)
 		target_link_libraries(vcmi PRIVATE Nullkiller)
+	endif()
+	if(ENABLE_MMAI)
+		target_link_libraries(vcmi PRIVATE MMAI)
 	endif()
 endif()
 
