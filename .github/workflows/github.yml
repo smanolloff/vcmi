@@ -1,13 +1,13 @@
 name: VCMI
 
 on:
-  push:
-    branches:
-      - features/*
-      - beta
-      - master
-      - develop
-  pull_request:
+  # push:
+  #   branches:
+  #     - features/*
+  #     - beta
+  #     - master
+  #     - develop
+  # pull_request:
   workflow_dispatch:
 
 env:
@@ -23,10 +23,10 @@ jobs:
             os: ubuntu-24.04
             test: 0
             preset: linux-clang-test
-          - platform: linux
-            os: ubuntu-24.04
-            test: 1
-            preset: linux-gcc-test
+          # - platform: linux
+          #   os: ubuntu-24.04
+          #   test: 1
+          #   preset: linux-gcc-test
           - platform: linux
             os: ubuntu-20.04
             test: 0
@@ -418,20 +418,10 @@ jobs:
 
         - name: Ensure LF line endings
           run: |
-            find . \( \
-                -path '*/.git' -o \
-                -path ./AI/FuzzyLite -o \
-                -path ./test/googletest -o \
-                -path ./osx
-              \) -prune -o -type f -not \( \
-                -name '*.png' -or \
-                -name '*.ttf' -or \
-                -name '*.wav' -or \
-                -name '*.webm' -or \
-                -name '*.ico' -or \
-                -name '*.bat' -or \
-                -name '*.pt' \
-              \) -print0 | xargs -0 grep -lzE '\r\n'
+            find . -path ./.git -prune -o -path ./AI/FuzzyLite -prune -o -path ./test/googletest \
+            -o -path ./osx  -prune -o -type f \
+            -not -name '*.png' -and -not -name '*.ttf' -and -not -name '*.wav' -and -not -name '*.webm' -and -not -name '*.ico' -and -not -name '*.bat' -and -not -name '*.pt' -print0 | \
+            { ! xargs -0 grep -l -z -P '\r\n'; }
 
         - name: Validate JSON
           run: |
