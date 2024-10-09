@@ -291,7 +291,7 @@ jobs:
       if: ${{ matrix.pack == 1 }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.VCMI_PACKAGE_FILE_NAME }} - ${{ matrix.platform }}${{ matrix.mmai == 1 && " (MMAI)" || ""}}
+        name: ${{ env.VCMI_PACKAGE_FILE_NAME }} - ${{ matrix.platform }}${{ matrix.mmai == 1 && ' (MMAI)' || ''}}
         path: |
           ${{github.workspace}}/out/build/${{matrix.preset}}/${{ env.VCMI_PACKAGE_FILE_NAME }}.${{ matrix.extension }}
 
