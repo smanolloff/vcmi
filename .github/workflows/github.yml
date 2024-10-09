@@ -226,6 +226,9 @@ jobs:
       run: |
         set -x
         source '${{github.workspace}}/CI/get_package_name.sh'
+        if [ "${{matrix.mmai}}" == "1" ]; then
+          VCMI_PACKAGE_FILE_NAME+="-mmai"
+        fi
         if [ '${{ matrix.artifact_platform }}' ]; then
           VCMI_PACKAGE_FILE_NAME+="-${{ matrix.artifact_platform }}"
         fi
@@ -291,7 +294,7 @@ jobs:
       if: ${{ matrix.pack == 1 }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.VCMI_PACKAGE_FILE_NAME }} - ${{ matrix.platform }}${{ matrix.mmai == 1 && ' (MMAI)' || ''}}
+        name: ${{ env.VCMI_PACKAGE_FILE_NAME }} - ${{ matrix.platform }}
         path: |
           ${{github.workspace}}/out/build/${{matrix.preset}}/${{ env.VCMI_PACKAGE_FILE_NAME }}.${{ matrix.extension }}
 
