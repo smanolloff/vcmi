@@ -139,12 +139,19 @@ void CSettingsView::loadSettings()
 	ui->spinBoxFramerateLimit->setDisabled(settings["video"]["vsync"].Bool());
 	ui->sliderReservedArea->setValue(std::round(settings["video"]["reservedWidth"].Float() * 100));
 
-	ui->comboBoxFriendlyAI->setCurrentText(QString::fromStdString(settings["server"]["friendlyAI"].String()));
-	ui->comboBoxNeutralAI->setCurrentText(QString::fromStdString(settings["server"]["neutralAI"].String()));
-	ui->comboBoxEnemyAI->setCurrentText(QString::fromStdString(settings["server"]["enemyAI"].String()));
+	// Find an entry by value and select it
+	auto setValue = [](QComboBox * box, std::string value) {
+		auto qstr = QString::fromStdString(value);
+		int index = box->findData(qstr);
+		box->setCurrentIndex(index >= 0 ? index : 0);
+	};
 
-	ui->comboBoxEnemyPlayerAI->setCurrentText(QString::fromStdString(settings["server"]["playerAI"].String()));
-	ui->comboBoxAlliedPlayerAI->setCurrentText(QString::fromStdString(settings["server"]["alliedAI"].String()));
+	setValue(ui->comboBoxFriendlyAI, settings["server"]["friendlyAI"].String());
+	setValue(ui->comboBoxNeutralAI, settings["server"]["neutralAI"].String());
+	setValue(ui->comboBoxEnemyAI, settings["server"]["enemyAI"].String());
+
+	setValue(ui->comboBoxEnemyPlayerAI, settings["server"]["playerAI"].String());
+	setValue(ui->comboBoxAlliedPlayerAI, settings["server"]["alliedAI"].String());
 
 	ui->spinBoxNetworkPort->setValue(settings["server"]["localPort"].Integer());
 
