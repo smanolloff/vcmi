@@ -127,11 +127,9 @@ void CSettingsView::loadSettings()
 #endif
 
 #ifdef ENABLE_MMAI
-	auto value = "MMAI";
-	auto label = "MMAI (experimental)";
-	for (auto &b : {ui->comboBoxFriendlyAI, ui->comboBoxNeutralAI, ui->comboBoxEnemyAI}) {
-		b->addItem(label, value);
-	}
+	ui->comboBoxFriendlyAI->addItem("MMAI (experimental)", "MMAI");
+	ui->comboBoxNeutralAI->addItem("MMAI (experimental)", "MMAI");
+	ui->comboBoxEnemyAI->addItem("MMAI (experimental)", "MMAI");
 #endif
 
 	fillValidScalingRange();
@@ -433,31 +431,25 @@ void CSettingsView::on_comboBoxDisplayIndex_currentIndexChanged(int index)
 	fillValidResolutionsForScreen(index);
 }
 
-void CSettingsView::on_comboBoxFriendlyAI_currentTextChanged(const QString & arg1)
+void CSettingsView::on_comboBoxFriendlyAI_currentTextChanged(const QString & text)
 {
 	Settings node = settings.write["server"]["friendlyAI"];
-	auto qstr = ui->comboBoxFriendlyAI->currentData().toString();
-	if (qstr.isEmpty())
-		qstr = arg1;
-	node->String() = qstr.toUtf8().data();
+	auto value = ui->comboBoxFriendlyAI->currentData().toString();
+	node->String() = value.isEmpty() ? text.toUtf8().data() : value.toUtf8().data();
 }
 
-void CSettingsView::on_comboBoxNeutralAI_currentTextChanged(const QString & arg1)
+void CSettingsView::on_comboBoxNeutralAI_currentTextChanged(const QString & text)
 {
 	Settings node = settings.write["server"]["neutralAI"];
-	auto qstr = ui->comboBoxNeutralAI->currentData().toString();
-	if (qstr.isEmpty())
-		qstr = arg1;
-	node->String() = qstr.toUtf8().data();
+	auto value = ui->comboBoxNeutralAI->currentData().toString();
+	node->String() = value.isEmpty() ? text.toUtf8().data() : value.toUtf8().data();
 }
 
-void CSettingsView::on_comboBoxEnemyAI_currentTextChanged(const QString & arg1)
+void CSettingsView::on_comboBoxEnemyAI_currentTextChanged(const QString & text)
 {
 	Settings node = settings.write["server"]["enemyAI"];
-	auto qstr = ui->comboBoxEnemyAI->currentData().toString();
-	if (qstr.isEmpty())
-		qstr = arg1;
-	node->String() = qstr.toUtf8().data();
+	auto value = ui->comboBoxEnemyAI->currentData().toString();
+	node->String() = value.isEmpty() ? text.toUtf8().data() : value.toUtf8().data();
 }
 
 void CSettingsView::on_spinBoxNetworkPort_valueChanged(int arg1)
