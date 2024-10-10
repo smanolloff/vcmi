@@ -76,7 +76,7 @@ const std::string & TextLocalizationContainer::translateString(const TextIdentif
 			if((*containerIter)->identifierExists(identifier))
 				return (*containerIter)->translateString(identifier);
 
-		logGlobal->error("Unable to find localization for string '%s'", identifier.get());
+		logGlobal->warn("Unable to find localization for string '%s'", identifier.get());
 		return identifier.get();
 	}
 

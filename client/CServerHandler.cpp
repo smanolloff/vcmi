@@ -15,6 +15,7 @@
 #include "ServerRunner.h"
 #include "GameChatHandler.h"
 #include "CPlayerInterface.h"
+#include "battle/AICombatOptions.h"
 #include "gui/CGuiHandler.h"
 #include "gui/WindowHandler.h"
 
@@ -93,7 +94,7 @@ void CServerHandler::endNetwork()
 	}
 }
 
-CServerHandler::CServerHandler()
+CServerHandler::CServerHandler(AICombatOptions aiCombatOptions)
 	: networkHandler(INetworkHandler::createHandler())
 	, lobbyClient(std::make_unique<GlobalLobbyClient>())
 	, gameChat(std::make_unique<GameChatHandler>())
@@ -105,6 +106,7 @@ CServerHandler::CServerHandler()
 	, serverMode(EServerMode::NONE)
 	, loadMode(ELoadMode::NONE)
 	, client(nullptr)
+	, aiCombatOptions(aiCombatOptions)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());
 }
@@ -184,6 +186,8 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
+
+	ML(si->mlconfig.init(settings));
 
 	logNetwork->trace("\tStarting local server");
 	uint16_t srvport = serverRunner->start(getLocalPort(), connectToLobby, si);
@@ -612,6 +616,8 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 	if(CMM)
 		CMM->disable();
 
+	client->aiCombatOptions = aiCombatOptions;
+
 	switch(si->mode)
 	{
 	case EStartMode::NEW_GAME:
@@ -808,9 +814,12 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 	}
 	// "Click" on color to remove us from it
-	setPlayer(myFirstColor());
-	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
+	if(settings["session"]["onlyai"].Bool())
+	{
+		setPlayer(myFirstColor());
+		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
+	}
 
 	while(true)
 	{
