@@ -15,6 +15,7 @@
 #include "ServerRunner.h"
 #include "GameChatHandler.h"
 #include "CPlayerInterface.h"
+#include "battle/AICombatOptions.h"
 #include "gui/CGuiHandler.h"
 #include "gui/WindowHandler.h"
 
@@ -93,7 +94,7 @@ void CServerHandler::endNetwork()
 	}
 }
 
-CServerHandler::CServerHandler()
+CServerHandler::CServerHandler(AICombatOptions aiCombatOptions)
 	: networkHandler(INetworkHandler::createHandler())
 	, lobbyClient(std::make_unique<GlobalLobbyClient>())
 	, gameChat(std::make_unique<GameChatHandler>())
@@ -105,6 +106,7 @@ CServerHandler::CServerHandler()
 	, serverMode(EServerMode::NONE)
 	, loadMode(ELoadMode::NONE)
 	, client(nullptr)
+	, aiCombatOptions(aiCombatOptions)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());
 }
@@ -611,6 +613,8 @@ void CServerHandler::startGameplay(VCMI_LIB_WRAP_NAMESPACE(CGameState) * gameSta
 {
 	if(CMM)
 		CMM->disable();
+
+	client->aiCombatOptions = aiCombatOptions;
 
 	switch(si->mode)
 	{

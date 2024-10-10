@@ -177,7 +177,7 @@ void CAdventureAI::battleStart(const BattleID & battleID, const CCreatureSet * a
 	assert(!battleAI);
 	assert(cbc);
 	battleAI = CDynLibHandler::getNewBattleAI(getBattleAIName());
-	battleAI->initBattleInterface(env, cbc);
+	battleAI->initBattleInterface(env, cbc, aiCombatOptions);
 	battleAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 

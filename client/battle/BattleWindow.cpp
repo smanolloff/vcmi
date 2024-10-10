@@ -44,6 +44,7 @@
 #include "../../lib/battle/BattleInfo.h"
 #include "../../lib/CPlayerState.h"
 #include "../windows/settings/SettingsMainWindow.h"
+#include "battle/AICombatOptions.h"
 
 BattleWindow::BattleWindow(BattleInterface & Owner):
 	owner(Owner),
@@ -887,7 +888,18 @@ void BattleWindow::endWithAutocombat()
 		[this]()
 		{
 			owner.curInt->isAutoFightEndBattle = true;
-			owner.curInt->prepareAutoFightingAI(owner.getBattleID(), owner.army1, owner.army2, int3(0,0,0), owner.attackingHeroInstance, owner.defendingHeroInstance, owner.getBattle()->battleGetMySide());
+
+			auto ai = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
+
+			AICombatOptions aiCombatOptions = owner.curInt->aiCombatOptions;
+			aiCombatOptions.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
+
+			ai->initBattleInterface(owner.curInt->env, owner.curInt->cb, aiCombatOptions);
+			ai->battleStart(owner.getBattleID(), owner.army1, owner.army2, int3(0,0,0), owner.attackingHeroInstance, owner.defendingHeroInstance, owner.getBattle()->battleGetMySide(), false);
+
+			owner.curInt->isAutoFightOn = true;
+			owner.curInt->cb->registerBattleInterface(ai);
+			owner.curInt->autofightingAI = ai;
 
 			owner.requestAutofightingAIToTakeAction();
 
