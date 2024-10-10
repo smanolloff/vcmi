@@ -143,7 +143,7 @@ void CSettingsView::loadSettings()
 	auto setValue = [](QComboBox * box, std::string value) {
 		auto qstr = QString::fromStdString(value);
 		int index = box->findData(qstr);
-		box->setCurrentIndex(index >= 0 ? index : 0);
+		index >= 0 ? box->setCurrentIndex(index) : box->setCurrentText(qstr);
 	};
 
 	setValue(ui->comboBoxFriendlyAI, settings["server"]["friendlyAI"].String());
