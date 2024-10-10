@@ -82,25 +82,30 @@ void BattleProcessor::restartBattle(const BattleID & battleID, const CArmedInsta
 
 		lastBattleQuery->result = std::nullopt;
 
+#ifndef ENABLE_ML // side swapping for ML violates these asserts
 		assert(lastBattleQuery->belligerents[BattleSide::ATTACKER] == battle->getSide(BattleSide::ATTACKER).armyObject);
 		assert(lastBattleQuery->belligerents[BattleSide::DEFENDER] == battle->getSide(BattleSide::DEFENDER).armyObject);
+#endif
 	}
 
 	BattleCancelled bc;
 	bc.battleID = battleID;
 	gameHandler->sendAndApply(bc);
 
+	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
 	startBattle(army1, army2, tile, hero1, hero2, layout, town);
 }
 
 void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInstance *army2, int3 tile,
-								const CGHeroInstance *hero1, const CGHeroInstance *hero2, const BattleLayout & layout, const CGTownInstance *town)
+								const CGHeroInstance *hero1, const CGHeroInstance *hero2, const BattleLayout & layout_, const CGTownInstance *town)
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
 
 	BattleSideArray<const CArmedInstance *> armies{army1, army2};
 	BattleSideArray<const CGHeroInstance*>heroes{hero1, hero2};
+
+	auto layout = IFML(BattleLayout::createDefaultLayout(gameHandler, army1, army2), layout_);
 
 	auto battleID = setupBattle(tile, armies, heroes, layout, town); //initializes stacks, places creatures on battlefield, blocks and informs player interfaces
 
@@ -145,9 +150,13 @@ void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInsta
 
 void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInstance *army2)
 {
+	const CGHeroInstance* hero1 = army1->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army1) : nullptr;
+	const CGHeroInstance* hero2 = army2->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army2) : nullptr;
+	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
+
 	startBattle(army1, army2, army2->visitablePos(),
-		army1->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army1) : nullptr,
-		army2->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army2) : nullptr,
+		hero1,
+		hero2,
 		BattleLayout::createDefaultLayout(gameHandler, army1, army2),
 		nullptr);
 }
@@ -163,9 +172,12 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 	if (heroes[BattleSide::ATTACKER] && heroes[BattleSide::ATTACKER]->boat && heroes[BattleSide::DEFENDER] && heroes[BattleSide::DEFENDER]->boat)
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
+	ui32 seed = 0;
+	ML(gameHandler->mlplugin->setupBattleHook(town, terrain, terType, seed));
+
 	//send info about battles
 	BattleStart bs;
-	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, layout, town);
+	bs.info = BattleInfo::setupBattle(tile, terrain, terType, armies, heroes, layout, town, seed);
 	bs.battleID = gameHandler->gameState()->nextBattleID;
 
 	engageIntoBattle(bs.info->getSide(BattleSide::ATTACKER).color);
@@ -179,6 +191,7 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 
 	bool onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
 	bs.info->replayAllowed = lastBattleQuery == nullptr && onlyOnePlayerHuman;
+	ML(bs.info->replayAllowed = true);
 
 	gameHandler->sendAndApply(bs);
 

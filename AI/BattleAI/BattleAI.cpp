@@ -14,6 +14,7 @@
 
 #include "StackWithBonuses.h"
 #include "EnemyInfo.h"
+#include "battle/AICombatOptions.h"
 #include "tbb/parallel_for.h"
 #include "../../lib/CStopWatch.h"
 #include "../../lib/CThreadHelper.h"
@@ -60,10 +61,11 @@ void logHexNumbers()
 #endif
 }
 
-void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB)
+void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions_)
 {
 	env = ENV;
 	cb = CB;
+	aiCombatOptions = aiCombatOptions_;
 	playerID = *CB->getPlayerID();
 	wasWaitingForRealize = CB->waitTillRealize;
 	wasUnlockingGs = CB->unlockGsWhenWaiting;
@@ -72,12 +74,6 @@ void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::share
 	movesSkippedByDefense = 0;
 
 	logHexNumbers();
-}
-
-void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
-{
-	initBattleInterface(ENV, CB);
-	autobattlePreferences = autocombatPreferences;
 }
 
 BattleAction CBattleAI::useHealingTent(const BattleID & battleID, const CStack *stack)
@@ -167,7 +163,7 @@ void CBattleAI::activeStack(const BattleID & battleID, const CStack * stack )
 
 		result = evaluator.selectStackAction(stack);
 
-		if(autobattlePreferences.enableSpellsUsage && !skipCastUntilNextBattle && evaluator.canCastSpell())
+		if(aiCombatOptions.enableSpellsUsage && !skipCastUntilNextBattle && evaluator.canCastSpell())
 		{
 			auto spelCasted = evaluator.attemptCastingSpell(stack);
 

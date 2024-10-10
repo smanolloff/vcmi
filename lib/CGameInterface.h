@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#include "battle/AutocombatPreferences.h"
+#include "battle/AICombatOptions.h"
 #include "IGameEventsReceiver.h"
 
 #include "spells/ViewSpellInt.h"
@@ -74,8 +74,7 @@ public:
 	std::string dllName;
 
 	virtual ~CBattleGameInterface() {};
-	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB){};
-	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences){};
+	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions){};
 
 	//battle call-ins
 	virtual void activeStack(const BattleID & battleID, const CStack * stack)=0; //called when it's turn of that stack
@@ -86,8 +85,10 @@ public:
 class DLL_LINKAGE CGameInterface : public CBattleGameInterface, public IGameEventsReceiver
 {
 public:
+	AICombatOptions aiCombatOptions;
+
 	virtual ~CGameInterface() = default;
-	virtual void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB){};
+	virtual void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions){};
 	virtual void yourTurn(QueryID askID){}; //called AFTER playerStartsTurn(player)
 
 	//pskill is gained primary skill, interface has to choose one of given skills and call callback with selection id

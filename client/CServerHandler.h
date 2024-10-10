@@ -14,6 +14,7 @@
 #include "../lib/network/NetworkInterface.h"
 #include "../lib/StartInfo.h"
 #include "../lib/gameState/GameStatistics.h"
+#include "../lib/battle/AICombatOptions.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -107,6 +108,8 @@ class CServerHandler final : public IServerAPI, public LobbyInfo, public INetwor
 
 	std::atomic<EClientState> state;
 
+	AICombatOptions aiCombatOptions;
+
 	void threadRunNetwork();
 	void waitForServerShutdown();
 
@@ -141,7 +144,7 @@ public:
 	std::unique_ptr<CStopWatch> th;
 	std::unique_ptr<CClient> client;
 
-	CServerHandler();
+	CServerHandler(AICombatOptions aiCombatOptions = {});
 	~CServerHandler();
 	
 	void resetStateForLobby(EStartMode mode, ESelectionScreen screen, EServerMode serverMode, const std::vector<std::string> & playerNames);

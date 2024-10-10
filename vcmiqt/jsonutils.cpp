@@ -115,8 +115,10 @@ JsonNode toJson(QVariant object)
 
 void JsonToFile(QString filename, QVariant object)
 {
+#ifndef ENABLE_ML
 	std::fstream file(qstringToPath(filename).c_str(), std::ios::out | std::ios_base::binary);
 	file << toJson(object).toString();
+#endif
 }
 
 }

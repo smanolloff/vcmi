@@ -583,7 +583,11 @@ std::string BattleActionsController::actionGetStatusMessage(PossiblePlayerBattle
 			return (boost::format(CGI->generaltexth->allTexts[297]) % targetStack->getName()).str();
 
 		case PossiblePlayerBattleAction::HERO_INFO:
-			return  CGI->generaltexth->translate("core.genrltxt.417"); // "View Hero Stats"
+			auto h = (targetHex == BattleHex::HERO_ATTACKER)
+				? owner.attackingHero
+				: owner.defendingHero;
+
+			return h->instance()->getNameTranslated() + ": " + CGI->generaltexth->translate("core.genrltxt.417"); // "Name: View Hero Stats"
 	}
 	assert(0);
 	return "";

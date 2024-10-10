@@ -70,7 +70,7 @@ void CAmmo::use(int32_t amount)
 
 	if(available() - amount < 0)
 	{
-		logGlobal->error("Stack ammo overuse. total: %d, used: %d, requested: %d", total(), used, amount);
+		logGlobal->warn("Stack ammo overuse. total: %d, used: %d, requested: %d", total(), used, amount);
 		used += available();
 	}
 	else
