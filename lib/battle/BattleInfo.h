@@ -154,7 +154,7 @@ public:
 	const CGHeroInstance * getHero(const PlayerColor & player) const; //returns fighting hero that belongs to given player
 
 	void localInit();
-	static BattleInfo * setupBattle(const int3 & tile, TerrainId, const BattleField & battlefieldType, BattleSideArray<const CArmedInstance *> armies, BattleSideArray<const CGHeroInstance *> heroes, const BattleLayout & layout, const CGTownInstance * town);
+	static BattleInfo * setupBattle(const int3 & tile, TerrainId, const BattleField & battlefieldType, BattleSideArray<const CArmedInstance *> armies, BattleSideArray<const CGHeroInstance *> heroes, const BattleLayout & layout, const CGTownInstance * town, ui32 seed = 0);
 
 	BattleSide whatSide(const PlayerColor & player) const;
 

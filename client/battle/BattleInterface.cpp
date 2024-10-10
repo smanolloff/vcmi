@@ -347,7 +347,7 @@ void BattleInterface::battleFinished(const BattleResult& br, QueryID queryID)
 		return;
 	}
 
-	auto wnd = std::make_shared<BattleResultWindow>(br, *(this->curInt));
+	auto wnd = std::make_shared<BattleResultWindow>(br, *(this->curInt), IS_ML);
 	wnd->resultCallback = [=](ui32 selection)
 	{
 		curInt->cb->selectionMade(selection, queryID);

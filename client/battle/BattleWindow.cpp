@@ -44,6 +44,7 @@
 #include "../../lib/battle/BattleInfo.h"
 #include "../../lib/CPlayerState.h"
 #include "../windows/settings/SettingsMainWindow.h"
+#include "battle/AICombatOptions.h"
 
 BattleWindow::BattleWindow(BattleInterface & Owner):
 	owner(Owner),

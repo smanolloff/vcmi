@@ -19,7 +19,7 @@ class CEmptyAI : public CGlobalAI
 	std::shared_ptr<CCallback> cb;
 
 public:
-	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB) override;
+	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions) override;
 	void yourTurn(QueryID queryID) override;
 	void yourTacticPhase(const BattleID & battleID, int distance) override;
 	void activeStack(const BattleID & battleID, const CStack * stack) override;

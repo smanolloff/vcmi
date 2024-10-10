@@ -729,6 +729,15 @@ BattleScore BattleExchangeEvaluator::calculateExchange(
 				continue;
 			}
 
+			if(attacker->isTurret() && !attacker->canShoot())
+			{
+#if BATTLE_TRACE_LEVEL>=1
+				logAi->trace("Attacker is turret with no ammo");
+#endif
+
+				continue;
+			}
+
 			if(isMovingTurm && !shooting
 				&& !vstd::contains(exchangeUnits.enemyUnitsReachingAttacker, attacker->unitId()))
 			{
