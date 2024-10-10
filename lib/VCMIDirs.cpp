@@ -508,10 +508,14 @@ bfs::path VCMIDirsOSX::userCachePath() const { return userDataPath(); }
 
 bfs::path VCMIDirsOSX::userLogsPath() const
 {
+#ifdef ML
+	return bfs::path(".") / "data";
+#else
 	// TODO: use proper objc code from Foundation framework
 	if(const auto homeDir = std::getenv("HOME"))
 		return bfs::path{homeDir} / "Library" / "Logs" / "vcmi";
 	return IVCMIDirsUNIX::userLogsPath();
+#endif
 }
 
 std::vector<bfs::path> VCMIDirsOSX::dataPaths() const
@@ -601,6 +605,9 @@ public:
 
 bfs::path VCMIDirsXDG::userDataPath() const
 {
+#ifdef ML
+	return bfs::path(".") / "data";
+#else
 	// $XDG_DATA_HOME, default: $HOME/.local/share
 	const char* homeDir;
 	if((homeDir = getenv("XDG_DATA_HOME")))
@@ -609,9 +616,13 @@ bfs::path VCMIDirsXDG::userDataPath() const
 		return bfs::path(homeDir) / ".local" / "share" / "vcmi";
 	else
 		return ".";
+#endif
 }
 bfs::path VCMIDirsXDG::userCachePath() const
 {
+#ifdef ML
+	return userDataPath();
+#else
 	// $XDG_CACHE_HOME, default: $HOME/.cache
 	const char * tempResult;
 	if ((tempResult = getenv("XDG_CACHE_HOME")))
@@ -620,9 +631,13 @@ bfs::path VCMIDirsXDG::userCachePath() const
 		return bfs::path(tempResult) / ".cache" / "vcmi";
 	else
 		return ".";
+#endif
 }
 bfs::path VCMIDirsXDG::userConfigPath() const
 {
+#ifdef ML
+	return userDataPath() / "config";
+#else
 	// $XDG_CONFIG_HOME, default: $HOME/.config
 	const char * tempResult = getenv("XDG_CONFIG_HOME");
 	if (tempResult)
@@ -633,6 +648,7 @@ bfs::path VCMIDirsXDG::userConfigPath() const
 		return bfs::path(tempResult) / ".config" / "vcmi";
 
 	return ".";
+#endif
 }
 
 std::vector<bfs::path> VCMIDirsXDG::dataPaths() const
