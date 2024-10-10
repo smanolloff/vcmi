@@ -814,9 +814,12 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
 	}
 	// "Click" on color to remove us from it
-	setPlayer(myFirstColor());
-	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
+	if(settings["session"]["onlyai"].Bool())
+	{
+		setPlayer(myFirstColor());
+		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(50));
+	}
 
 	while(true)
 	{
