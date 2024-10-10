@@ -134,13 +134,11 @@ Note: the expected directory structure of that directory is as follows:
 ### User configs
 
 VCMI normally creates those files by itself, but this version is modified to
-prevent disk writes.
-Instead, symbolic links must be manually created to files which contain
-the appropriate settings for vcmi-gym:
+prevent disk writes at runtime and the "user data" dir is set to a local
+"data" directory (instead of "~/Library/Application Support/vcmi").
 
-```bash
-$ ln -s "$PWD"/ML/{settings,modSettings,persistentStorage}.json "$HOME/Library/Application Support/vcmi/config"
-```
+If you need to modify game configs, you can directly edit the corresponding file
+in `./data/config/`.
 
 ### Manual test
 

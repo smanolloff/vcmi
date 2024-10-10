@@ -495,10 +495,14 @@ bfs::path VCMIDirsOSX::userDataPath() const
 
 	// ...so here goes a bit of hardcode instead
 
+#ifdef ML
+	return bfs::path(".") / "data";
+#else
 	const char* homeDir = getenv("HOME"); // Should be std::getenv?
 	if (homeDir == nullptr)
 		homeDir = ".";
 	return bfs::path(homeDir) / "Library" / "Application Support" / "vcmi";
+#endif
 }
 bfs::path VCMIDirsOSX::userCachePath() const { return userDataPath(); }
 
