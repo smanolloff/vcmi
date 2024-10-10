@@ -102,6 +102,17 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 #  define STRONG_INLINE inline
 #endif
 
+/* ---------------------------------------------------------------------------- */
+/* A macro which expands to nothing unless ENABLE_ML compile flag is set */
+/* ---------------------------------------------------------------------------- */
+#ifdef ENABLE_ML
+#define ML(STMT) STMT
+#define IFML(STMT_TRUE, STMT_FALSE) STMT_TRUE
+#else
+#define ML(STMT)
+#define IFML(STMT_TRUE, STMT_FALSE) STMT_FALSE
+#endif
+
 // Required for building boost::stacktrace on macOS.
 // See https://github.com/boostorg/stacktrace/issues/88
 #if defined(VCMI_APPLE)
@@ -153,8 +164,11 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 #  define BOOST_ALLOW_DEPRECATED_HEADERS
 #endif
 #define BOOST_THREAD_DONT_PROVIDE_THREAD_DESTRUCTOR_CALLS_TERMINATE_IF_JOINABLE 1
+
 //need to link boost thread dynamically to avoid https://stackoverflow.com/questions/35978572/boost-thread-interupt-does-not-work-when-crossing-a-dll-boundary
+#ifndef BOOST_THREAD_USE_DLL
 #define BOOST_THREAD_USE_DLL //for example VCAI::finish() may freeze on thread join after interrupt when linking this statically
+#endif
 #define BOOST_BIND_NO_PLACEHOLDERS
 
 #if BOOST_VERSION >= 106600

@@ -1,3 +1,5 @@
+!/.venv
+
 /client/vcmiclient
 /server/vcmiserver
 /launcher/.lupdate
@@ -72,3 +74,14 @@ fuzzylite.pc
 
 # CLion
 .idea/
+
+# ML
+.cmake
+*.sqlite3
+*.db
+.venv
+MLClient/libtorch
+rel/
+play/
+playdebug/
+actions.txt
