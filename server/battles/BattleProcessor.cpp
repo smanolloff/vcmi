@@ -167,7 +167,7 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 		terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
 	ui32 seed = 0;
-	ML(gameHandler->mlplugin->setupBattleHook(town, seed));
+	ML(gameHandler->mlplugin->setupBattleHook(town, terrain, seed));
 
 	//send info about battles
 	BattleStart bs;
