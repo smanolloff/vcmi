@@ -97,13 +97,15 @@ void BattleProcessor::restartBattle(const BattleID & battleID, const CArmedInsta
 }
 
 void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInstance *army2, int3 tile,
-								const CGHeroInstance *hero1, const CGHeroInstance *hero2, const BattleLayout & layout, const CGTownInstance *town)
+								const CGHeroInstance *hero1, const CGHeroInstance *hero2, const BattleLayout & layout_, const CGTownInstance *town)
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
 
 	BattleSideArray<const CArmedInstance *> armies{army1, army2};
 	BattleSideArray<const CGHeroInstance*>heroes{hero1, hero2};
+
+	auto layout = IFML(BattleLayout::createDefaultLayout(gameHandler, army1, army2), layout_);
 
 	auto battleID = setupBattle(tile, armies, heroes, layout, town); //initializes stacks, places creatures on battlefield, blocks and informs player interfaces
 
