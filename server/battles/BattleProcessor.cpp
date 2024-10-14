@@ -92,6 +92,7 @@ void BattleProcessor::restartBattle(const BattleID & battleID, const CArmedInsta
 	bc.battleID = battleID;
 	gameHandler->sendAndApply(bc);
 
+	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
 	startBattle(army1, army2, tile, hero1, hero2, layout, town);
 }
 
@@ -100,7 +101,6 @@ void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInsta
 {
 	assert(gameHandler->gameState()->getBattle(army1->getOwner()) == nullptr);
 	assert(gameHandler->gameState()->getBattle(army2->getOwner()) == nullptr);
-	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
 
 	BattleSideArray<const CArmedInstance *> armies{army1, army2};
 	BattleSideArray<const CGHeroInstance*>heroes{hero1, hero2};
@@ -148,9 +148,13 @@ void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInsta
 
 void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInstance *army2)
 {
+	const CGHeroInstance* hero1 = army1->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army1) : nullptr;
+	const CGHeroInstance* hero2 = army2->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army2) : nullptr;
+	ML(gameHandler->mlplugin->startBattleHook(army1, army2, hero1, hero2));
+
 	startBattle(army1, army2, army2->visitablePos(),
-		army1->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army1) : nullptr,
-		army2->ID == Obj::HERO ? dynamic_cast<const CGHeroInstance*>(army2) : nullptr,
+		hero1,
+		hero2,
 		BattleLayout::createDefaultLayout(gameHandler, army1, army2),
 		nullptr);
 }
