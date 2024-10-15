@@ -127,9 +127,10 @@ void CSettingsView::loadSettings()
 #endif
 
 #ifdef ENABLE_MMAI
-	ui->comboBoxFriendlyAI->addItem("MMAI (experimental)", "MMAI");
+	// Can play only as defender for now
 	ui->comboBoxNeutralAI->addItem("MMAI (experimental)", "MMAI");
-	ui->comboBoxEnemyAI->addItem("MMAI (experimental)", "MMAI");
+	// ui->comboBoxFriendlyAI->addItem("MMAI (experimental)", "MMAI");
+	// ui->comboBoxEnemyAI->addItem("MMAI (experimental)", "MMAI");
 #endif
 
 	fillValidScalingRange();
@@ -140,7 +141,8 @@ void CSettingsView::loadSettings()
 	ui->sliderReservedArea->setValue(std::round(settings["video"]["reservedWidth"].Float() * 100));
 
 	// Find an entry by value and select it
-	auto setValue = [](QComboBox * box, std::string value) {
+	auto setValue = [](QComboBox * box, std::string value)
+	{
 		auto qstr = QString::fromStdString(value);
 		int index = box->findData(qstr);
 		index >= 0 ? box->setCurrentIndex(index) : box->setCurrentText(qstr);
