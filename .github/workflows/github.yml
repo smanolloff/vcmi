@@ -1,13 +1,13 @@
 name: VCMI
 
 on:
-  # push:
-  #   branches:
-  #     - features/*
-  #     - beta
-  #     - master
-  #     - develop
-  # pull_request:
+  push:
+    branches:
+      - features/*
+      - beta
+      - master
+      - develop
+  pull_request:
   workflow_dispatch:
 
 env:
@@ -87,24 +87,21 @@ jobs:
             cmake_args: -G Ninja
             preset: windows-mingw-conan-linux
             conan_profile: mingw32-linux.jinja
+          - platform: android-32
+            os: macos-14
+            extension: apk
+            preset: android-conan-ninja-release
+            conan_profile: android-32
+            conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
+            artifact_platform: armeabi-v7a
+          - platform: android-64
+            os: macos-14
+            extension: apk
+            preset: android-conan-ninja-release
+            conan_profile: android-64
+            conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
+            artifact_platform: arm64-v8a
 
-          # XXX: some runs already fail due to missing NDK 25
-          #      https://github.com/actions/runner-images/issues/10614
-
-          # - platform: android-32
-          #   os: macos-14
-          #   extension: apk
-          #   preset: android-conan-ninja-release
-          #   conan_profile: android-32
-          #   conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
-          #   artifact_platform: armeabi-v7a
-          # - platform: android-64
-          #   os: macos-14
-          #   extension: apk
-          #   preset: android-conan-ninja-release
-          #   conan_profile: android-64
-          #   conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
-          #   artifact_platform: arm64-v8a
           #
           # MMAI builds
           #
@@ -153,14 +150,14 @@ jobs:
             extension: exe
             preset: windows-msvc-release
             mmai: 1
-          # - platform: android-64
-          #   os: macos-14
-          #   extension: apk
-          #   preset: android-conan-ninja-release
-          #   conan_profile: android-64
-          #   conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
-          #   artifact_platform: arm64-v8a
-          #   mmai: 1
+          - platform: android-64
+            os: macos-14
+            extension: apk
+            preset: android-conan-ninja-release
+            conan_profile: android-64
+            conan_options: --conf tools.android:ndk_path=$ANDROID_NDK_ROOT
+            artifact_platform: arm64-v8a
+            mmai: 1
 
     runs-on: ${{ matrix.os }}
     defaults:
