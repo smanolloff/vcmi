@@ -170,6 +170,7 @@ jobs:
             pack: 1
             pack_type: RelWithDebInfo
             extension: exe
+            before_install: msvc.sh
             preset: windows-msvc-release
             mmai_deps: win-x64
           - platform: android-64
