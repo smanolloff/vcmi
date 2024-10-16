@@ -12,6 +12,7 @@
 #include "PacksForClient.h"
 #include "PacksForClientBattle.h"
 #include "PacksForServer.h"
+#include "SaveLocalState.h"
 #include "SetRewardableConfiguration.h"
 #include "StackLocation.h"
 #include "PacksForLobby.h"
@@ -19,7 +20,6 @@
 #include "NetPackVisitor.h"
 #include "texts/CGeneralTextHandler.h"
 #include "CArtHandler.h"
-#include "CHeroHandler.h"
 #include "VCMI_Lib.h"
 #include "mapping/CMap.h"
 #include "spells/CSpellHandler.h"
@@ -91,6 +91,12 @@ bool CLobbyPackToServer::isForServer() const
 {
 	return true;
 }
+
+void SaveLocalState::visitTyped(ICPackVisitor & visitor)
+{
+	visitor.visitSaveLocalState(*this);
+}
+
 
 void PackageApplied::visitTyped(ICPackVisitor & visitor)
 {
@@ -1047,7 +1053,7 @@ void ChangeObjPos::applyGs(CGameState *gs)
 		return;
 	}
 	gs->map->removeBlockVisTiles(obj);
-	obj->pos = nPos + obj->getVisitableOffset();
+	obj->setAnchorPos(nPos + obj->getVisitableOffset());
 	gs->map->addBlockVisTiles(obj);
 }
 
@@ -1348,7 +1354,7 @@ void NewStructures::applyGs(CGameState *gs)
 
 	for(const auto & id : bid)
 	{
-		assert(t->town->buildings.at(id) != nullptr);
+		assert(t->getTown()->buildings.at(id) != nullptr);
 		t->addBuilding(id);
 	}
 	t->updateAppearance();
@@ -1463,11 +1469,11 @@ void GiveHero::applyGs(CGameState *gs)
 
 	auto oldVisitablePos = h->visitablePos();
 	gs->map->removeBlockVisTiles(h,true);
-	h->appearance = VLC->objtypeh->getHandlerFor(Obj::HERO, h->type->heroClass->getIndex())->getTemplates().front();
+	h->appearance = VLC->objtypeh->getHandlerFor(Obj::HERO, h->getHeroClassID().getNum())->getTemplates().front();
 
 	h->setOwner(player);
 	h->setMovementPoints(h->movementPointsLimit(true));
-	h->pos = h->convertFromVisitablePos(oldVisitablePos);
+	h->setAnchorPos(h->convertFromVisitablePos(oldVisitablePos));
 	gs->map->heroesOnMap.emplace_back(h);
 	gs->getPlayerState(h->getOwner())->addOwnedObject(h);
 
@@ -1799,6 +1805,7 @@ void AssembledArtifact::applyGs(CGameState *gs)
 	assert(hero);
 	const auto transformedArt = hero->getArt(al.slot);
 	assert(transformedArt);
+	const auto builtArt = artId.toArtifact();
 	assert(vstd::contains_if(ArtifactUtils::assemblyPossibilities(hero, transformedArt->getTypeId()), [=](const CArtifact * art)->bool
 		{
 			return art->getId() == builtArt->getId();
@@ -1810,14 +1817,11 @@ void AssembledArtifact::applyGs(CGameState *gs)
 
 	// Find slots for all involved artifacts
 	std::vector<ArtifactPosition> slotsInvolved;
+	CArtifactFittingSet artSet(*hero);
 	for(const auto constituent : builtArt->getConstituents())
 	{
-		ArtifactPosition slot;
-		if(transformedArt->getTypeId() == constituent->getId())
-			slot = transformedArtSlot;
-		else
-			slot = hero->getArtPos(constituent->getId(), false, false);
-
+		const auto slot = artSet.getArtPos(constituent->getId(), false, false);
+		artSet.lockSlot(slot);
 		assert(slot != ArtifactPosition::PRE_FIRST);
 		slotsInvolved.emplace_back(slot);
 	}
@@ -1825,7 +1829,7 @@ void AssembledArtifact::applyGs(CGameState *gs)
 
 	// Find a slot for combined artifact
 	al.slot = transformedArtSlot;
-	for(const auto slot : slotsInvolved)
+	for(const auto & slot : slotsInvolved)
 	{
 		if(ArtifactUtils::isSlotEquipment(transformedArtSlot))
 		{
@@ -1848,15 +1852,18 @@ void AssembledArtifact::applyGs(CGameState *gs)
 	}
 
 	// Delete parts from hero
-	for(const auto slot : slotsInvolved)
+	for(const auto & slot : slotsInvolved)
 	{
 		const auto constituentInstance = hero->getArt(slot);
 		gs->map->removeArtifactInstance(*hero, slot);
 
-		if(ArtifactUtils::isSlotEquipment(al.slot) && slot != al.slot)
-			combinedArt->addPart(constituentInstance, slot);
-		else
-			combinedArt->addPart(constituentInstance, ArtifactPosition::PRE_FIRST);
+		if(!combinedArt->artType->isFused())
+		{
+			if(ArtifactUtils::isSlotEquipment(al.slot) && slot != al.slot)
+				combinedArt->addPart(constituentInstance, slot);
+			else
+				combinedArt->addPart(constituentInstance, ArtifactPosition::PRE_FIRST);
+		}
 	}
 
 	// Put new combined artifacts
@@ -2476,10 +2483,7 @@ void SetBankConfiguration::applyGs(CGameState *gs)
 const CArtifactInstance * ArtSlotInfo::getArt() const
 {
 	if(locked)
-	{
-		logNetwork->warn("ArtifactLocation::getArt: This location is locked!");
 		return nullptr;
-	}
 	return artifact;
 }
 

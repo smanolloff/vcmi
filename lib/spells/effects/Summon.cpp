@@ -18,7 +18,6 @@
 #include "../../battle/Unit.h"
 #include "../../serializer/JsonSerializeFormat.h"
 #include "../../CCreatureHandler.h"
-#include "../../CHeroHandler.h"
 #include "../../mapObjects/CGHeroInstance.h"
 #include "../../networkPacks/PacksForClientBattle.h"
 
@@ -79,7 +78,7 @@ bool Summon::applicable(Problem & problem, const Mechanics * m) const
 
 				text.replaceNamePlural(elemental->creatureId());
 
-				if(caster->type->gender == EHeroGender::FEMALE)
+				if(caster->gender == EHeroGender::FEMALE)
 					text.replaceLocalString(EMetaText::GENERAL_TXT, 540);
 				else
 					text.replaceLocalString(EMetaText::GENERAL_TXT, 539);
