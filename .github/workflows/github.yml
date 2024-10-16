@@ -108,14 +108,11 @@ jobs:
           #
           # MMAI builds
           #
-
-          # XXX: linux throws compilation errors in TorchModel.cpp
-          #      something is wrong with the includes...
-          # - platform: linux
-          #   os: ubuntu-20.04
-          #   test: 0
-          #   preset: linux-gcc-debug
-          #   mmai: 1
+          - platform: linux
+            os: ubuntu-20.04
+            test: 0
+            preset: linux-gcc-debug
+            mmai: 1
           - platform: mac-intel
             os: macos-13
             test: 0
