@@ -194,21 +194,19 @@ jobs:
       with:
         submodules: recursive
 
-    # TODO: move after Prepare CI step
-    - name: Install libtorch dependencies
-      if: "${{ matrix.mmai_deps != '' }}"
-      run: source '${{github.workspace}}/CI/fetch_libtorch.sh' 'v1.0' '${{matrix.mmai_deps}}'
-
     - name: Prepare CI
       if: "${{ matrix.before_install != '' }}"
       run: source '${{github.workspace}}/CI/before_install/${{matrix.before_install}}'
       env:
         VCMI_BUILD_PLATFORM: x64
-        MMAI: ${{matrix.mmai}}
 
     - name: Install Conan Dependencies
       if: "${{ matrix.conan_prebuilts != '' }}"
       run: source '${{github.workspace}}/CI/install_conan_dependencies.sh' '${{matrix.conan_prebuilts}}'
+
+    - name: Install MMAI dependencies
+      if: "${{ matrix.mmai_deps != '' }}"
+      run: source '${{github.workspace}}/CI/install_mmai_dependencies.sh' '${{matrix.mmai_deps}}'
 
     # ensure the ccache for each PR is separate so they don't interfere with each other
     # fall back to ccache of the vcmi/vcmi repo if no PR-specific ccache is found
@@ -289,7 +287,7 @@ jobs:
     - name: Build Number
       run: |
         source '${{github.workspace}}/CI/get_package_name.sh'
-        if [ "${{matrix.mmai}}" == "1" ]; then
+        if [ '${{matrix.mmai_deps}}' ]; then
           VCMI_PACKAGE_FILE_NAME+="-mmai"
         fi
         if [ '${{ matrix.artifact_platform }}' ]; then
@@ -303,7 +301,7 @@ jobs:
 
     - name: Configure
       run: |
-        if [ "${{matrix.mmai}}" == "1" ]
+        if [ '${{matrix.mmai_deps}}' ]
         then
           MMAI_FLAGS="-DENABLE_MMAI=ON"
         else
