@@ -20,6 +20,9 @@
 # include "../../AI/BattleAI/BattleAI.h"
 # include "../../AI/StupidAI/StupidAI.h"
 # include "../../AI/EmptyAI/CEmptyAI.h"
+# ifdef ENABLE_MMAI
+#  include "../../AI/MMAI/MMAI.h"
+# endif // ENABLE_MMAI
 #else
 # ifdef VCMI_WINDOWS
 #  include <windows.h> //for .dll libs
@@ -51,7 +54,7 @@ VCMI_LIB_NAMESPACE_BEGIN
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 #endif
-	HMODULE dll = LoadLibraryW(libpath.c_str());
+	HMODULE dll = LoadLibraryExW(libpath.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if (dll)
 	{
 		getName = reinterpret_cast<TGetNameFun>(GetProcAddress(dll, "GetAiName"));
@@ -121,6 +124,10 @@ std::shared_ptr<CBattleGameInterface> createAny(const boost::filesystem::path & 
 		return std::make_shared<CBattleAI>();
 	else if(libpath.stem() == "libStupidAI")
 		return std::make_shared<CStupidAI>();
+#ifdef ENABLE_MMAI
+	else if(libpath.stem() == "libMMAI")
+		return std::make_shared<MMAI::BAI::Router>();
+#endif
 	return std::make_shared<CEmptyAI>();
 }
 

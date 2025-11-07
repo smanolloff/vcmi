@@ -28,6 +28,7 @@ jobs:
             conan_prebuilts: dependencies-mac-intel
             conan_options: --profile=dependencies/conan_profiles/base/apple-system
             artifact_platform: intel
+            mmai_deps: v1.1/vcmi-libtorch-macos-x64-v2.7.1-e2d141db.zip
 
           - platform: mac-arm
             os: macos-14
@@ -53,6 +54,7 @@ jobs:
             conan_profile: ios-arm64
             conan_prebuilts: dependencies-ios
             conan_options: --profile=dependencies/conan_profiles/base/apple-system
+            mmai_deps: v1.1/vcmi-libtorch-ios-arm64-v2.7.1-e2d141db.zip
 
           - platform: msvc-x64
             arch: x64
@@ -67,6 +69,7 @@ jobs:
             conan_prebuilts: dependencies-windows-x64
             conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:target_pre_windows10=True"
             artifact_platform: x64
+            mmai_deps: v1.1/vcmi-libtorch-win-x64-v2.7.1-e2d141db.zip
 
           - platform: msvc-x86
             arch: amd64_x86
@@ -81,6 +84,7 @@ jobs:
             conan_prebuilts: dependencies-windows-x86
             conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:target_pre_windows10=True"
             artifact_platform: x86
+            # mmai_deps: n/a
 
           - platform: msvc-arm64
             arch: arm64
@@ -94,6 +98,7 @@ jobs:
             conan_prebuilts: dependencies-windows-arm64
             conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:lua_lib=lua"
             artifact_platform: arm64
+            mmai_deps: v1.1/vcmi-libtorch-win-arm64-v2.7.1-e2d141db.zip
 
           - platform: android-32
             os: ubuntu-latest
@@ -104,6 +109,7 @@ jobs:
             conan_prebuilts: dependencies-android-armeabi-v7a
             conan_options: --profile=dependencies/conan_profiles/base/android-system
             artifact_platform: armeabi-v7a
+            # mmai_deps: n/a
 
           - platform: android-64
             os: ubuntu-latest
@@ -114,6 +120,7 @@ jobs:
             conan_prebuilts: dependencies-android-arm64-v8a
             conan_options: --profile=dependencies/conan_profiles/base/android-system
             artifact_platform: arm64-v8a
+            mmai_deps: v1.1/vcmi-libtorch-android-arm64-v2.7.1-e2d141db.zip
 
           - platform: android-64-intel
             os: ubuntu-latest
@@ -124,6 +131,7 @@ jobs:
             conan_prebuilts: dependencies-android-x64
             conan_options: --profile=dependencies/conan_profiles/base/android-system
             artifact_platform: x64
+            mmai_deps: v1.1/vcmi-libtorch-android-x64-v2.7.1-e2d141db.zip
 
     runs-on: ${{ matrix.os }}
     # Allow non-MSVC builds to fail without failing whole job
@@ -279,22 +287,33 @@ jobs:
       env:
         PULL_REQUEST: ${{ github.event.pull_request.number }}
 
+    - name: Setup MMAI
+      if: matrix.mmai_deps
+      run: source '${{github.workspace}}/CI/setup_mmai.sh' '${{ matrix.mmai_deps }}' '${{ matrix.platform }}'
+
     - name: Configure (non-MSVC)
       if: ${{ !startsWith(matrix.platform, 'msvc') }}
       run: |
+        set -x
         if [[ ("${{ matrix.preset }}" == "android-conan-ninja-release") && ("${{ github.ref }}" != 'refs/heads/master') ]]; then
           # key1=value1;key2=value2;...
           gradleProperties=$(python3 CI/android/gradle_daily_props.py)
           androidOptions=("-DANDROID_GRADLE_PROPERTIES=$gradleProperties")
           androidOptions+=("-DCMAKE_C_COMPILER_LAUNCHER=ccache" "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
         fi
-        cmake -DENABLE_CCACHE:BOOL=ON "${androidOptions[@]}" --preset ${{ matrix.preset }}
+        cmake -DENABLE_CCACHE:BOOL=ON "${androidOptions[@]}" $MMAI_FLAGS --preset ${{ matrix.preset }}
+
     - name: Configure (MSVC)
       if: ${{ startsWith(matrix.platform, 'msvc') }}
       run: |
         & $env:CONANRUN_PWSH_SCRIPT
 
-        cmake --preset ${{ matrix.preset }}
+        $mmaiflags = @()
+        if ($env:MMAI_FLAGS) {
+          $mmaiflags = $env:MMAI_FLAGS -split '\s+' | Where-Object { $_ }
+        }
+
+        cmake --preset ${{ matrix.preset }} @mmaiflags
       shell: pwsh
 
     - name: Build

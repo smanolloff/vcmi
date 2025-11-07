@@ -13,3 +13,9 @@
 [submodule "dependencies"]
 	path = dependencies
 	url = https://github.com/vcmi/vcmi-dependencies.git
+[submodule "AI/MMAI"]
+	path = AI/MMAI
+	url = git@github.com:smanolloff/vcmi-MMAI.git
+[submodule "Mods/MMAI"]
+	path = Mods/MMAI
+	url = git@github.com:smanolloff/vcmi-MMAI-mod.git
