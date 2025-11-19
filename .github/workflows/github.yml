@@ -220,6 +220,36 @@ jobs:
         ccache --set-config=hash_dir=true
         ccache --set-config=sloppiness=time_macros
 
+    - name: (debug) Export graph.html
+      run: |
+        conan profile detect
+        conan graph info . \
+          --profile=dependencies/conan_profiles/${{ matrix.conan_profile }} \
+          --format=html \
+          --build=never \
+          --no-remote \
+          ${{ matrix.conan_options }} \
+          > "graph-no-remote.html" || :
+
+        conan graph info . \
+          --profile=dependencies/conan_profiles/${{ matrix.conan_profile }} \
+          --format=html \
+          --build=never \
+          ${{ matrix.conan_options }} \
+          > "graph.html"
+
+    - name: (debug) Upload graph.html
+      uses: actions/upload-artifact@v4
+      with:
+        name: graph-${{ matrix.platform }}
+        path: graph.html
+
+    - name: (debug) Upload graph-no-remote.html
+      uses: actions/upload-artifact@v4
+      with:
+        name: graph-no-remote-${{ matrix.platform }}
+        path: graph.html
+
     - name: Install Conan profile
       if: "${{ matrix.conan_profile != '' }}"
       run: |
