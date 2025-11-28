@@ -55,7 +55,7 @@ jobs:
 
           - platform: msvc-x64
             arch: x64
-            toolset: '14.29'
+            toolset: '14.44'
             os: windows-2025
             pack: 1
             upload: 0
@@ -67,9 +67,23 @@ jobs:
             conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:target_pre_windows10=True"
             artifact_platform: x64
 
+          - platform: msvc-x64-win7
+            arch: x64
+            toolset: '14.44'
+            os: windows-2025
+            pack: 1
+            upload: 0
+            pack_type: RelWithDebInfo
+            extension: zip
+            preset: windows-msvc-ninja-release
+            conan_profile: msvc-x64-win7
+            conan_prebuilts: dependencies-windows-x64-win7
+            conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:target_pre_windows10=True" -o "&:with_onnxruntime=False"
+            artifact_platform: x64-win7
+
           - platform: msvc-x86
             arch: amd64_x86
-            toolset: '14.29'
+            toolset: '14.44'
             os: windows-2025
             pack: 1
             upload: 0
@@ -80,6 +94,20 @@ jobs:
             conan_prebuilts: dependencies-windows-x86
             conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:target_pre_windows10=True"
             artifact_platform: x86
+
+          - platform: msvc-x86-win7
+            arch: amd64_x86
+            toolset: '14.44'
+            os: windows-2025
+            pack: 1
+            upload: 0
+            pack_type: RelWithDebInfo
+            extension: zip
+            preset: windows-msvc-ninja-release-x86
+            conan_profile: msvc-x86-win7
+            conan_prebuilts: dependencies-windows-x86-win7
+            conan_options: -s "&:build_type=RelWithDebInfo" -c tools.env.virtualenv:powershell=pwsh -o "&:target_pre_windows10=True" -o "&:with_onnxruntime=False"
+            artifact_platform: x86-win7
 
           - platform: msvc-arm64
             arch: arm64
@@ -259,22 +287,34 @@ jobs:
       env:
         PULL_REQUEST: ${{ github.event.pull_request.number }}
 
+    - name: Setup MMAI
+      if: ${{ !contains(matrix.conan_options, 'with_onnxruntime=False') }}
+      run: source '${{github.workspace}}/CI/setup_mmai.sh'
+
     - name: Configure (non-MSVC)
       if: ${{ !startsWith(matrix.platform, 'msvc') }}
       run: |
+        set -x
         if [[ ("${{ matrix.preset }}" == "android-conan-ninja-release") && ("${{ github.ref }}" != 'refs/heads/master') ]]; then
           # key1=value1;key2=value2;...
           gradleProperties=$(python3 CI/android/gradle_daily_props.py)
           androidOptions=("-DANDROID_GRADLE_PROPERTIES=$gradleProperties")
           androidOptions+=("-DCMAKE_C_COMPILER_LAUNCHER=ccache" "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
         fi
-        cmake -DENABLE_CCACHE:BOOL=ON "${androidOptions[@]}" --preset ${{ matrix.preset }}
+        cmake -DENABLE_CCACHE:BOOL=ON "${androidOptions[@]}" $MMAI_FLAGS --preset ${{ matrix.preset }}
+
     - name: Configure (MSVC)
       if: ${{ startsWith(matrix.platform, 'msvc') }}
       run: |
         & $env:CONANRUN_PWSH_SCRIPT
 
-        cmake --preset ${{ matrix.preset }}
+        if ($env:MMAI_FLAGS) {
+          $mmaiflags = @($env:MMAI_FLAGS -split '\s+' | Where-Object { $_ })
+        } else {
+          $mmaiflags = @()
+        }
+
+        cmake --preset ${{ matrix.preset }} @mmaiflags
       shell: pwsh
 
     - name: Build
@@ -546,7 +586,15 @@ jobs:
             arch: x64
             os: windows-2025
 
+          - platform: msvc-x64-win7
+            arch: x64
+            os: windows-2025
+
           - platform: msvc-x86
+            arch: x86
+            os: windows-2025
+
+          - platform: msvc-x86-win7
             arch: x86
             os: windows-2025
 

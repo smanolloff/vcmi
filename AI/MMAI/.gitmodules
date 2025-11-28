@@ -1,0 +1,6 @@
+[submodule "schema/gcem"]
+	path = schema/gcem
+	url = git@github.com:kthohr/gcem.git
+[submodule "BAI/model/executorch"]
+	path = BAI/model/executorch
+	url = git@github.com:pytorch/executorch.git
