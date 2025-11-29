@@ -77,13 +77,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(ONNXRUNTIME_ROOT "/opt/onnxruntime")
   include_directories(${ONNXRUNTIME_ROOT}/include)
   link_directories(${ONNXRUNTIME_ROOT}/lib)
-  # target_link_libraries(MMAI PRIVATE vcmi onnxruntime)
+  target_link_libraries(MMAI PRIVATE vcmi onnxruntime)
 else()
   find_package(onnxruntime CONFIG REQUIRED)
-  # target_link_libraries(MMAI PRIVATE vcmi onnx onnxruntime::onnxruntime)
+  target_link_libraries(MMAI PRIVATE vcmi onnxruntime::onnxruntime)
 endif()
-
-target_link_libraries(MMAI PRIVATE vcmi onnxruntime)
 
 # for fallback & spell casting
 add_dependencies(MMAI BattleAI)
