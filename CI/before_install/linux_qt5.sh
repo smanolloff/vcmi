@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euxo pipefail
 export DEBIAN_FRONTEND=noninteractive
+
+# https://github.com/microsoft/onnxruntime/discussions/6489
+ONNXRUNTIME_URL=https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-x64-1.18.1.tgz
+curl -fsSL "$ONNXRUNTIME_URL" | sudo tar -xzv --strip-components=1 -C /usr/local
+sudo ldconfig /usr/local
 
 APT_CACHE="${APT_CACHE:-${RUNNER_TEMP:-/tmp}/apt-cache}"
 sudo mkdir -p "$APT_CACHE"
@@ -20,8 +25,7 @@ sudo eatmydata apt -yq --no-install-recommends \
   qtbase5-dev qtbase5-dev-tools qttools5-dev qttools5-dev-tools \
   libqt5svg5-dev \
   ninja-build zlib1g-dev libavformat-dev libswscale-dev libtbb-dev \
-  libluajit-5.1-dev libminizip-dev libfuzzylite-dev libsqlite3-dev \
-  libonnxruntime-dev
+  libluajit-5.1-dev libminizip-dev libfuzzylite-dev libsqlite3-dev
 
 sudo rm -f  "$APT_CACHE/lock" || true
 sudo rm -rf "$APT_CACHE/partial" || true
