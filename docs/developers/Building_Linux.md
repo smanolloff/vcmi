@@ -15,6 +15,7 @@ To compile, the following packages (and their development counterparts) are need
 - SDL2 with devel packages: mixer, image, ttf
 - minizip or minizip-ng
 - zlib and zlib-devel
+- onnxruntime
 - Boost C++ libraries: program-options, filesystem, system, thread, locale
 - Recommended, if you want to build launcher or map editor: Qt (widget and network modules)
 - Recommended, FFmpeg libraries, if you want to watch in-game videos: libavformat and libswscale. Their name could be libavformat-devel and libswscale-devel, or ffmpeg-libs-devel or similar names.
@@ -26,17 +27,36 @@ To compile, the following packages (and their development counterparts) are need
 
 For Ubuntu and Debian you need to install this list of packages:
 
-`sudo apt-get install cmake g++ clang libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev zlib1g-dev libavformat-dev libswscale-dev libboost-dev libboost-filesystem-dev libboost-system-dev libboost-thread-dev libboost-program-options-dev libboost-locale-dev libboost-iostreams-dev qtbase5-dev libqt5svg5-dev libtbb-dev libluajit-5.1-dev liblzma-dev libsqlite3-dev libminizip-dev qttools5-dev ninja-build ccache`
+```sh
+sudo apt-get install cmake g++ clang libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev zlib1g-dev libavformat-dev libswscale-dev libboost-dev libboost-filesystem-dev libboost-system-dev libboost-thread-dev libboost-program-options-dev libboost-locale-dev libboost-iostreams-dev qtbase5-dev libqt5svg5-dev libtbb-dev libluajit-5.1-dev liblzma-dev libsqlite3-dev libminizip-dev qttools5-dev ninja-build ccache
+```
+
+To install [`onnxruntime`](https://github.com/microsoft/onnxruntime/releases), use the snippet below.
+You can find the onnxruntime version used by VCMI [here](https://github.com/vcmi/vcmi-dependencies/blob/main/conanfile.py), e.g. for `1.18.1`:
+
+```sh
+ONNXRUNTIME_URL=https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-x64-1.18.1.tgz
+ONNXRUNTIME_ROOT=/opt/onnxruntime
+mkdir -p "$ONNXRUNTIME_ROOT"
+curl -fsSL "$ONNXRUNTIME_URL" | tar -xzv --strip-components=1 -C "$ONNXRUNTIME_ROOT"
+sudo ldconfig "$ONNXRUNTIME_ROOT"
+```
 
 Alternatively if you have VCMI installed from repository or PPA you can use:
 
-`sudo apt-get build-dep vcmi`
+```sh
+sudo apt-get build-dep vcmi
+```
 
 ### On RPM-based distributions (e.g. Fedora)
 
-`sudo yum install cmake gcc-c++ SDL2-devel SDL2_image-devel SDL2_ttf-devel SDL2_mixer-devel boost boost-devel boost-filesystem boost-system boost-thread boost-program-options boost-locale boost-iostreams zlib-devel ffmpeg-free-devel qt5-qtbase-devel qt5-qtsvg-devel qt5-qttools-devel tbb-devel luajit-devel xz-devel sqlite-devel minizip-devel ccache`
+```sh
+sudo yum install cmake gcc-c++ SDL2-devel SDL2_image-devel SDL2_ttf-devel SDL2_mixer-devel boost boost-devel boost-filesystem boost-system boost-thread boost-program-options boost-locale boost-iostreams zlib-devel ffmpeg-free-devel qt5-qtbase-devel qt5-qtsvg-devel qt5-qttools-devel tbb-devel luajit-devel xz-devel sqlite-devel minizip-devel ccache
+```
 
 NOTE: VCMI bundles the fuzzylite lib in its source code.
+
+For `onnxruntime`, check out the instructions above.
 
 ### On Arch-based distributions
 
@@ -45,6 +65,8 @@ On Arch-based distributions, there is a development package available for VCMI o
 It can be found at <https://aur.archlinux.org/packages/vcmi-git/>
 
 Information about building packages from the Arch User Repository (AUR) can be found at the Arch wiki.
+
+For `onnxruntime`, check out the instructions above.
 
 ### On NixOS or Nix
 
@@ -60,7 +82,7 @@ stdenv.mkDerivation {
     boost zlib minizip xz
     SDL2 SDL2_ttf SDL2_net SDL2_image SDL2_sound SDL2_mixer SDL2_gfx
     ffmpeg tbb vulkan-headers libxkbcommon
-    qt6.full luajit
+    qt6.full luajit onnxruntime
   ];
 }
 ```
