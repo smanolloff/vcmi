@@ -9,6 +9,7 @@ ONNXRUNTIME_ROOT=/opt/onnxruntime
 sudo mkdir -p "$ONNXRUNTIME_ROOT"
 curl -fsSL "$ONNXRUNTIME_URL" | sudo tar -xzv --strip-components=1 -C "$ONNXRUNTIME_ROOT"
 sudo ldconfig "$ONNXRUNTIME_ROOT"
+find "$ONNXRUNTIME_ROOT"  # print file tree
 
 APT_CACHE="${APT_CACHE:-${RUNNER_TEMP:-/tmp}/apt-cache}"
 sudo mkdir -p "$APT_CACHE"
