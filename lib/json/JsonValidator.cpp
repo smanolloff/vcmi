@@ -135,7 +135,9 @@ static std::string enumCheck(JsonValidator & validator, const JsonNode & baseSch
 			return "";
 	}
 
-	std::string errorMessage = "Key must have one of predefined values:" + schema.toCompactString();
+
+	std::string errorMessage = "Key must have one of predefined values: " + schema.toCompactString();
+	errorMessage += ", got: " + data.toString();
 
 	return validator.makeErrorMessage(errorMessage);
 }

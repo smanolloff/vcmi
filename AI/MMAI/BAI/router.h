@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "battle/AutocombatPreferences.h"
+#include "battle/AICombatOptions.h"
 #include "battle/CPlayerBattleCallback.h"
 
 #include "BAI/base.h"
@@ -27,8 +27,7 @@ public:
 	 * Handled locally (not delegated)
 	 */
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences prefs) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
 
 	/*
 	 * Delegated to BAI
@@ -66,10 +65,12 @@ public:
 private:
 	std::shared_ptr<Environment> env;
 	std::shared_ptr<CBattleCallback> cb;
+
+	AICombatOptions aiCombatOptions;
+	Schema::Baggage * baggage = nullptr;
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
 	bool wasWaitingForRealize = false;
-	AutocombatPreferences autocombatPreferences;
 	std::string addrstr = "?";
 	std::string colorname = "?";
 

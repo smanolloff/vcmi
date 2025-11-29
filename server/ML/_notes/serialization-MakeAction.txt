@@ -1,0 +1,15 @@
+======== Serialization of a MakeAction command packet
+==== Client.cpp:551
+==== Sending a request "N10LIB_CLIENT10MakeActionE". It'll have an ID=10.
+
+01           // \x01  ui8   hlp (true, ie. not null)
+FA 00        // 250   ui16  tid (typeid)
+00           // \0    ui8   playerColor
+29 00 00 00  // 41    si32  requestID
+00           // 0     ui8   side
+00 00 00 00  // 0     ui32  stackNumber
+02 00 00 00  // 2     si32  actionType
+FF FF FF FF  // -1    si32  actionSubtype
+01 00 00 00  // 1     si32  length of (unitValue, hexValue) tuples
+18 FC FF FF  // -1000 si32  unitValue (INVALID_UNIT_ID)
+45 00        // 69    si16  hexValue.hex

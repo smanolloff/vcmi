@@ -58,10 +58,15 @@ ObjectConstruction::~ObjectConstruction()
 	ENGINE->captureChildren = !ENGINE->createdObj.empty();
 }
 
-GameEngine::GameEngine()
+GameEngine::GameEngine(bool headless)
 	: captureChildren(false)
 	, fakeStatusBar(std::make_shared<EmptyStatusBar>())
 {
+	if (!headless)
+		init();
+}
+
+void GameEngine::init() {
 	inGuiThread = true;
 
 	eventDispatcherInstance = std::make_unique<EventDispatcher>();
