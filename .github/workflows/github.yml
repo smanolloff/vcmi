@@ -3,6 +3,7 @@ name: VCMI
 on:
   push:
     branches:
+      - mmai-ci
       - beta
       - master
       - develop
