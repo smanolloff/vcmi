@@ -21,6 +21,10 @@
 #include "mapObjects/army/CStackBasicDescriptor.h"
 #include "ResourceSet.h"
 
+#ifdef ENABLE_ML
+#include "server/ML/ServerPlugin.h"
+#endif
+
 VCMI_LIB_NAMESPACE_BEGIN
 
 class CMapGenOptions;
@@ -146,6 +150,8 @@ struct DLL_LINKAGE StartInfo : public Serializeable
 	std::shared_ptr<CMapGenOptions> mapGenOptions;
 
 	std::shared_ptr<CampaignState> campState;
+
+	ML(ML::Config mlconfig);
 
 	PlayerSettings & getIthPlayersSettings(const PlayerColor & no);
 	const PlayerSettings & getIthPlayersSettings(const PlayerColor & no) const;

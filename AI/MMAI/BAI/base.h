@@ -14,6 +14,7 @@
 
 #include "Global.h"
 
+#include "battle/AICombatOptions.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
@@ -80,11 +81,7 @@ public:
 	 * Their base implementation throws a runtime error
 	 * (whistleblower for developer mistakes)
 	 */
-	void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2) override
-	{
-		throw std::runtime_error("BAI (base class) received initBattleInterface call");
-	}
-	void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2, AutocombatPreferences _3) override
+	void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2, AICombatOptions _3) override
 	{
 		throw std::runtime_error("BAI (base class) received initBattleInterface call");
 	}

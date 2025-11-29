@@ -156,7 +156,7 @@ struct RangeGenerator
 	std::function<int()> myRand;
 };
 
-std::unique_ptr<BattleInfo> BattleInfo::setupBattle(IGameInfoCallback *cb, const int3 & tile, TerrainId terrain, const BattleField & battlefieldType, BattleSideArray<const CArmedInstance *> armies, BattleSideArray<const CGHeroInstance *> heroes, const BattleLayout & layout, const CGTownInstance * town)
+std::unique_ptr<BattleInfo> BattleInfo::setupBattle(IGameInfoCallback *cb, const int3 & tile, TerrainId terrain, const BattleField & battlefieldType, BattleSideArray<const CArmedInstance *> armies, BattleSideArray<const CGHeroInstance *> heroes, const BattleLayout & layout, const CGTownInstance * town, ui32 seed)
 {
 	CMP_stack cmpst;
 	auto currentBattle = std::make_unique<BattleInfo>(cb, layout);
@@ -200,7 +200,7 @@ std::unique_ptr<BattleInfo> BattleInfo::setupBattle(IGameInfoCallback *cb, const
  	{
 		RandGen r{};
 		auto ourRand = [&](){ return r.rand(); };
-		r.srand(tile);
+		seed ? r.srand(seed) : r.srand(tile);
 		r.rand(1,8); //battle sound ID to play... can't do anything with it here
 		int tilesToBlock = r.rand(5,12);
 

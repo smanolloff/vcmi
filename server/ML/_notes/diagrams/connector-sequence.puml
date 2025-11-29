@@ -1,0 +1,196 @@
+@startuml "vcmi-1.32-connector-sequence"
+
+' there are more callbacks and many functions are renamed now,
+' aothough the core of the process remains the same
+
+title "VCMI-1.3.2 thread & GIL sequence [OUTDATED]"
+
+!pragma teoz true
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$__GIL_from = "vcmienv"
+
+!procedure $GIL($to)
+$__GIL_from --[#red]> $to :
+deactivate $__GIL_from
+activate $to #red
+!$__GIL_from = $to
+!endprocedure
+
+!procedure $GIL($to, $txt)
+$__GIL_from --[#red]> $to : <color:red>$txt
+deactivate $__GIL_from
+activate $to #red
+!$__GIL_from = $to
+!endprocedure
+
+!function $desc($txt)
+!return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+box "THREAD 1 $desc('main or VCMIEnv.~__init__()')" #fef
+  participant "//VCMIEnv//\n<<PY>>" as vcmienv
+  participant "//PyConnector//\n<<PY>>" as pyconnector
+end box
+
+box "THREAD 2" #fef
+  participant "//cppconnector//\n<<C>>" as cppconnector
+  participant "//VCMIServer//\n<<C>>" as vcmiserver
+end box
+
+box "THREAD 3" #fef
+  participant "//VCMIClient//\n<<C>>" as vcmiclient
+  participant "//AI//\n<<C>>" as ai
+end box
+
+==Initialize==
+
+[-> vcmienv : (new)
+activate vcmienv
+
+[--[#red]> vcmienv : <color:red>GIL
+activate vcmienv #red
+
+vcmienv -> pyconnector : start()
+activate pyconnector
+&$GIL(pyconnector)
+
+pyconnector -> cppconnector : connector.start_vcmi(pycb_init, pycb)
+activate cppconnector
+&$GIL(cppconnector)
+
+note over cppconnector : <<release GIL>>
+$GIL(pyconnector)
+& pyconnector -> pyconnector : event.wait() → <<not set>>
+
+cppconnector -> vcmiserver : start(pycb_init, pycb)
+activate vcmiserver
+
+vcmiserver -> vcmiclient : start(pycb_init, pycb)
+activate vcmiclient
+$GIL(vcmiclient)
+note right of vcmiclient
+not sure why GIL is needed when creating
+AI, but it segfaults without it.
+end note
+vcmiclient -> ai : (new)
+$GIL(pyconnector)
+
+note right
+""pycb"" is stored in an instance var of the AI class
+it will be called like so: ""pycb(state)""
+
+""pycb_init"" is called only once as it will be stored
+in an instance var of pyconnector.
+It will be called like so: ""pycb_init(cppcb)""
+
+many threads are started by VCMI and the vcmiclient
+one will eventually get called
+Omitting those for clarity, we are only interested in
+this thread
+end note
+
+note over cppconnector: start_vcmi() will never\nreturn. Deactivating\nit to avoid clutter.
+cppconnector --> cppconnector : sleep\nforever
+deactivate cppconnector
+
+vcmiclient <-? : activeStack
+activate vcmiclient
+note over vcmiclient : <<request GIL>>
+$GIL(vcmiclient, "event loop releases it frequently")
+& pyconnector -X pyconnector : <color:gray>event.wait()\n<color:gray>(event loop inactive)
+
+group#gold SIGSEGV danger
+  vcmiclient -> vcmiclient : pycb_init(cppcb)
+  &vcmiclient --[#ddd]> pyconnector : <color:#bbb>modify vars: cppcb
+  vcmiclient -> vcmiclient : pycb(state)
+  &vcmiclient --[#ddd]> pyconnector : <color:#bbb>modify vars: state\n<color:#bbb>event.set()</color>
+end
+
+note over vcmiclient : <<release GIL>>
+$GIL(pyconnector)
+
+vcmiclient -> vcmiclient : cond.wait() → <<not set>>
+
+pyconnector -> pyconnector : event.wait() → <<set>>
+pyconnector -> vcmienv : state
+&$GIL(vcmienv)
+
+' glitch in plantuml won't deactivate pyconnector unless
+' there's one more call here => do an "invisible" call
+pyconnector -[#fef]> vcmienv :
+deactivate pyconnector
+
+[<[#red]- vcmienv : <color:red>GIL
+deactivate vcmienv
+
+[<- vcmienv : observation
+deactivate vcmienv
+
+==Step==
+[-> vcmienv : step(action)
+activate vcmienv
+
+[--[#red]> vcmienv : <color:red>GIL
+activate vcmienv #red
+
+vcmienv -> pyconnector : act(action)
+activate pyconnector
+&$GIL(pyconnector)
+
+group ??? SIGSEGV Danger ???
+  pyconnector -> pyconnector : cppcb(action)
+  &pyconnector --[#ddd]> vcmiclient : $hspace(25)<color:#bbb>modify vars: action, pycb\n$hspace(25)<color:#bbb>cond.notify_one()</color>
+end
+
+vcmiclient -> vcmiclient : cond.wait() → <<set>>
+vcmiclient ->? : makeAction(action)
+deactivate vcmiclient
+
+pyconnector -> pyconnector : event.wait() → <<not set>>
+
+vcmiclient <-? : activeStack
+activate vcmiclient
+note over vcmiclient : <<request GIL>>
+$GIL(vcmiclient, "event loop releases it frequently")
+& pyconnector -X pyconnector : <color:gray>event.wait()\n<color:gray>(event loop inactive)
+vcmiclient -> vcmiclient : pycb(state)
+&vcmiclient --[#ddd]> pyconnector : <color:#bbb>modify vars: state\n<color:#bbb>event.set()</color>
+
+note over vcmiclient : <<release GIL>>
+$GIL(pyconnector)
+
+vcmiclient -> vcmiclient : cond.wait() → <<not set>>
+
+pyconnector -> pyconnector : event.wait() → <<set>>
+pyconnector -> vcmienv : state
+&$GIL(vcmienv)
+
+' glitch in plantuml won't deactivate pyconnector unless
+' there's one more call here => do an "invisible" call
+pyconnector -[#fef]> vcmienv :
+deactivate pyconnector
+
+[<[#red]- vcmienv : <color:red>GIL
+deactivate vcmienv
+
+[<- vcmienv : observation
+deactivate vcmienv
+
+@enduml

@@ -256,6 +256,16 @@ void Base::battleStart(
 )
 {
 	debug("*** battleStart ***");
+
+#ifdef ENABLE_ML
+	// XXX: hero->tempOwner is changed server-side to enable army swaps
+	// => update it client-side as well (left and right must both do this)
+	// This prevents issues like battle->playerToSide() returning the wrong side
+	auto hero = dynamic_cast<const CGHeroInstance *>(side == BattleSide::DEFENDER ? army2 : army1);
+	if(!hero)
+		throw std::runtime_error("could not obtain army hero for side: " + std::to_string(EI(side)));
+	const_cast<CGHeroInstance *>(hero)->tempOwner = PlayerColor(EI(side));
+#endif
 }
 
 // XXX: positive morale triggers an effect
