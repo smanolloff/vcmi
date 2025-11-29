@@ -53,7 +53,6 @@ set(MMAI_FILES
 option(ENABLE_MMAI_TEST "Compile tests" OFF)
 option(ENABLE_MMAI_STRICT_LOAD "Disable MMAI fallback during model load and throw an error instead" OFF)
 
-find_package(onnxruntime CONFIG REQUIRED)  # or link to onnx and protobuf manually
 set(MMAI_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_definitions(-DUSING_ONNX=1)
@@ -74,45 +73,20 @@ else()
   endif()
 endif()
 
-target_link_libraries(MMAI PRIVATE vcmi onnx onnxruntime::onnxruntime)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(ONNXRUNTIME_ROOT "/opt/onnxruntime")
+  include_directories(${ONNXRUNTIME_ROOT}/include)
+  link_directories(${ONNXRUNTIME_ROOT}/lib)
+  target_link_libraries(MMAI PRIVATE vcmi onnxruntime)
+else()
+  find_package(onnxruntime CONFIG REQUIRED)
+  # TODO: try linking only onnxruntime instead of onnx + onnxruntime::onnxruntime
+  target_link_libraries(MMAI PRIVATE vcmi onnx onnxruntime::onnxruntime)
+endif()
 
 # for fallback & spell casting
 add_dependencies(MMAI BattleAI)
 target_link_libraries(MMAI PRIVATE BattleAI)
-
-# if (MSVC)
-#   # Wrap each with LINK_ONLY
-#   set(_et_link_only "")
-#   foreach(l IN LISTS _nonforce_libs)
-#     if(TARGET "${l}")
-#       list(APPEND _et_link_only "$<LINK_ONLY:${l}>")
-#     endif()
-#   endforeach()
-# else()
-#   set(_et_link_only ${_nonforce_libs})
-# endif()
-
-# if (MSVC)
-#   # Remove GCC/Clang-only flags that slipped into MMAI
-#   foreach(prop IN ITEMS COMPILE_OPTIONS INTERFACE_COMPILE_OPTIONS)
-#     get_target_property(_opts MMAI ${prop})
-#     if(_opts)
-#       set(_clean "${_opts}")
-#       list(FILTER _clean EXCLUDE REGEX "^-Wno-.*") # e.g. -Wno-deprecated-declarations
-#       list(FILTER _clean EXCLUDE REGEX "^-fPIC$")  # harmless on MSVC but strip anyway
-#       if(NOT "${_clean}" STREQUAL "${_opts}")
-#         set_property(TARGET MMAI PROPERTY ${prop} "${_clean}")
-#       endif()
-#     endif()
-#   endforeach()
-# endif()
-
-#target_link_options(MMAI PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/VERBOSE:LIB>)
-#target_link_options(MMAI PRIVATE -ObjC)
-
-# Mark as SYSTEM to prevent -Werror failing builds due to warnings from these
-#message(STATUS "MMAI target_include_directories: ${MMAI_THIRD_PARTY_INCLUDES}")
-#target_include_directories(MMAI SYSTEM PRIVATE ${MMAI_THIRD_PARTY_INCLUDES})
 
 # Used in schema/base.h to determine if it is imported by MMAI or vcmi-gym
 set_target_properties(MMAI PROPERTIES COMPILE_DEFINITIONS "MMAI_DLL=1")
