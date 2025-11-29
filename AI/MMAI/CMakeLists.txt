@@ -73,14 +73,15 @@ else()
   endif()
 endif()
 
+target_link_libraries(MMAI PRIVATE vcmi)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(ONNXRUNTIME_ROOT "/opt/onnxruntime" CACHE PATH "Path to onnxruntime containing lib/onnxruntime.so and include/onnxruntime_cxx_api.h")
   target_include_directories(MMAI ${ONNXRUNTIME_ROOT}/include)
-  target_link_directories(MMAI ${ONNXRUNTIME_ROOT}/lib)
-  target_link_libraries(MMAI PRIVATE vcmi onnxruntime)
+  target_link_libraries(MMAI PRIVATE ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so)
 else()
   find_package(onnxruntime CONFIG REQUIRED)
-  target_link_libraries(MMAI PRIVATE vcmi onnxruntime::onnxruntime)
+  target_link_libraries(MMAI PRIVATE onnxruntime::onnxruntime)
 endif()
 
 # for fallback & spell casting
