@@ -25,7 +25,6 @@ namespace MMAI::BAI::V13 {
 
     static_assert(1<<STACK_QUEUE_SIZE < std::numeric_limits<int>::max(), "BitQueue must be convertible to int");
 
-
     /**
      * A wrapper around CStack
      */
@@ -47,12 +46,17 @@ namespace MMAI::BAI::V13 {
             int valueLostTotal = 0;
         };
 
+        // struct for reducing constructor args to avoid sonarcloud warning...
+        struct StatsContainer {
+            const GlobalStats* oldgstats;
+            const GlobalStats* gstats;
+            const Stats stackStats;
+        };
+
         Stack(
             const CStack* cstack,
             Queue &q,
-            const GlobalStats* ogstats,
-            const GlobalStats* gstats,
-            const Stats stats,
+            const StatsContainer &statsContainer,
             const ReachabilityInfo rinfo,
             bool blocked,
             bool blocking,
@@ -84,5 +88,7 @@ namespace MMAI::BAI::V13 {
         void setattr(StackAttribute a, int value);
         void addattr(StackAttribute a, int value);
         void finalize();
+
+        void processBonuses();
     };
 }

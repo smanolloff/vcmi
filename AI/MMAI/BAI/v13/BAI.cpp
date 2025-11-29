@@ -325,7 +325,7 @@ namespace MMAI::BAI::V13 {
         std::shared_ptr<BattleAction> res = nullptr;
 
         if (!state->action->hex) {
-            switch(GlobalAction(state->action->action)) {
+            switch(static_cast<GlobalAction>(state->action->action)) {
             break; case GlobalAction::RETREAT:
                 res = std::make_shared<BattleAction>(BattleAction::makeRetreat(battle->battleGetMySide()));
             break; case GlobalAction::WAIT:
@@ -403,7 +403,6 @@ namespace MMAI::BAI::V13 {
         }
 
         // Action is INVALID
-
         // XXX:
         // mask prevents certain actions, but during TESTING
         // those actions may be taken anyway.
@@ -413,6 +412,15 @@ namespace MMAI::BAI::V13 {
         // => *throw* errors here only if the mask SHOULD HAVE ALLOWED it
         //    and *set* regular, non-throw errors otherwise
         //
+        handleUnexpectedAction(acstack, hex, action);
+        ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, acstack, nullptr));
+
+        return res;
+    }
+
+    void BAI::handleUnexpectedAction(const CStack *acstack, std::unique_ptr<Hex> &hex, Action* action) {
+        auto &bhex = action->hex->bhex;
+        auto &stack = action->hex->stack; // may be null
         auto rinfo = battle->getReachability(acstack);
         auto ainfo = battle->getAccessibility();
 
@@ -514,10 +522,6 @@ namespace MMAI::BAI::V13 {
             default:
                 THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
             }
-
-        ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, acstack, nullptr));
-
-        return res;
     }
 
     std::string BAI::debugInfo(Action *action, const CStack* astack, BattleHex* nbh) {
@@ -593,9 +597,7 @@ namespace MMAI::BAI::V13 {
 
     void BAI::actionStarted(const BattleID &bid, const BattleAction &action) {
         Base::actionStarted(bid, action);
-        // XXX: disable transitions (for performance)
-        // If re-enabling, also re-enable "persistentAttackLogs.insert(...)" in State::onActiveStack
-        // state->onActionStarted(action);
+        state->onActionStarted(action);
     };
 
     void BAI::actionFinished(const BattleID &bid, const BattleAction &action) {

@@ -85,12 +85,18 @@ namespace MMAI::BAI::V13 {
     }
 
     std::tuple<int, int, int, int, int, int, int, int> ProcessAttackLogs(
-        std::vector<std::shared_ptr<AttackLog>> attackLogs,
+        const std::vector<std::shared_ptr<AttackLog>>& attackLogs,
         std::map<const CStack*, Stack::Stats> sstats
     ) {
         // dmg dealt / dmg received / value killed / value lost
-        int ldd = 0, ldr = 0, lvk = 0, lvl = 0;
-        int rdd = 0, rdr = 0, rvk = 0, rvl = 0;
+        int ldd = 0;
+        int ldr = 0;
+        int lvk = 0;
+        int lvl = 0;
+        int rdd = 0;
+        int rdr = 0;
+        int rvk = 0;
+        int rvl = 0;
 
         for (auto &[cstack, ss] : sstats) {
             ss.dmgDealtNow = 0;
@@ -135,11 +141,17 @@ namespace MMAI::BAI::V13 {
 
 
 
-    State::State(const int version__, const std::string colorname_, const CPlayerBattleCallback* battle_)
-    : version_(version__)
-    , colorname(colorname_)
-    , battle(battle_)
-    , side(battle_->battleGetMySide())
+    State::State(
+        int version_,
+        const std::string &colorname,
+        const CPlayerBattleCallback* battle,
+        bool enableTransitions
+    )
+    : version_(version_)
+    , colorname(colorname)
+    , battle(battle)
+    , enableTransitions(enableTransitions)
+    , side(battle->battleGetMySide())
     , nullstack(InitNullStack())
     {
         auto [lv, lh, rv, rh] = CalcGlobalStats(battle);
@@ -147,7 +159,7 @@ namespace MMAI::BAI::V13 {
         lpstats = std::make_unique<PlayerStats>(BattleSide::LEFT_SIDE, lv, lh);
         rpstats = std::make_unique<PlayerStats>(BattleSide::RIGHT_SIDE, rv, rh);
 
-        battlefield = Battlefield::Create(battle_, nullptr, gstats.get(), gstats.get(), sstats, false);
+        battlefield = Battlefield::Create(battle, nullptr, gstats.get(), gstats.get(), sstats, false);
         bfstate.reserve(Schema::V13::BATTLEFIELD_STATE_SIZE);
         actmask.reserve(Schema::V13::N_ACTIONS);
     }
@@ -170,8 +182,9 @@ namespace MMAI::BAI::V13 {
             transitions.clear();
             persistentAttackLogs.clear();
         } else {
-            // XXX: uncomment when enabling transitions (1/2)
-            // persistentAttackLogs.insert(persistentAttackLogs.end(), attackLogs.begin(), attackLogs.end());
+            if (enableTransitions)
+                persistentAttackLogs.insert(persistentAttackLogs.end(), attackLogs.begin(), attackLogs.end());
+
             battlefield = Battlefield::Create(battle, astack, &ogstats, gstats.get(), sstats, isMorale);
             bfstate.clear();
             actmask.clear();
@@ -210,8 +223,7 @@ namespace MMAI::BAI::V13 {
             lpstats.get(),
             rpstats.get(),
             battlefield.get(),
-            // XXX: replace with persistentAttackLogs when enabling transitions (2/2)
-            attackLogs, // store the logs since OUR last turn
+            enableTransitions ? persistentAttackLogs : attackLogs, // store the logs since OUR last turn
             transitions, // store the states since last turn
             result
         );
@@ -447,9 +459,10 @@ namespace MMAI::BAI::V13 {
      * !!!!!! IMPORTANT: `battlefield` must not be used here (old state) !!!!!!
      * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      */
-    // XXX: this is never called (transitions are disabled for performance)
-    //      See BAI::actionStarted
     void State::onActionStarted(const BattleAction &action) {
+        if (!enableTransitions)
+            return;
+
         _onActionStarted(action);
         actingStack = nullptr;
     }

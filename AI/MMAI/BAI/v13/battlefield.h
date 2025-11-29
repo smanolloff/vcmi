@@ -28,17 +28,17 @@ namespace MMAI::BAI::V13 {
     public:
         static std::shared_ptr<const Battlefield> Create(
             const CPlayerBattleCallback* battle,
-            const CStack* astack,
-            const GlobalStats* ogstats,
+            const CStack* acstack,
+            const GlobalStats* oldgstats,
             const GlobalStats* gstats,
-            const std::map<const CStack*, Stack::Stats> stacksStats,
+            std::map<const CStack*, Stack::Stats> &stacksStats,
             bool isMorale
         );
 
         Battlefield(
-            const std::shared_ptr<Hexes> hexes,
-            const Stacks stacks,
-            const AllLinks allLinks,
+            const std::shared_ptr<Hexes> &hexes,
+            const Stacks &stacks,
+            const AllLinks &allLinks,
             const Stack* astack
         );
 
@@ -50,23 +50,23 @@ namespace MMAI::BAI::V13 {
         static std::tuple<Stacks, Queue> InitStacks(
             const CPlayerBattleCallback* battle,
             const CStack* astack,
-            const GlobalStats* ogstats,
+            const GlobalStats* oldgstats,
             const GlobalStats* gstats,
-            const std::map<const CStack*, Stack::Stats> stacksStats,
+            std::map<const CStack*, Stack::Stats> &stacksStats,
             bool isMorale
         );
 
         static std::tuple<std::shared_ptr<Hexes>, Stack*> InitHexes(
             const CPlayerBattleCallback* battle,
             const CStack* acstack,
-            const Stacks stacks
+            const Stacks &stacks
         );
 
         static AllLinks InitAllLinks(
             const CPlayerBattleCallback* battle,
-            const Stacks stacks,
+            const Stacks &stacks,
             const Queue &queue,
-            const std::shared_ptr<Hexes>
+            std::shared_ptr<Hexes> &hexes
         );
 
         static void LinkTwoHexes(

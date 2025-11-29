@@ -49,7 +49,7 @@ constexpr int LT_COUNT = EI(MMAI::Schema::V13::LinkType::_count);
 namespace {
     template<class... Args>
     [[noreturn]] inline void throwf(const std::string& fmt, Args&&... args) {
-        boost::format f("MMAI: NNModel: " + fmt);
+        boost::format f("NNModel: " + fmt);
         (void)std::initializer_list<int>{ ( (f % std::forward<Args>(args)), 0 )... };
         throw std::runtime_error(f.str());
     }
@@ -429,7 +429,7 @@ namespace {
                 const auto& src = containers[l].nbrs[v];
                 dst.insert(dst.end(), src.begin(), src.end());
                 const size_t need = static_cast<size_t>(kmax[l]) - src.size();
-                if (need > 0) dst.insert(dst.end(), need, static_cast<int32_t>(-1));
+                if (need > 0) dst.insert(dst.end(), need, -1);
             }
 
             if (dst.size() != sum_kmax) {
@@ -534,7 +534,12 @@ NNModel::NNModel(std::string &path, float temperature, uint64_t seed)
         if (!ab) throw std::runtime_error("metadata key 'all_sizes' missing");
         const std::string jsonstr(ab.get());
         try {
-            auto jn = JsonNode(reinterpret_cast<const std::byte*>(jsonstr.data()), jsonstr.size(), "<ONNX metadata: all_sizes>");
+            const void* raw = static_cast<const void*>(jsonstr.data());
+            const std::byte* bytes = static_cast<const std::byte*>(raw);
+            auto jn = JsonNode(bytes, jsonstr.size(), "<ONNX metadata: all_sizes>");
+
+            if (!jn.isVector())
+                throwf("all_buckets: bad JsonType: want: %d, have: %d", EI(JsonNode::JsonType::DATA_VECTOR), EI(jn.getType()));
 
             for (auto &jv0 : jn.Vector()) {
                 auto vec1 = std::vector<std::vector<int32_t>> {};
@@ -553,6 +558,10 @@ NNModel::NNModel(std::string &path, float temperature, uint64_t seed)
         } catch (const std::exception& e) {
             throw std::runtime_error(std::string("failed to parse 'all_buckets' JSON: ") + e.what());
         }
+
+        if (all_buckets.size() != 5) throwf("all_buckets: bad size for d1: want: 5, have: %zu", all_buckets.size());
+        if (all_buckets[0].size() != 7) throwf("all_buckets: bad size for d2: want: 7, have: %zu", all_buckets[0].size());
+        if (all_buckets[0][0].size() != 2) throwf("all_buckets: bad size for d3: want: 2, have: %zu", all_buckets[0][0].size());
     }
 
     {

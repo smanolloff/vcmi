@@ -11,8 +11,7 @@
 #pragma once
 
 #include "StdInc.h"
-#include <cstdarg>
-#include <filesystem>
+#include <sstream>
 
 namespace MMAI {
     // Enum-to-int need C++23 to use std::to_underlying
@@ -25,17 +24,23 @@ namespace MMAI {
     #define BF_YMAX 11    // GameConstants::BFIELD_HEIGHT
     #define BF_SIZE 165   // BF_XMAX * BF_YMAX
 
-    inline void expect(bool exp, const char* format, ...) {
-        if (exp) return;
+    template <typename... Args>
+    inline void expect(bool exp, const char* format, Args&&... args) {
+        if (exp)
+            return;
 
-        constexpr int bufferSize = 2048; // Adjust this size according to your needs
+        constexpr std::size_t bufferSize = 2048;
         char buffer[bufferSize];
 
-        va_list args;
-        va_start(args, format);
-        vsnprintf(buffer, bufferSize, format, args);
-        va_end(args);
-
+        std::snprintf(buffer, bufferSize, format, std::forward<Args>(args)...);
         throw std::runtime_error(buffer);
+    }
+
+    inline void expect(bool exp, const char* message) {
+        if (exp) {
+            return;
+        }
+        // No formatting; just throw with the message
+        throw std::runtime_error(message);
     }
 }

@@ -63,7 +63,7 @@ namespace MMAI::BAI::V13 {
     // static
     HexAction Action::initHexAction(const Schema::Action &a, const Battlefield * bf) {
         if(a < EI(GlobalAction::_count)) return HexAction(-1); // a is not about a hex
-        return HexAction((a-EI(GlobalAction::_count)) % EI(HexAction::_count));
+        return static_cast<HexAction>((a-EI(GlobalAction::_count)) % EI(HexAction::_count));
     }
 
     Action::Action(const Schema::Action action_, const Battlefield * bf, const std::string color_)

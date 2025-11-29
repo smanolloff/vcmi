@@ -41,7 +41,8 @@ namespace MMAI::BAI::V13 {
         return ss.str();
     }
 
-    void Verify(const State* state) {
+    // This function used during model development and is never called otherwise
+    void Verify(const State* state) { // NOSONAR - debugging only
         auto battle = state->battle;
         auto hexes = Hexes();
 
@@ -825,7 +826,7 @@ namespace MMAI::BAI::V13 {
                 };
 
                 for (auto &tuple : symbols) {
-                    auto &[s, c, m] = tuple;
+                    const auto &[s, c, m] = tuple;
                     if ((smask & m) == m) {
                         sym = s;
                         col = c;

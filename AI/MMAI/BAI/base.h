@@ -53,23 +53,24 @@ namespace MMAI::BAI {
          */
 
         virtual void init(bool enableSpellsUsage);  // called shortly after object construction
-        virtual void actionFinished(const BattleID &bid, const BattleAction &action) override;
-        virtual void actionStarted(const BattleID &bid, const BattleAction &action) override;
-        virtual void battleAttack(const BattleID &bid, const BattleAttack *ba) override;
-        virtual void battleCatapultAttacked(const BattleID &bid, const CatapultAttack & ca) override;
-        virtual void battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) override;
-        virtual void battleGateStateChanged(const BattleID &bid, const EGateState state) override;
-        virtual void battleLogMessage(const BattleID &bid, const std::vector<MetaString> & lines) override;
-        virtual void battleNewRound(const BattleID &bid) override;
-        virtual void battleNewRoundFirst(const BattleID &bid) override;
-        virtual void battleObstaclesChanged(const BattleID &bid, const std::vector<ObstacleChanges> &obstacles) override;
-        virtual void battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) override;
-        virtual void battleStackMoved(const BattleID &bid, const CStack *stack, const BattleHexArray & dest, int distance, bool teleport) override;
-        virtual void battleStacksAttacked(const BattleID &bid, const std::vector<BattleStackAttacked> &bsa, bool ranged) override;
-        virtual void battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) override;
-        virtual void battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side, bool replayAllowed) override;
-        virtual void battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) override;
-        virtual void battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> & changes) override;
+
+        void actionFinished(const BattleID &bid, const BattleAction &action) override;
+        void actionStarted(const BattleID &bid, const BattleAction &action) override;
+        void battleAttack(const BattleID &bid, const BattleAttack *ba) override;
+        void battleCatapultAttacked(const BattleID &bid, const CatapultAttack & ca) override;
+        void battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) override;
+        void battleGateStateChanged(const BattleID &bid, const EGateState state) override;
+        void battleLogMessage(const BattleID &bid, const std::vector<MetaString> & lines) override;
+        void battleNewRound(const BattleID &bid) override;
+        void battleNewRoundFirst(const BattleID &bid) override;
+        void battleObstaclesChanged(const BattleID &bid, const std::vector<ObstacleChanges> &obstacles) override;
+        void battleSpellCast(const BattleID &bid, const BattleSpellCast *sc) override;
+        void battleStackMoved(const BattleID &bid, const CStack *stack, const BattleHexArray & dest, int distance, bool teleport) override;
+        void battleStacksAttacked(const BattleID &bid, const std::vector<BattleStackAttacked> &bsa, bool ranged) override;
+        void battleStacksEffectsSet(const BattleID &bid, const SetStackEffect & sse) override;
+        void battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side, bool replayAllowed) override;
+        void battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) override;
+        void battleUnitsChanged(const BattleID &bid, const std::vector<UnitChanges> & changes) override;
 
         /*
          * These methods MUST NOT be called.
@@ -122,13 +123,13 @@ namespace MMAI::BAI {
             if (logAi->getEffectiveLevel() <= level) _log(level, "%s", text);
         }
 
-        void error(const std::function<std::string()> &cb) const { log(ELogLevel::ERROR, cb); }
-        void warn(const std::function<std::string()> &cb) const { log(ELogLevel::WARN, cb); }
-        void info(const std::function<std::string()> &cb) const { log(ELogLevel::INFO, cb); }
-        void debug(const std::function<std::string()> &cb) const { log(ELogLevel::DEBUG, cb); }
-        void trace(const std::function<std::string()> &cb) const { log(ELogLevel::TRACE, cb); }
-        void log(ELogLevel::ELogLevel level, const std::function<std::string()> &cb) const {
-            if (logAi->getEffectiveLevel() <= level) _log(level, "%s", cb());
+        void error(const std::function<std::string()> &f) const { log(ELogLevel::ERROR, f); }
+        void warn(const std::function<std::string()> &f) const { log(ELogLevel::WARN, f); }
+        void info(const std::function<std::string()> &f) const { log(ELogLevel::INFO, f); }
+        void debug(const std::function<std::string()> &f) const { log(ELogLevel::DEBUG, f); }
+        void trace(const std::function<std::string()> &f) const { log(ELogLevel::TRACE, f); }
+        void log(ELogLevel::ELogLevel level, const std::function<std::string()> &f) const {
+            if (logAi->getEffectiveLevel() <= level) _log(level, "%s", f());
         }
     };
 }

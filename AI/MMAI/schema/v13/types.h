@@ -576,9 +576,9 @@ namespace MMAI::Schema::V13 {
 
     class ILinks {
     public:
-        virtual const std::vector<int64_t> getSrcIndex() const = 0;
-        virtual const std::vector<int64_t> getDstIndex() const = 0;
-        virtual const std::vector<float> getAttributes() const = 0;
+        virtual std::vector<int64_t> getSrcIndex() const = 0;
+        virtual std::vector<int64_t> getDstIndex() const = 0;
+        virtual std::vector<float> getAttributes() const = 0;
         virtual ~ILinks() = default;
     };
 

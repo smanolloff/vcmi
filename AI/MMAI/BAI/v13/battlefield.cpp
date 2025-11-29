@@ -18,6 +18,7 @@
 #include "BAI/v13/battlefield.h"
 #include "BAI/v13/hex.h"
 #include "common.h"
+#include <algorithm>
 #include <memory>
 
 namespace MMAI::BAI::V13 {
@@ -49,12 +50,15 @@ namespace MMAI::BAI::V13 {
         return res;
     }
 
-    static auto ADJMAP = InitAdjMap();
+    inline auto& getAdjMap() {
+        static auto adjmap = InitAdjMap();
+        return adjmap;
+    }
 
     Battlefield::Battlefield(
-        const std::shared_ptr<Hexes> hexes_,
-        const Stacks stacks_,
-        const AllLinks allLinks_,
+        const std::shared_ptr<Hexes> &hexes_,
+        const Stacks &stacks_,
+        const AllLinks &allLinks_,
         const Stack* astack_
     ) : hexes(hexes_)
       , stacks(stacks_)
@@ -65,12 +69,12 @@ namespace MMAI::BAI::V13 {
     std::shared_ptr<const Battlefield> Battlefield::Create(
         const CPlayerBattleCallback* battle,
         const CStack* acstack,
-        const GlobalStats* ogstats,
+        const GlobalStats* oldgstats,
         const GlobalStats* gstats,
-        std::map<const CStack*, Stack::Stats> stacksStats,
+        std::map<const CStack*, Stack::Stats> &stacksStats,
         bool isMorale
     ) {
-        auto [stacks, queue] = InitStacks(battle, acstack, ogstats, gstats, stacksStats, isMorale);
+        auto [stacks, queue] = InitStacks(battle, acstack, oldgstats, gstats, stacksStats, isMorale);
         auto [hexes, astack] = InitHexes(battle, acstack, stacks);
         auto links = InitAllLinks(battle, stacks, queue, hexes);
 
@@ -121,7 +125,7 @@ namespace MMAI::BAI::V13 {
     std::tuple<std::shared_ptr<Hexes>, Stack*> Battlefield::InitHexes(
         const CPlayerBattleCallback* battle,
         const CStack* acstack,
-        const Stacks stacks
+        const Stacks &stacks
     ) {
         auto res = std::make_shared<Hexes>();
         auto ainfo = battle->getAccessibility();
@@ -134,7 +138,7 @@ namespace MMAI::BAI::V13 {
         for (auto &stack : stacks) {
             for (auto &bh : stack->cstack->getHexes())
                 if (bh.isAvailable())
-                    hexstacks.insert({bh, stack});
+                    hexstacks.try_emplace(bh, stack);
 
             // XXX: at battle_end, stack->cstack != acstack even if qpos=0
             if ((stack->attr(SA::QUEUE) & 1) && acstack)
@@ -144,7 +148,7 @@ namespace MMAI::BAI::V13 {
         for (auto &obstacle : battle->battleGetAllObstacles())
             for (auto &bh : obstacle->getAffectedTiles())
                 if (bh.isAvailable())
-                    hexobstacles.at(Hex::CalcId(bh)).push_back(obstacle);;
+                    hexobstacles.at(Hex::CalcId(bh)).push_back(obstacle);
 
         if (astack) {
             // astack can be nullptr if battle just begun (no turns yet)
@@ -176,9 +180,9 @@ namespace MMAI::BAI::V13 {
     std::tuple<Stacks, Queue> Battlefield::InitStacks(
         const CPlayerBattleCallback* battle,
         const CStack* astack,
-        const GlobalStats* ogstats,
+        const GlobalStats* oldgstats,
         const GlobalStats* gstats,
-        std::map<const CStack*, Stack::Stats> stacksStats,
+        std::map<const CStack*, Stack::Stats> &stacksStats,
         bool isMorale
     ) {
         auto stacks = Stacks{};
@@ -229,13 +233,13 @@ namespace MMAI::BAI::V13 {
         auto estimateDamage = [&battle, &estdmg, &blocked] (const CStack* astack, const CStack* cstack) {
             if (!astack) {
                 // no active stack (e.g. called during battleStart or battleEnd)
-                estdmg.emplace(cstack, DamageEstimation());
+                estdmg.try_emplace(cstack, DamageEstimation());
             } else if(astack->unitSide() == cstack->unitSide()) {
                 // no damage to friendly units
-                estdmg.emplace(cstack, DamageEstimation());
+                estdmg.try_emplace(cstack, DamageEstimation());
             } else {
                 const auto attinfo = BattleAttackInfo(astack, cstack, 0, astack->canShoot() && !blocked[astack]);
-                estdmg.emplace(cstack, battle->calculateDmgRange(attinfo));
+                estdmg.try_emplace(cstack, battle->calculateDmgRange(attinfo));
             }
         };
 
@@ -252,9 +256,8 @@ namespace MMAI::BAI::V13 {
             auto stack = std::make_shared<Stack>(
                 cstack,
                 queue,
-                ogstats,
-                gstats,
-                stacksStats[cstack],  // creates new record if missing
+                // a blank stackStats entry is created if missing
+                Stack::StatsContainer{oldgstats, gstats, stacksStats[cstack]},
                 battle->getReachability(cstack),
                 blocked[cstack],
                 blocking[cstack],
@@ -270,9 +273,9 @@ namespace MMAI::BAI::V13 {
     // static
     AllLinks Battlefield::InitAllLinks(
         const CPlayerBattleCallback* battle,
-        const Stacks stacks,
+        const Stacks &stacks,
         const Queue &queue,
-        const std::shared_ptr<Hexes> hexes
+        std::shared_ptr<Hexes> &hexes
     ) {
         auto allLinks = AllLinks();
 
@@ -300,7 +303,7 @@ namespace MMAI::BAI::V13 {
         const Hex* src,
         const Hex* dst
     ) {
-        bool neighbour = ADJMAP.count({src->bhex.toInt(), dst->bhex.toInt()}) > 0;
+        bool neighbour = getAdjMap().contains({src->bhex.toInt(), dst->bhex.toInt()});
 
         bool reachable = false;
         float rangemod = 0;

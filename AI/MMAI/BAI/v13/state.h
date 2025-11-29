@@ -40,7 +40,12 @@ namespace MMAI::BAI::V13 {
         int version() const override { return version_; }
 
         State() = delete;
-        State(const int version_, const std::string colorname, const CPlayerBattleCallback* battle_);
+        State(
+            int version_,
+            const std::string &colorname,
+            const CPlayerBattleCallback* battle,
+            bool enableTransitions = false  // disabled for performance
+        );
 
         void onActiveStack(const CStack* astack, CombatResult result = CombatResult::NONE, bool recording = false, bool fastpath = false);
         void onBattleStacksAttacked(const std::vector<BattleStackAttacked> &bsa);
@@ -58,6 +63,7 @@ namespace MMAI::BAI::V13 {
         void verify();
 
         const int version_;
+        bool enableTransitions;
         Schema::BattlefieldState bfstate = {};
         Schema::ActionMask actmask = {};
         std::unique_ptr<SupplementaryData> supdata = nullptr;

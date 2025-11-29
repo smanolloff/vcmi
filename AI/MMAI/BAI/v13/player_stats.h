@@ -14,8 +14,6 @@
 #include "BAI/v13/global_stats.h"
 
 namespace MMAI::BAI::V13 {
-    using namespace Schema::V13;
-
     class PlayerStats : public IPlayerStats {
     public:
         PlayerStats(BattleSide side, int value, int hp);

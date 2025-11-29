@@ -33,96 +33,99 @@ namespace MMAI::BAI {
     using ConfigStorage = std::map<std::string, std::string>;
     using ModelStorage = std::map<std::string, std::unique_ptr<NNModel>>;
 
-    #if defined(USING_EXECUTORCH)
-    static auto modelExt = ".pte";
-    #elif defined(USING_LIBTORCH)
-    static auto modelExt = ".ptl";
-    #elif defined(USING_ONNX)
-    static auto modelExt = ".onnx";
-    #endif
+    struct Config {
+        ConfigStorage modelconfig;
+        ModelStorage  models;
+        float         temperature = 1.0f;
+        uint64_t      seed = 0;
+        std::unique_ptr<ScriptedModel> fallbackModel;
+        std::mutex    mutex;
+    };
 
-    static auto modelconfig = ConfigStorage();
-    static auto models = ModelStorage();
-    static float temperature = 1.0;
-    static uint64_t seed = 0;
-    static std::unique_ptr<ScriptedModel> fallbackModel;
-    static std::mutex modelmutex;
+    inline Config& getConfig() {
+        static Config instance;
+        return instance;
+    }
 
     static void InitModelConfigFromSettings() {
-        auto lock = std::lock_guard(modelmutex);
-        if (!modelconfig.empty()) return;
+        auto& cfg = getConfig();
+
+        auto lock = std::lock_guard(cfg.mutex);
+        if (!cfg.modelconfig.empty()) return;
 
         auto warncfg = [](std::string problem) {
             logAi->warn("MMAI config error: %s", std::move(problem));
         };
 
-        auto rawcfg = JsonUtils::assembleFromFiles("MMAI/CONFIG/mmai-settings.json");
+        auto jsonConfig = JsonUtils::assembleFromFiles("MMAI/CONFIG/mmai-settings.json");
 
-        if (!rawcfg.isStruct()) {
+        if (!jsonConfig.isStruct()) {
             logAi->error("Could not load MMAI config. Is MMAI mod enabled?");
             return;
         }
 
-        auto cfg = rawcfg.Struct();
+        auto loaded = jsonConfig.Struct();
 
-        if (cfg["temperature"].isNumber()) {
-            if (cfg["temperature"].Float() < 0) {
+        if (loaded["temperature"].isNumber()) {
+            if (loaded["temperature"].Float() < 0) {
                 warncfg("temperature: value is negative");
             } else {
-                temperature = static_cast<float>(cfg["temperature"].Float());
+                cfg.temperature = static_cast<float>(loaded["temperature"].Float());
             }
         } else {
             warncfg("temperature: not a number");
         }
 
-        if (cfg["seed"].getType() == JsonNode::JsonType::DATA_INTEGER) {
-            if (cfg["seed"].Integer() < 0) {
+        if (loaded["seed"].getType() == JsonNode::JsonType::DATA_INTEGER) {
+            if (loaded["seed"].Integer() < 0) {
                 warncfg("seed: value is negative");
             } else {
-                seed = static_cast<uint64_t>(cfg["seed"].Integer());
+                cfg.seed = static_cast<uint64_t>(loaded["seed"].Integer());
             }
         } else {
             warncfg("seed: not an integer");
         }
 
-        if (cfg["models"].getType() != JsonNode::JsonType::DATA_STRUCT) {
+        if (loaded["models"].getType() != JsonNode::JsonType::DATA_STRUCT) {
             warncfg("seed: not a struct");
         } else {
             for (const auto &key : {"attacker", "defender"}) {
-                if(cfg["models"][key].isString()) {
-                    std::string value = cfg["models"][key].String();
+                if(loaded["models"][key].isString()) {
+                    std::string value = loaded["models"][key].String();
                     value = "MMAI/models/" + value;
-                    if (!boost::algorithm::ends_with(value, modelExt)) {
-                        value += modelExt;
+                    if (!boost::algorithm::ends_with(value, ".onnx")) {
+                        value += ".onnx";
                     }
 
-                    modelconfig.insert({key, value});
+                    cfg.modelconfig.insert({key, value});
                 } else {
                     warncfg(std::string(key) + ": not a string");
                 }
             }
         }
 
-        if (cfg["fallback"].getType() != JsonNode::JsonType::DATA_STRING) {
+        if (loaded["fallback"].getType() != JsonNode::JsonType::DATA_STRING) {
             warncfg("fallback: not a string");
         } else {
-            auto fallback = cfg["fallback"].String();
+            auto fallback = loaded["fallback"].String();
             if (fallback != "StupidAI" && fallback != "BattleAI") {
                 warncfg("fallback: expected StupidAI or BattleAI, got: " + fallback);
             } else {
-                modelconfig.insert({"fallback", fallback});
+                cfg.modelconfig.insert({"fallback", fallback});
             }
         }
     }
 
     static Schema::IModel * GetModel(std::string key) {
-        try {
-            auto lock = std::lock_guard(modelmutex);
-            auto it = models.find(key);
+        auto& cfg = getConfig();
 
-            if (it == models.end()) {
-                auto it2 = modelconfig.find(key);
-                if (it2 == modelconfig.end())
+        try {
+            auto lock = std::lock_guard(cfg.mutex);
+            auto it = cfg.models.find(key);
+
+            if (it == cfg.models.end()) {
+                auto it2 = cfg.modelconfig.find(key);
+                if (it2 == cfg.modelconfig.end())
                     THROW_FORMAT("No such key in model config: %s", key);
 
                 logAi->debug("Found value for key %s: %s", key, it2->second);
@@ -139,7 +142,7 @@ namespace MMAI::BAI {
                 auto fullpathstr = fullpath.value().string();
 
                 logAi->info("Loading MMAI %s model from %s", key, fullpathstr);
-                it = models.emplace(key, std::make_unique<NNModel>(fullpathstr, temperature, seed)).first;
+                it = cfg.models.emplace(key, std::make_unique<NNModel>(fullpathstr, cfg.temperature, cfg.seed)).first;
             } else {
                 logAi->debug("Using previously loaded %s", key);
             }
@@ -154,22 +157,22 @@ namespace MMAI::BAI {
 
             // XXX: unfortunately, there is no way to alert the user about
             // failures from within a combat ai
-            auto it2 = modelconfig.find("fallback");
+            auto it2 = cfg.modelconfig.find("fallback");
             std::string fb;
 
-            if (it2 == modelconfig.end() || it2->second.empty()) {
+            if (it2 == cfg.modelconfig.end() || it2->second.empty()) {
                 logAi->warn("Fallback model not configured, defaulting to BattleAI");
                 fb = "BattleAI";
             } else {
                 fb = it2->second;
             }
 
-            auto lock = std::lock_guard(modelmutex);
-            if (!fallbackModel)
-                fallbackModel = std::make_unique<ScriptedModel>(fb);
+            auto lock = std::lock_guard(cfg.mutex);
+            if (!cfg.fallbackModel)
+                cfg.fallbackModel = std::make_unique<ScriptedModel>(fb);
 
-            logAi->info("Will use fallback model: %s", fallbackModel->getName());
-            return fallbackModel.get();
+            logAi->info("Will use fallback model: %s", cfg.fallbackModel->getName());
+            return cfg.fallbackModel.get();
         }
     }
 
