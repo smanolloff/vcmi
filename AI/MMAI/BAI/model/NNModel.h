@@ -19,12 +19,6 @@
 namespace MMAI::BAI
 {
 
-inline Ort::Env & ort_env()
-{
-	static Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "app"};
-	return env;
-}
-
 class NNModel : public MMAI::Schema::IModel
 {
 public:
@@ -64,13 +58,12 @@ private:
 	template<typename T>
 	Ort::Value toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape);
 
-
 	int readVersion(const Ort::ModelMetadata & md) const;
 	Schema::Side readSide(const Ort::ModelMetadata & md) const;
 	Vec3D<int32_t> readBucketSizes(const Ort::ModelMetadata & md) const;
 	Vec3D<int32_t> readActionTable(const Ort::ModelMetadata & md) const;
-	std::vector<const char*> readInputNames();
-	std::vector<const char*> readOutputNames();
+	std::vector<const char *> readInputNames();
+	std::vector<const char *> readOutputNames();
 };
 
 }

@@ -370,7 +370,7 @@ void Encoder::EncodeExpnorm(const int v, const int vmax, double slope, BS & vec)
 // XXX: slope cannot be 0
 float Encoder::CalcExpnorm(const int v, const int vmax, const double slope)
 {
-	double ratio = static_cast<double>(v) / vmax;
+	auto ratio = static_cast<double>(v) / vmax;
 	return std::log1p(ratio * (std::exp(slope) - 1.0)) / (slope + 1e-6);
 }
 

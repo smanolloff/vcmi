@@ -48,9 +48,9 @@ Base::Base(Schema::IModel * model, int version, const std::shared_ptr<Environmen
 }
 
 /*
-     * These methods MUST be overridden by derived BAI (e.g. BAI::V1)
-     * Their base implementation is is for logging purposes only.
-     */
+ * These methods MUST be overridden by derived BAI (e.g. BAI::V1)
+ * Their base implementation is is for logging purposes only.
+ */
 
 void Base::activeStack(const BattleID & bid, const CStack * astack)
 {
@@ -64,9 +64,9 @@ void Base::yourTacticPhase(const BattleID & bid, int distance)
 };
 
 /*
-     * These methods MAY be overriden by derived BAI (e.g. BAI::V1)
-     * Their implementation here is a no-op.
-     */
+ * These methods MAY be overriden by derived BAI (e.g. BAI::V1)
+ * Their implementation here is a no-op.
+ */
 
 void Base::init(bool enableSpellsUsage_)
 {

@@ -72,13 +72,13 @@ public:
 	}
 
 	/*
-         * attacker dealing dmg might be our friendly fire
-         * If we look at Attacker POV, we would count our friendly fire as "dmg dealt"
-         * So we look at Defender POV, so our friendly fire is counted as "dmg received"
-         * This means that if the enemy does friendly fire dmg,
-         *  we would count it as our dmg dealt - that is OK (we have "tricked" the enemy!)
-         * => store only defender slot
-         */
+	 * attacker dealing dmg might be our friendly fire
+	 * If we look at Attacker POV, we would count our friendly fire as "dmg dealt"
+	 * So we look at Defender POV, so our friendly fire is counted as "dmg received"
+	 * This means that if the enemy does friendly fire dmg,
+	 *  we would count it as our dmg dealt - that is OK (we have "tricked" the enemy!)
+	 * => store only defender slot
+	 */
 
 	const std::shared_ptr<Stack> attacker; // XXX: can be nullptr if dmg is not from creature
 	const std::shared_ptr<Stack> defender;

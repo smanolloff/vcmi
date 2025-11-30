@@ -15,9 +15,9 @@
 namespace MMAI::Schema::V13
 {
 /*
-     * Compile time int(sqrt(x))
-     * https://stackoverflow.com/a/27709195
-     */
+ * Compile time int(sqrt(x))
+ * https://stackoverflow.com/a/27709195
+ */
 template<typename T>
 constexpr T Sqrt(T x, T lo, T hi)
 {
@@ -33,18 +33,18 @@ constexpr T CTSqrt(T x)
 }
 
 /*
-     * Compile time int(log(x, 2))
-     * https://stackoverflow.com/a/23784921
-     */
+ * Compile time int(log(x, 2))
+ * https://stackoverflow.com/a/23784921
+ */
 constexpr unsigned Log2(unsigned n)
 {
 	return n <= 1 ? 0 : 1 + Log2((n + 1) / 2);
 }
 
 /*
-     * Compile-time checks for misconfigured `HEX_ENCODING`/`STACK_ENCODING`.
-     * The index of the uninitialized element is returned.
-     */
+ * Compile-time checks for misconfigured `HEX_ENCODING`/`STACK_ENCODING`.
+ * The index of the uninitialized element is returned.
+ */
 template<typename T>
 constexpr int UninitializedEncodingAttributes(T elems)
 {
@@ -64,10 +64,10 @@ constexpr int UninitializedEncodingAttributes(T elems)
 }
 
 /*
-     * Compile-time checks for elements in `HEX_ENCODING` and `STACK_ENCODING`
-     * which are out-of-order compared to the `Attribute` enum values.
-     * The index at which the order is violated is returned.
-     */
+ * Compile-time checks for elements in `HEX_ENCODING` and `STACK_ENCODING`
+ * which are out-of-order compared to the `Attribute` enum values.
+ * The index at which the order is violated is returned.
+ */
 template<typename T>
 constexpr int DisarrayedEncodingAttributeIndex(T elems)
 {
@@ -87,15 +87,15 @@ constexpr int DisarrayedEncodingAttributeIndex(T elems)
 }
 
 /*
-     * Compile-time calculator for the number of unused values
-     * in a (potentially sub-optimal) BINARY encoding definition.
-     * Thue number of unuxed values is returned.
-     *
-     * Example:
-     * `vmax=130` means that 8 bits will be needed for the necoding (`n=8`).
-     * The maximum number of values which can be encoded with 8 bits is 255
-     * so there are 255-131=125 unused values => `125` is returned.
-     */
+ * Compile-time calculator for the number of unused values
+ * in a (potentially sub-optimal) BINARY encoding definition.
+ * Thue number of unuxed values is returned.
+ *
+ * Example:
+ * `vmax=130` means that 8 bits will be needed for the necoding (`n=8`).
+ * The maximum number of values which can be encoded with 8 bits is 255
+ * so there are 255-131=125 unused values => `125` is returned.
+ */
 constexpr int BinaryAttributeUnusedValues(Encoding e, int n, int vmax)
 {
 	switch(e)
@@ -128,9 +128,9 @@ constexpr int MiscalculatedBinaryAttributeUnusedValues(T elems)
 }
 
 /*
-     * Compile-time locator of misconfigured EXPNORM encodings:
-     * * checks if p <= 0 (must be positive)
-     */
+ * Compile-time locator of misconfigured EXPNORM encodings:
+ * * checks if p <= 0 (must be positive)
+ */
 template<typename T>
 constexpr int MisconfiguredExpnormSlopeIndex(T elems)
 {
@@ -158,10 +158,10 @@ constexpr int MisconfiguredExpnormSlopeIndex(T elems)
 }
 
 /*
-     * Compile-time locator of sub-optimal BINARY encodings.
-     * (see BinaryAttributeUnusedValues())
-     * The index of the sub-optimal BINARY encoding is returned.
-     */
+ * Compile-time locator of sub-optimal BINARY encodings.
+ * (see BinaryAttributeUnusedValues())
+ * The index of the sub-optimal BINARY encoding is returned.
+ */
 template<typename T>
 constexpr int MiscalculatedBinaryAttributeIndex(T elems)
 {
@@ -179,8 +179,8 @@ constexpr int MiscalculatedBinaryAttributeIndex(T elems)
 }
 
 /*
-     * Compile-time calculation for the encoded size of hexes and stacks
-     */
+ * Compile-time calculation for the encoded size of hexes and stacks
+ */
 template<typename T>
 constexpr int EncodedSize(T elems)
 {

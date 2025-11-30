@@ -15,10 +15,10 @@
 
 namespace MMAI::BAI
 {
-const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI"};
 
-ScriptedModel::ScriptedModel(std::string keyword) : keyword(keyword)
+ScriptedModel::ScriptedModel(std::string & keyword) : keyword(keyword)
 {
+	static const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI"};
 	auto it = std::find(FALLBACKS.begin(), FALLBACKS.end(), keyword);
 	if(it == FALLBACKS.end())
 	{
@@ -67,7 +67,7 @@ double ScriptedModel::getValue(const MMAI::Schema::IState * s)
 	return -666;
 };
 
-void ScriptedModel::warn(std::string m, int retval)
+void ScriptedModel::warn(const std::string & m, int retval) const
 {
 	logAi->error("WARNING: method %s called on a ScriptedModel object; returning %d\n", m.c_str(), retval);
 }

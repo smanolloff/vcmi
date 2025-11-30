@@ -36,28 +36,41 @@ using ModelStorage = std::map<std::string, std::unique_ptr<NNModel>>;
 
 namespace
 {
-	struct Config
+	struct ModelRepository
 	{
-		ConfigStorage modelconfig;
 		ModelStorage models;
 		float temperature = 1.0f;
 		uint64_t seed = 0;
 		std::unique_ptr<ScriptedModel> fallbackModel;
+		std::string fallbackName;
 		std::mutex mutex;
 	};
-
-	static Config cfg = Config();
 }
 
-static void InitModelConfigFromSettings()
+static std::unique_ptr<NNModel> InitNNModel(std::string key, std::string path, float temperature, uint64_t seed)
 {
-	auto lock = std::lock_guard(cfg.mutex);
-	if(!cfg.modelconfig.empty())
-		return;
+	auto rpath = ResourcePath(path);
+	auto loaders = CResourceHandler::get()->getResourcesWithName(rpath);
+
+	if(loaders.size() != 1)
+		THROW_FORMAT("Expected 1 %s loader, found %d", rpath.getName() % EI(loaders.size()));
+
+	auto fullpath = loaders.at(0)->getResourceName(rpath);
+	ASSERT(fullpath.has_value(), "could not obtain path for resource " + rpath.getName());
+	auto fullpathstr = fullpath.value().string();
+
+	logAi->info("Loading MMAI %s model from %s", key, fullpathstr);
+	return std::make_unique<NNModel>(fullpathstr, temperature, seed);
+}
+
+static const std::unique_ptr<ModelRepository> InitModelRepository()
+{
+	auto repo = std::make_unique<ModelRepository>();
+	auto lock = std::lock_guard(repo->mutex);
 
 	auto warncfg = [](std::string problem)
 	{
-		logAi->warn("MMAI config error: %s", std::move(problem));
+		logAi->warn("MMAI: config error: %s", std::move(problem));
 	};
 
 	auto jsonConfig = JsonUtils::assembleFromFiles("MMAI/CONFIG/mmai-settings.json");
@@ -65,7 +78,7 @@ static void InitModelConfigFromSettings()
 	if(!jsonConfig.isStruct())
 	{
 		logAi->error("Could not load MMAI config. Is MMAI mod enabled?");
-		return;
+		return repo;
 	}
 
 	auto loaded = jsonConfig.Struct();
@@ -78,7 +91,7 @@ static void InitModelConfigFromSettings()
 		}
 		else
 		{
-			cfg.temperature = static_cast<float>(loaded["temperature"].Float());
+			repo->temperature = static_cast<float>(loaded["temperature"].Float());
 		}
 	}
 	else
@@ -94,7 +107,7 @@ static void InitModelConfigFromSettings()
 		}
 		else
 		{
-			cfg.seed = static_cast<uint64_t>(loaded["seed"].Integer());
+			repo->seed = static_cast<uint64_t>(loaded["seed"].Integer());
 		}
 	}
 	else
@@ -119,7 +132,10 @@ static void InitModelConfigFromSettings()
 					value += ".onnx";
 				}
 
-				cfg.modelconfig.insert({key, value});
+				logAi->debug("Loading NN %s model from: %s", key, value);
+
+				// repo->models.insert({key, InitNNModel(key, value, repo->temperature, repo->seed)});
+				repo->models.try_emplace(key, InitNNModel(key, value, repo->temperature, repo->seed));
 			}
 			else
 			{
@@ -128,91 +144,44 @@ static void InitModelConfigFromSettings()
 		}
 	}
 
+	std::string fallback = "BattleAI";
+
 	if(loaded["fallback"].getType() != JsonNode::JsonType::DATA_STRING)
 	{
 		warncfg("fallback: not a string");
 	}
 	else
 	{
-		auto fallback = loaded["fallback"].String();
-		if(fallback != "StupidAI" && fallback != "BattleAI")
+		auto fb = loaded["fallback"].String();
+		if(fb != "StupidAI" && fb != "BattleAI")
 		{
-			warncfg("fallback: expected StupidAI or BattleAI, got: " + fallback);
+			warncfg("fallback: expected StupidAI or BattleAI, got: " + fb);
 		}
 		else
 		{
-			cfg.modelconfig.insert({"fallback", fallback});
+			fallback = fb;
 		}
 	}
+
+	logAi->debug("MMAI: preparing fallback model: %s", fallback);
+	repo->fallbackModel = std::make_unique<ScriptedModel>(fallback);
+	repo->fallbackName = fallback;
+
+	return repo;
 }
 
 static Schema::IModel * GetModel(std::string key)
 {
-	try
-	{
-		auto lock = std::lock_guard(cfg.mutex);
-		auto it = cfg.models.find(key);
+	static const auto MODEL_REPO = InitModelRepository();
+	auto it = MODEL_REPO->models.find(key);
 
-		if(it == cfg.models.end())
-		{
-			auto it2 = cfg.modelconfig.find(key);
-			if(it2 == cfg.modelconfig.end())
-				THROW_FORMAT("No such key in model config: %s", key);
-
-			logAi->debug("Found value for key %s: %s", key, it2->second);
-
-			auto rpath = ResourcePath(it2->second);
-			auto loaders = CResourceHandler::get()->getResourcesWithName(rpath);
-
-			if(loaders.size() != 1)
-			{
-				THROW_FORMAT("Expected 1 %s loader, found %d", rpath.getName() % EI(loaders.size()));
-			}
-
-			auto fullpath = loaders.at(0)->getResourceName(rpath);
-			ASSERT(fullpath.has_value(), "could not obtain path for resource " + rpath.getName());
-			auto fullpathstr = fullpath.value().string();
-
-			logAi->info("Loading MMAI %s model from %s", key, fullpathstr);
-			it = cfg.models.try_emplace(key, std::make_unique<NNModel>(fullpathstr, cfg.temperature, cfg.seed)).first;
-		}
-		else
-		{
-			logAi->debug("Using previously loaded %s", key);
-		}
-
-		return it->second.get();
+	if(it == MODEL_REPO->models.end()) {
+		logAi->error("MMAI: no %s model loaded, trying fallback: %s", key, MODEL_REPO->fallbackName);
+		ASSERT(MODEL_REPO->fallbackModel, "fallback failed: model is null");
+		return MODEL_REPO->fallbackModel.get();
 	}
-	catch(std::exception & e)
-	{
-		logAi->error("Failed to load MMAI %s model: %s", key, e.what());
 
-		const char * envvar = std::getenv("MMAI_STRICT_LOAD");
-		if (envvar != nullptr && strcmp(envvar, "1") == 0)
-			throw;
-
-		// XXX: unfortunately, there is no way to alert the user about
-		// failures from within a combat ai
-		auto it2 = cfg.modelconfig.find("fallback");
-		std::string fb;
-
-		if(it2 == cfg.modelconfig.end() || it2->second.empty())
-		{
-			logAi->warn("Fallback model not configured, defaulting to BattleAI");
-			fb = "BattleAI";
-		}
-		else
-		{
-			fb = it2->second;
-		}
-
-		auto lock = std::lock_guard(cfg.mutex);
-		if(!cfg.fallbackModel)
-			cfg.fallbackModel = std::make_unique<ScriptedModel>(fb);
-
-		logAi->info("Will use fallback model: %s", cfg.fallbackModel->getName());
-		return cfg.fallbackModel.get();
-	}
+	return it->second.get();
 }
 
 Router::Router()
@@ -251,8 +220,8 @@ void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_p
 }
 
 /*
-     * Delegated methods
-     */
+ * Delegated methods
+ */
 
 void Router::actionFinished(const BattleID & bid, const BattleAction & action)
 {
@@ -341,12 +310,11 @@ void Router::battleStart(
 )
 {
 	Schema::IModel * model;
-	InitModelConfigFromSettings();
 	auto modelkey = side == BattleSide::ATTACKER ? "attacker" : "defender";
 	model = GetModel(modelkey);
 
 	auto modelside = model->getSide();
-	auto realside = Schema::Side(EI(side));
+	auto realside = static_cast<Schema::Side>(EI(side));
 
 	if(modelside != realside && modelside != Schema::Side::BOTH)
 	{
@@ -401,8 +369,8 @@ void Router::yourTacticPhase(const BattleID & bid, int distance)
 }
 
 /*
-     * private
-     */
+ * private
+ */
 
 void Router::error(const std::string & text) const
 {

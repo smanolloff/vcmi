@@ -31,18 +31,18 @@ public:
 	Base(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb);
 
 	/*
-         * These methods MUST be overridden by derived BAI (e.g. BAI::V1)
-         * Their base implementation is is for logging purposes only.
-         */
+	 * These methods MUST be overridden by derived BAI (e.g. BAI::V1)
+	 * Their base implementation is is for logging purposes only.
+	 */
 
 	virtual Schema::Action getNonRenderAction() = 0;
 	void activeStack(const BattleID & bid, const CStack * stack) override;
 	void yourTacticPhase(const BattleID & bid, int distance) override;
 
 	/*
-         * These methods MAY be overriden by derived BAI (e.g. BAI::V1)
-         * Their base implementation is for logging purposes only.
-         */
+	 * These methods MAY be overriden by derived BAI (e.g. BAI::V1)
+	 * Their base implementation is for logging purposes only.
+	 */
 
 	virtual void init(bool enableSpellsUsage); // called shortly after object construction
 
@@ -74,10 +74,10 @@ public:
 	void battleUnitsChanged(const BattleID & bid, const std::vector<UnitChanges> & changes) override;
 
 	/*
-         * These methods MUST NOT be called.
-         * Their base implementation throws a runtime error
-         * (whistleblower for developer mistakes)
-         */
+	 * These methods MUST NOT be called.
+	 * Their base implementation throws a runtime error
+	 * (whistleblower for developer mistakes)
+	 */
 	void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2) override
 	{
 		throw std::runtime_error("BAI (base class) received initBattleInterface call");
@@ -103,9 +103,9 @@ public:
 	bool enableSpellsUsage = false;
 
 	/*
-         * Templates defined in the header
-         * Needed to prevent linker errors for calls from derived classes
-         */
+	 * Templates defined in the header
+	 * Needed to prevent linker errors for calls from derived classes
+	 */
 
 	template<typename... Args>
 	void _log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const

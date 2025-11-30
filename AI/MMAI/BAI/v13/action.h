@@ -16,9 +16,9 @@
 
 namespace MMAI::BAI::V13
 {
-/**
-     * Wrapper around Schema::Action
-     */
+/*
+ * Wrapper around Schema::Action
+ */
 struct Action
 {
 	static std::unique_ptr<Hex> initHex(const Schema::Action & a, const Battlefield * bf);

@@ -42,6 +42,12 @@
 namespace MMAI::BAI
 {
 
+static const Ort::Env & getOrtEnv()
+{
+    static Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "vcmi"};
+    return env;
+}
+
 namespace
 {
 	inline std::basic_string<ORTCHAR_T> ToOrtPath(const std::string & utf8_path)
@@ -211,9 +217,7 @@ Vec3D<int32_t> NNModel::readBucketSizes(const Ort::ModelMetadata & md) const
 	const std::string jsonstr(ab.get());
 	try
 	{
-		const void * raw = static_cast<const void *>(jsonstr.data());
-		const std::byte * bytes = static_cast<const std::byte *>(raw);
-		auto jn = JsonNode(bytes, jsonstr.size(), "<ONNX metadata: all_sizes>");
+		auto jn = JsonNode(jsonstr.data(), jsonstr.size(), "<ONNX metadata: all_sizes>");
 
 		if(!jn.isVector())
 			throwf("readBucketSizes: bad JsonType: want: %d, have: %d", EI(JsonNode::JsonType::DATA_VECTOR), EI(jn.getType()));
@@ -272,7 +276,7 @@ Vec3D<int32_t> NNModel::readActionTable(const Ort::ModelMetadata & md) const
 
 	try
 	{
-		auto jn = JsonNode(reinterpret_cast<const std::byte *>(jsonstr.data()), jsonstr.size(), "<ONNX metadata: all_sizes>");
+		auto jn = JsonNode(jsonstr.data(), jsonstr.size(), "<ONNX metadata: all_sizes>");
 
 		for(auto & jv0 : jn.Vector())
 		{
@@ -308,7 +312,7 @@ Vec3D<int32_t> NNModel::readActionTable(const Ort::ModelMetadata & md) const
 	return res;
 }
 
-std::vector<const char*> NNModel::readInputNames()
+std::vector<const char *> NNModel::readInputNames()
 {
 	/*
 	 * Model inputs (4):
@@ -325,7 +329,7 @@ std::vector<const char*> NNModel::readInputNames()
 	 *        dtype=int
 	 *        shape=[165, K*] where K* depends on the bucket
 	 */
-	std::vector<const char*> res;
+	std::vector<const char *> res;
 	auto count = model->GetInputCount();
 	if(count != 4)
 		throwf("wrong input count: want: %d, have: %lld", 4, count);
@@ -341,7 +345,7 @@ std::vector<const char*> NNModel::readInputNames()
 	return res;
 }
 
-std::vector<const char*> NNModel::readOutputNames()
+std::vector<const char *> NNModel::readOutputNames()
 {
 	/*
 	 * Model outputs (10):
@@ -379,7 +383,7 @@ std::vector<const char*> NNModel::readOutputNames()
 	 * The greedy output values are unused since their stochastic counterparts
 	 * are sampled here instead (see sampling::sample_triplet).
 	 */
-	std::vector<const char*> res;
+	std::vector<const char *> res;
 	auto count = model->GetOutputCount();
 	if(count != 10)
 		throwf("wrong output count: want: %d, have: %lld", count, count);
@@ -399,7 +403,7 @@ std::vector<const char*> NNModel::readOutputNames()
 NNModel::NNModel(std::string & path, float temperature, uint64_t seed)
 	: path(path), temperature(temperature), meminfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
 {
-	logAi->info("MMAI params: seed=%1%, temperature=%2%, model=%3%", seed, temperature, path);
+	logAi->info("MMAI: NNModel params: seed=%1%, temperature=%2%, model=%3%", seed, temperature, path);
 
 	if(seed == 0)
 	{
@@ -412,7 +416,8 @@ NNModel::NNModel(std::string & path, float temperature, uint64_t seed)
 	opts.SetIntraOpNumThreads(4);
 	opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
 
-	model = std::make_unique<Ort::Session>(ort_env(), ToOrtPath(path).c_str(), opts);
+	static const auto env = Ort::Env{ORT_LOGGING_LEVEL_WARNING, "vcmi"};
+	model = std::make_unique<Ort::Session>(env, ToOrtPath(path).c_str(), opts);
 	auto md = model->GetModelMetadata();
 
 	version = readVersion(md);
@@ -521,9 +526,6 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 
 		if(attrs.size() != nlinks)
 			throwf("unexpected attrs.size() for LinkType(%d): want: %d, have: %d", EI(type), nlinks, attrs.size());
-
-		// c.e_max = nlinks;
-		// c.k_max = k_max;
 
 		c.edgeIndex.at(0).reserve(nlinks);
 		c.edgeIndex.at(1).reserve(nlinks);

@@ -74,13 +74,13 @@ namespace
 	using HA = HexAttribute;
 
 	/*
-         * The encoding schema `{a, e, n, vmax, p}`, where:
-         * a=attribute
-         * e=encoding
-         * n=size
-         * vmax=max_value
-         * p=param (encoding-specific)
-         */
+	 * The encoding schema `{a, e, n, vmax, p}`, where:
+	 * a=attribute
+	 * e=encoding
+	 * n=size
+	 * vmax=max_value
+	 * p=param (encoding-specific)
+	 */
 	using E5G = std::tuple<GlobalAttribute, Encoding, int, int, double>;
 	using E5P = std::tuple<PlayerAttribute, Encoding, int, int, double>;
 	using E5H = std::tuple<HexAttribute, Encoding, int, int, double>;
@@ -91,9 +91,9 @@ using PlayerEncoding = std::array<E5P, EI(PlayerAttribute::_count)>;
 using HexEncoding = std::array<E5H, EI(HexAttribute::_count)>;
 
 /*
-     * Compile-time constructor for E5H and E5S tuples
-     * https://stackoverflow.com/a/23784921
-     */
+ * Compile-time constructor for E5H and E5S tuples
+ * https://stackoverflow.com/a/23784921
+ */
 template<typename T>
 constexpr std::tuple<T, Encoding, int, int, double> E5(T a, Encoding e, int vmax, double slope = -1, int bins = -1)
 {

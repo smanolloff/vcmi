@@ -29,15 +29,15 @@ public:
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
 	/*
-         * Handled locally (not delegated)
-         */
+	 * Handled locally (not delegated)
+	 */
 
 	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
 	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences prefs) override;
 
 	/*
-         * Delegated to BAI
-         */
+	 * Delegated to BAI
+	 */
 
 	void actionFinished(const BattleID & bid, const BattleAction & action) override;
 	void actionStarted(const BattleID & bid, const BattleAction & action) override;

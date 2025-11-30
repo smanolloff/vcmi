@@ -17,7 +17,7 @@ namespace MMAI::BAI
 class ScriptedModel : public MMAI::Schema::IModel
 {
 public:
-	ScriptedModel(std::string keyword);
+	explicit ScriptedModel(std::string & keyword);
 
 	Schema::ModelType getType() override;
 	std::string getName() override;
@@ -28,6 +28,6 @@ public:
 
 private:
 	const std::string keyword;
-	void warn(std::string m, int retval);
+	void warn(const std::string & m, int retval) const;
 };
 }

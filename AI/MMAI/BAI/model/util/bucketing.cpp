@@ -129,7 +129,7 @@ void BucketBuilder::build_edges_flat(const std::array<int32_t, LT_COUNT> & emax,
 		bdata.edgeIndex_flat.at(1).insert(bdata.edgeIndex_flat.at(1).end(), edgeIndex.at(1).begin(), edgeIndex.at(1).end());
 		bdata.edgeAttrs_flat.insert(bdata.edgeAttrs_flat.end(), edgeAttrs.begin(), edgeAttrs.end());
 
-		size_t need = static_cast<size_t>(emax[l]) - edgeIndex.at(0).size();
+		auto need = static_cast<size_t>(emax[l]) - edgeIndex.at(0).size();
 		if(need > 0)
 			bdata.edgeIndex_flat.at(0).insert(bdata.edgeIndex_flat.at(0).end(), need, 0);
 
@@ -166,7 +166,7 @@ void BucketBuilder::build_neighbors_flat(const std::array<int32_t, LT_COUNT> & k
 		{
 			const auto & src = containers_[l].neighbourhoods[v];
 			dst.insert(dst.end(), src.begin(), src.end());
-			const size_t need = static_cast<size_t>(kmax[l]) - src.size();
+			const auto need = static_cast<size_t>(kmax[l]) - src.size();
 			if(need > 0)
 				dst.insert(dst.end(), need, -1);
 		}

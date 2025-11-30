@@ -242,7 +242,7 @@ sample_triplet(const MaskedLogits & act0_logits, const MaskedLogits & hex1_logit
 	const SampleResult act0 = sample_masked_logits(a0_log, m_a0, true, temperature, rng);
 
 	// ---- hex1 mask slice for chosen act0 ----
-	const size_t h1_row_offset = static_cast<size_t>(act0.index) * static_cast<size_t>(165);
+	const auto h1_row_offset = static_cast<size_t>(act0.index) * static_cast<size_t>(165);
 	std::vector<int32_t> m_h1_for_act0(static_cast<size_t>(165), 0);
 	for(size_t k = 0; k < static_cast<size_t>(165); ++k)
 	{

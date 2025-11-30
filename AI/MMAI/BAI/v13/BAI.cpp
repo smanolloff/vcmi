@@ -160,7 +160,7 @@ bool BAI::maybeCastSpell(const CStack * astack, const BattleID & bid)
 
 	auto lv = state->lpstats->getAttr(PA::ARMY_VALUE_NOW_ABS);
 	auto rv = state->rpstats->getAttr(PA::ARMY_VALUE_NOW_ABS);
-	float vratio = static_cast<float>(lv) / rv;
+	auto vratio = static_cast<float>(lv) / rv;
 	if(battle->battleGetMySide() == BattleSide::RIGHT_SIDE)
 		vratio = 1 / vratio;
 
