@@ -9,6 +9,11 @@ set(MMAI_FILES
   BAI/model/ScriptedModel.cpp
   BAI/model/NNModel.h
   BAI/model/NNModel.cpp
+  BAI/model/util/bucketing.cpp
+  BAI/model/util/bucketing.h
+  BAI/model/util/common.h
+  BAI/model/util/sampling.cpp
+  BAI/model/util/sampling.h
 
   BAI/v13/BAI.cpp
   BAI/v13/BAI.h
@@ -51,7 +56,6 @@ set(MMAI_FILES
 )
 
 option(ENABLE_MMAI_TEST "Compile tests" OFF)
-option(ENABLE_MMAI_STRICT_LOAD "Disable MMAI fallback during model load and throw an error instead" OFF)
 
 set(MMAI_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 

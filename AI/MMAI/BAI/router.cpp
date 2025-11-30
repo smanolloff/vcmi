@@ -34,7 +34,8 @@ namespace MMAI::BAI
 using ConfigStorage = std::map<std::string, std::string>;
 using ModelStorage = std::map<std::string, std::unique_ptr<NNModel>>;
 
-namespace {
+namespace
+{
 	struct Config
 	{
 		ConfigStorage modelconfig;
@@ -186,9 +187,9 @@ static Schema::IModel * GetModel(std::string key)
 	{
 		logAi->error("Failed to load MMAI %s model: %s", key, e.what());
 
-#ifdef ENABLE_MMAI_STRICT_LOAD
-		throw;
-#endif
+		const char * envvar = std::getenv("MMAI_STRICT_LOAD");
+		if (envvar != nullptr && strcmp(envvar, "1") == 0)
+			throw;
 
 		// XXX: unfortunately, there is no way to alert the user about
 		// failures from within a combat ai

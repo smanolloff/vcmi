@@ -10,11 +10,8 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstdint>
-#include <limits>
 #include <memory>
-#include <numeric>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -25,6 +22,9 @@
 #include <onnxruntime_cxx_api.h>
 
 #include "StdInc.h"
+#include "BAI/model/util/bucketing.h"
+#include "BAI/model/util/common.h"
+#include "BAI/model/util/sampling.h"
 #include "NNModel.h"
 #include "vstd/CLoggerBase.h"
 #include "json/JsonNode.h"
@@ -42,18 +42,8 @@
 namespace MMAI::BAI
 {
 
-constexpr int LT_COUNT = EI(MMAI::Schema::V13::LinkType::_count);
-
 namespace
 {
-	template<class... Args>
-	[[noreturn]] inline void throwf(const std::string & fmt, Args &&... args)
-	{
-		boost::format f("NNModel: " + fmt);
-		(void)std::initializer_list<int>{((f % std::forward<Args>(args)), 0)...};
-		throw std::runtime_error(f.str());
-	}
-
 	inline std::basic_string<ORTCHAR_T> ToOrtPath(const std::string & utf8_path)
 	{
 // https://github.com/microsoft/onnxruntime/discussions/21915
@@ -77,8 +67,7 @@ namespace
 	{
 		std::string name;
 		std::chrono::steady_clock::time_point t0;
-		explicit ScopedTimer(const std::string & n) : name(n), t0(std::chrono::steady_clock::now())
-		{}
+		explicit ScopedTimer(const std::string & n) : name(n), t0(std::chrono::steady_clock::now()) {}
 
 		ScopedTimer(const ScopedTimer &) = delete;
 		ScopedTimer & operator=(const ScopedTimer &) = delete;
@@ -91,537 +80,15 @@ namespace
 		}
 	};
 
-	struct IndexContainer
-	{
-		std::array<std::vector<int32_t>, 2> edgeIndex;
-		std::vector<float> edgeAttrs;
-		std::array<std::vector<int32_t>, 165> neighbourhoods;
-	};
-
-	struct SampleResult
-	{
-		int index;
-		double prob;
-		bool fallback;
-	};
-
-	struct TripletSample
-	{
-		int act0;
-		int hex1;
-		int hex2;
-		double confidence;
-	};
-
-	// ---------- ONNX Runtime tensor helpers ----------
-
-	inline std::vector<int64_t> shape_of(const Ort::Value & v)
-	{
-		if(!v.IsTensor())
-			throwf("Expected tensor Ort::Value");
-		Ort::TensorTypeAndShapeInfo info = v.GetTensorTypeAndShapeInfo();
-		return info.GetShape();
-	}
-
-	template<typename T>
-	inline std::vector<T> to_vector(const Ort::Value & v)
-	{
-		if(!v.IsTensor())
-			throwf("Expected tensor Ort::Value");
-		Ort::TensorTypeAndShapeInfo info = v.GetTensorTypeAndShapeInfo();
-		const std::vector<int64_t> shp = info.GetShape();
-		size_t n = 1;
-		for(auto d : shp)
-		{
-			if(d < 0)
-				throwf("Dynamic dim not supported here");
-			n *= static_cast<size_t>(d);
-		}
-		const T * p = v.GetTensorData<T>(); // pointer used only for the copy
-		return std::vector<T>(p, p + n); // everything below uses vectors only
-	}
-
-	inline int argmax(const std::vector<double> & xs)
-	{
-		if(xs.empty())
-			throwf("argmax on empty vector");
-		size_t best = 0;
-		for(size_t i = 1; i < xs.size(); ++i)
-		{
-			if(xs.at(i) > xs.at(best))
-				best = i;
-		}
-		return static_cast<int>(best);
-	}
-
-	inline std::vector<double> softmax(const std::vector<double> & logits)
-	{
-		if(logits.empty())
-			return {};
-		double m = -std::numeric_limits<double>::infinity();
-		for(size_t i = 0; i < logits.size(); ++i)
-			m = std::max(m, logits.at(i));
-		std::vector<double> exps(logits.size(), 0.0);
-		double sum = 0.0;
-		for(size_t i = 0; i < logits.size(); ++i)
-		{
-			const double v = logits.at(i) - m;
-			const double e = std::isfinite(v) ? std::exp(v) : 0.0;
-			exps.at(i) = e;
-			sum += e;
-		}
-		if(std::fabs(sum) < 1e-8)
-			return std::vector<double>(logits.size(), 0.0);
-		for(size_t i = 0; i < exps.size(); ++i)
-			exps.at(i) /= sum;
-		return exps;
-	}
-
-	struct MaskedLogits {
-		const Ort::Value & logits;
-		const Ort::Value & mask;
-	};
-
-	namespace sampling
-	{
-		inline int count_valid(const std::vector<int32_t> & mask_1d)
-		{
-			int n_valid = 0;
-			for (size_t i = 0; i < mask_1d.size(); ++i)
-			{
-				n_valid += (mask_1d.at(i) != 0);
-			}
-			return n_valid;
-		}
-
-		inline std::vector<double> make_masked_logits(
-			const std::vector<float> & logits_1d,
-			const std::vector<int32_t> & mask_1d)
-		{
-			const size_t K = logits_1d.size();
-			const double neginf = -std::numeric_limits<double>::infinity();
-
-			std::vector<double> masked_logits(K, neginf);
-			for (size_t i = 0; i < K; ++i)
-			{
-				if (mask_1d.at(i))
-				{
-					masked_logits.at(i) = static_cast<double>(logits_1d.at(i));
-				}
-			}
-			return masked_logits;
-		}
-
-		inline SampleResult sample_uniform_over_mask(
-			const std::vector<int32_t> & mask_1d,
-			int n_valid,
-			std::mt19937 & rng)
-		{
-			const size_t K = mask_1d.size();
-			std::vector<double> probs(K, 0.0);
-			const double p = 1.0 / static_cast<double>(n_valid);
-
-			for (size_t i = 0; i < K; ++i)
-			{
-				if (mask_1d.at(i))
-				{
-					probs.at(i) = p;
-				}
-			}
-
-			std::discrete_distribution<int> dist(probs.begin(), probs.end());
-			const int idx_chosen = dist(rng);
-			const double p_chosen = probs.at(static_cast<size_t>(idx_chosen));
-
-			return {idx_chosen, p_chosen, false};
-		}
-
-		inline SampleResult sample_softmax_over_mask(
-			const std::vector<double> & masked_logits,
-			const std::vector<int32_t> & mask_1d,
-			double temperature,
-			std::mt19937 & rng)
-		{
-			const size_t K = masked_logits.size();
-			const double neginf = -std::numeric_limits<double>::infinity();
-
-			std::vector<double> scaled(K, neginf);
-			for (size_t i = 0; i < K; ++i)
-			{
-				if (mask_1d.at(i))
-				{
-					scaled.at(i) = masked_logits.at(i) / temperature;
-				}
-			}
-
-			const std::vector<double> probs = softmax(scaled);
-			for (size_t i = 0; i < probs.size(); ++i)
-			{
-				if (!std::isfinite(probs.at(i)))
-				{
-					throwf("Non-finite probabilities");
-				}
-			}
-
-			std::discrete_distribution<int> dist(probs.begin(), probs.end());
-			const int idx_chosen = dist(rng);
-			const double p_chosen = probs.at(static_cast<size_t>(idx_chosen));
-
-			return {idx_chosen, p_chosen, false};
-		}
-
-		// Masked categorical sampling given a logits vector
-		inline SampleResult sample_masked_logits(
-		    const std::vector<float> & logits_1d,
-		    const std::vector<int32_t> & mask_1d,
-		    bool throw_if_empty,
-		    double temperature,
-		    std::mt19937 & rng
-		)
-		{
-		    const size_t K = logits_1d.size();
-		    if (K == 0 || mask_1d.size() != K)
-		        throwf("Invalid logits/mask sizes");
-		    if (temperature < 0.0)
-		        throwf("Negative temperature");
-
-		    const int n_valid = sampling::count_valid(mask_1d);
-		    if (n_valid == 0)
-		    {
-		        if (throw_if_empty)
-		            throwf("No valid options available");
-		        return {0, 0.0, true};
-		    }
-
-		    const std::vector<double> masked_logits =
-		        sampling::make_masked_logits(logits_1d, mask_1d);
-
-		    if (temperature > 1e8)
-		    {
-		        return sampling::sample_uniform_over_mask(mask_1d, n_valid, rng);
-		    }
-
-		    if (temperature < 1e-8)
-		    {
-		        const int idx_chosen = argmax(masked_logits);
-		        return {idx_chosen, 1.0, false};
-		    }
-
-		    return sampling::sample_softmax_over_mask(masked_logits, mask_1d, temperature, rng);
-
-		}
-
-		//
-		// Samples a {action, hex1, hex2} triplet given output logits and masks
-		//
-		// Expected shapes:
-		//   act0_logits: [1, 4]            float32
-		//   hex1_logits: [1, 165]          float32
-		//   hex2_logits: [1, 165]          float32
-		//   mask_act0:   [1, 4]            int32
-		//   mask_hex1:   [1, 4, 165]       int32
-		//   mask_hex2:   [1, 4, 165, 165]  int32
-		//
-		inline TripletSample sample_triplet(
-			const MaskedLogits & act0_logits,
-			const MaskedLogits & hex1_logits,
-			const MaskedLogits & hex2_logits,
-			double temperature,
-			std::mt19937 & rng
-		)
-		{
-			const std::vector<int64_t> s_a0 = shape_of(act0_logits.logits);
-			const std::vector<int64_t> s_h1 = shape_of(hex1_logits.logits);
-			const std::vector<int64_t> s_h2 = shape_of(hex2_logits.logits);
-			const std::vector<int64_t> s_m0 = shape_of(act0_logits.mask);
-			const std::vector<int64_t> s_m1 = shape_of(hex1_logits.mask);
-			const std::vector<int64_t> s_m2 = shape_of(hex2_logits.mask);
-
-			if(s_a0 != std::vector<int64_t>({1, 4}))
-				throwf("act0_logits must be [1,4]");
-			if(s_h1 != std::vector<int64_t>({1, 165}))
-				throwf("hex1_logits must be [1,165]");
-			if(s_h2 != std::vector<int64_t>({1, 165}))
-				throwf("hex2_logits must be [1,165]");
-			if(s_m0 != std::vector<int64_t>({1, 4}))
-				throwf("mask_act0 must be [1,4]");
-			if(s_m1 != std::vector<int64_t>({1, 4, 165}))
-				throwf("mask_hex1 must be [1,4,165]");
-			if(s_m2 != std::vector<int64_t>({1, 4, 165, 165}))
-				throwf("mask_hex2 must be [1,4,165,165]");
-
-			// Materialize host vectors and squeeze batch
-			std::vector<float> a0_log = to_vector<float>(act0_logits.logits); // 4
-			std::vector<float> h1_log = to_vector<float>(hex1_logits.logits); // 165
-			std::vector<float> h2_log = to_vector<float>(hex2_logits.logits); // 165
-
-			std::vector<int32_t> m_a0 = to_vector<int32_t>(act0_logits.mask); // 4
-			std::vector<int32_t> m_h1 = to_vector<int32_t>(hex1_logits.mask); // 4*165
-			std::vector<int32_t> m_h2 = to_vector<int32_t>(hex2_logits.mask); // 4*165*165
-
-			// ---- act0 ----
-			const SampleResult act0 = sample_masked_logits(a0_log, m_a0, true, temperature, rng);
-
-			// ---- hex1 mask slice for chosen act0 ----
-			const size_t h1_row_offset = static_cast<size_t>(act0.index) * static_cast<size_t>(165);
-			std::vector<int32_t> m_h1_for_act0(static_cast<size_t>(165), 0);
-			for(size_t k = 0; k < static_cast<size_t>(165); ++k)
-			{
-				m_h1_for_act0.at(k) = m_h1.at(h1_row_offset + k);
-			}
-
-			// ---- hex1 ----
-			const SampleResult hex1 = sample_masked_logits(h1_log, m_h1_for_act0, false, temperature, rng);
-
-			// ---- hex2 mask slice for (act0, hex1) ----
-			const size_t base = (static_cast<size_t>(act0.index) * static_cast<size_t>(165) + static_cast<size_t>(hex1.index)) * static_cast<size_t>(165);
-			std::vector<int32_t> m_h2_for_pair(static_cast<size_t>(165), 0);
-			for(size_t k = 0; k < static_cast<size_t>(165); ++k)
-			{
-				m_h2_for_pair.at(k) = m_h2.at(base + k);
-			}
-
-			// ---- hex2 ----
-			const SampleResult hex2 = sample_masked_logits(h2_log, m_h2_for_pair, false, temperature, rng);
-
-			// ---- joint confidence ----
-			const double confidence = act0.prob * (hex1.fallback ? 1.0 : hex1.prob) * (hex2.fallback ? 1.0 : hex2.prob);
-
-			return {act0.index, hex1.index, hex2.index, confidence};
-		}
-	} // namespace sampling
-
-	namespace bucketing
-	{
-	    struct Requirements
-	    {
-	        std::array<size_t, LT_COUNT> e_req{};
-	        std::array<size_t, LT_COUNT> k_req{};
-	    };
-
-	    struct BucketChoice
-	    {
-	        int index = -1;
-	        std::array<int32_t, LT_COUNT> emax{};
-	        std::array<int32_t, LT_COUNT> kmax{};
-	    };
-
-	    struct BucketData
-	    {
-	        int size_index = -1; // chosen index in all_sizes
-	        std::array<int32_t, LT_COUNT> emax{}; // chosen emax per link type
-	        std::array<int32_t, LT_COUNT> kmax{}; // chosen kmax per link type
-
-	        std::vector<float> edgeAttrs_flat;                  		// length sum(emax)
-	        std::array<std::vector<int32_t>, 2> edgeIndex_flat; 		// each length sum(emax)
-	        std::array<std::vector<int32_t>, 165> neighbourhoods_flat; 	// each length sum(kmax)
-	    };
-
-	    class BucketBuilder
-	    {
-	    public:
-	        BucketBuilder(
-	            const std::array<IndexContainer, LT_COUNT> & containers,
-	            const std::vector<std::vector<std::vector<int32_t>>> & all_sizes
-	        )
-	            : containers_(containers)
-	            , all_sizes_(all_sizes)
-	        {
-	        }
-
-	        BucketData build_bucket_data() const
-	        {
-	            BucketData bdata{};
-
-	            const Requirements req = compute_requirements();
-	            const BucketChoice choice = choose_bucket(req);
-
-	            if (choice.index < 0)
-	                throwf("too many units on the battlefield");
-
-	            bdata.size_index = choice.index;
-	            bdata.emax = choice.emax;
-	            bdata.kmax = choice.kmax;
-
-	            build_edges_flat(bdata.emax, bdata);
-	            build_neighbors_flat(bdata.kmax, bdata);
-
-	            return bdata;
-	        }
-
-	    private:
-	        const std::array<IndexContainer, LT_COUNT> & containers_;
-	        const std::vector<std::vector<std::vector<int32_t>>> & all_sizes_;
-
-	        Requirements compute_requirements() const
-	        {
-	            Requirements req{};
-	            for (int l = 0; l < LT_COUNT; ++l)
-	            {
-	                req.e_req[l] = containers_[l].edgeAttrs.size();
-	                size_t km = 0;
-
-	                for (int v = 0; v < 165; ++v)
-	                    km = std::max(km, containers_[l].neighbourhoods[v].size());
-
-	                req.k_req[l] = km;
-	            }
-	            return req;
-	        }
-
-	        bool bucket_satisfies(
-	            const std::vector<std::vector<int32_t>> & sz,
-	            const Requirements & req
-	        ) const
-	        {
-	            if (static_cast<int>(sz.size()) != LT_COUNT)
-	                return false;
-
-	            for (int l = 0; l < LT_COUNT; ++l)
-	            {
-	                if (sz[l].size() != 2)
-	                    return false;
-
-	                const int32_t emax_l = sz[l][0];
-	                const int32_t kmax_l = sz[l][1];
-
-	                if (emax_l < static_cast<int32_t>(req.e_req[l]) ||
-	                    kmax_l < static_cast<int32_t>(req.k_req[l]))
-	                {
-	                    return false;
-	                }
-	            }
-	            return true;
-	        }
-
-	        void log_bucket_choice(
-	            int chosen,
-	            const Requirements & req
-	        ) const
-	        {
-	            logAi->debug("Size: %d", chosen);
-	            for (int i = 0; i < LT_COUNT; ++i)
-	            {
-	                logAi->debug(
-	                    "  %d: [%ld, %ld] -> [%lld, %lld]",
-	                    i,
-	                    req.e_req[i],
-	                    req.k_req[i],
-	                    all_sizes_[chosen][i][0],
-	                    all_sizes_[chosen][i][1]);
-	            }
-	        }
-
-	        BucketChoice choose_bucket(const Requirements & req) const
-	        {
-	            BucketChoice choice{};
-
-	            for (int s = 0; s < static_cast<int>(all_sizes_.size()); ++s)
-	            {
-	                const auto & sz = all_sizes_[static_cast<size_t>(s)];
-	                if (!bucket_satisfies(sz, req))
-	                    continue;
-
-	                choice.index = s;
-	                for (int l = 0; l < LT_COUNT; ++l)
-	                {
-	                    choice.emax[l] = sz[l][0];
-	                    choice.kmax[l] = sz[l][1];
-	                }
-	                break;
-	            }
-
-	            if (choice.index >= 0)
-	                log_bucket_choice(choice.index, req);
-
-	            return choice;
-	        }
-
-	        void build_edges_flat(const std::array<int32_t, LT_COUNT> & emax, BucketData & bdata) const
-	        {
-	            const size_t sum_emax = std::accumulate(emax.begin(), emax.end(), static_cast<size_t>(0));
-
-	            bdata.edgeIndex_flat.at(0).clear();
-	            bdata.edgeIndex_flat.at(1).clear();
-	            bdata.edgeAttrs_flat.clear();
-
-	            bdata.edgeIndex_flat.at(0).reserve(sum_emax);
-	            bdata.edgeIndex_flat.at(1).reserve(sum_emax);
-	            bdata.edgeAttrs_flat.reserve(sum_emax);
-
-	            for (int l = 0; l < LT_COUNT; ++l)
-	            {
-	                const auto & edgeIndex = containers_[l].edgeIndex;
-	                const auto & edgeAttrs = containers_[l].edgeAttrs;
-
-	                bdata.edgeIndex_flat.at(0).insert(
-	                    bdata.edgeIndex_flat.at(0).end(), edgeIndex.at(0).begin(), edgeIndex.at(0).end());
-	                bdata.edgeIndex_flat.at(1).insert(
-	                    bdata.edgeIndex_flat.at(1).end(), edgeIndex.at(1).begin(), edgeIndex.at(1).end());
-	                bdata.edgeAttrs_flat.insert(
-	                    bdata.edgeAttrs_flat.end(), edgeAttrs.begin(), edgeAttrs.end());
-
-	                size_t need = static_cast<size_t>(emax[l]) - edgeIndex.at(0).size();
-	                if (need > 0)
-	                    bdata.edgeIndex_flat.at(0).insert(bdata.edgeIndex_flat.at(0).end(), need, 0);
-
-	                need = static_cast<size_t>(emax[l]) - edgeIndex.at(1).size();
-	                if (need > 0)
-	                    bdata.edgeIndex_flat.at(1).insert(bdata.edgeIndex_flat.at(1).end(), need, 0);
-
-	                need = static_cast<size_t>(emax[l]) - edgeAttrs.size();
-	                if (need > 0)
-	                    bdata.edgeAttrs_flat.insert(bdata.edgeAttrs_flat.end(), need, 0.0f);
-	            }
-
-	            if (bdata.edgeIndex_flat.at(0).size() != sum_emax)
-	                throwf("edgeIndex_flat.at(0) size mismatch: want: %d, have: %zu", sum_emax, bdata.edgeIndex_flat.at(0).size());
-
-	            if (bdata.edgeIndex_flat.at(1).size() != sum_emax)
-	                throwf("edgeIndex_flat.at(1) size mismatch: want: %d, have: %zu", sum_emax, bdata.edgeIndex_flat.at(1).size());
-
-	            if (bdata.edgeAttrs_flat.size() != sum_emax)
-	                throwf("edgeAttrs_flat size mismatch: want: %d, have: %zu", sum_emax, bdata.edgeAttrs_flat.size());
-	        }
-
-	        void build_neighbors_flat(
-	            const std::array<int32_t, LT_COUNT> & kmax,
-	            BucketData & bdata
-	        ) const
-	        {
-	            const size_t sum_kmax = std::accumulate(kmax.begin(), kmax.end(), static_cast<size_t>(0));
-
-	            for (int v = 0; v < 165; ++v)
-	            {
-	                auto & dst = bdata.neighbourhoods_flat[static_cast<size_t>(v)];
-	                dst.clear();
-	                dst.reserve(sum_kmax);
-
-	                for (int l = 0; l < LT_COUNT; ++l)
-	                {
-	                    const auto & src = containers_[l].neighbourhoods[v];
-	                    dst.insert(dst.end(), src.begin(), src.end());
-	                    const size_t need = static_cast<size_t>(kmax[l]) - src.size();
-	                    if (need > 0)
-	                        dst.insert(dst.end(), need, -1);
-	                }
-
-	                if (dst.size() != sum_kmax)
-	                    throwf("neighbourhoods_flat row size mismatch: want: %zu, have: %zu", sum_kmax, dst.size());
-	            }
-	        }
-	    };
-	} // namespace bucketing
-
 	std::array<std::vector<int32_t>, 165> buildNeighbourhoods_unpadded(const std::vector<int64_t> & dst)
 	{
-		// Pass 1: validate and count degrees per node
+		// Validate and count degrees per node
 		std::array<int, 165> deg{};
 		for(size_t e = 0; e < dst.size(); ++e)
 		{
 			auto v = static_cast<int>(dst[e]);
 			if(v < 0 || v >= 165)
-				throwf("dst contains node id out of range: ", v);
+				throwf("dst contains node id out of range: %d", v);
 			++deg[v];
 		}
 
@@ -636,7 +103,298 @@ namespace
 
 		return res;
 	}
-} // namespace {}
+}
+
+int NNModel::readVersion(const Ort::ModelMetadata & md) const
+{
+	/*
+	 * version
+	 *   dtype=int
+	 *   shape=scalar
+	 *
+	 * Version of the model (current implementation is at version 13).
+	 * If needed, NNModel may be extended to support other versions as well.
+	 *
+	 */
+	int res = -1;
+
+	Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("version", allocator);
+	if(!v)
+		throwf("readVersion: no such key");
+
+	std::string vs(v.get());
+	try
+	{
+		res = std::stoi(vs);
+	}
+	catch(...)
+	{
+		throwf("readVersion: not an int: %s", vs);
+	}
+
+	if(res != 13)
+		throwf("readVersion: want: 13, have: %d (%s)", res, vs);
+
+	return res;
+}
+
+Schema::Side NNModel::readSide(const Ort::ModelMetadata & md) const
+{
+	/*
+	 * side
+	 *   dtype=int
+	 *   shape=scalar
+	 *
+	 * Battlefield side the model was trained on (see Schema::Side enum).
+	 *
+	 */
+	Schema::Side res;
+	Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("side", allocator);
+	if(!v)
+		throw std::runtime_error("metadata error: side: no such key");
+	std::string vs(v.get());
+	try
+	{
+		res = static_cast<Schema::Side>(std::stoi(vs));
+	}
+	catch(...)
+	{
+		throw std::runtime_error("metadata error: side: not an int");
+	}
+
+	return res;
+}
+
+Vec3D<int32_t> NNModel::readBucketSizes(const Ort::ModelMetadata & md) const
+{
+	/*
+	 * all_sizes
+	 *   dtype=int
+	 *   shape=[5, 7, 2]:
+	 *     d1: bucket size (S, M, L, XL, XXL)
+	 *     d2: edge type (see Schema::V13::LinkType enum)
+	 *     d3: pairs of [emax, kmax]:
+	 *      emax = max number of outbound node edges
+	 *      kmax = max number of inbound node edges
+	 *
+	 * Stats (10K steps):
+	 *
+	 *        Num edges (E)   avg   max   p99   p90   p75   p50   p25
+	 * -----------------------------------------------------------------
+	 *             ADJACENT   888   888   888   888   888   888   888
+	 *                REACH   355   988   820   614   478   329   209
+	 *           RANGED_MOD   408   2403  1285  646   483   322   162
+	 *          ACTS_BEFORE   51    268   203   118   75    35    15
+	 *        MELEE_DMG_REL   43    198   160   103   60    31    14
+	 *        RETAL_DMG_REL   27    165   113   67    38    18    8
+	 *       RANGED_DMG_REL   12    133   60    29    18    9     4
+	 *
+	 *    Inbound edges (K)   avg   max   p99   p90   p75   p50   p25
+	 * -----------------------------------------------------------------
+	 *             ADJACENT   5.4   6     6     6     6     6     6
+	 *                REACH   2.2   13    10    8     6     4     3
+	 *           RANGED_MOD   2.5   15    8     4     3     2     1
+	 *          ACTS_BEFORE   0.3   23    19    15    12    8     5
+	 *        MELEE_DMG_REL   0.3   10    9     8     7     5     3
+	 *        RETAL_DMG_REL   0.2   10    9     8     6     5     3
+	 *       RANGED_DMG_REL   0.1   8     6     3     2     2     1
+	 *
+	 * Approx. sizes are S=p50 / M=p90 / L=p99 / XL=max / XXL=fallback
+	 * Exact values defined in the vcmi-gym project and are subject to change.
+	 *
+	 */
+
+	Vec3D<int32_t> res = {};
+	Ort::AllocatedStringPtr ab = md.LookupCustomMetadataMapAllocated("all_sizes", allocator);
+	if(!ab)
+		throw std::runtime_error("metadata key 'all_sizes' missing");
+	const std::string jsonstr(ab.get());
+	try
+	{
+		const void * raw = static_cast<const void *>(jsonstr.data());
+		const std::byte * bytes = static_cast<const std::byte *>(raw);
+		auto jn = JsonNode(bytes, jsonstr.size(), "<ONNX metadata: all_sizes>");
+
+		if(!jn.isVector())
+			throwf("readBucketSizes: bad JsonType: want: %d, have: %d", EI(JsonNode::JsonType::DATA_VECTOR), EI(jn.getType()));
+
+		for(auto & jv0 : jn.Vector())
+		{
+			auto vec1 = std::vector<std::vector<int32_t>>{};
+			for(auto & jv1 : jv0.Vector())
+			{
+				auto vec2 = std::vector<int32_t>{};
+				for(auto & jv2 : jv1.Vector())
+				{
+					if(!jv2.isNumber())
+					{
+						throwf("readBucketSizes: invalid data type: want: %d, got: %d", EI(JsonNode::JsonType::DATA_INTEGER), EI(jv2.getType()));
+					}
+					vec2.push_back(static_cast<int32_t>(jv2.Integer()));
+				}
+				vec1.emplace_back(vec2);
+			}
+			res.emplace_back(vec1);
+		}
+	}
+	catch(const std::exception & e)
+	{
+		throw std::runtime_error(std::string("readBucketSizes: failed to parse JSON: ") + e.what());
+	}
+
+	if(res.size() != 5)
+		throwf("readBucketSizes: bad size for d1: want: 5, have: %zu", res.size());
+	if(res[0].size() != 7)
+		throwf("readBucketSizes: bad size for d2: want: 7, have: %zu", res[0].size());
+	if(res[0][0].size() != 2)
+		throwf("readBucketSizes: bad size for d3: want: 2, have: %zu", res[0][0].size());
+
+	return res;
+}
+
+Vec3D<int32_t> NNModel::readActionTable(const Ort::ModelMetadata & md) const
+{
+	/*
+	 * action_table
+	 *   dtype=int
+	 *   shape=[4, 165, 165]:
+	 *     d1: action (WAIT, MOVE, AMOVE, SHOOT)
+	 *     d2: target hex for MOVE, AMOVE or SHOOT
+	 *     d3: target hex for AMOVE (attack destination)
+	 *
+	 */
+
+	Vec3D<int32_t> res = {};
+	Ort::AllocatedStringPtr ab = md.LookupCustomMetadataMapAllocated("action_table", allocator);
+	if(!ab)
+		throwf("readActionTable: metadata key 'action_table' missing");
+	const std::string jsonstr(ab.get());
+
+	try
+	{
+		auto jn = JsonNode(reinterpret_cast<const std::byte *>(jsonstr.data()), jsonstr.size(), "<ONNX metadata: all_sizes>");
+
+		for(auto & jv0 : jn.Vector())
+		{
+			auto vec1 = std::vector<std::vector<int32_t>>{};
+			for(auto & jv1 : jv0.Vector())
+			{
+				auto vec2 = std::vector<int32_t>{};
+				for(auto & jv2 : jv1.Vector())
+				{
+					if(!jv2.isNumber())
+					{
+						throwf("invalid data type: want: %d, got: %d", EI(JsonNode::JsonType::DATA_INTEGER), EI(jv2.getType()));
+					}
+					vec2.push_back(static_cast<int32_t>(jv2.Integer()));
+				}
+				vec1.emplace_back(vec2);
+			}
+			res.emplace_back(vec1);
+		}
+	}
+	catch(const std::exception & e)
+	{
+		throwf(std::string("failed to parse 'action_table' JSON: ") + e.what());
+	}
+
+	if(res.size() != 4)
+		throwf("readActionTable: bad size for d1: want: 4, have: %zu", res.size());
+	if(res[0].size() != 165)
+		throwf("readActionTable: bad size for d2: want: 165, have: %zu", res[0].size());
+	if(res[0][0].size() != 165)
+		throwf("readActionTable: bad size for d3: want: 165, have: %zu", res[0][0].size());
+
+	return res;
+}
+
+std::vector<const char*> NNModel::readInputNames()
+{
+	/*
+	 * Model inputs (4):
+	 *   [0] battlefield state
+	 *        dtype=float
+	 *        shape=[S] where S=Schema::V13::BATTLEFIELD_STATE_SIZE
+	 * 	 [1] edge index
+	 *        dtype=int32
+	 *        shape=[2, E*] where E* depends on the bucket (see readBucketSizes)
+	 * 	 [2] edge attributes
+	 *        dtype=float
+	 *        shape=[E*, 1] where E* depends on the bucket
+	 * 	 [3] node neighbourhoods
+	 *        dtype=int
+	 *        shape=[165, K*] where K* depends on the bucket
+	 */
+	std::vector<const char*> res;
+	auto count = model->GetInputCount();
+	if(count != 4)
+		throwf("wrong input count: want: %d, have: %lld", 4, count);
+
+	inputNamePtrs.reserve(count);
+	res.reserve(count);
+	for(size_t i = 0; i < count; ++i)
+	{
+		inputNamePtrs.emplace_back(model->GetInputNameAllocated(i, allocator));
+		res.push_back(inputNamePtrs.back().get());
+	}
+
+	return res;
+}
+
+std::vector<const char*> NNModel::readOutputNames()
+{
+	/*
+	 * Model outputs (10):
+     *   [0] greedy action (not used)
+	 *        dtype=int
+	 *        shape=[1]
+     *   [1] main action logits (see readActionTable, d0)
+	 *        dtype=float
+	 *        shape=[4]
+     *   [2] hex#1 logits (see readActionTable, d1)
+	 *        dtype=float
+	 *        shape=[165]
+     *   [3] hex#2 logits (see readActionTable, d2)
+	 *        dtype=float
+	 *        shape=[165]
+     *   [4] main action mask
+	 *        dtype=int
+	 *        shape=[4]
+     *   [5] hex#1 mask
+	 *        dtype=int
+	 *        shape=[165]
+     *   [6] hex#2 mask
+	 *        dtype=int
+	 *        shape=[165]
+     *   [7] greedy main action (not used)
+	 *        dtype=int
+	 *        shape=[1]
+     *   [8] greedy hex1 (not used)
+	 *        dtype=int
+	 *        shape=[1]
+     *   [9] greedy hex2 (not used)
+	 *        dtype=int
+	 *        shape=[1]
+	 *
+	 * The greedy output values are unused since their stochastic counterparts
+	 * are sampled here instead (see sampling::sample_triplet).
+	 */
+	std::vector<const char*> res;
+	auto count = model->GetOutputCount();
+	if(count != 10)
+		throwf("wrong output count: want: %d, have: %lld", count, count);
+
+	outputNamePtrs.reserve(count);
+	res.reserve(count);
+
+	for(size_t i = 0; i < count; ++i)
+	{
+		outputNamePtrs.emplace_back(model->GetOutputNameAllocated(i, allocator));
+		res.push_back(outputNamePtrs.back().get());
+	}
+
+	return res;
+}
 
 NNModel::NNModel(std::string & path, float temperature, uint64_t seed)
 	: path(path), temperature(temperature), meminfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
@@ -657,207 +415,12 @@ NNModel::NNModel(std::string & path, float temperature, uint64_t seed)
 	model = std::make_unique<Ort::Session>(ort_env(), ToOrtPath(path).c_str(), opts);
 	auto md = model->GetModelMetadata();
 
-	{
-		Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("version", allocator);
-		if(!v)
-			throw std::runtime_error("metadata error: version: no such key");
-		std::string vs(v.get());
-		try
-		{
-			version = std::stoi(vs);
-		}
-		catch(...)
-		{
-			throw std::runtime_error("metadata error: version: not an int");
-		}
-	}
-
-	{
-		//
-		// side
-		//   dtype=int
-		//   shape=scalar
-		//
-		// Battlefield side the model was trained on (see Schema::Side enum).
-		//
-		Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("side", allocator);
-		if(!v)
-			throw std::runtime_error("metadata error: side: no such key");
-		std::string vs(v.get());
-		try
-		{
-			side = Schema::Side(std::stoi(vs));
-		}
-		catch(...)
-		{
-			throw std::runtime_error("metadata error: side: not an int");
-		}
-	}
-
-	if(version != 13)
-		throwf("unsupported model version: want: 13, have: %d", version);
-
-	{
-		//
-		// buckets
-		//   dtype=int
-		//   shape=[5, 7, 2]:
-		//     d1: bucket size (S, M, L, XL, XXL)
-		//     d2: edge type (see Schema::V13::LinkType enum)
-		//     d3: pairs of [emax, kmax]:
-		//      emax = max number of outbound node edges
-		//      kmax = max number of inbound node edges
-		//
-		// Stats (10K steps):
-		//
-		//        Num edges (E)   avg   max   p99   p90   p75   p50   p25
-		// -----------------------------------------------------------------
-		//             ADJACENT   888   888   888   888   888   888   888
-		//                REACH   355   988   820   614   478   329   209
-		//           RANGED_MOD   408   2403  1285  646   483   322   162
-		//          ACTS_BEFORE   51    268   203   118   75    35    15
-		//        MELEE_DMG_REL   43    198   160   103   60    31    14
-		//        RETAL_DMG_REL   27    165   113   67    38    18    8
-		//       RANGED_DMG_REL   12    133   60    29    18    9     4
-		//
-		//    Inbound edges (K)   avg   max   p99   p90   p75   p50   p25
-		// -----------------------------------------------------------------
-		//             ADJACENT   5.4   6     6     6     6     6     6
-		//                REACH   2.2   13    10    8     6     4     3
-		//           RANGED_MOD   2.5   15    8     4     3     2     1
-		//          ACTS_BEFORE   0.3   23    19    15    12    8     5
-		//        MELEE_DMG_REL   0.3   10    9     8     7     5     3
-		//        RETAL_DMG_REL   0.2   10    9     8     6     5     3
-		//       RANGED_DMG_REL   0.1   8     6     3     2     2     1
-		//
-		// Approx. sizes are S=p50 / M=p90 / L=p99 / XL=max / XXL=fallback
-		// Exact values defined in the vcmi-gym project and are subject to change.
-		//
-		Ort::AllocatedStringPtr ab = md.LookupCustomMetadataMapAllocated("all_sizes", allocator);
-		if(!ab)
-			throw std::runtime_error("metadata key 'all_sizes' missing");
-		const std::string jsonstr(ab.get());
-		try
-		{
-			const void * raw = static_cast<const void *>(jsonstr.data());
-			const std::byte * bytes = static_cast<const std::byte *>(raw);
-			auto jn = JsonNode(bytes, jsonstr.size(), "<ONNX metadata: all_sizes>");
-
-			if(!jn.isVector())
-				throwf("all_buckets: bad JsonType: want: %d, have: %d", EI(JsonNode::JsonType::DATA_VECTOR), EI(jn.getType()));
-
-			for(auto & jv0 : jn.Vector())
-			{
-				auto vec1 = std::vector<std::vector<int32_t>>{};
-				for(auto & jv1 : jv0.Vector())
-				{
-					auto vec2 = std::vector<int32_t>{};
-					for(auto & jv2 : jv1.Vector())
-					{
-						if(!jv2.isNumber())
-						{
-							throwf("invalid data type: want: %d, got: %d", EI(JsonNode::JsonType::DATA_INTEGER), EI(jv2.getType()));
-						}
-						vec2.push_back(static_cast<int32_t>(jv2.Integer()));
-					}
-					vec1.emplace_back(vec2);
-				}
-				all_buckets.emplace_back(vec1);
-			}
-		}
-		catch(const std::exception & e)
-		{
-			throw std::runtime_error(std::string("failed to parse 'all_buckets' JSON: ") + e.what());
-		}
-
-		if(all_buckets.size() != 5)
-			throwf("all_buckets: bad size for d1: want: 5, have: %zu", all_buckets.size());
-		if(all_buckets[0].size() != 7)
-			throwf("all_buckets: bad size for d2: want: 7, have: %zu", all_buckets[0].size());
-		if(all_buckets[0][0].size() != 2)
-			throwf("all_buckets: bad size for d3: want: 2, have: %zu", all_buckets[0][0].size());
-	}
-
-	{
-		//
-		// action_table
-		//   dtype=int
-		//   shape=[4, 165, 165]:
-		//     d1: action (WAIT, MOVE, AMOVE, SHOOT)
-		//     d2: target hex for MOVE, AMOVE or SHOOT
-		//     d3: target hex for AMOVE (attack destination)
-		//
-		Ort::AllocatedStringPtr ab = md.LookupCustomMetadataMapAllocated("action_table", allocator);
-		if(!ab)
-			throw std::runtime_error("metadata key 'action_table' missing");
-		const std::string jsonstr(ab.get());
-
-		try
-		{
-			auto jn = JsonNode(reinterpret_cast<const std::byte *>(jsonstr.data()), jsonstr.size(), "<ONNX metadata: all_sizes>");
-
-			for(auto & jv0 : jn.Vector())
-			{
-				auto vec1 = std::vector<std::vector<int32_t>>{};
-				for(auto & jv1 : jv0.Vector())
-				{
-					auto vec2 = std::vector<int32_t>{};
-					for(auto & jv2 : jv1.Vector())
-					{
-						if(!jv2.isNumber())
-						{
-							throwf("invalid data type: want: %d, got: %d", EI(JsonNode::JsonType::DATA_INTEGER), EI(jv2.getType()));
-						}
-						vec2.push_back(static_cast<int32_t>(jv2.Integer()));
-					}
-					vec1.emplace_back(vec2);
-				}
-				action_table.emplace_back(vec1);
-			}
-		}
-		catch(const std::exception & e)
-		{
-			throw std::runtime_error(std::string("failed to parse 'action_table' JSON: ") + e.what());
-		}
-
-		if(action_table.size() != 4)
-			throwf("action_table: bad size for d1: want: 4, have: %zu", action_table.size());
-		if(action_table[0].size() != 165)
-			throwf("action_table: bad size for d2: want: 165, have: %zu", action_table[0].size());
-		if(action_table[0][0].size() != 165)
-			throwf("action_table: bad size for d3: want: 165, have: %zu", action_table[0][0].size());
-	}
-
-	{
-		// Model inputs
-		auto icount = model->GetInputCount();
-		if(icount != 4)
-			throwf("wrong input count: want: %d, have: %lld", 4, icount);
-
-		input_name_ptrs.reserve(icount);
-		input_names.reserve(icount);
-		for(size_t i = 0; i < icount; ++i)
-		{
-			input_name_ptrs.emplace_back(model->GetInputNameAllocated(i, allocator));
-			input_names.push_back(input_name_ptrs.back().get());
-		}
-	}
-
-	{
-		// Model outputs
-		auto ocount = model->GetOutputCount();
-		if(ocount != 10)
-			throwf("wrong output count: want: %d, have: %lld", ocount, ocount);
-
-		output_name_ptrs.reserve(ocount);
-		output_names.reserve(ocount);
-
-		for(size_t i = 0; i < ocount; ++i)
-		{
-			output_name_ptrs.emplace_back(model->GetOutputNameAllocated(i, allocator));
-			output_names.push_back(output_name_ptrs.back().get());
-		}
-	}
+	version = readVersion(md);
+	side = readSide(md);
+	bucketSizes = readBucketSizes(md);
+	actionTable = readActionTable(md);
+	inputNames = readInputNames();
+	outputNames = readOutputNames();
 
 	logAi->info("MMAI version " + std::to_string(version) + "initialized on side=" + std::to_string(EI(side)));
 }
@@ -902,24 +465,23 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 		return MMAI::Schema::ACTION_RESET;
 
 	auto [inputs, size_idx] = prepareInputsV13(s, sup);
-
-	auto outputs = model->Run(Ort::RunOptions(), input_names.data(), inputs.data(), inputs.size(), output_names.data(), output_names.size());
+	auto outputs = model->Run(Ort::RunOptions(), inputNames.data(), inputs.data(), inputs.size(), outputNames.data(), outputNames.size());
 
 	if(outputs.size() != 10)
 		throwf("getAction: bad output size: want: 10, have: %d", outputs.size());
 
 	// deterministic action (useful for debugging)
-	auto action = t2v<int32_t>("getAction: t_action", outputs[0], 1).at(0);
+	auto action = toVector<int32_t>("getAction: t_action", outputs[0], 1).at(0);
 
 	auto sample = sampling::sample_triplet(
-		MaskedLogits{.logits=outputs[1], .mask=outputs[4]},	// act0 [1, 4]
-		MaskedLogits{.logits=outputs[2], .mask=outputs[5]},	// hex1 [1, 4, 165]
-		MaskedLogits{.logits=outputs[3], .mask=outputs[6]},	// hex2 [1, 4, 165, 165]
+		MaskedLogits{.logits = outputs[1], .mask = outputs[4]}, // act0 [1, 4]
+		MaskedLogits{.logits = outputs[2], .mask = outputs[5]}, // hex1 [1, 4, 165]
+		MaskedLogits{.logits = outputs[3], .mask = outputs[6]}, // hex2 [1, 4, 165, 165]
 		temperature,
 		rng
 	);
 
-	auto s_action = action_table.at(sample.act0).at(sample.hex1).at(sample.hex2);
+	auto s_action = actionTable.at(sample.act0).at(sample.hex1).at(sample.hex2);
 
 	if(s_action != action)
 		logAi->debug("Sampled a non-greedy action: %d != %d", s_action, action);
@@ -936,10 +498,6 @@ double NNModel::getValue(const MMAI::Schema::IState * s)
 
 std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup)
 {
-	// XXX: if needed, support for other versions may be added via conditionals
-	if(version != 13)
-		throwf("unsupported version: want: 13, have: %d", version);
-
 	auto containers = std::array<IndexContainer, LT_COUNT>{};
 
 	int count = 0;
@@ -983,7 +541,7 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 	if(count != LT_COUNT)
 		throwf("unexpected links count: want: %d, have: %d", LT_COUNT, count);
 
-	auto bdata = bucketing::BucketBuilder(containers, all_buckets).build_bucket_data();
+	auto bdata = bucketing::BucketBuilder(containers, bucketSizes).build_bucket_data();
 
 	const auto * state = s->getBattlefieldState();
 	auto estate = std::vector<float>(state->size());
@@ -998,12 +556,11 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 		throwf("unexpected bdata.edgeIndex_flat.at(1).size(): want: %d, have: %d", sum_e, bdata.edgeIndex_flat.at(1).size());
 	if(bdata.edgeAttrs_flat.size() != sum_e)
 		throwf("unexpected bdata.edgeAttrs_flat.size(): want: %d, have: %d", sum_e, bdata.edgeAttrs_flat.size());
+
 	for(int i = 0; i < 165; ++i)
 	{
 		if(bdata.neighbourhoods_flat.at(i).size() != sum_k)
-		{
 			throwf("unexpected bdata.neighbourhoods_flat.at(%d).size(): want: %d, have: %d", i, sum_k, bdata.neighbourhoods_flat.at(i).size());
-		}
 	}
 
 	auto edgeIndex_flat = std::vector<int32_t>{};
@@ -1015,17 +572,6 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 	neighbourhoods.reserve(165 * sum_k);
 	for(auto & nbr : bdata.neighbourhoods_flat)
 		neighbourhoods.insert(neighbourhoods.end(), nbr.begin(), nbr.end());
-
-	std::vector<Ort::AllocatedStringPtr> input_name_ptrs;
-	std::vector<const char *> input_names;
-	input_name_ptrs.reserve(4);
-	input_names.reserve(4);
-
-	for(size_t i = 0; i < 4; ++i)
-	{
-		input_name_ptrs.emplace_back(model->GetInputNameAllocated(i, allocator));
-		input_names.push_back(input_name_ptrs.back().get());
-	}
 
 	auto tensors = std::vector<Ort::Value>{};
 	tensors.push_back(toTensor("state", estate, {static_cast<int64_t>(estate.size())}));
@@ -1051,49 +597,6 @@ Ort::Value NNModel::toTensor(const std::string & name, std::vector<T> & vec, con
 	auto res = Ort::Value::CreateTensor<T>(allocator, shape.data(), shape.size());
 	T * dst = res.template GetTensorMutableData<T>();
 	std::memcpy(dst, vec.data(), vec.size() * sizeof(T));
-	return res;
-}
-
-// tensor-to-vector convenience
-template<typename T>
-std::vector<T> NNModel::t2v(const std::string & name, const Ort::Value & tensor, int numel)
-{
-	// Expect int32 tensor of shape {1}
-	auto type_info = tensor.GetTensorTypeAndShapeInfo();
-	auto dtype = type_info.GetElementType();
-
-	if constexpr(std::is_same_v<T, float>)
-	{
-		if(dtype != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
-		{
-			throwf("t2v: %s: bad dtype: want: %d, have: %d", name, EI(ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT), EI(dtype));
-		}
-	}
-	else if constexpr(std::is_same_v<T, int>)
-	{
-		if(dtype != ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
-		{
-			throwf("t2v: %s: bad dtype: want: %d, have: %d", name, EI(ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32), EI(dtype));
-		}
-	}
-	else
-	{
-		throwf("t2v: %s: can only work with float and int", name);
-	}
-
-	auto shape = type_info.GetShape();
-	if(shape.size() != 1)
-		throwf("t2v: %s: expected ndim=1, got: %d", name, shape.size());
-
-	if(shape != std::vector<int64_t>{numel})
-		throwf("t2v: %s: bad shape", name);
-
-	const T * data = tensor.GetTensorData<T>();
-	// int32_t result = out_data[0];
-
-	auto res = std::vector<T>{};
-	res.reserve(numel);
-	res.assign(data, data + numel); // v now owns a copy
 	return res;
 }
 

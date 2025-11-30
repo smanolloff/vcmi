@@ -12,6 +12,7 @@
 
 #include <onnxruntime_cxx_api.h>
 
+#include "BAI/model/util/common.h"
 #include "schema/base.h"
 #include "schema/v13/types.h"
 
@@ -44,26 +45,32 @@ private:
 	Schema::Side side;
 
 	std::mt19937 rng;
-	std::vector<std::vector<std::vector<int32_t>>> all_buckets;
-	std::vector<std::vector<std::vector<int32_t>>> action_table;
-	std::vector<Ort::AllocatedStringPtr> input_name_ptrs;
-	std::vector<Ort::AllocatedStringPtr> output_name_ptrs;
+	Vec3D<int32_t> bucketSizes;
+	Vec3D<int32_t> actionTable;
+
+	// AllocatedStringPtrs manage the string lifetime
+	// but names passed to model.Run must be const char*
+	std::vector<Ort::AllocatedStringPtr> inputNamePtrs;
+	std::vector<Ort::AllocatedStringPtr> outputNamePtrs;
+	std::vector<const char *> inputNames;
+	std::vector<const char *> outputNames;
 
 	std::unique_ptr<Ort::Session> model = nullptr;
 	Ort::AllocatorWithDefaultOptions allocator;
 	Ort::MemoryInfo meminfo;
 
-	std::pair<std::vector<Ort::Value>, int>
-	prepareInputsV13(const MMAI::Schema::IState * state, const MMAI::Schema::V13::ISupplementaryData * sup);
+	std::pair<std::vector<Ort::Value>, int> prepareInputsV13(const MMAI::Schema::IState * state, const MMAI::Schema::V13::ISupplementaryData * sup);
 
 	template<typename T>
 	Ort::Value toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape);
 
-	template<typename T>
-	std::vector<T> t2v(const std::string & name, const Ort::Value & tensor, int numel);
 
-	std::vector<const char *> input_names;
-	std::vector<const char *> output_names;
+	int readVersion(const Ort::ModelMetadata & md) const;
+	Schema::Side readSide(const Ort::ModelMetadata & md) const;
+	Vec3D<int32_t> readBucketSizes(const Ort::ModelMetadata & md) const;
+	Vec3D<int32_t> readActionTable(const Ort::ModelMetadata & md) const;
+	std::vector<const char*> readInputNames();
+	std::vector<const char*> readOutputNames();
 };
 
-} // namespace MMAI::BAI
+}
