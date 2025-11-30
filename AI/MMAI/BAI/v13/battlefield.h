@@ -17,67 +17,49 @@
 #include "BAI/v13/stack.h"
 #include "common.h"
 
-namespace MMAI::BAI::V13 {
-    using Stacks = std::vector<std::shared_ptr<Stack>>;
-    using Hexes = std::array<std::array<std::unique_ptr<Hex>, BF_XMAX>, BF_YMAX>;
-    using AllLinks = std::map<LinkType, std::shared_ptr<Links>>;
+namespace MMAI::BAI::V13
+{
+using Stacks = std::vector<std::shared_ptr<Stack>>;
+using Hexes = std::array<std::array<std::unique_ptr<Hex>, BF_XMAX>, BF_YMAX>;
+using AllLinks = std::map<LinkType, std::shared_ptr<Links>>;
 
-    using XY = std::pair<int, int>;
+using XY = std::pair<int, int>;
 
-    class Battlefield {
-    public:
-        static std::shared_ptr<const Battlefield> Create(
-            const CPlayerBattleCallback* battle,
-            const CStack* acstack,
-            const GlobalStats* oldgstats,
-            const GlobalStats* gstats,
-            std::map<const CStack*, Stack::Stats> &stacksStats,
-            bool isMorale
-        );
+class Battlefield
+{
+public:
+	static std::shared_ptr<const Battlefield> Create(
+		const CPlayerBattleCallback * battle,
+		const CStack * acstack,
+		const GlobalStats * oldgstats,
+		const GlobalStats * gstats,
+		std::map<const CStack *, Stack::Stats> & stacksStats,
+		bool isMorale
+	);
 
-        Battlefield(
-            const std::shared_ptr<Hexes> &hexes,
-            const Stacks &stacks,
-            const AllLinks &allLinks,
-            const Stack* astack
-        );
+	Battlefield(const std::shared_ptr<Hexes> & hexes, const Stacks & stacks, const AllLinks & allLinks, const Stack * astack);
 
-        const std::shared_ptr<Hexes> hexes;
-        const Stacks stacks;
-        const AllLinks allLinks;
-        const Stack* const astack;     // XXX: nullptr on battle start/end, or if army stacks > MAX_STACKS_PER_SIDE
-    private:
-        static std::tuple<Stacks, Queue> InitStacks(
-            const CPlayerBattleCallback* battle,
-            const CStack* astack,
-            const GlobalStats* oldgstats,
-            const GlobalStats* gstats,
-            std::map<const CStack*, Stack::Stats> &stacksStats,
-            bool isMorale
-        );
+	const std::shared_ptr<Hexes> hexes;
+	const Stacks stacks;
+	const AllLinks allLinks;
+	const Stack * const astack; // XXX: nullptr on battle start/end, or if army stacks > MAX_STACKS_PER_SIDE
+private:
+	static std::tuple<Stacks, Queue> InitStacks(
+		const CPlayerBattleCallback * battle,
+		const CStack * astack,
+		const GlobalStats * oldgstats,
+		const GlobalStats * gstats,
+		std::map<const CStack *, Stack::Stats> & stacksStats,
+		bool isMorale
+	);
 
-        static std::tuple<std::shared_ptr<Hexes>, Stack*> InitHexes(
-            const CPlayerBattleCallback* battle,
-            const CStack* acstack,
-            const Stacks &stacks
-        );
+	static std::tuple<std::shared_ptr<Hexes>, Stack *> InitHexes(const CPlayerBattleCallback * battle, const CStack * acstack, const Stacks & stacks);
 
-        static AllLinks InitAllLinks(
-            const CPlayerBattleCallback* battle,
-            const Stacks &stacks,
-            const Queue &queue,
-            std::shared_ptr<Hexes> &hexes
-        );
+	static AllLinks InitAllLinks(const CPlayerBattleCallback * battle, const Stacks & stacks, const Queue & queue, std::shared_ptr<Hexes> & hexes);
 
-        static void LinkTwoHexes(
-            AllLinks &allLinks,
-            const CPlayerBattleCallback* battle,
-            const Stacks &stacks,
-            const Queue &queue,
-            const Hex* src,
-            const Hex* dst
-        );
+	static void
+	LinkTwoHexes(AllLinks & allLinks, const CPlayerBattleCallback * battle, const Stacks & stacks, const Queue & queue, const Hex * src, const Hex * dst);
 
-        static Queue GetQueue(const CPlayerBattleCallback* battle, const CStack* astack, bool isMorale);
-    };
+	static Queue GetQueue(const CPlayerBattleCallback * battle, const CStack * astack, bool isMorale);
+};
 }

@@ -16,54 +16,69 @@
 #include "BAI/v13/battlefield.h"
 #include "BAI/v13/state.h"
 
-namespace MMAI::BAI::V13 {
-    class BAI : public Base {
-    public:
-        using Base::Base;
+namespace MMAI::BAI::V13
+{
+class BAI : public Base
+{
+public:
+	using Base::Base;
 
-        // Bring thes template functions into the derived class's scope
-        using Base::error;
-        using Base::warn;
-        using Base::info;
-        using Base::debug;
-        using Base::trace;
-        using Base::log;
-        using Base::_log;
+	// Bring thes template functions into the derived class's scope
+	using Base::_log;
+	using Base::debug;
+	using Base::error;
+	using Base::info;
+	using Base::log;
+	using Base::trace;
+	using Base::warn;
 
-        void activeStack(const BattleID &bid, const CStack * stack) override;
-        void actionStarted(const BattleID &bid, const BattleAction &action) override;
-        void actionFinished(const BattleID &bid, const BattleAction &action) override;
-        void yourTacticPhase(const BattleID &bid, int distance) override;
+	void activeStack(const BattleID & bid, const CStack * stack) override;
+	void actionStarted(const BattleID & bid, const BattleAction & action) override;
+	void actionFinished(const BattleID & bid, const BattleAction & action) override;
+	void yourTacticPhase(const BattleID & bid, int distance) override;
 
-        void battleStacksAttacked(const BattleID &bid, const std::vector<BattleStackAttacked> & bsa, bool ranged) override; //called when stack receives damage (after battleAttack())
-        void battleTriggerEffect(const BattleID &bid, const BattleTriggerEffect & bte) override;
-        void battleEnd(const BattleID &bid, const BattleResult *br, QueryID queryID) override;
-        void battleStart(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side, bool replayAllowed) override; //called by engine when battle starts; side=0 - left, side=1 - right
+	void battleStacksAttacked(
+		const BattleID & bid,
+		const std::vector<BattleStackAttacked> & bsa,
+		bool ranged
+	) override; //called when stack receives damage (after battleAttack())
+	void battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & bte) override;
+	void battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID) override;
+	void battleStart(
+		const BattleID & bid,
+		const CCreatureSet * army1,
+		const CCreatureSet * army2,
+		int3 tile,
+		const CGHeroInstance * hero1,
+		const CGHeroInstance * hero2,
+		BattleSide side,
+		bool replayAllowed
+	) override; //called by engine when battle starts; side=0 - left, side=1 - right
 
-        Schema::Action getNonRenderAction() override;
-    protected:
-        // Subsequent versions may override this with subclasses of State
-        virtual std::unique_ptr<State> initState(const CPlayerBattleCallback* battle);
-        std::unique_ptr<State> state = nullptr;
+	Schema::Action getNonRenderAction() override;
 
-        // consecutive invalid actions counter
-        int errcounter = 0;
+protected:
+	// Subsequent versions may override this with subclasses of State
+	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);
+	std::unique_ptr<State> state = nullptr;
 
-        int getActionTotalMs;
-        int getActionTotalCalls;
+	// consecutive invalid actions counter
+	int errcounter = 0;
 
-        bool resetting = false;
-        std::vector<Schema::Action> allactions = {}; // DEBUG ONLY
-        std::shared_ptr<CPlayerBattleCallback> battle = nullptr;
+	int getActionTotalMs;
+	int getActionTotalCalls;
 
-        std::string renderANSI();
-        std::string debugInfo(Action *action, const CStack *astack, BattleHex *nbh); // DEBUG ONLY
-        void handleUnexpectedAction(const CStack *acstack, std::unique_ptr<Hex> &hex, Action *action);
-        std::shared_ptr<BattleAction> buildBattleAction();
-        std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack);
-        bool maybeCastSpell(const CStack * stack, const BattleID &bid);
+	bool resetting = false;
+	std::vector<Schema::Action> allactions = {}; // DEBUG ONLY
+	std::shared_ptr<CPlayerBattleCallback> battle = nullptr;
 
-        std::optional<BattleAction> maybeFleeOrSurrender(const BattleID &bid);
+	std::string renderANSI();
+	std::string debugInfo(Action * action, const CStack * astack, BattleHex * nbh); // DEBUG ONLY
+	void handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & hex, Action * action);
+	std::shared_ptr<BattleAction> buildBattleAction();
+	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack);
+	bool maybeCastSpell(const CStack * stack, const BattleID & bid);
 
-    };
+	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);
+};
 }

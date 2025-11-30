@@ -12,19 +12,22 @@
 
 #include "schema/base.h"
 
-namespace MMAI::BAI {
-    class ScriptedModel : public MMAI::Schema::IModel {
-    public:
-        ScriptedModel(std::string keyword);
+namespace MMAI::BAI
+{
+class ScriptedModel : public MMAI::Schema::IModel
+{
+public:
+	ScriptedModel(std::string keyword);
 
-        Schema::ModelType getType() override;
-        std::string getName() override;
-        int getVersion() override;
-        int getAction(const MMAI::Schema::IState * s) override;
-        Schema::Side getSide() override;
-        double getValue(const MMAI::Schema::IState * s) override;
-    private:
-        const std::string keyword;
-        void warn(std::string m, int retval);
-    };
+	Schema::ModelType getType() override;
+	std::string getName() override;
+	int getVersion() override;
+	int getAction(const MMAI::Schema::IState * s) override;
+	Schema::Side getSide() override;
+	double getValue(const MMAI::Schema::IState * s) override;
+
+private:
+	const std::string keyword;
+	void warn(std::string m, int retval);
+};
 }

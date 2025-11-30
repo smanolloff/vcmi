@@ -10,10 +10,13 @@
 
 #include "StdInc.h"
 
-namespace MMAI::BAI::V13 {
-    namespace Util {
-        int Damp(int v, int max) {
-            return std::round(max * std::tanh(static_cast<double>(v) / max));
-        }
-    }
+namespace MMAI::BAI::V13
+{
+namespace Util
+{
+	int Damp(int v, int max)
+	{
+		return std::round(max * std::tanh(static_cast<double>(v) / max));
+	}
+}
 }

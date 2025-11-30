@@ -12,21 +12,23 @@
 #include "battle/BattleSide.h"
 #include "schema/v13/types.h"
 
-namespace MMAI::BAI::V13 {
-    using namespace Schema::V13;
-    using GlobalActionMask = std::bitset<EI(GlobalAction::_count)>;
+namespace MMAI::BAI::V13
+{
+using namespace Schema::V13;
+using GlobalActionMask = std::bitset<EI(GlobalAction::_count)>;
 
-    class GlobalStats : public IGlobalStats {
-    public:
-        GlobalStats(BattleSide side, int value, int hp);
+class GlobalStats : public IGlobalStats
+{
+public:
+	GlobalStats(BattleSide side, int value, int hp);
 
-        int getAttr(GlobalAttribute a) const override;
-        int attr(GlobalAttribute a) const;
-        void update(BattleSide side, CombatResult res, int value, int hp, bool canWait);
-        void setattr(GlobalAttribute a, int value);
-        GlobalAttrs attrs = {};
+	int getAttr(GlobalAttribute a) const override;
+	int attr(GlobalAttribute a) const;
+	void update(BattleSide side, CombatResult res, int value, int hp, bool canWait);
+	void setattr(GlobalAttribute a, int value);
+	GlobalAttrs attrs = {};
 
-    private:
-        GlobalActionMask actmask = 0;   // for active stack only
-    };
+private:
+	GlobalActionMask actmask = 0; // for active stack only
+};
 }

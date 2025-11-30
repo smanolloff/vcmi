@@ -13,55 +13,62 @@
 #include "ScriptedModel.h"
 #include "schema/base.h"
 
-namespace MMAI::BAI {
-    const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI"};
+namespace MMAI::BAI
+{
+const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI"};
 
+ScriptedModel::ScriptedModel(std::string keyword) : keyword(keyword)
+{
+	auto it = std::find(FALLBACKS.begin(), FALLBACKS.end(), keyword);
+	if(it == FALLBACKS.end())
+	{
+		throw std::runtime_error("Unsupported fallback keyword: " + keyword);
+	}
+}
 
-    ScriptedModel::ScriptedModel(std::string keyword)
-    : keyword(keyword)
-    {
-        auto it = std::find(FALLBACKS.begin(), FALLBACKS.end(), keyword);
-        if (it == FALLBACKS.end()) {
-            throw std::runtime_error("Unsupported fallback keyword: " + keyword);
-        }
-    }
+std::string ScriptedModel::getName()
+{
+	return keyword;
+}
 
-    std::string ScriptedModel::getName() {
-        return keyword;
-    }
+Schema::ModelType ScriptedModel::getType()
+{
+	return Schema::ModelType::SCRIPTED;
+}
 
-    Schema::ModelType ScriptedModel::getType() {
-        return Schema::ModelType::SCRIPTED;
-    }
+Schema::Side ScriptedModel::getSide()
+{
+	return Schema::Side::BOTH;
+}
 
-    Schema::Side ScriptedModel::getSide() {
-        return Schema::Side::BOTH;
-    }
+// SCRIPTED models are dummy models which should not be used for anything
+// other than their getType() and getName() methods. Based on the return
+// value, the corresponding scripted bot (e.g. StupidAI) should be
+// used for the upcoming battle instead.
+// When MMAI fails to load an ML model, it loads a SCRIPTED model instead
+// as per MMAI mod's "fallback" setting in order to prevent a game crash.
 
-    // SCRIPTED models are dummy models which should not be used for anything
-    // other than their getType() and getName() methods. Based on the return
-    // value, the corresponding scripted bot (e.g. StupidAI) should be
-    // used for the upcoming battle instead.
-    // When MMAI fails to load an ML model, it loads a SCRIPTED model instead
-    // as per MMAI mod's "fallback" setting in order to prevent a game crash.
+// The below methods should never be called on this object:
+int ScriptedModel::getVersion()
+{
+	warn("getVersion", -666);
+	return -666;
+};
 
-    // The below methods should never be called on this object:
-    int ScriptedModel::getVersion() {
-        warn("getVersion", -666);
-        return -666;
-    };
+int ScriptedModel::getAction(const MMAI::Schema::IState * s)
+{
+	warn("getAction", -666);
+	return -666;
+};
 
-    int ScriptedModel::getAction(const MMAI::Schema::IState * s) {
-        warn("getAction", -666);
-        return -666;
-    };
+double ScriptedModel::getValue(const MMAI::Schema::IState * s)
+{
+	warn("getValue", -666);
+	return -666;
+};
 
-    double ScriptedModel::getValue(const MMAI::Schema::IState * s) {
-        warn("getValue", -666);
-        return -666;
-    };
-
-    void ScriptedModel::warn(std::string m, int retval) {
-        logAi->error("WARNING: method %s called on a ScriptedModel object; returning %d\n", m.c_str(), retval);
-    }
+void ScriptedModel::warn(std::string m, int retval)
+{
+	logAi->error("WARNING: method %s called on a ScriptedModel object; returning %d\n", m.c_str(), retval);
+}
 }

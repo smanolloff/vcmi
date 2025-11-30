@@ -10,8 +10,10 @@
 
 #pragma once
 
-namespace MMAI::BAI::V13 {
-    namespace Util {
-        int Damp(int v, int max);
-    }
+namespace MMAI::BAI::V13
+{
+namespace Util
+{
+	int Damp(int v, int max);
+}
 }

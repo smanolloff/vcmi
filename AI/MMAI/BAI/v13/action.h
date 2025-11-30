@@ -14,23 +14,25 @@
 #include "BAI/v13/hex.h"
 #include "BAI/v13/hexaction.h"
 
-namespace MMAI::BAI::V13 {
-    /**
+namespace MMAI::BAI::V13
+{
+/**
      * Wrapper around Schema::Action
      */
-    struct Action {
-        static std::unique_ptr<Hex> initHex(const Schema::Action &a, const Battlefield * bf);
-        static std::unique_ptr<Hex> initAMoveTargetHex(const Schema::Action &a, const Battlefield * bf);
-        static HexAction initHexAction(const Schema::Action &a, const Battlefield * bf);
+struct Action
+{
+	static std::unique_ptr<Hex> initHex(const Schema::Action & a, const Battlefield * bf);
+	static std::unique_ptr<Hex> initAMoveTargetHex(const Schema::Action & a, const Battlefield * bf);
+	static HexAction initHexAction(const Schema::Action & a, const Battlefield * bf);
 
-        Action(const Schema::Action action_, const Battlefield * bf, const std::string &color);
+	Action(const Schema::Action action_, const Battlefield * bf, const std::string & color);
 
-        const std::string color;
-        const Schema::Action action;
-        const std::unique_ptr<Hex> hex;
-        const std::unique_ptr<Hex> aMoveTargetHex;
-        const HexAction hexaction; // XXX: must come after action
+	const std::string color;
+	const Schema::Action action;
+	const std::unique_ptr<Hex> hex;
+	const std::unique_ptr<Hex> aMoveTargetHex;
+	const HexAction hexaction; // XXX: must come after action
 
-        std::string name() const;
-    };
+	std::string name() const;
+};
 }
