@@ -93,9 +93,9 @@ namespace
 
 	struct IndexContainer
 	{
-		std::array<std::vector<int32_t>, 2> ei; // edge_index
-		std::vector<float> ea; // edge_attributes
-		std::array<std::vector<int32_t>, 165> nbrs; // node neighbourhoods
+		std::array<std::vector<int32_t>, 2> edgeIndex;
+		std::vector<float> edgeAttrs;
+		std::array<std::vector<int32_t>, 165> neighbourhoods;
 	};
 
 	struct SampleResult
@@ -389,9 +389,231 @@ namespace
 
 			return {act0.index, hex1.index, hex2.index, confidence};
 		}
-	}
+	} // namespace sampling
 
-	std::array<std::vector<int32_t>, 165> buildNBR_unpadded(const std::vector<int64_t> & dst)
+	namespace bucketing
+	{
+	    struct Requirements
+	    {
+	        std::array<size_t, LT_COUNT> e_req{};
+	        std::array<size_t, LT_COUNT> k_req{};
+	    };
+
+	    struct BucketChoice
+	    {
+	        int index = -1;
+	        std::array<int32_t, LT_COUNT> emax{};
+	        std::array<int32_t, LT_COUNT> kmax{};
+	    };
+
+	    struct BucketData
+	    {
+	        int size_index = -1; // chosen index in all_sizes
+	        std::array<int32_t, LT_COUNT> emax{}; // chosen emax per link type
+	        std::array<int32_t, LT_COUNT> kmax{}; // chosen kmax per link type
+
+	        std::vector<float> edgeAttrs_flat;                  		// length sum(emax)
+	        std::array<std::vector<int32_t>, 2> edgeIndex_flat; 		// each length sum(emax)
+	        std::array<std::vector<int32_t>, 165> neighbourhoods_flat; 	// each length sum(kmax)
+	    };
+
+	    class BucketBuilder
+	    {
+	    public:
+	        BucketBuilder(
+	            const std::array<IndexContainer, LT_COUNT> & containers,
+	            const std::vector<std::vector<std::vector<int32_t>>> & all_sizes
+	        )
+	            : containers_(containers)
+	            , all_sizes_(all_sizes)
+	        {
+	        }
+
+	        BucketData build_bucket_data() const
+	        {
+	            BucketData bdata{};
+
+	            const Requirements req = compute_requirements();
+	            const BucketChoice choice = choose_bucket(req);
+
+	            if (choice.index < 0)
+	                throwf("too many units on the battlefield");
+
+	            bdata.size_index = choice.index;
+	            bdata.emax = choice.emax;
+	            bdata.kmax = choice.kmax;
+
+	            build_edges_flat(bdata.emax, bdata);
+	            build_neighbors_flat(bdata.kmax, bdata);
+
+	            return bdata;
+	        }
+
+	    private:
+	        const std::array<IndexContainer, LT_COUNT> & containers_;
+	        const std::vector<std::vector<std::vector<int32_t>>> & all_sizes_;
+
+	        Requirements compute_requirements() const
+	        {
+	            Requirements req{};
+	            for (int l = 0; l < LT_COUNT; ++l)
+	            {
+	                req.e_req[l] = containers_[l].edgeAttrs.size();
+	                size_t km = 0;
+
+	                for (int v = 0; v < 165; ++v)
+	                    km = std::max(km, containers_[l].neighbourhoods[v].size());
+
+	                req.k_req[l] = km;
+	            }
+	            return req;
+	        }
+
+	        bool bucket_satisfies(
+	            const std::vector<std::vector<int32_t>> & sz,
+	            const Requirements & req
+	        ) const
+	        {
+	            if (static_cast<int>(sz.size()) != LT_COUNT)
+	                return false;
+
+	            for (int l = 0; l < LT_COUNT; ++l)
+	            {
+	                if (sz[l].size() != 2)
+	                    return false;
+
+	                const int32_t emax_l = sz[l][0];
+	                const int32_t kmax_l = sz[l][1];
+
+	                if (emax_l < static_cast<int32_t>(req.e_req[l]) ||
+	                    kmax_l < static_cast<int32_t>(req.k_req[l]))
+	                {
+	                    return false;
+	                }
+	            }
+	            return true;
+	        }
+
+	        void log_bucket_choice(
+	            int chosen,
+	            const Requirements & req
+	        ) const
+	        {
+	            logAi->debug("Size: %d", chosen);
+	            for (int i = 0; i < LT_COUNT; ++i)
+	            {
+	                logAi->debug(
+	                    "  %d: [%ld, %ld] -> [%lld, %lld]",
+	                    i,
+	                    req.e_req[i],
+	                    req.k_req[i],
+	                    all_sizes_[chosen][i][0],
+	                    all_sizes_[chosen][i][1]);
+	            }
+	        }
+
+	        BucketChoice choose_bucket(const Requirements & req) const
+	        {
+	            BucketChoice choice{};
+
+	            for (int s = 0; s < static_cast<int>(all_sizes_.size()); ++s)
+	            {
+	                const auto & sz = all_sizes_[static_cast<size_t>(s)];
+	                if (!bucket_satisfies(sz, req))
+	                    continue;
+
+	                choice.index = s;
+	                for (int l = 0; l < LT_COUNT; ++l)
+	                {
+	                    choice.emax[l] = sz[l][0];
+	                    choice.kmax[l] = sz[l][1];
+	                }
+	                break;
+	            }
+
+	            if (choice.index >= 0)
+	                log_bucket_choice(choice.index, req);
+
+	            return choice;
+	        }
+
+	        void build_edges_flat(const std::array<int32_t, LT_COUNT> & emax, BucketData & bdata) const
+	        {
+	            const size_t sum_emax = std::accumulate(emax.begin(), emax.end(), static_cast<size_t>(0));
+
+	            bdata.edgeIndex_flat.at(0).clear();
+	            bdata.edgeIndex_flat.at(1).clear();
+	            bdata.edgeAttrs_flat.clear();
+
+	            bdata.edgeIndex_flat.at(0).reserve(sum_emax);
+	            bdata.edgeIndex_flat.at(1).reserve(sum_emax);
+	            bdata.edgeAttrs_flat.reserve(sum_emax);
+
+	            for (int l = 0; l < LT_COUNT; ++l)
+	            {
+	                const auto & edgeIndex = containers_[l].edgeIndex;
+	                const auto & edgeAttrs = containers_[l].edgeAttrs;
+
+	                bdata.edgeIndex_flat.at(0).insert(
+	                    bdata.edgeIndex_flat.at(0).end(), edgeIndex.at(0).begin(), edgeIndex.at(0).end());
+	                bdata.edgeIndex_flat.at(1).insert(
+	                    bdata.edgeIndex_flat.at(1).end(), edgeIndex.at(1).begin(), edgeIndex.at(1).end());
+	                bdata.edgeAttrs_flat.insert(
+	                    bdata.edgeAttrs_flat.end(), edgeAttrs.begin(), edgeAttrs.end());
+
+	                size_t need = static_cast<size_t>(emax[l]) - edgeIndex.at(0).size();
+	                if (need > 0)
+	                    bdata.edgeIndex_flat.at(0).insert(bdata.edgeIndex_flat.at(0).end(), need, 0);
+
+	                need = static_cast<size_t>(emax[l]) - edgeIndex.at(1).size();
+	                if (need > 0)
+	                    bdata.edgeIndex_flat.at(1).insert(bdata.edgeIndex_flat.at(1).end(), need, 0);
+
+	                need = static_cast<size_t>(emax[l]) - edgeAttrs.size();
+	                if (need > 0)
+	                    bdata.edgeAttrs_flat.insert(bdata.edgeAttrs_flat.end(), need, 0.0f);
+	            }
+
+	            if (bdata.edgeIndex_flat.at(0).size() != sum_emax)
+	                throwf("edgeIndex_flat.at(0) size mismatch: want: %d, have: %zu", sum_emax, bdata.edgeIndex_flat.at(0).size());
+
+	            if (bdata.edgeIndex_flat.at(1).size() != sum_emax)
+	                throwf("edgeIndex_flat.at(1) size mismatch: want: %d, have: %zu", sum_emax, bdata.edgeIndex_flat.at(1).size());
+
+	            if (bdata.edgeAttrs_flat.size() != sum_emax)
+	                throwf("edgeAttrs_flat size mismatch: want: %d, have: %zu", sum_emax, bdata.edgeAttrs_flat.size());
+	        }
+
+	        void build_neighbors_flat(
+	            const std::array<int32_t, LT_COUNT> & kmax,
+	            BucketData & bdata
+	        ) const
+	        {
+	            const size_t sum_kmax = std::accumulate(kmax.begin(), kmax.end(), static_cast<size_t>(0));
+
+	            for (int v = 0; v < 165; ++v)
+	            {
+	                auto & dst = bdata.neighbourhoods_flat[static_cast<size_t>(v)];
+	                dst.clear();
+	                dst.reserve(sum_kmax);
+
+	                for (int l = 0; l < LT_COUNT; ++l)
+	                {
+	                    const auto & src = containers_[l].neighbourhoods[v];
+	                    dst.insert(dst.end(), src.begin(), src.end());
+	                    const size_t need = static_cast<size_t>(kmax[l]) - src.size();
+	                    if (need > 0)
+	                        dst.insert(dst.end(), need, -1);
+	                }
+
+	                if (dst.size() != sum_kmax)
+	                    throwf("neighbourhoods_flat row size mismatch: want: %zu, have: %zu", sum_kmax, dst.size());
+	            }
+	        }
+	    };
+	} // namespace bucketing
+
+	std::array<std::vector<int32_t>, 165> buildNeighbourhoods_unpadded(const std::vector<int64_t> & dst)
 	{
 		// Pass 1: validate and count degrees per node
 		std::array<int, 165> deg{};
@@ -403,158 +625,16 @@ namespace
 			++deg[v];
 		}
 
-		std::array<std::vector<int32_t>, 165> nbr{};
+		std::array<std::vector<int32_t>, 165> res{};
 		for(int v = 0; v < 165; ++v)
-			nbr[v].reserve(deg[v]);
+			res[v].reserve(deg[v]);
 		for(size_t e = 0; e < dst.size(); ++e)
 		{
 			auto v = static_cast<int>(dst[e]);
-			nbr[v].push_back(static_cast<int32_t>(e));
+			res[v].push_back(static_cast<int32_t>(e));
 		}
 
-		return nbr;
-	}
-
-	struct BuildOutputs
-	{
-		int size_index = -1; // chosen index in all_sizes
-		std::array<int32_t, LT_COUNT> emax{}; // chosen emax per link type
-		std::array<int32_t, LT_COUNT> kmax{}; // chosen kmax per link type
-
-		std::array<std::vector<int32_t>, 2> ei_flat; // each length sum(emax)
-		std::vector<float> ea_flat; // length sum(emax)
-		std::array<std::vector<int32_t>, 165> nbrs_flat; // each length sum(kmax)
-	};
-
-	// all_sizes: S x LT_COUNT x 2, where [s][l] = {emax, kmax}
-	BuildOutputs
-	build_flattened(const std::array<IndexContainer, LT_COUNT> & containers, const std::vector<std::vector<std::vector<int32_t>>> & all_sizes, int bucket)
-	{
-		BuildOutputs out{};
-
-		// Required per-linktype capacities from data
-		std::array<size_t, LT_COUNT> e_req{};
-		std::array<size_t, LT_COUNT> k_req{};
-		for(int l = 0; l < LT_COUNT; ++l)
-		{
-			e_req[l] = containers[l].ea.size();
-			size_t km = 0;
-			for(int v = 0; v < 165; ++v)
-				km = std::max(km, containers[l].nbrs[v].size());
-			k_req[l] = km;
-		}
-
-		// 1) Find smallest valid bucket size index
-		int chosen = -1;
-		std::array<int32_t, LT_COUNT> emax{};
-		std::array<int32_t, LT_COUNT> kmax{};
-		for(int s = 0; s < static_cast<int>(all_sizes.size()); ++s)
-		{
-			const auto & sz = all_sizes[s];
-			if(sz.size() != LT_COUNT)
-				continue; // skip malformed
-			bool ok = true;
-			for(int l = 0; l < LT_COUNT && ok; ++l)
-			{
-				if(sz[l].size() != 2)
-				{
-					ok = false;
-					break;
-				}
-				int32_t emax_l = sz[l][0];
-				int32_t kmax_l = sz[l][1];
-				if(emax_l < static_cast<int32_t>(e_req[l]) || kmax_l < static_cast<int32_t>(k_req[l]))
-				{
-					ok = false;
-				}
-			}
-			ok = ok && (bucket == -1 || s == bucket);
-			if(ok)
-			{
-				chosen = s;
-				for(int l = 0; l < LT_COUNT; ++l)
-				{
-					emax[l] = sz[l][0];
-					kmax[l] = sz[l][1];
-				}
-				break;
-			}
-		}
-
-		if(chosen < 0)
-			throwf("too many units on the battlefield");
-
-		logAi->debug("Size: %d", chosen);
-		for(int i = 0; i < LT_COUNT; ++i)
-			logAi->debug("  %d: [%ld, %ld] -> [%lld, %lld]", i, e_req[i], k_req[i], all_sizes[chosen][i][0], all_sizes[chosen][i][1]);
-
-		out.size_index = chosen;
-		out.emax = emax;
-		out.kmax = kmax;
-
-		// Precompute sums
-		const size_t sum_emax = std::accumulate(emax.begin(), emax.end(), 0);
-		const size_t sum_kmax = std::accumulate(kmax.begin(), kmax.end(), 0);
-
-		// 2) Build ei_flat and ea_flat (concat each layer's ei/ea, zero-padded to emax[l])
-		out.ei_flat.at(0).clear();
-		out.ei_flat.at(1).clear();
-		out.ea_flat.clear();
-
-		out.ei_flat.at(0).reserve(sum_emax);
-		out.ei_flat.at(1).reserve(sum_emax);
-		out.ea_flat.reserve(sum_emax);
-		for(int l = 0; l < LT_COUNT; ++l)
-		{
-			const auto & ei = containers[l].ei;
-			const auto & ea = containers[l].ea;
-
-			out.ei_flat.at(0).insert(out.ei_flat.at(0).end(), ei.at(0).begin(), ei.at(0).end());
-			out.ei_flat.at(1).insert(out.ei_flat.at(1).end(), ei.at(1).begin(), ei.at(1).end());
-			out.ea_flat.insert(out.ea_flat.end(), ea.begin(), ea.end());
-
-			size_t need = static_cast<size_t>(emax[l]) - ei.at(0).size();
-			if(need > 0)
-				out.ei_flat.at(0).insert(out.ei_flat.at(0).end(), need, 0);
-
-			need = static_cast<size_t>(emax[l]) - ei.at(1).size();
-			if(need > 0)
-				out.ei_flat.at(1).insert(out.ei_flat.at(1).end(), need, 0);
-
-			need = static_cast<size_t>(emax[l]) - ea.size();
-			if(need > 0)
-				out.ea_flat.insert(out.ea_flat.end(), need, 0.0f);
-		}
-		// Sanity
-		if(out.ei_flat.at(0).size() != sum_emax)
-			throwf("ei_flat.at(0) size mismatch: want: %d, have: %zu", sum_emax, out.ei_flat.at(0).size());
-		if(out.ei_flat.at(1).size() != sum_emax)
-			throwf("ei_flat.at(1) size mismatch: want: %d, have: %zu", sum_emax, out.ei_flat.at(1).size());
-		if(out.ea_flat.size() != sum_emax)
-			throwf("ea_flat size mismatch: want: %d, have: %zu", sum_emax, out.ea_flat.size());
-
-		// 3) Build nbrs_flat per node: concat layer l, pad to kmax[l] with -1
-		for(int v = 0; v < 165; ++v)
-		{
-			auto & dst = out.nbrs_flat[v];
-			dst.clear();
-			dst.reserve(sum_kmax);
-			for(int l = 0; l < LT_COUNT; ++l)
-			{
-				const auto & src = containers[l].nbrs[v];
-				dst.insert(dst.end(), src.begin(), src.end());
-				const size_t need = static_cast<size_t>(kmax[l]) - src.size();
-				if(need > 0)
-					dst.insert(dst.end(), need, -1);
-			}
-
-			if(dst.size() != sum_kmax)
-			{
-				throwf("nbrs_flat row size mismatch: want: %zu, have: %zu", sum_kmax, dst.size());
-			}
-		}
-
-		return out;
+		return res;
 	}
 } // namespace {}
 
@@ -854,7 +934,7 @@ double NNModel::getValue(const MMAI::Schema::IState * s)
 	return 0;
 }
 
-std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup, int bucket)
+std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup)
 {
 	// XXX: if needed, support for other versions may be added via conditionals
 	if(version != 13)
@@ -887,15 +967,15 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 		// c.e_max = nlinks;
 		// c.k_max = k_max;
 
-		c.ei.at(0).reserve(nlinks);
-		c.ei.at(1).reserve(nlinks);
-		c.ei.at(0).insert(c.ei.at(0).end(), srcinds.begin(), srcinds.end());
-		c.ei.at(1).insert(c.ei.at(1).end(), dstinds.begin(), dstinds.end());
+		c.edgeIndex.at(0).reserve(nlinks);
+		c.edgeIndex.at(1).reserve(nlinks);
+		c.edgeIndex.at(0).insert(c.edgeIndex.at(0).end(), srcinds.begin(), srcinds.end());
+		c.edgeIndex.at(1).insert(c.edgeIndex.at(1).end(), dstinds.begin(), dstinds.end());
 
-		c.ea.reserve(nlinks);
-		c.ea.insert(c.ea.end(), attrs.begin(), attrs.end());
+		c.edgeAttrs.reserve(nlinks);
+		c.edgeAttrs.insert(c.edgeAttrs.end(), attrs.begin(), attrs.end());
 
-		c.nbrs = buildNBR_unpadded(dstinds);
+		c.neighbourhoods = buildNeighbourhoods_unpadded(dstinds);
 
 		++count;
 	}
@@ -903,38 +983,38 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 	if(count != LT_COUNT)
 		throwf("unexpected links count: want: %d, have: %d", LT_COUNT, count);
 
-	auto build = build_flattened(containers, all_buckets, bucket);
+	auto bdata = bucketing::BucketBuilder(containers, all_buckets).build_bucket_data();
 
 	const auto * state = s->getBattlefieldState();
 	auto estate = std::vector<float>(state->size());
 	std::copy(state->begin(), state->end(), estate.begin());
 
-	int sum_e = build.ei_flat.at(0).size();
-	int sum_k = build.nbrs_flat.at(0).size();
+	int sum_e = bdata.edgeIndex_flat.at(0).size();
+	int sum_k = bdata.neighbourhoods_flat.at(0).size();
 
-	if(build.ei_flat.at(0).size() != sum_e)
-		throwf("unexpected build.ei_flat.at(0).size(): want: %d, have: %d", sum_e, build.ei_flat.at(0).size());
-	if(build.ei_flat.at(1).size() != sum_e)
-		throwf("unexpected build.ei_flat.at(1).size(): want: %d, have: %d", sum_e, build.ei_flat.at(1).size());
-	if(build.ea_flat.size() != sum_e)
-		throwf("unexpected build.ea_flat.size(): want: %d, have: %d", sum_e, build.ea_flat.size());
+	if(bdata.edgeIndex_flat.at(0).size() != sum_e)
+		throwf("unexpected bdata.edgeIndex_flat.at(0).size(): want: %d, have: %d", sum_e, bdata.edgeIndex_flat.at(0).size());
+	if(bdata.edgeIndex_flat.at(1).size() != sum_e)
+		throwf("unexpected bdata.edgeIndex_flat.at(1).size(): want: %d, have: %d", sum_e, bdata.edgeIndex_flat.at(1).size());
+	if(bdata.edgeAttrs_flat.size() != sum_e)
+		throwf("unexpected bdata.edgeAttrs_flat.size(): want: %d, have: %d", sum_e, bdata.edgeAttrs_flat.size());
 	for(int i = 0; i < 165; ++i)
 	{
-		if(build.nbrs_flat.at(i).size() != sum_k)
+		if(bdata.neighbourhoods_flat.at(i).size() != sum_k)
 		{
-			throwf("unexpected build.nbrs_flat.at(%d).size(): want: %d, have: %d", i, sum_k, build.nbrs_flat.at(i).size());
+			throwf("unexpected bdata.neighbourhoods_flat.at(%d).size(): want: %d, have: %d", i, sum_k, bdata.neighbourhoods_flat.at(i).size());
 		}
 	}
 
-	auto einds = std::vector<int32_t>{};
-	einds.reserve(2 * sum_e);
-	for(auto & eind : build.ei_flat)
-		einds.insert(einds.end(), eind.begin(), eind.end());
+	auto edgeIndex_flat = std::vector<int32_t>{};
+	edgeIndex_flat.reserve(2 * sum_e);
+	for(auto & ei : bdata.edgeIndex_flat)
+		edgeIndex_flat.insert(edgeIndex_flat.end(), ei.begin(), ei.end());
 
-	auto nbrs = std::vector<int32_t>{};
-	nbrs.reserve(165 * sum_k);
-	for(auto & nbr : build.nbrs_flat)
-		nbrs.insert(nbrs.end(), nbr.begin(), nbr.end());
+	auto neighbourhoods = std::vector<int32_t>{};
+	neighbourhoods.reserve(165 * sum_k);
+	for(auto & nbr : bdata.neighbourhoods_flat)
+		neighbourhoods.insert(neighbourhoods.end(), nbr.begin(), nbr.end());
 
 	std::vector<Ort::AllocatedStringPtr> input_name_ptrs;
 	std::vector<const char *> input_names;
@@ -949,11 +1029,11 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 
 	auto tensors = std::vector<Ort::Value>{};
 	tensors.push_back(toTensor("state", estate, {static_cast<int64_t>(estate.size())}));
-	tensors.push_back(toTensor("ei_flat", einds, {2, sum_e}));
-	tensors.push_back(toTensor("ea_flat", build.ea_flat, {sum_e, 1}));
-	tensors.push_back(toTensor("nbr_flat", nbrs, {165, sum_k}));
+	tensors.push_back(toTensor("edgeIndex_flat", edgeIndex_flat, {2, sum_e}));
+	tensors.push_back(toTensor("edgeAttrs_flat", bdata.edgeAttrs_flat, {sum_e, 1}));
+	tensors.push_back(toTensor("nbr_flat", neighbourhoods, {165, sum_k}));
 
-	return {std::move(tensors), build.size_index};
+	return {std::move(tensors), bdata.size_index};
 }
 
 template<typename T>

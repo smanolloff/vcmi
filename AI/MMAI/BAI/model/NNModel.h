@@ -54,7 +54,7 @@ private:
 	Ort::MemoryInfo meminfo;
 
 	std::pair<std::vector<Ort::Value>, int>
-	prepareInputsV13(const MMAI::Schema::IState * state, const MMAI::Schema::V13::ISupplementaryData * sup, int bucket = -1);
+	prepareInputsV13(const MMAI::Schema::IState * state, const MMAI::Schema::V13::ISupplementaryData * sup);
 
 	template<typename T>
 	Ort::Value toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape);
