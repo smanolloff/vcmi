@@ -34,20 +34,22 @@ namespace MMAI::BAI
 using ConfigStorage = std::map<std::string, std::string>;
 using ModelStorage = std::map<std::string, std::unique_ptr<NNModel>>;
 
-struct Config
-{
-	ConfigStorage modelconfig;
-	ModelStorage models;
-	float temperature = 1.0f;
-	uint64_t seed = 0;
-	std::unique_ptr<ScriptedModel> fallbackModel;
-	std::mutex mutex;
-};
+namespace {
+	struct Config
+	{
+		ConfigStorage modelconfig;
+		ModelStorage models;
+		float temperature = 1.0f;
+		uint64_t seed = 0;
+		std::unique_ptr<ScriptedModel> fallbackModel;
+		std::mutex mutex;
+	};
+
+	static Config cfg = Config();
+}
 
 static void InitModelConfigFromSettings()
 {
-	static Config cfg = Config();
-
 	auto lock = std::lock_guard(cfg.mutex);
 	if(!cfg.modelconfig.empty())
 		return;
@@ -145,8 +147,6 @@ static void InitModelConfigFromSettings()
 
 static Schema::IModel * GetModel(std::string key)
 {
-	auto & cfg = getConfig();
-
 	try
 	{
 		auto lock = std::lock_guard(cfg.mutex);

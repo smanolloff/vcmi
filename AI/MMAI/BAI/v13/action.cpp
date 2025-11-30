@@ -69,7 +69,7 @@ std::unique_ptr<Hex> Action::initAMoveTargetHex(const Schema::Action & a, const 
 HexAction Action::initHexAction(const Schema::Action & a, const Battlefield * bf)
 {
 	if(a < EI(GlobalAction::_count))
-		return HexAction(-1); // a is not about a hex
+		return static_cast<HexAction>(-1); // a is not about a hex
 	return static_cast<HexAction>((a - EI(GlobalAction::_count)) % EI(HexAction::_count));
 }
 

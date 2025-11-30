@@ -417,7 +417,7 @@ void Verify(const State * state)
 	}
 	auto alogs = state->supdata->getAttackLogs();
 
-	for(int ihex = 0; ihex < BF_SIZE; ihex++)
+	for(int ihex = 0; ihex < 165; ihex++)
 	{
 		int x = ihex % 15;
 		int y = ihex / 15;

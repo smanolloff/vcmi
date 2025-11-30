@@ -354,7 +354,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 
 		try
 		{
-			auto ba = buildBattleAction();
+			ba = buildBattleAction();
 
 			if(ba)
 			{
@@ -689,22 +689,23 @@ std::string BAI::debugInfo(Action * action, const CStack * astack, BattleHex * n
 	return info.str();
 }
 
-std::string BAI::renderANSI()
+std::string BAI::renderANSI() const
 {
 	try
 	{
 		Verify(state.get());
 	}
-	catch(std::exception & e)
+	catch(const std::exception & e)
 	{
 		try
 		{
+			std::cout << e.what();
 			std::cout << "Disaster render:\n";
 			std::cout << Render(state.get(), state->action.get()) << "\n";
 		}
-		catch(std::exception & e)
+		catch(std::exception & e2)
 		{
-			std::cerr << "(failed)\n";
+			std::cerr << "(failed: " << e2.what() << ")\n";
 		}
 		throw;
 	}

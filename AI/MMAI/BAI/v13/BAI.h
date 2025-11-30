@@ -57,7 +57,6 @@ public:
 
 	Schema::Action getNonRenderAction() override;
 
-protected:
 	// Subsequent versions may override this with subclasses of State
 	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);
 	std::unique_ptr<State> state = nullptr;
@@ -69,10 +68,10 @@ protected:
 	int getActionTotalCalls;
 
 	bool resetting = false;
-	std::vector<Schema::Action> allactions = {}; // DEBUG ONLY
+	std::vector<Schema::Action> allactions; // DEBUG ONLY
 	std::shared_ptr<CPlayerBattleCallback> battle = nullptr;
 
-	std::string renderANSI();
+	std::string renderANSI() const;
 	std::string debugInfo(Action * action, const CStack * astack, BattleHex * nbh); // DEBUG ONLY
 	void handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & hex, Action * action);
 	std::shared_ptr<BattleAction> buildBattleAction();

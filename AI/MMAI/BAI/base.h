@@ -25,10 +25,10 @@ class Base : public CBattleGameInterface
 public:
 	// Factory method for versioned derived BAI (e.g. BAI::V1)
 	static std::shared_ptr<Base>
-	Create(Schema::IModel * model, const std::shared_ptr<Environment> env, const std::shared_ptr<CBattleCallback> cb, const bool enableSpellsUsage);
+	Create(Schema::IModel * model, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb, bool enableSpellsUsage);
 
 	Base() = delete;
-	Base(Schema::IModel * model, const int version, const std::shared_ptr<Environment> env, const std::shared_ptr<CBattleCallback> cb);
+	Base(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb);
 
 	/*
          * These methods MUST be overridden by derived BAI (e.g. BAI::V1)
@@ -36,8 +36,8 @@ public:
          */
 
 	virtual Schema::Action getNonRenderAction() = 0;
-	virtual void activeStack(const BattleID & bid, const CStack * stack) override;
-	virtual void yourTacticPhase(const BattleID & bid, int distance) override;
+	void activeStack(const BattleID & bid, const CStack * stack) override;
+	void yourTacticPhase(const BattleID & bid, int distance) override;
 
 	/*
          * These methods MAY be overriden by derived BAI (e.g. BAI::V1)
@@ -78,11 +78,11 @@ public:
          * Their base implementation throws a runtime error
          * (whistleblower for developer mistakes)
          */
-	virtual void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2) override
+	void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2) override
 	{
 		throw std::runtime_error("BAI (base class) received initBattleInterface call");
 	}
-	virtual void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2, AutocombatPreferences _3) override
+	void initBattleInterface(std::shared_ptr<Environment> _1, std::shared_ptr<CBattleCallback> _2, AutocombatPreferences _3) override
 	{
 		throw std::runtime_error("BAI (base class) received initBattleInterface call");
 	}
@@ -91,7 +91,6 @@ public:
 	const std::string name = "BAI"; // used in logging
 	const std::string colorname;
 
-protected:
 	const std::shared_ptr<Environment> env;
 	const std::shared_ptr<CBattleCallback> cb;
 	Schema::IModel * model;
@@ -192,10 +191,11 @@ protected:
 	{
 		log(ELogLevel::TRACE, f);
 	}
-	void log(ELogLevel::ELogLevel level, const std::function<std::string()> & f) const
-	{
+
+    template <typename F, std::enable_if_t<std::is_invocable_r_v<std::string, F &>, int> = 0>
+    void log(ELogLevel::ELogLevel level, F & f) const {
 		if(logAi->getEffectiveLevel() <= level)
 			_log(level, "%s", f());
-	}
+    }
 };
 }

@@ -22,26 +22,22 @@ namespace MMAI::BAI
 {
 // static
 std::shared_ptr<Base>
-Base::Create(Schema::IModel * model, const std::shared_ptr<Environment> env, const std::shared_ptr<CBattleCallback> cb, const bool enableSpellsUsage)
+Base::Create(Schema::IModel * model, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb, bool enableSpellsUsage)
 {
 	std::shared_ptr<Base> res;
 	auto version = model->getVersion();
 
-	switch(version)
-	{
-		case 13:
-			res = std::make_shared<V13::BAI>(model, version, env, cb);
-			break;
-		default:
-			throw std::runtime_error("Unsupported schema version: " + std::to_string(version));
-	}
+	if(version == 13)
+		res = std::make_shared<V13::BAI>(model, version, env, cb);
+	else
+		throw std::runtime_error("Unsupported schema version: " + std::to_string(version));
 
 	res->init(enableSpellsUsage);
 	return res;
 }
 
-Base::Base(Schema::IModel * model, const int version, const std::shared_ptr<Environment> env, const std::shared_ptr<CBattleCallback> cb)
-	: model(model), version(version), env(env), cb(cb), name("BAI-v" + std::to_string(version)), colorname(cb->getPlayerID()->toString())
+Base::Base(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb)
+	: colorname(cb->getPlayerID()->toString()), model(model), cb(cb), name("BAI-v" + std::to_string(version)), version(version), env(env)
 {
 	std::ostringstream oss;
 	oss << this; // Store this memory address
@@ -242,7 +238,7 @@ void Base::battleStacksEffectsSet(const BattleID & bid, const SetStackEffect & s
 		}
 
 		std::cout << "MMAI_VERBOSE: " << res << "\n";
-	};
+	}
 }
 
 void Base::battleStart(

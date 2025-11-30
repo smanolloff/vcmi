@@ -32,7 +32,6 @@ struct ActMask
          * ...
          * [164] HexActMask for hex 164
          */
-	std::array<HexActMask, BF_SIZE> hexactmasks = {};
+	std::array<HexActMask, 165> hexactmasks = {};
 };
-static_assert(BF_SIZE == 165, "doc assumes BF_SIZE=165");
 }
