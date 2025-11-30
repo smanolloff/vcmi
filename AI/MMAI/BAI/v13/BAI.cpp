@@ -398,7 +398,6 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	{
 		switch(static_cast<GlobalAction>(state->action->action))
 		{
-			break;
 			case GlobalAction::RETREAT:
 				res = std::make_shared<BattleAction>(BattleAction::makeRetreat(battle->battleGetMySide()));
 				break;

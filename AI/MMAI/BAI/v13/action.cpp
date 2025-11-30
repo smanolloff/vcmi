@@ -30,8 +30,8 @@ std::unique_ptr<Hex> Action::initHex(const Schema::Action & a, const Battlefield
 		return nullptr;
 
 	i = i / EI(HexAction::_count);
-	auto y = i / BF_XMAX;
-	auto x = i % BF_XMAX;
+	auto y = i / 15;
+	auto x = i % 15;
 
 	// create a new unique_ptr with a copy of Hex
 	return std::make_unique<Hex>(*bf->hexes->at(y).at(x));
@@ -125,7 +125,6 @@ std::string Action::name() const
 
 	switch(HexAction(ha))
 	{
-		break;
 		case HexAction::MOVE:
 			res = (stack && hex->bhex == stack->cstack->getPosition() ? "Defend on hex(" : "Move to (") + hex->name() + ")";
 			break;

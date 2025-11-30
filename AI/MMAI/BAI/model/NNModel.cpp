@@ -12,7 +12,6 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <iostream>
 #include <limits>
 #include <memory>
 #include <numeric>
@@ -34,11 +33,9 @@
 #	ifndef NOMINMAX
 #		define NOMINMAX
 #	endif
-
 #	ifndef WIN32_LEAN_AND_MEAN
 #		define WIN32_LEAN_AND_MEAN
 #	endif
-
 #	include <windows.h>
 #endif
 
@@ -391,7 +388,8 @@ namespace
 
 		// 1) Find smallest valid bucket size index
 		int chosen = -1;
-		std::array<int32_t, LT_COUNT> emax{}, kmax{};
+		std::array<int32_t, LT_COUNT> emax{};
+		std::array<int32_t, LT_COUNT> kmax{};
 		for(int s = 0; s < static_cast<int>(all_sizes.size()); ++s)
 		{
 			const auto & sz = all_sizes[s];
@@ -950,14 +948,10 @@ std::vector<T> NNModel::t2v(const std::string & name, const Ort::Value & tensor,
 
 	auto shape = type_info.GetShape();
 	if(shape.size() != 1)
-	{
 		throwf("t2v: %s: expected ndim=1, got: %d", name, shape.size());
-	}
 
 	if(shape != std::vector<int64_t>{numel})
-	{
 		throwf("t2v: %s: bad shape", name);
-	}
 
 	const T * data = tensor.GetTensorData<T>();
 	// int32_t result = out_data[0];

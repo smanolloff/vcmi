@@ -78,7 +78,6 @@ void Encoder::Encode(const char * attrname, const int a, const Encoding e, const
 
 	switch(e)
 	{
-		break;
 		case Encoding::BINARY_EXPLICIT_NULL:
 			EncodeBinaryExplicitNull(v, n, vec);
 			break;

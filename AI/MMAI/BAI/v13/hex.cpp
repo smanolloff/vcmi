@@ -32,7 +32,7 @@ constexpr HexStateMask S_DAMAGING_ALL = 1 << EI(HexState::DAMAGING_L) | 1 << EI(
 int Hex::CalcId(const BattleHex & bh)
 {
 	ASSERT(bh.isAvailable(), "Hex unavailable: " + std::to_string(bh.toInt()));
-	return bh.getX() - 1 + bh.getY() * BF_XMAX;
+	return bh.getX() - 1 + (bh.getY() * 15);
 }
 
 // static
@@ -237,7 +237,6 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 	{
 		switch(obstacle->obstacleType)
 		{
-			break;
 			case CObstacleInstance::USUAL:
 			case CObstacleInstance::ABSOLUTE_OBSTACLE:
 				statemask &= ~S_PASSABLE;
@@ -251,7 +250,6 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 				//      would get damaged by an obstacle.
 				switch(SpellID(obstacle->ID))
 				{
-					break;
 					case SpellID::QUICKSAND:
 						statemask |= S_STOPPING;
 						break;
@@ -272,7 +270,6 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 
 	switch(accessibility)
 	{
-		break;
 		case EAccessibility::ACCESSIBLE:
 			ASSERT(!stack, "accessibility is ACCESSIBLE, but a stack was found on hex");
 			statemask |= S_PASSABLE;

@@ -224,7 +224,6 @@ void Verify(const State * state)
 
 		switch(ha)
 		{
-			break;
 			case HexAction::AMOVE_TR:
 				nbh = bh.cloneInDirection(BattleHex::EDir::TOP_RIGHT, false);
 				break;
@@ -447,7 +446,6 @@ void Verify(const State * state)
 
 			switch(attr)
 			{
-				break;
 				case HA::Y_COORD:
 					expect(v == y, "HEX.Y_COORD: %d != %d", v, y);
 					break;
@@ -488,7 +486,6 @@ void Verify(const State * state)
 
 						switch(aa)
 						{
-							break;
 							case EAccessibility::ACCESSIBLE:
 								throw std::runtime_error("HEX.STATE_MASK: PASSABLE bit not set, but accessibility is ACCESSIBLE");
 								break;
@@ -813,7 +810,6 @@ void Verify(const State * state)
 
 							switch(f)
 							{
-								break;
 								case SF1::IS_ACTIVE:
 									// at battle end, queue is messed up
 									// (the stack that dealt the killing blow is still "active", but not on 0 pos)
@@ -945,7 +941,6 @@ void Verify(const State * state)
 
 							switch(f)
 							{
-								break;
 								case SF2::AGE:
 									ensureValueMatch(vf, cstack->hasBonusFrom(BonusSource::SPELL_EFFECT, SpellID(SpellID::AGE)), "HEX.STACK_FLAGS2.AGE");
 									break;
@@ -1165,9 +1160,9 @@ std::string Render(const Schema::IState * istate, const Action * action)
 	// y even "▏"
 	// y odd "▕"
 
-	for(int y = 0; y < BF_YMAX; y++)
+	for(int y = 0; y < 11; y++)
 	{
-		for(int x = 0; x < BF_XMAX; x++)
+		for(int x = 0; x < 15; x++)
 		{
 			auto sym = std::string("?");
 			auto & hex = hexes.at(y).at(x);
@@ -1260,7 +1255,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 
 			row << (col + sym + nocol);
 
-			if(x == BF_XMAX - 1)
+			if(x == 15 - 1)
 			{
 				row << (y % 2 == 0 ? " " : "  ") << "┠" << nummap.at(y % 10);
 			}
@@ -1288,7 +1283,6 @@ std::string Render(const Schema::IState * istate, const Action * action)
 
 		switch(i)
 		{
-			break;
 			case 1:
 				name = "Player";
 				if(ended)
@@ -1519,7 +1513,6 @@ std::string Render(const Schema::IState * istate, const Action * action)
 						// Y_COORD, "Wide/Breath"},
 						switch(specialcounter)
 						{
-							break;
 							case 0:
 								value = std::string(1, stack->getAlias());
 								break;

@@ -29,7 +29,6 @@ Base::Create(Schema::IModel * model, const std::shared_ptr<Environment> env, con
 
 	switch(version)
 	{
-		break;
 		case 13:
 			res = std::make_shared<V13::BAI>(model, version, env, cb);
 			break;
@@ -188,7 +187,7 @@ void Base::battleStackMoved(const BattleID & bid, const CStack * stack, const Ba
 		fmt += "\n\t* teleport=%d";
 
 		auto bh0 = dest.at(dest.size() - 1);
-		auto hexid0 = bh0.getX() - 1 + (bh0.getY() * BF_XMAX);
+		auto hexid0 = bh0.getX() - 1 + (bh0.getY() * 15);
 		auto x0 = bh0.getX() - 1;
 		auto y0 = bh0.getY();
 

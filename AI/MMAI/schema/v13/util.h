@@ -100,7 +100,6 @@ constexpr int BinaryAttributeUnusedValues(Encoding e, int n, int vmax)
 {
 	switch(e)
 	{
-		break;
 		case Encoding::BINARY_EXPLICIT_NULL:
 			return ((1 << (n - 1)) - 1 - vmax);
 			break;

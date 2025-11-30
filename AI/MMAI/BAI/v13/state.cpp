@@ -204,7 +204,6 @@ void State::onActiveStack(const CStack * astack, CombatResult result, bool recor
 		{
 			switch(GlobalAction(i))
 			{
-				break;
 				case GlobalAction::RETREAT:
 					actmask.push_back(battle->battleCanFlee());
 					break;
@@ -327,7 +326,6 @@ void State::_onActionStarted(const BattleAction & action)
 
 	switch(action.actionType)
 	{
-		break;
 		case EActionType::WAIT:
 			startedAction = ACTION_WAIT;
 			break;
@@ -544,7 +542,6 @@ void State::onBattleEnd(const BattleResult * br)
 {
 	switch(br->winner)
 	{
-		break;
 		case BattleSide::LEFT_SIDE:
 			onActiveStack(nullptr, CombatResult::LEFT_WINS);
 			break;

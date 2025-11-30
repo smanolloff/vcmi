@@ -55,7 +55,6 @@ namespace
 	{
 		switch(slot)
 		{
-			break;
 			case STACK_SLOT_SPECIAL:
 				return 'S';
 				break;
@@ -102,7 +101,6 @@ int Stack::CalcValue(const CCreature * cr)
 	{
 		switch(bonus->type)
 		{
-			break;
 			case BonusType::ADDITIONAL_ATTACK:
 				d += (shooter ? 0.5 : 0.3);
 				break;
@@ -151,7 +149,6 @@ int Stack::CalcValue(const CCreature * cr)
 			case BonusType::SPELL_LIKE_ATTACK:
 				switch(bonus->subtype.as<SpellID>())
 				{
-					break;
 					case SpellID::DEATH_CLOUD:
 						d += 0.2;
 				}
@@ -159,7 +156,6 @@ int Stack::CalcValue(const CCreature * cr)
 			case BonusType::SPELL_AFTER_ATTACK:
 				switch(bonus->subtype.as<SpellID>())
 				{
-					break;
 					case SpellID::BLIND:
 					case SpellID::STONE_GAZE:
 					case SpellID::PARALYZE:
@@ -344,7 +340,6 @@ void Stack::processBonuses()
 	{
 		switch(bonus->type)
 		{
-			break;
 			case BonusType::FLYING:
 				setflag(F1::FLYING);
 				break;
@@ -375,7 +370,6 @@ void Stack::processBonuses()
 			case BonusType::SPELL_AFTER_ATTACK:
 				switch(bonus->subtype.as<SpellID>())
 				{
-					break;
 					case SpellID::BLIND:
 						setflag(F2::BLIND_ATTACK);
 						break;
@@ -410,7 +404,6 @@ void Stack::processBonuses()
 			case BonusType::SPELL_LIKE_ATTACK:
 				switch(bonus->subtype.as<SpellID>())
 				{
-					break;
 					case SpellID::FIREBALL:
 						setflag(F1::FIREBALL);
 						break;
@@ -448,7 +441,6 @@ void Stack::processBonuses()
 		{
 			switch(bonus->sid.as<SpellID>())
 			{
-				break;
 				case SpellID::AGE:
 					setflag(F2::AGE);
 					break;
