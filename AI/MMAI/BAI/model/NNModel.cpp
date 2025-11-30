@@ -77,7 +77,13 @@ namespace
 	{
 		std::string name;
 		std::chrono::steady_clock::time_point t0;
-		explicit ScopedTimer(const std::string & n) : name(n), t0(std::chrono::steady_clock::now()) {}
+		explicit ScopedTimer(const std::string & n) : name(n), t0(std::chrono::steady_clock::now())
+		{}
+
+		ScopedTimer(const ScopedTimer &) = delete;
+		ScopedTimer & operator=(const ScopedTimer &) = delete;
+		ScopedTimer(ScopedTimer &&) = delete;
+		ScopedTimer & operator=(ScopedTimer &&) = delete;
 		~ScopedTimer()
 		{
 			auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
@@ -164,173 +170,225 @@ namespace
 			exps.at(i) = e;
 			sum += e;
 		}
-		if(sum == 0.0)
+		if(std::fabs(sum) < 1e-8)
 			return std::vector<double>(logits.size(), 0.0);
 		for(size_t i = 0; i < exps.size(); ++i)
 			exps.at(i) /= sum;
 		return exps;
 	}
 
-	// Masked categorical sampling given a logits vector
-	inline SampleResult sample_masked_logits(
-		const std::vector<float> & logits_1d,
-		const std::vector<int32_t> & mask_1d,
-		bool throw_if_empty,
-		double temperature,
-		std::mt19937 & rng
-	)
+	struct MaskedLogits {
+		const Ort::Value & logits;
+		const Ort::Value & mask;
+	};
+
+	namespace sampling
 	{
-		const size_t K = logits_1d.size();
-		if(K == 0 || mask_1d.size() != K)
-			throwf("Invalid logits/mask sizes");
-		if(temperature < 0.0)
-			throwf("Negative temperature");
-
-		int n_valid = 0;
-		for(size_t i = 0; i < K; ++i)
-			n_valid += (mask_1d.at(i) != 0);
-		if(n_valid == 0)
+		inline int count_valid(const std::vector<int32_t> & mask_1d)
 		{
-			if(throw_if_empty)
-				throwf("No valid options available");
-			return {0, 0.0, true};
+			int n_valid = 0;
+			for (size_t i = 0; i < mask_1d.size(); ++i)
+			{
+				n_valid += (mask_1d.at(i) != 0);
+			}
+			return n_valid;
 		}
 
-		const double neginf = -std::numeric_limits<double>::infinity();
-
-		// Promote to double and mask with -inf
-		std::vector<double> masked_logits(K, neginf);
-		for(size_t i = 0; i < K; ++i)
+		inline std::vector<double> make_masked_logits(
+			const std::vector<float> & logits_1d,
+			const std::vector<int32_t> & mask_1d)
 		{
-			if(mask_1d.at(i))
-				masked_logits.at(i) = static_cast<double>(logits_1d.at(i));
+			const size_t K = logits_1d.size();
+			const double neginf = -std::numeric_limits<double>::infinity();
+
+			std::vector<double> masked_logits(K, neginf);
+			for (size_t i = 0; i < K; ++i)
+			{
+				if (mask_1d.at(i))
+				{
+					masked_logits.at(i) = static_cast<double>(logits_1d.at(i));
+				}
+			}
+			return masked_logits;
 		}
 
-		int idx_chosen = 0;
-		double p_chosen = 0.0;
-
-		if(temperature > 1e8)
+		inline SampleResult sample_uniform_over_mask(
+			const std::vector<int32_t> & mask_1d,
+			int n_valid,
+			std::mt19937 & rng)
 		{
+			const size_t K = mask_1d.size();
 			std::vector<double> probs(K, 0.0);
 			const double p = 1.0 / static_cast<double>(n_valid);
-			for(size_t i = 0; i < K; ++i)
-				if(mask_1d.at(i))
+
+			for (size_t i = 0; i < K; ++i)
+			{
+				if (mask_1d.at(i))
+				{
 					probs.at(i) = p;
+				}
+			}
 
 			std::discrete_distribution<int> dist(probs.begin(), probs.end());
-			idx_chosen = dist(rng);
-			p_chosen = probs.at(static_cast<size_t>(idx_chosen));
+			const int idx_chosen = dist(rng);
+			const double p_chosen = probs.at(static_cast<size_t>(idx_chosen));
+
+			return {idx_chosen, p_chosen, false};
 		}
-		else if(temperature < 1e-8)
+
+		inline SampleResult sample_softmax_over_mask(
+			const std::vector<double> & masked_logits,
+			const std::vector<int32_t> & mask_1d,
+			double temperature,
+			std::mt19937 & rng)
 		{
-			idx_chosen = argmax(masked_logits);
-			p_chosen = 1.0;
-		}
-		else
-		{
+			const size_t K = masked_logits.size();
+			const double neginf = -std::numeric_limits<double>::infinity();
+
 			std::vector<double> scaled(K, neginf);
-			for(size_t i = 0; i < K; ++i)
+			for (size_t i = 0; i < K; ++i)
 			{
-				if(mask_1d.at(i))
+				if (mask_1d.at(i))
+				{
 					scaled.at(i) = masked_logits.at(i) / temperature;
+				}
 			}
 
 			const std::vector<double> probs = softmax(scaled);
-			for(size_t i = 0; i < probs.size(); ++i)
+			for (size_t i = 0; i < probs.size(); ++i)
 			{
-				if(!std::isfinite(probs.at(i)))
+				if (!std::isfinite(probs.at(i)))
+				{
 					throwf("Non-finite probabilities");
+				}
 			}
 
 			std::discrete_distribution<int> dist(probs.begin(), probs.end());
-			idx_chosen = dist(rng);
-			p_chosen = probs.at(static_cast<size_t>(idx_chosen));
+			const int idx_chosen = dist(rng);
+			const double p_chosen = probs.at(static_cast<size_t>(idx_chosen));
+
+			return {idx_chosen, p_chosen, false};
 		}
 
-		return {idx_chosen, p_chosen, false};
-	}
-
-	//
-	// Samples a {action, hex1, hex2} triplet given output logits and masks
-	//
-	// Expected shapes:
-	//   act0_logits: [1, 4]            float32
-	//   hex1_logits: [1, 165]          float32
-	//   hex2_logits: [1, 165]          float32
-	//   mask_act0:   [1, 4]            int32
-	//   mask_hex1:   [1, 4, 165]       int32
-	//   mask_hex2:   [1, 4, 165, 165]  int32
-	//
-	inline TripletSample sample_triplet(
-		const Ort::Value & act0_logits,
-		const Ort::Value & hex1_logits,
-		const Ort::Value & hex2_logits,
-		const Ort::Value & mask_act0,
-		const Ort::Value & mask_hex1,
-		const Ort::Value & mask_hex2,
-		double temperature,
-		std::mt19937 & rng
-	)
-	{
-		const std::vector<int64_t> s_a0 = shape_of(act0_logits);
-		const std::vector<int64_t> s_h1 = shape_of(hex1_logits);
-		const std::vector<int64_t> s_h2 = shape_of(hex2_logits);
-		const std::vector<int64_t> s_m0 = shape_of(mask_act0);
-		const std::vector<int64_t> s_m1 = shape_of(mask_hex1);
-		const std::vector<int64_t> s_m2 = shape_of(mask_hex2);
-
-		if(s_a0 != std::vector<int64_t>({1, 4}))
-			throwf("act0_logits must be [1,4]");
-		if(s_h1 != std::vector<int64_t>({1, 165}))
-			throwf("hex1_logits must be [1,165]");
-		if(s_h2 != std::vector<int64_t>({1, 165}))
-			throwf("hex2_logits must be [1,165]");
-		if(s_m0 != std::vector<int64_t>({1, 4}))
-			throwf("mask_act0 must be [1,4]");
-		if(s_m1 != std::vector<int64_t>({1, 4, 165}))
-			throwf("mask_hex1 must be [1,4,165]");
-		if(s_m2 != std::vector<int64_t>({1, 4, 165, 165}))
-			throwf("mask_hex2 must be [1,4,165,165]");
-
-		// Materialize host vectors and squeeze batch
-		std::vector<float> a0_log = to_vector<float>(act0_logits); // 4
-		std::vector<float> h1_log = to_vector<float>(hex1_logits); // 165
-		std::vector<float> h2_log = to_vector<float>(hex2_logits); // 165
-
-		std::vector<int32_t> m_a0 = to_vector<int32_t>(mask_act0); // 4
-		std::vector<int32_t> m_h1 = to_vector<int32_t>(mask_hex1); // 4*165
-		std::vector<int32_t> m_h2 = to_vector<int32_t>(mask_hex2); // 4*165*165
-
-		// ---- act0 ----
-		const SampleResult act0 = sample_masked_logits(a0_log, m_a0, true, temperature, rng);
-
-		// ---- hex1 mask slice for chosen act0 ----
-		const size_t h1_row_offset = static_cast<size_t>(act0.index) * static_cast<size_t>(165);
-		std::vector<int32_t> m_h1_for_act0(static_cast<size_t>(165), 0);
-		for(size_t k = 0; k < static_cast<size_t>(165); ++k)
+		// Masked categorical sampling given a logits vector
+		inline SampleResult sample_masked_logits(
+		    const std::vector<float> & logits_1d,
+		    const std::vector<int32_t> & mask_1d,
+		    bool throw_if_empty,
+		    double temperature,
+		    std::mt19937 & rng
+		)
 		{
-			m_h1_for_act0.at(k) = m_h1.at(h1_row_offset + k);
+		    const size_t K = logits_1d.size();
+		    if (K == 0 || mask_1d.size() != K)
+		        throwf("Invalid logits/mask sizes");
+		    if (temperature < 0.0)
+		        throwf("Negative temperature");
+
+		    const int n_valid = sampling::count_valid(mask_1d);
+		    if (n_valid == 0)
+		    {
+		        if (throw_if_empty)
+		            throwf("No valid options available");
+		        return {0, 0.0, true};
+		    }
+
+		    const std::vector<double> masked_logits =
+		        sampling::make_masked_logits(logits_1d, mask_1d);
+
+		    if (temperature > 1e8)
+		    {
+		        return sampling::sample_uniform_over_mask(mask_1d, n_valid, rng);
+		    }
+
+		    if (temperature < 1e-8)
+		    {
+		        const int idx_chosen = argmax(masked_logits);
+		        return {idx_chosen, 1.0, false};
+		    }
+
+		    return sampling::sample_softmax_over_mask(masked_logits, mask_1d, temperature, rng);
+
 		}
 
-		// ---- hex1 ----
-		const SampleResult hex1 = sample_masked_logits(h1_log, m_h1_for_act0, false, temperature, rng);
-
-		// ---- hex2 mask slice for (act0, hex1) ----
-		// index = ((act0 * 165) + hex1) * 165 + k
-		const size_t base = (static_cast<size_t>(act0.index) * static_cast<size_t>(165) + static_cast<size_t>(hex1.index)) * static_cast<size_t>(165);
-		std::vector<int32_t> m_h2_for_pair(static_cast<size_t>(165), 0);
-		for(size_t k = 0; k < static_cast<size_t>(165); ++k)
+		//
+		// Samples a {action, hex1, hex2} triplet given output logits and masks
+		//
+		// Expected shapes:
+		//   act0_logits: [1, 4]            float32
+		//   hex1_logits: [1, 165]          float32
+		//   hex2_logits: [1, 165]          float32
+		//   mask_act0:   [1, 4]            int32
+		//   mask_hex1:   [1, 4, 165]       int32
+		//   mask_hex2:   [1, 4, 165, 165]  int32
+		//
+		inline TripletSample sample_triplet(
+			const MaskedLogits & act0_logits,
+			const MaskedLogits & hex1_logits,
+			const MaskedLogits & hex2_logits,
+			double temperature,
+			std::mt19937 & rng
+		)
 		{
-			m_h2_for_pair.at(k) = m_h2.at(base + k);
+			const std::vector<int64_t> s_a0 = shape_of(act0_logits.logits);
+			const std::vector<int64_t> s_h1 = shape_of(hex1_logits.logits);
+			const std::vector<int64_t> s_h2 = shape_of(hex2_logits.logits);
+			const std::vector<int64_t> s_m0 = shape_of(act0_logits.mask);
+			const std::vector<int64_t> s_m1 = shape_of(hex1_logits.mask);
+			const std::vector<int64_t> s_m2 = shape_of(hex2_logits.mask);
+
+			if(s_a0 != std::vector<int64_t>({1, 4}))
+				throwf("act0_logits must be [1,4]");
+			if(s_h1 != std::vector<int64_t>({1, 165}))
+				throwf("hex1_logits must be [1,165]");
+			if(s_h2 != std::vector<int64_t>({1, 165}))
+				throwf("hex2_logits must be [1,165]");
+			if(s_m0 != std::vector<int64_t>({1, 4}))
+				throwf("mask_act0 must be [1,4]");
+			if(s_m1 != std::vector<int64_t>({1, 4, 165}))
+				throwf("mask_hex1 must be [1,4,165]");
+			if(s_m2 != std::vector<int64_t>({1, 4, 165, 165}))
+				throwf("mask_hex2 must be [1,4,165,165]");
+
+			// Materialize host vectors and squeeze batch
+			std::vector<float> a0_log = to_vector<float>(act0_logits.logits); // 4
+			std::vector<float> h1_log = to_vector<float>(hex1_logits.logits); // 165
+			std::vector<float> h2_log = to_vector<float>(hex2_logits.logits); // 165
+
+			std::vector<int32_t> m_a0 = to_vector<int32_t>(act0_logits.mask); // 4
+			std::vector<int32_t> m_h1 = to_vector<int32_t>(hex1_logits.mask); // 4*165
+			std::vector<int32_t> m_h2 = to_vector<int32_t>(hex2_logits.mask); // 4*165*165
+
+			// ---- act0 ----
+			const SampleResult act0 = sample_masked_logits(a0_log, m_a0, true, temperature, rng);
+
+			// ---- hex1 mask slice for chosen act0 ----
+			const size_t h1_row_offset = static_cast<size_t>(act0.index) * static_cast<size_t>(165);
+			std::vector<int32_t> m_h1_for_act0(static_cast<size_t>(165), 0);
+			for(size_t k = 0; k < static_cast<size_t>(165); ++k)
+			{
+				m_h1_for_act0.at(k) = m_h1.at(h1_row_offset + k);
+			}
+
+			// ---- hex1 ----
+			const SampleResult hex1 = sample_masked_logits(h1_log, m_h1_for_act0, false, temperature, rng);
+
+			// ---- hex2 mask slice for (act0, hex1) ----
+			const size_t base = (static_cast<size_t>(act0.index) * static_cast<size_t>(165) + static_cast<size_t>(hex1.index)) * static_cast<size_t>(165);
+			std::vector<int32_t> m_h2_for_pair(static_cast<size_t>(165), 0);
+			for(size_t k = 0; k < static_cast<size_t>(165); ++k)
+			{
+				m_h2_for_pair.at(k) = m_h2.at(base + k);
+			}
+
+			// ---- hex2 ----
+			const SampleResult hex2 = sample_masked_logits(h2_log, m_h2_for_pair, false, temperature, rng);
+
+			// ---- joint confidence ----
+			const double confidence = act0.prob * (hex1.fallback ? 1.0 : hex1.prob) * (hex2.fallback ? 1.0 : hex2.prob);
+
+			return {act0.index, hex1.index, hex2.index, confidence};
 		}
-
-		// ---- hex2 ----
-		const SampleResult hex2 = sample_masked_logits(h2_log, m_h2_for_pair, false, temperature, rng);
-
-		// ---- joint confidence ----
-		const double confidence = act0.prob * (hex1.fallback ? 1.0 : hex1.prob) * (hex2.fallback ? 1.0 : hex2.prob);
-
-		return {act0.index, hex1.index, hex2.index, confidence};
 	}
 
 	std::array<std::vector<int32_t>, 165> buildNBR_unpadded(const std::vector<int64_t> & dst)
@@ -339,7 +397,7 @@ namespace
 		std::array<int, 165> deg{};
 		for(size_t e = 0; e < dst.size(); ++e)
 		{
-			int v = static_cast<int>(dst[e]);
+			auto v = static_cast<int>(dst[e]);
 			if(v < 0 || v >= 165)
 				throwf("dst contains node id out of range: ", v);
 			++deg[v];
@@ -350,7 +408,7 @@ namespace
 			nbr[v].reserve(deg[v]);
 		for(size_t e = 0; e < dst.size(); ++e)
 		{
-			int v = static_cast<int>(dst[e]);
+			auto v = static_cast<int>(dst[e]);
 			nbr[v].push_back(static_cast<int32_t>(e));
 		}
 
@@ -773,13 +831,10 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	// deterministic action (useful for debugging)
 	auto action = t2v<int32_t>("getAction: t_action", outputs[0], 1).at(0);
 
-	auto sample = sample_triplet(
-		outputs[1], // [1, 4]               t_act0_logits
-		outputs[2], // [1, 165]             t_hex1_logits
-		outputs[3], // [1, 165]             t_hex2_logits
-		outputs[4], // [1, 4]               t_mask_act0
-		outputs[5], // [1, 4, 165]          t_mask_hex1
-		outputs[6], // [1, 4, 165, 165]     t_mask_hex2
+	auto sample = sampling::sample_triplet(
+		MaskedLogits{.logits=outputs[1], .mask=outputs[4]},	// act0 [1, 4]
+		MaskedLogits{.logits=outputs[2], .mask=outputs[5]},	// hex1 [1, 4, 165]
+		MaskedLogits{.logits=outputs[3], .mask=outputs[6]},	// hex2 [1, 4, 165, 165]
 		temperature,
 		rng
 	);
