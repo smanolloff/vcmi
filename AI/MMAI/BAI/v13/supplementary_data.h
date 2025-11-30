@@ -35,8 +35,8 @@ namespace MMAI::BAI::V13 {
             const PlayerStats* lpstats_,
             const PlayerStats* rpstats_,
             const Battlefield* battlefield_,
-            const std::vector<std::shared_ptr<AttackLog>> attackLogs_,
-            std::vector<std::tuple<Schema::Action, std::shared_ptr<Schema::ActionMask>, std::shared_ptr<Schema::BattlefieldState>>> transitions_,
+            const std::vector<std::shared_ptr<AttackLog>> &attackLogs_,
+            const std::vector<std::tuple<Schema::Action, std::shared_ptr<Schema::ActionMask>, std::shared_ptr<Schema::BattlefieldState>>> &transitions_,
             CombatResult result
         ) : colorname(colorname_),
             side(side_),

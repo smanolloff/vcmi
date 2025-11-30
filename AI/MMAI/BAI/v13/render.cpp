@@ -41,6 +41,26 @@ namespace MMAI::BAI::V13 {
         return ss.str();
     }
 
+    template <typename... Args>
+    inline void expect(bool exp, const char* format, Args&&... args) {
+        if (exp)
+            return;
+
+        constexpr std::size_t bufferSize = 2048;
+        char buffer[bufferSize];
+
+        std::snprintf(buffer, bufferSize, format, std::forward<Args>(args)...);
+        throw std::runtime_error(buffer);
+    }
+
+    inline void expect(bool exp, const char* message) {
+        if (exp) {
+            return;
+        }
+        // No formatting; just throw with the message
+        throw std::runtime_error(message);
+    }
+
     // This function used during model development and is never called otherwise
     void Verify(const State* state) { // NOSONAR - debugging only
         auto battle = state->battle;

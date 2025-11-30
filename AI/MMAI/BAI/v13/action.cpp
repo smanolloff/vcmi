@@ -66,7 +66,7 @@ namespace MMAI::BAI::V13 {
         return static_cast<HexAction>((a-EI(GlobalAction::_count)) % EI(HexAction::_count));
     }
 
-    Action::Action(const Schema::Action action_, const Battlefield * bf, const std::string color_)
+    Action::Action(const Schema::Action action_, const Battlefield * bf, const std::string &color_)
         : action(action_)
         , hex(initHex(action_, bf))
         , aMoveTargetHex(initAMoveTargetHex(action_, bf))

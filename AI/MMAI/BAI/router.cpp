@@ -42,13 +42,8 @@ namespace MMAI::BAI {
         std::mutex    mutex;
     };
 
-    inline Config& getConfig() {
-        static Config instance;
-        return instance;
-    }
-
     static void InitModelConfigFromSettings() {
-        auto& cfg = getConfig();
+        static Config cfg = Config();
 
         auto lock = std::lock_guard(cfg.mutex);
         if (!cfg.modelconfig.empty()) return;
@@ -142,7 +137,7 @@ namespace MMAI::BAI {
                 auto fullpathstr = fullpath.value().string();
 
                 logAi->info("Loading MMAI %s model from %s", key, fullpathstr);
-                it = cfg.models.emplace(key, std::make_unique<NNModel>(fullpathstr, cfg.temperature, cfg.seed)).first;
+                it = cfg.models.try_emplace(key, std::make_unique<NNModel>(fullpathstr, cfg.temperature, cfg.seed)).first;
             } else {
                 logAi->debug("Using previously loaded %s", key);
             }
@@ -178,7 +173,10 @@ namespace MMAI::BAI {
 
     Router::Router() {
         std::ostringstream oss;
-        oss << this; // Store this memory address
+        // Store the memory address and include it in logging
+        // Convert the pointer value to an integer type
+        std::uintptr_t addr = reinterpret_cast<std::uintptr_t>(this);
+        oss << std::hex << addr;
         addrstr = oss.str();
         info("+++ constructor +++"); // log after addrstr is set
     }

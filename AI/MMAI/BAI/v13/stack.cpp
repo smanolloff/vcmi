@@ -117,7 +117,7 @@ namespace MMAI::BAI::V13 {
         // Multiply by 10 to reduce the integer rounding for weak units
         // (e.g. peasant 7.48 => 8 is a lot, 74.8 => 75 is OK)
         cache[cr] = static_cast<int>(std::round(10 * (a + b) * c * d));
-        // std::cout << "\n" << ValueCache[cr] << " " << cr->getNameSingularTextID() << "(a=" << a << ", b=" << b << ", c=" << c << ", d=" << d << ")\n";
+        // <debug> std::cout << "\n" << ValueCache[cr] << " " << cr->getNameSingularTextID() << "(a=" << a << ", b=" << b << ", c=" << c << ", d=" << d << ")\n";
         return cache[cr];
     }
 

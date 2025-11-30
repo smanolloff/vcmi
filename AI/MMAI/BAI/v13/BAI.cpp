@@ -464,7 +464,7 @@ namespace MMAI::BAI::V13 {
                 }
 
                 // only remaining is ACCESSIBLE
-                expect(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: %d", a);
+                ASSERT(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: " = std::to_string(EI(a)));
 
                 auto nbh = BattleHex{};
 
