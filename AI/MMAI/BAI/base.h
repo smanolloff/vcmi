@@ -10,6 +10,8 @@
 #pragma once
 
 // CI build fails without this
+#include <utility>
+
 #include "Global.h"
 
 #include "battle/CPlayerBattleCallback.h"
@@ -51,7 +53,7 @@ public:
 	void battleAttack(const BattleID & bid, const BattleAttack * ba) override;
 	void battleCatapultAttacked(const BattleID & bid, const CatapultAttack & ca) override;
 	void battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID) override;
-	void battleGateStateChanged(const BattleID & bid, const EGateState state) override;
+	void battleGateStateChanged(const BattleID & bid, EGateState state) override;
 	void battleLogMessage(const BattleID & bid, const std::vector<MetaString> & lines) override;
 	void battleNewRound(const BattleID & bid) override;
 	void battleNewRoundFirst(const BattleID & bid) override;
@@ -110,7 +112,7 @@ public:
 	template<typename... Args>
 	void _log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const
 	{
-		logAi->log(level, "%s-%s [%s] " + format, name, addrstr, colorname, args...);
+		logAi->log(level, "%s-%s [%s] " + format, name, addrstr, colorname, std::move(args)...);
 	}
 
 	template<typename... Args>

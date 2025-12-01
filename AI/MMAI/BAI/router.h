@@ -25,7 +25,6 @@ public:
 
 	std::shared_ptr<Environment> env;
 	std::shared_ptr<CBattleCallback> cb;
-
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
 	/*
@@ -45,7 +44,7 @@ public:
 	void battleAttack(const BattleID & bid, const BattleAttack * ba) override;
 	void battleCatapultAttacked(const BattleID & bid, const CatapultAttack & ca) override;
 	void battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID) override;
-	void battleGateStateChanged(const BattleID & bid, const EGateState state) override;
+	void battleGateStateChanged(const BattleID & bid, EGateState state) override;
 	void battleLogMessage(const BattleID & bid, const std::vector<MetaString> & lines) override;
 	void battleNewRound(const BattleID & bid) override;
 	void battleNewRoundFirst(const BattleID & bid) override;

@@ -38,7 +38,7 @@ const Schema::V13::Stacks SupplementaryData::getStacks() const
 	ASSERT(battlefield, "getStacks() called when battlefield is null");
 	auto res = Schema::V13::Stacks{};
 
-	for(auto & stack : battlefield->stacks)
+	for(const auto & stack : battlefield->stacks)
 	{
 		res.push_back(stack.get());
 	}
@@ -64,7 +64,7 @@ const Schema::V13::AttackLogs SupplementaryData::getAttackLogs() const
 	auto res = Schema::V13::AttackLogs{};
 	res.reserve(attackLogs.size());
 
-	for(auto & al : attackLogs)
+	for(const auto & al : attackLogs)
 		res.push_back(al.get());
 
 	return res;
@@ -75,7 +75,7 @@ const Schema::V13::StateTransitions SupplementaryData::getStateTransitions() con
 	auto res = Schema::V13::StateTransitions{};
 	res.reserve(transitions.size());
 
-	for(auto [action, actmask, transition] : transitions)
+	for(const auto & [action, actmask, transition] : transitions)
 		res.push_back({action, actmask.get(), transition.get()});
 
 	return res;

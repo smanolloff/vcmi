@@ -16,8 +16,6 @@
 #include "BAI/v13/battlefield.h"
 #include "BAI/v13/hex.h"
 #include "common.h"
-#include "schema/v13/constants.h"
-#include "schema/v13/types.h"
 #include <algorithm>
 #include <memory>
 
@@ -38,28 +36,24 @@ struct PairHash
 	}
 };
 
-// static
-std::unordered_map<std::pair<si16, si16>, bool, PairHash> InitAdjMap()
+namespace
 {
-	auto res = std::unordered_map<std::pair<si16, si16>, bool, PairHash>{};
-
-	for(int id1 = 0; id1 < GameConstants::BFIELD_SIZE; id1++)
+	std::unordered_map<std::pair<si16, si16>, bool, PairHash> InitAdjMap()
 	{
-		auto hex1 = BattleHex(id1);
-		for(auto dir : BattleHex::hexagonalDirections())
+		auto res = std::unordered_map<std::pair<si16, si16>, bool, PairHash>{};
+
+		for(int id1 = 0; id1 < GameConstants::BFIELD_SIZE; id1++)
 		{
-			auto hex2 = hex1.cloneInDirection(dir, false);
-			res[{hex1.toInt(), hex2.toInt()}] = true;
+			auto hex1 = BattleHex(id1);
+			for(auto dir : BattleHex::hexagonalDirections())
+			{
+				auto hex2 = hex1.cloneInDirection(dir, false);
+				res[{hex1.toInt(), hex2.toInt()}] = true;
+			}
 		}
+
+		return res;
 	}
-
-	return res;
-}
-
-inline auto & getAdjMap()
-{
-	static auto adjmap = InitAdjMap();
-	return adjmap;
 }
 
 Battlefield::Battlefield(const std::shared_ptr<Hexes> & hexes_, const Stacks & stacks_, const AllLinks & allLinks_, const Stack * astack_)
@@ -139,9 +133,9 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(const CPlayer
 	std::shared_ptr<ActiveStackInfo> astackinfo = nullptr;
 	Stack * astack = nullptr;
 
-	for(auto & stack : stacks)
+	for(const auto & stack : stacks)
 	{
-		for(auto & bh : stack->cstack->getHexes())
+		for(const auto & bh : stack->cstack->getHexes())
 			if(bh.isAvailable())
 				hexstacks.try_emplace(bh, stack);
 
@@ -150,8 +144,8 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(const CPlayer
 			astack = stack.get();
 	}
 
-	for(auto & obstacle : battle->battleGetAllObstacles())
-		for(auto & bh : obstacle->getAffectedTiles())
+	for(const auto & obstacle : battle->battleGetAllObstacles())
+		for(const auto & bh : obstacle->getAffectedTiles())
 			if(bh.isAvailable())
 				hexobstacles.at(Hex::CalcId(bh)).push_back(obstacle);
 
@@ -167,7 +161,7 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(const CPlayer
 	{
 		for(int x = 0; x < 15; ++x)
 		{
-			auto i = y * 15 + x;
+			auto i = (y * 15) + x;
 			auto bh = BattleHex(x + 1, y);
 			res->at(y).at(x) = std::make_unique<Hex>(bh, ainfo.at(bh.toInt()), gatestate, hexobstacles.at(i), hexstacks, astackinfo);
 		}
@@ -277,7 +271,7 @@ std::tuple<Stacks, Queue> Battlefield::InitStacks(
 			cstack,
 			queue,
 			// a blank stackStats entry is created if missing
-			Stack::StatsContainer{oldgstats, gstats, stacksStats[cstack]},
+			Stack::StatsContainer{.oldgstats = oldgstats, .gstats = gstats, .stackStats = stacksStats[cstack]},
 			battle->getReachability(cstack),
 			blocked[cstack],
 			blocking[cstack],
@@ -315,6 +309,19 @@ AllLinks Battlefield::InitAllLinks(const CPlayerBattleCallback * battle, const S
 	return allLinks;
 }
 
+namespace
+{
+	float calculateRangeMod(const CPlayerBattleCallback * battle, const CStack * cstack, const BattleHex & src, const BattleHex & dst)
+	{
+		float rangemod = 1;
+		if(battle->battleHasDistancePenalty(cstack, src, dst))
+			rangemod *= 0.5;
+		if(battle->battleHasWallPenalty(cstack, src, dst))
+			rangemod *= 0.5;
+		return rangemod;
+	}
+}
+
 void Battlefield::LinkTwoHexes(
 	AllLinks & allLinks,
 	const CPlayerBattleCallback * battle,
@@ -324,8 +331,8 @@ void Battlefield::LinkTwoHexes(
 	const Hex * dst
 )
 {
-	bool neighbour = getAdjMap().contains({src->bhex.toInt(), dst->bhex.toInt()});
-
+	static const auto adjmap = InitAdjMap();
+	bool neighbour = adjmap.contains({src->bhex.toInt(), dst->bhex.toInt()});
 	bool reachable = false;
 	float rangemod = 0;
 	float rangedDmgFrac = 0;
@@ -340,11 +347,7 @@ void Battlefield::LinkTwoHexes(
 		// rangemod is set even if dst is free
 		if(src->stack->cstack->canShoot() && !src->stack->cstack->coversPos(dst->bhex) && !src->stack->flag(StackFlag1::BLOCKED) && !neighbour)
 		{
-			rangemod = 1;
-			if(battle->battleHasDistancePenalty(src->stack->cstack, src->bhex, dst->bhex))
-				rangemod *= 0.5;
-			if(battle->battleHasWallPenalty(src->stack->cstack, src->bhex, dst->bhex))
-				rangemod *= 0.5;
+			rangemod = calculateRangeMod(battle, src->stack->cstack, src->bhex, dst->bhex);
 		}
 
 		// *dmgFracs are set only between opposing stacks

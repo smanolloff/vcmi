@@ -14,10 +14,13 @@
 #include "BAI/v13/action.h"
 #include "BAI/v13/hex.h"
 #include "BAI/v13/hexaction.h"
-#include "schema/v13/types.h"
 
 namespace MMAI::BAI::V13
 {
+
+using Schema::V13::ACTION_RETREAT;
+using Schema::V13::ACTION_WAIT;
+
 // static
 std::unique_ptr<Hex> Action::initHex(const Schema::Action & a, const Battlefield * bf)
 {
@@ -52,7 +55,7 @@ std::unique_ptr<Hex> Action::initAMoveTargetHex(const Schema::Action & a, const 
 		return nullptr;
 	// throw std::runtime_error("MOVE and SHOOT are not AMOVE actions");
 
-	auto & bh = hex->bhex;
+	const auto & bh = hex->bhex;
 
 	auto edir = AMOVE_TO_EDIR.at(EI(ha));
 	auto nbh = bh.cloneInDirection(edir);

@@ -15,6 +15,11 @@
 
 namespace MMAI::BAI::V13
 {
+
+using Schema::V13::IPlayerStats;
+using Schema::V13::PlayerAttribute;
+using Schema::V13::PlayerAttrs;
+
 class PlayerStats : public IPlayerStats
 {
 public:

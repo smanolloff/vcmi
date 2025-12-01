@@ -18,7 +18,8 @@
 
 namespace MMAI::BAI::V13
 {
-using Side = Schema::Side;
+using Schema::V13::ErrorCode;
+using Schema::Side;
 
 // match sides for convenience when determining winner (see `victory`)
 static_assert(EI(CombatResult::LEFT_WINS) == EI(Side::LEFT));
@@ -31,7 +32,7 @@ public:
 
 	// Called on activeStack (complete battlefield info)
 	SupplementaryData(
-		std::string colorname_,
+		const std::string & colorname_,
 		Side side_,
 		const GlobalStats * gstats_,
 		const PlayerStats * lpstats_,

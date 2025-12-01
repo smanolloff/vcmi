@@ -18,6 +18,8 @@
 
 namespace MMAI::BAI::V13
 {
+using Schema::V13::NULL_VALUE_UNENCODED;
+
 using A = Schema::V13::HexAttribute;
 using S = Schema::V13::HexState;
 using SA = Schema::V13::StackAttribute;
@@ -233,7 +235,7 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 	//           BattleEvaluator::goTowardsNearest() // var triggerAbility
 	//
 
-	for(auto & obstacle : obstacles)
+	for(const auto & obstacle : obstacles)
 	{
 		switch(obstacle->obstacleType)
 		{
@@ -318,7 +320,7 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 
 void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks)
 {
-	auto astack = astackinfo->stack;
+	const auto * astack = astackinfo->stack;
 
 	// XXX: for statehist, astack may be enemy stack
 	// in this case building the actmask is redundant
@@ -337,11 +339,11 @@ void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, con
 		return;
 
 	const auto & nbhexes = NearbyBattleHexes(bhex);
-	const auto a_cstack = astack->cstack;
+	const auto * const a_cstack = astack->cstack;
 
 	for(int i = 0; i < nbhexes.size(); ++i)
 	{
-		auto & n_bhex = nbhexes.at(i);
+		const auto & n_bhex = nbhexes.at(i);
 		if(!n_bhex.isAvailable())
 			continue;
 
@@ -349,7 +351,7 @@ void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, con
 		if(it == hexstacks.end())
 			continue;
 
-		auto & n_cstack = it->second->cstack;
+		const auto & n_cstack = it->second->cstack;
 		auto hexaction = HexAction(i);
 
 		if(n_cstack->unitSide() != a_cstack->unitSide())

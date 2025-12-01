@@ -54,5 +54,5 @@ constexpr auto AMOVE_TO_EDIR = std::array<BattleHex::EDir, 12>{
 static_assert(EI(GlobalAction::_count) == Schema::V13::N_NONHEX_ACTIONS);
 static_assert(EI(HexAction::_count) == Schema::V13::N_HEX_ACTIONS);
 
-constexpr int N_ACTIONS = EI(GlobalAction::_count) + EI(HexAction::_count) * 165;
+constexpr int N_ACTIONS = EI(GlobalAction::_count) + (EI(HexAction::_count) * 165);
 }

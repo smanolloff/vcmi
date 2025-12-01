@@ -42,12 +42,6 @@
 namespace MMAI::BAI
 {
 
-static const Ort::Env & getOrtEnv()
-{
-    static Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "vcmi"};
-    return env;
-}
-
 namespace
 {
 	inline std::basic_string<ORTCHAR_T> ToOrtPath(const std::string & utf8_path)

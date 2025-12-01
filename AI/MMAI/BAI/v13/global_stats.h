@@ -14,7 +14,13 @@
 
 namespace MMAI::BAI::V13
 {
-using namespace Schema::V13;
+
+using Schema::V13::CombatResult;
+using Schema::V13::GlobalAction;
+using Schema::V13::GlobalAttribute;
+using Schema::V13::GlobalAttrs;
+using Schema::V13::IGlobalStats;
+
 using GlobalActionMask = std::bitset<EI(GlobalAction::_count)>;
 
 class GlobalStats : public IGlobalStats

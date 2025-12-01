@@ -74,16 +74,16 @@ public:
 	void encodeGlobal(CombatResult result);
 	void encodePlayer(const PlayerStats * pstats);
 	void encodeHex(const Hex * hex);
-	void verify();
+	void verify() const;
 
 	const int version_;
 	bool enableTransitions;
-	Schema::BattlefieldState bfstate = {};
-	Schema::ActionMask actmask = {};
+	Schema::BattlefieldState bfstate;
+	Schema::ActionMask actmask;
 	std::unique_ptr<SupplementaryData> supdata = nullptr;
-	std::vector<std::shared_ptr<AttackLog>> attackLogs = {};
-	std::vector<std::shared_ptr<AttackLog>> persistentAttackLogs = {};
-	std::vector<std::tuple<Schema::Action, std::shared_ptr<Schema::ActionMask>, std::shared_ptr<Schema::BattlefieldState>>> transitions = {};
+	std::vector<std::shared_ptr<AttackLog>> attackLogs;
+	std::vector<std::shared_ptr<AttackLog>> persistentAttackLogs;
+	std::vector<std::tuple<Schema::Action, std::shared_ptr<Schema::ActionMask>, std::shared_ptr<Schema::BattlefieldState>>> transitions;
 	std::unique_ptr<Action> action = nullptr;
 	std::unique_ptr<GlobalStats> gstats = nullptr;
 	std::unique_ptr<PlayerStats> lpstats = nullptr;

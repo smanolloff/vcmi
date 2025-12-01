@@ -23,7 +23,11 @@
 
 namespace MMAI::BAI::V13
 {
-using namespace Schema::V13;
+using Schema::V13::HexAction;
+using Schema::V13::HexAttribute;
+using Schema::V13::HexAttrs;
+using Schema::V13::HexState;
+
 using HexActionMask = std::bitset<EI(HexAction::_count)>;
 using HexStateMask = std::bitset<EI(HexState::_count)>;
 using HexActionHex = std::array<BattleHex, 12>;
@@ -34,16 +38,16 @@ struct ActiveStackInfo
 	const bool canshoot;
 	const std::shared_ptr<ReachabilityInfo> rinfo;
 
-	ActiveStackInfo(const Stack * stack_, const bool canshoot_, const std::shared_ptr<ReachabilityInfo> rinfo_)
+	ActiveStackInfo(const Stack * stack_, const bool canshoot_, const std::shared_ptr<ReachabilityInfo> & rinfo_)
 		: stack(stack_), canshoot(canshoot_), rinfo(rinfo_) {};
 };
 
-/**
-     * A wrapper around BattleHex. Differences:
-     *
-     * x is 0..14     (instead of 0..16),
-     * id is 0..164  (instead of 0..177)
-     */
+/*
+ * A wrapper around BattleHex. Differences:
+ *
+ * x is 0..14     (instead of 0..16),
+ * id is 0..164  (instead of 0..177)
+ */
 class Hex : public Schema::V13::IHex
 {
 public:
@@ -52,8 +56,8 @@ public:
 	static HexActionHex NearbyBattleHexes(const BattleHex & bh);
 
 	Hex(const BattleHex & bh,
-		const EAccessibility accessibility,
-		const EGateState gatestate,
+		EAccessibility accessibility,
+		EGateState gatestate,
 		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
 		const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks,
 		const std::shared_ptr<ActiveStackInfo> & astackinfo);
@@ -78,7 +82,7 @@ private:
 	void setattr(HexAttribute a, int value);
 	void finalize();
 
-	void setStateMask(const EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side);
+	void setStateMask(EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side);
 
 	void setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks);
 };

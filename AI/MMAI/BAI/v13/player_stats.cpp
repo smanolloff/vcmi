@@ -15,7 +15,8 @@
 
 namespace MMAI::BAI::V13
 {
-using Side = Schema::Side;
+using Schema::Side;
+using Schema::V13::NULL_VALUE_UNENCODED;
 using GA = Schema::V13::GlobalAttribute;
 using A = Schema::V13::PlayerAttribute;
 

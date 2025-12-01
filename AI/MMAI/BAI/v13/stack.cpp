@@ -21,18 +21,15 @@
 
 namespace MMAI::BAI::V13
 {
+using Schema::V13::STACK_SLOT_SPECIAL;
+using Schema::V13::STACK_SLOT_WARMACHINES;
 using A = Schema::V13::StackAttribute;
 using F1 = Schema::V13::StackFlag1;
 using F2 = Schema::V13::StackFlag2;
+using GA = Schema::V13::GlobalAttribute;
 
 namespace
 {
-	std::map<const CCreature *, float> & getValueCache()
-	{
-		static auto cache = std::map<const CCreature *, float>{};
-		return cache;
-	}
-
 	int calculateSlot(const CStack * cstack)
 	{
 		int slot = cstack->unitSlot();
@@ -70,10 +67,15 @@ namespace
 // static
 int Stack::CalcValue(const CCreature * cr)
 {
-	auto cache = getValueCache();
-	auto it = cache.find(cr);
-	if(it != cache.end())
-		return static_cast<int>(it->second);
+	static std::map<const CCreature *, float> cache;
+	static std::mutex cache_mutex;
+
+	{
+		std::lock_guard<std::mutex> lock(cache_mutex);
+		auto it = cache.find(cr);
+		if(it != cache.end())
+			return static_cast<int>(it->second);
+	}
 
 	// Formula:
 	// 10 * (A + B) * C * D1 * D2 * ... * Dn
@@ -97,7 +99,7 @@ int Stack::CalcValue(const CCreature * cr)
 	auto c = spd ? std::log(spd * 2) : 0.5;
 	auto d = shooter ? 1.5 : 1.0;
 
-	for(auto & bonus : *bonuses)
+	for(const auto & bonus : *bonuses)
 	{
 		switch(bonus->type)
 		{
@@ -178,9 +180,12 @@ int Stack::CalcValue(const CCreature * cr)
 
 	// Multiply by 10 to reduce the integer rounding for weak units
 	// (e.g. peasant 7.48 => 8 is a lot, 74.8 => 75 is OK)
-	cache[cr] = static_cast<int>(std::round(10 * (a + b) * c * d));
-	// <debug> std::cout << "\n" << ValueCache[cr] << " " << cr->getNameSingularTextID() << "(a=" << a << ", b=" << b << ", c=" << c << ", d=" << d << ")\n";
-	return cache[cr];
+	{
+		std::lock_guard<std::mutex> lock(cache_mutex);
+		cache[cr] = static_cast<int>(std::round(10 * (a + b) * c * d));
+		return cache[cr];
+		// <debug> std::cout << "\n" << ValueCache[cr] << " " << cr->getNameSingularTextID() << "(a=" << a << ", b=" << b << ", c=" << c << ", d=" << d << ")\n";
+	}
 }
 
 // static
@@ -204,17 +209,11 @@ std::pair<BitQueue, int> Stack::QBits(const CStack * cstack, const Queue & vec)
 	return {q, pos};
 }
 
-inline auto & getValueCache()
-{
-	static auto cache = std::map<const CCreature *, float>{};
-	return cache;
-}
-
 Stack::Stack(
 	const CStack * cstack_,
 	Queue & q,
 	const StatsContainer & statsContainer,
-	const ReachabilityInfo rinfo_,
+	const ReachabilityInfo & rinfo_,
 	bool blocked,
 	bool blocking,
 	DamageEstimation estdmg
@@ -528,8 +527,6 @@ void Stack::addattr(StackAttribute a, int value)
 {
 	attrs.at(EI(a)) += value;
 };
-
-std::map<const CCreature *, int> warned{};
 
 void Stack::finalize()
 {

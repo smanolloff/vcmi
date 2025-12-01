@@ -17,13 +17,16 @@
 
 namespace MMAI::BAI::V13
 {
-using namespace Schema::V13;
+
+using Schema::V13::Encoding;
+using Schema::V13::GLOBAL_ENCODING;
+using Schema::V13::HEX_ENCODING;
+using Schema::V13::NULL_VALUE_ENCODED;
+using Schema::V13::NULL_VALUE_UNENCODED;
+using Schema::V13::PLAYER_ENCODING;
+
 using BS = Schema::BattlefieldState;
 using clock = std::chrono::system_clock;
-
-static std::map<std::string, std::map<int, clock::time_point>> warns;
-
-#define COERCE(v, vfallback) (v == NULL_VALUE_UNENCODED) ? vfallback : v
 
 #define ADD_ZEROS_AND_RETURN(n, vec) \
 	vec.insert(vec.end(), n, 0);     \
@@ -48,7 +51,7 @@ static std::map<std::string, std::map<int, clock::time_point>> warns;
 		throw std::runtime_error("NULL values are not allowed for strict encoding"); \
 	}
 
-void Encoder::Encode(const char * attrname, const int a, const Encoding e, const int n, const int vmax, const double p, int v, BS & vec)
+void Encoder::Encode(const std::string_view & attrname, int a, Encoding e, int n, int vmax, double p, int v, BS & vec)
 {
 	if(e == Encoding::RAW)
 	{
@@ -63,15 +66,14 @@ void Encoder::Encode(const char * attrname, const int a, const Encoding e, const
 
 		// Warn at most once every 600s
 		auto now = clock::now();
-		auto warned_at = warns[attrname][EI(a)];
+		static thread_local std::map<std::string, std::map<int, clock::time_point>> warns;
+		auto & warned_at = warns[std::string(attrname)][EI(a)];
 
-		// auto warned_at_ctime = clock::to_time_t(warned_at);
-		// std::cout << "Warned at: " << std::ctime(&warned_at_ctime) << "\n";
 		if(std::chrono::duration_cast<std::chrono::seconds>(now - warned_at) > std::chrono::seconds(600))
 		{
 			// This is not critical; the value will be capped to vmax (should not occur often)
-			logAi->debug("Attribute value out of bounds: v=%d (vmax=%d, a=%d, e=%d, n=%d, attrname=%s)\n", v, vmax, EI(a), EI(e), n, attrname);
-			warns[attrname][EI(a)] = now;
+			logAi->info("MMAI: Attribute value out of bounds: v=%d (vmax=%d, a=%d, e=%d, n=%d, attrname=%s)\n", v, vmax, EI(a), EI(e), n, attrname);
+			warns[std::string(attrname)][EI(a)] = now;
 		}
 		v = vmax;
 	}
@@ -149,28 +151,28 @@ void Encoder::Encode(const char * attrname, const int a, const Encoding e, const
 	}
 }
 
-void Encoder::Encode(const HexAttribute a, const int v, BS & vec)
+void Encoder::Encode(const HexAttribute a, int v, BS & vec)
 {
-	auto & [_, e, n, vmax, p] = HEX_ENCODING.at(EI(a));
+	const auto & [_, e, n, vmax, p] = HEX_ENCODING.at(EI(a));
 	Encode("HexAttribute", EI(a), e, n, vmax, p, v, vec);
 }
 
-void Encoder::Encode(const PlayerAttribute a, const int v, BS & vec)
+void Encoder::Encode(const PlayerAttribute a, int v, BS & vec)
 {
-	auto & [_, e, n, vmax, p] = PLAYER_ENCODING.at(EI(a));
+	const auto & [_, e, n, vmax, p] = PLAYER_ENCODING.at(EI(a));
 	Encode("PlayerAttribute", EI(a), e, n, vmax, p, v, vec);
 }
 
-void Encoder::Encode(const GlobalAttribute a, const int v, BS & vec)
+void Encoder::Encode(const GlobalAttribute a, int v, BS & vec)
 {
-	auto & [_, e, n, vmax, p] = GLOBAL_ENCODING.at(EI(a));
+	const auto & [_, e, n, vmax, p] = GLOBAL_ENCODING.at(EI(a));
 	Encode("GlobalAttribute", EI(a), e, n, vmax, p, v, vec);
 }
 
 //
 // ACCUMULATING
 //
-void Encoder::EncodeAccumulatingExplicitNull(const int v, const int n, BS & vec)
+void Encoder::EncodeAccumulatingExplicitNull(int v, int n, BS & vec)
 {
 	if(v == NULL_VALUE_UNENCODED)
 	{
@@ -181,7 +183,7 @@ void Encoder::EncodeAccumulatingExplicitNull(const int v, const int n, BS & vec)
 	EncodeAccumulating(v, n - 1, vec);
 }
 
-void Encoder::EncodeAccumulatingImplicitNull(const int v, const int n, BS & vec)
+void Encoder::EncodeAccumulatingImplicitNull(int v, int n, BS & vec)
 {
 	if(v == NULL_VALUE_UNENCODED)
 	{
@@ -190,19 +192,19 @@ void Encoder::EncodeAccumulatingImplicitNull(const int v, const int n, BS & vec)
 	EncodeAccumulating(v, n, vec);
 }
 
-void Encoder::EncodeAccumulatingMaskingNull(const int v, const int n, BS & vec)
+void Encoder::EncodeAccumulatingMaskingNull(int v, int n, BS & vec)
 {
 	MAYBE_ADD_MASKED_AND_RETURN(v, n, vec);
 	EncodeAccumulating(v, n, vec);
 }
 
-void Encoder::EncodeAccumulatingStrictNull(const int v, const int n, BS & vec)
+void Encoder::EncodeAccumulatingStrictNull(int v, int n, BS & vec)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeAccumulating(v, n, vec);
 }
 
-void Encoder::EncodeAccumulatingZeroNull(const int v, const int n, BS & vec)
+void Encoder::EncodeAccumulatingZeroNull(int v, int n, BS & vec)
 {
 	if(v <= 0)
 	{
@@ -212,7 +214,7 @@ void Encoder::EncodeAccumulatingZeroNull(const int v, const int n, BS & vec)
 	EncodeAccumulating(v, n, vec);
 }
 
-void Encoder::EncodeAccumulating(const int v, const int n, BS & vec)
+void Encoder::EncodeAccumulating(int v, int n, BS & vec)
 {
 	vec.insert(vec.end(), v + 1, 1);
 	vec.insert(vec.end(), n - v - 1, 0);
@@ -222,30 +224,30 @@ void Encoder::EncodeAccumulating(const int v, const int n, BS & vec)
 // BINARY
 //
 
-void Encoder::EncodeBinaryExplicitNull(const int v, const int n, BS & vec)
+void Encoder::EncodeBinaryExplicitNull(int v, int n, BS & vec)
 {
 	vec.push_back(v == NULL_VALUE_UNENCODED);
 	EncodeBinary(v, n - 1, vec);
 }
 
-void Encoder::EncodeBinaryMaskingNull(const int v, const int n, BS & vec)
+void Encoder::EncodeBinaryMaskingNull(int v, int n, BS & vec)
 {
 	MAYBE_ADD_MASKED_AND_RETURN(v, n, vec);
 	EncodeBinary(v, n, vec);
 }
 
-void Encoder::EncodeBinaryStrictNull(const int v, const int n, BS & vec)
+void Encoder::EncodeBinaryStrictNull(int v, int n, BS & vec)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeBinary(v, n, vec);
 }
 
-void Encoder::EncodeBinaryZeroNull(const int v, const int n, BS & vec)
+void Encoder::EncodeBinaryZeroNull(int v, int n, BS & vec)
 {
 	EncodeBinary(v, n, vec);
 }
 
-void Encoder::EncodeBinary(const int v, const int n, BS & vec)
+void Encoder::EncodeBinary(int v, int n, BS & vec)
 {
 	MAYBE_ADD_ZEROS_AND_RETURN(v, n, vec);
 
@@ -261,7 +263,7 @@ void Encoder::EncodeBinary(const int v, const int n, BS & vec)
 // CATEGORICAL
 //
 
-void Encoder::EncodeCategoricalExplicitNull(const int v, const int n, BS & vec)
+void Encoder::EncodeCategoricalExplicitNull(int v, int n, BS & vec)
 {
 	if(v == NULL_VALUE_UNENCODED)
 	{
@@ -272,7 +274,7 @@ void Encoder::EncodeCategoricalExplicitNull(const int v, const int n, BS & vec)
 	EncodeCategorical(v, n - 1, vec);
 }
 
-void Encoder::EncodeCategoricalImplicitNull(const int v, const int n, BS & vec)
+void Encoder::EncodeCategoricalImplicitNull(int v, int n, BS & vec)
 {
 	if(v == NULL_VALUE_UNENCODED)
 	{
@@ -282,24 +284,24 @@ void Encoder::EncodeCategoricalImplicitNull(const int v, const int n, BS & vec)
 	EncodeCategorical(v, n, vec);
 }
 
-void Encoder::EncodeCategoricalMaskingNull(const int v, const int n, BS & vec)
+void Encoder::EncodeCategoricalMaskingNull(int v, int n, BS & vec)
 {
 	MAYBE_ADD_MASKED_AND_RETURN(v, n, vec);
 	EncodeCategorical(v, n, vec);
 }
 
-void Encoder::EncodeCategoricalStrictNull(const int v, const int n, BS & vec)
+void Encoder::EncodeCategoricalStrictNull(int v, int n, BS & vec)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeCategorical(v, n, vec);
 }
 
-void Encoder::EncodeCategoricalZeroNull(const int v, const int n, BS & vec)
+void Encoder::EncodeCategoricalZeroNull(int v, int n, BS & vec)
 {
 	EncodeCategorical(v, n, vec);
 }
 
-void Encoder::EncodeCategorical(const int v, const int n, BS & vec)
+void Encoder::EncodeCategorical(int v, int n, BS & vec)
 {
 	if(v <= 0)
 	{
@@ -325,13 +327,13 @@ void Encoder::EncodeCategorical(const int v, const int n, BS & vec)
 // EXPNORM
 //
 
-void Encoder::EncodeExpnormExplicitNull(const int v, const int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & vec)
 {
 	vec.push_back(v == NULL_VALUE_UNENCODED);
 	EncodeExpnorm(v, vmax, slope, vec);
 }
 
-void Encoder::EncodeExpnormMaskingNull(const int v, const int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & vec)
 {
 	if(v == NULL_VALUE_UNENCODED)
 	{
@@ -341,18 +343,18 @@ void Encoder::EncodeExpnormMaskingNull(const int v, const int vmax, double slope
 	EncodeExpnorm(v, vmax, slope, vec);
 }
 
-void Encoder::EncodeExpnormStrictNull(const int v, const int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormStrictNull(int v, int vmax, double slope, BS & vec)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeExpnorm(v, vmax, slope, vec);
 }
 
-void Encoder::EncodeExpnormZeroNull(const int v, const int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormZeroNull(int v, int vmax, double slope, BS & vec)
 {
 	EncodeExpnorm(v, vmax, slope, vec);
 }
 
-void Encoder::EncodeExpnorm(const int v, const int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnorm(int v, int vmax, double slope, BS & vec)
 {
 	if(v <= 0)
 	{
@@ -368,7 +370,7 @@ void Encoder::EncodeExpnorm(const int v, const int vmax, double slope, BS & vec)
 // Add slider "S" (slope) and "M" (vmax).
 // Play with the sliders to see the nonlinearity (use M=1 for best view)
 // XXX: slope cannot be 0
-float Encoder::CalcExpnorm(const int v, const int vmax, const double slope)
+float Encoder::CalcExpnorm(int v, int vmax, double slope)
 {
 	auto ratio = static_cast<double>(v) / vmax;
 	return std::log1p(ratio * (std::exp(slope) - 1.0)) / (slope + 1e-6);
@@ -378,13 +380,13 @@ float Encoder::CalcExpnorm(const int v, const int vmax, const double slope)
 // LINNORM
 //
 
-void Encoder::EncodeLinnormExplicitNull(const int v, const int vmax, BS & vec)
+void Encoder::EncodeLinnormExplicitNull(int v, int vmax, BS & vec)
 {
 	vec.push_back(v == NULL_VALUE_UNENCODED);
 	EncodeLinnorm(v, vmax, vec);
 }
 
-void Encoder::EncodeLinnormMaskingNull(const int v, const int vmax, BS & vec)
+void Encoder::EncodeLinnormMaskingNull(int v, int vmax, BS & vec)
 {
 	if(v == NULL_VALUE_UNENCODED)
 	{
@@ -394,18 +396,18 @@ void Encoder::EncodeLinnormMaskingNull(const int v, const int vmax, BS & vec)
 	EncodeLinnorm(v, vmax, vec);
 }
 
-void Encoder::EncodeLinnormStrictNull(const int v, const int vmax, BS & vec)
+void Encoder::EncodeLinnormStrictNull(int v, int vmax, BS & vec)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeLinnorm(v, vmax, vec);
 }
 
-void Encoder::EncodeLinnormZeroNull(const int v, const int vmax, BS & vec)
+void Encoder::EncodeLinnormZeroNull(int v, int vmax, BS & vec)
 {
 	EncodeLinnorm(v, vmax, vec);
 }
 
-void Encoder::EncodeLinnorm(const int v, const int vmax, BS & vec)
+void Encoder::EncodeLinnorm(int v, int vmax, BS & vec)
 {
 	if(v <= 0)
 	{
@@ -417,7 +419,7 @@ void Encoder::EncodeLinnorm(const int v, const int vmax, BS & vec)
 	vec.push_back(CalcLinnorm(v, vmax));
 }
 
-float Encoder::CalcLinnorm(const int v, const int vmax)
+float Encoder::CalcLinnorm(int v, int vmax)
 {
 	return static_cast<float>(v) / static_cast<float>(vmax);
 }

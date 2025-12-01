@@ -17,9 +17,9 @@ namespace MMAI::BAI::V13
 class Links : public Schema::V13::ILinks
 {
 public:
-	std::vector<int64_t> srcIndex = {}; // [src1, src2, ...]
-	std::vector<int64_t> dstIndex = {}; // [dst1, dst2, ...]
-	std::vector<float> attributes = {}; // [attr1, attr2, ...]
+	std::vector<int64_t> srcIndex; // [src1, src2, ...]
+	std::vector<int64_t> dstIndex; // [dst1, dst2, ...]
+	std::vector<float> attributes; // [attr1, attr2, ...]
 
 	std::vector<int64_t> getSrcIndex() const override
 	{

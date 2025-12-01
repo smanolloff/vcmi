@@ -12,8 +12,6 @@
 
 #include "BAI/base.h"
 #include "BAI/v13/action.h"
-#include "BAI/v13/attack_log.h"
-#include "BAI/v13/battlefield.h"
 #include "BAI/v13/state.h"
 
 namespace MMAI::BAI::V13
@@ -75,7 +73,7 @@ public:
 	std::string debugInfo(Action * action, const CStack * astack, BattleHex * nbh); // DEBUG ONLY
 	void handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & hex, Action * action);
 	std::shared_ptr<BattleAction> buildBattleAction();
-	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack);
+	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack) const;
 	bool maybeCastSpell(const CStack * stack, const BattleID & bid);
 
 	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);

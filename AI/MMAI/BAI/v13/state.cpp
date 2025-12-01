@@ -18,15 +18,21 @@
 #include "BAI/v13/state.h"
 #include "BAI/v13/supplementary_data.h"
 #include "schema/v13/constants.h"
-#include "schema/v13/types.h"
 
 #include <algorithm>
 #include <memory>
 
 namespace MMAI::BAI::V13
 {
-using HA = HexAttribute;
-using SA = StackAttribute;
+using Schema::V13::ACTION_WAIT;
+using Schema::V13::BATTLEFIELD_STATE_SIZE;
+using Schema::V13::N_NONHEX_ACTIONS;
+using Schema::V13::NULL_VALUE_UNENCODED;
+using Schema::V13::STACK_ATTR_OFFSET;
+using GA = Schema::V13::GlobalAttribute;
+using PA = Schema::V13::PlayerAttribute;
+using HA = Schema::V13::HexAttribute;
+using SA = Schema::V13::StackAttribute;
 
 //
 // Prevent human errors caused by the Stack / Hex attr overlap
@@ -67,91 +73,98 @@ std::vector<float> State::InitNullStack()
 	return res;
 };
 
-std::tuple<int, int, int, int> CalcGlobalStats(const CPlayerBattleCallback * battle)
+namespace
 {
-	int lv = 0, lh = 0, rv = 0, rh = 0;
-	for(auto & stack : battle->battleGetStacks())
+	std::tuple<int, int, int, int> CalcGlobalStats(const CPlayerBattleCallback * battle)
 	{
-		auto v = stack->getCount() * Stack::CalcValue(stack->unitType());
-		auto h = stack->getAvailableHealth();
-		// std::cout << "[" << EI(stack->unitSide()) << "] v=" << v << ", h=" << h << ", lv=" << lv << ", rv=" << rv << "\n";
+		int lv = 0;
+		int lh = 0;
+		int rv = 0;
+		int rh = 0;
 
-		if(stack->unitSide() == BattleSide::ATTACKER)
+		for(auto & stack : battle->battleGetStacks())
 		{
-			lv += v;
-			lh += h;
-		}
-		else
-		{
-			rv += v;
-			rh += h;
-		}
-	}
+			auto v = stack->getCount() * Stack::CalcValue(stack->unitType());
+			auto h = stack->getAvailableHealth();
+			// std::cout << "[" << EI(stack->unitSide()) << "] v=" << v << ", h=" << h << ", lv=" << lv << ", rv=" << rv << "\n";
 
-	return {lv, lh, rv, rh};
-}
-
-std::tuple<int, int, int, int, int, int, int, int>
-ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Stack::Stats> sstats)
-{
-	// dmg dealt / dmg received / value killed / value lost
-	int ldd = 0;
-	int ldr = 0;
-	int lvk = 0;
-	int lvl = 0;
-	int rdd = 0;
-	int rdr = 0;
-	int rvk = 0;
-	int rvl = 0;
-
-	for(auto & [cstack, ss] : sstats)
-	{
-		ss.dmgDealtNow = 0;
-		ss.dmgReceivedNow = 0;
-		ss.valueKilledNow = 0;
-		ss.valueLostNow = 0;
-	}
-
-	for(auto & al : attackLogs)
-	{
-		if(al->cattacker)
-		{
-			sstats[al->cattacker].dmgDealtNow += al->dmg;
-			sstats[al->cattacker].dmgDealtTotal += al->dmg;
-			sstats[al->cattacker].valueKilledNow += al->value;
-			sstats[al->cattacker].valueKilledTotal += al->value;
-
-			if(al->cattacker->unitSide() == BattleSide::LEFT_SIDE)
+			if(stack->unitSide() == BattleSide::ATTACKER)
 			{
-				ldd += al->dmg;
-				lvk += al->value;
+				lv += v;
+				lh += h;
 			}
 			else
 			{
-				rdd += al->dmg;
-				rvk += al->value;
+				rv += v;
+				rh += h;
 			}
 		}
 
-		ASSERT(al->cdefender, "AttackLog cdefender is nullptr!");
-		sstats[al->cdefender].dmgReceivedNow += al->dmg;
-		sstats[al->cdefender].dmgReceivedTotal += al->dmg;
-		sstats[al->cdefender].valueLostNow += al->value;
-		sstats[al->cdefender].valueLostTotal += al->value;
-
-		if(al->cdefender->unitSide() == BattleSide::LEFT_SIDE)
-		{
-			ldr += al->dmg;
-			lvl += al->value;
-		}
-		else
-		{
-			rdr += al->dmg;
-			rvl += al->value;
-		}
+		return {lv, lh, rv, rh};
 	}
 
-	return {ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl};
+	std::tuple<int, int, int, int, int, int, int, int>
+	ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Stack::Stats> sstats)
+	{
+		// dmg dealt / dmg received / value killed / value lost
+		int ldd = 0;
+		int ldr = 0;
+		int lvk = 0;
+		int lvl = 0;
+		int rdd = 0;
+		int rdr = 0;
+		int rvk = 0;
+		int rvl = 0;
+
+		for(auto & [cstack, ss] : sstats)
+		{
+			ss.dmgDealtNow = 0;
+			ss.dmgReceivedNow = 0;
+			ss.valueKilledNow = 0;
+			ss.valueLostNow = 0;
+		}
+
+		for(const auto & al : attackLogs)
+		{
+			if(al->cattacker)
+			{
+				sstats[al->cattacker].dmgDealtNow += al->dmg;
+				sstats[al->cattacker].dmgDealtTotal += al->dmg;
+				sstats[al->cattacker].valueKilledNow += al->value;
+				sstats[al->cattacker].valueKilledTotal += al->value;
+
+				if(al->cattacker->unitSide() == BattleSide::LEFT_SIDE)
+				{
+					ldd += al->dmg;
+					lvk += al->value;
+				}
+				else
+				{
+					rdd += al->dmg;
+					rvk += al->value;
+				}
+			}
+
+			ASSERT(al->cdefender, "AttackLog cdefender is nullptr!");
+			sstats[al->cdefender].dmgReceivedNow += al->dmg;
+			sstats[al->cdefender].dmgReceivedTotal += al->dmg;
+			sstats[al->cdefender].valueLostNow += al->value;
+			sstats[al->cdefender].valueLostTotal += al->value;
+
+			if(al->cdefender->unitSide() == BattleSide::LEFT_SIDE)
+			{
+				ldr += al->dmg;
+				lvl += al->value;
+			}
+			else
+			{
+				rdr += al->dmg;
+				rvl += al->value;
+			}
+		}
+
+		return {ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl};
+	}
 }
 
 State::State(int version_, const std::string & colorname, const CPlayerBattleCallback * battle, bool enableTransitions)
@@ -290,7 +303,7 @@ void State::_onActionStarted(const BattleAction & action)
 	// no need to create battlefield in 5, as it's the same as in 2.
 	bool fastpath = false;
 	bool found = false;
-	for(auto cstack : battle->battleGetAllStacks(true))
+	for(const auto * cstack : battle->battleGetAllStacks(true))
 	{
 		if(cstack->unitId() == action.stackNumber)
 		{
@@ -371,7 +384,7 @@ void State::_onActionStarted(const BattleAction & action)
 				THROW_FORMAT("Could not find stack for target bhex: %d", bhTarget.toInt());
 			}
 
-			auto targetStack = *it;
+			const auto * targetStack = *it;
 
 			if(!CStack::isMeleeAttackPossible(actingStack, targetStack, bhMove))
 			{
@@ -382,7 +395,7 @@ void State::_onActionStarted(const BattleAction & action)
 
 			for(int i = 0; i < nbhexes.size(); ++i)
 			{
-				auto & n_bhex = nbhexes.at(i);
+				const auto & n_bhex = nbhexes.at(i);
 				if(n_bhex == bhTarget)
 				{
 					startedAction = N_NONHEX_ACTIONS + idMove * EI(HexAction::_count) + EI(HexAction(i));
@@ -439,7 +452,7 @@ void State::encodeHex(const Hex * hex)
 		actmask.push_back(hex->actmask.test(m));
 }
 
-void State::verify()
+void State::verify() const
 {
 	ASSERT(bfstate.size() == BATTLEFIELD_STATE_SIZE, "unexpected bfstate.size(): " + std::to_string(bfstate.size()));
 	ASSERT(actmask.size() == N_ACTIONS, "unexpected actmask.size(): " + std::to_string(actmask.size()));
@@ -449,15 +462,15 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 {
 	auto stacks = battlefield->stacks;
 
-	for(auto & elem : bsa)
+	for(const auto & elem : bsa)
 	{
-		auto cdefender = battle->battleGetStackByID(elem.stackAttacked, false);
-		auto cattacker = battle->battleGetStackByID(elem.attackerID, false);
+		const auto * cdefender = battle->battleGetStackByID(elem.stackAttacked, false);
+		const auto * cattacker = battle->battleGetStackByID(elem.attackerID, false);
 
 		ASSERT(cdefender, "defender cannot be NULL");
 		// logAi->debug("Attack: %s -> %s (%d dmg, %d died)", attacker->getName(), defender->getName(), elem.damageAmount, elem.killedAmount);
 
-		auto defender = std::find_if(
+		const auto defender = std::find_if(
 			stacks.begin(),
 			stacks.end(),
 			[&cdefender](std::shared_ptr<Stack> stack)
@@ -471,10 +484,10 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 			logAi->info("defender cstack '%s' not found in stacks. Maybe it was just summoned/resurrected?", cdefender->getDescription());
 		}
 
-		auto attacker = std::find_if(
+		const auto attacker = std::find_if(
 			stacks.begin(),
 			stacks.end(),
-			[&cattacker](std::shared_ptr<Stack> stack)
+			[&cattacker](std::shared_ptr<Stack> & stack)
 			{
 				return cattacker == stack->cstack;
 			}

@@ -28,10 +28,14 @@
 
 namespace MMAI::BAI::V13
 {
+
+using Schema::V13::ErrorCode;
+using PA = Schema::V13::PlayerAttribute;
+
 Schema::Action BAI::getNonRenderAction()
 {
 	// info("getNonRenderAciton called with result type: " + std::to_string(result->type));
-	auto s = state.get();
+	auto * s = state.get();
 	auto action = model->getAction(s);
 	debug("Got action: " + std::to_string(action));
 	while(action == Schema::ACTION_RENDER_ANSI)
@@ -169,13 +173,13 @@ bool BAI::maybeCastSpell(const CStack * astack, const BattleID & bid)
 	return evaluator.attemptCastingSpell(astack);
 }
 
-std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack)
+std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack) const
 {
 	if(astack->creatureId() == CreatureID::FIRST_AID_TENT)
 	{
 		const CStack * target = nullptr;
 		auto maxdmg = 0;
-		for(auto stack : battle->battleGetStacks(CBattleInfoEssentials::ONLY_MINE))
+		for(const auto * stack : battle->battleGetStacks(CBattleInfoEssentials::ONLY_MINE))
 		{
 			auto dmg = stack->getMaxHealth() - stack->getFirstHPleft();
 			if(dmg <= maxdmg)
@@ -386,9 +390,9 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 std::shared_ptr<BattleAction> BAI::buildBattleAction()
 {
 	ASSERT(state->battlefield, "Cannot build battle action if state->battlefield is missing");
-	auto action = state->action.get();
-	auto bf = state->battlefield.get();
-	auto acstack = bf->astack->cstack;
+	auto * action = state->action.get();
+	const auto * bf = state->battlefield.get();
+	const auto * acstack = bf->astack->cstack;
 
 	auto [x, y] = Hex::CalcXY(acstack->getPosition());
 	auto & hex = bf->hexes->at(y).at(x);
@@ -421,7 +425,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	// With action masking, invalid actions should never occur
 	// However, for manual playing/testing, it's bad to raise exceptions
 	// => return errcode (Gym env will raise an exception if errcode > 0)
-	auto & bhex = action->hex->bhex;
+	const auto & bhex = action->hex->bhex;
 	auto & stack = action->hex->stack; // may be null
 	auto mask = HexActMask(action->hex->attr(HexAttribute::ACTION_MASK));
 	if(mask.test(EI(action->hexaction)))
@@ -448,10 +452,10 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 			case HexAction::AMOVE_L:
 			case HexAction::AMOVE_TL:
 			{
-				auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
+				const auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
 				auto nbh = bhex.cloneInDirection(edir, false); // neighbouring bhex
 				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
-				auto estack = battle->battleGetStackByPos(nbh);
+				const auto * estack = battle->battleGetStackByPos(nbh);
 				ASSERT(estack, "no enemy stack for melee attack");
 				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, bhex));
 			}
@@ -464,11 +468,11 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 			case HexAction::AMOVE_2TL:
 			{
 				ASSERT(acstack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
-				auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
+				const auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
 				auto obh = acstack->occupiedHex(bhex);
 				auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
 				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
-				auto estack = battle->battleGetStackByPos(nbh);
+				const auto * estack = battle->battleGetStackByPos(nbh);
 				ASSERT(estack, "no enemy stack for melee attack");
 				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, bhex));
 			}
@@ -498,7 +502,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 
 void BAI::handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & hex, Action * action)
 {
-	auto & bhex = action->hex->bhex;
+	const auto & bhex = action->hex->bhex;
 	auto & stack = action->hex->stack; // may be null
 	auto rinfo = battle->getReachability(acstack);
 	auto ainfo = battle->getAccessibility();
@@ -586,7 +590,7 @@ void BAI::handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & 
 				break;
 			}
 
-			auto estack = battle->battleGetStackByPos(nbh);
+			const auto * estack = battle->battleGetStackByPos(nbh);
 
 			if(!estack)
 			{

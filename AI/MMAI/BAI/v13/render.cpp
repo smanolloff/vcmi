@@ -13,7 +13,6 @@
 #include "battle/BattleAttackInfo.h"
 #include "battle/CObstacleInstance.h"
 #include "battle/IBattleInfoCallback.h"
-#include "bonuses/Bonus.h"
 #include "constants/EntityIdentifiers.h"
 #include "mapObjects/CGTownInstance.h"
 #include "vcmi/spells/Caster.h"
@@ -26,45 +25,65 @@
 
 namespace MMAI::BAI::V13
 {
-using SA = StackAttribute;
-using SF1 = StackFlag1;
-using SF2 = StackFlag2;
 
-std::string PadLeft(const std::string & input, size_t desiredLength, char paddingChar)
+namespace
 {
-	std::ostringstream ss;
-	ss << std::right << std::setfill(paddingChar) << std::setw(desiredLength) << input;
-	return ss.str();
+	using Schema::V13::ErrorCode;
+	using Schema::V13::HEX_ENCODING;
+	using Schema::V13::IHex;
+	using Schema::V13::IStack;
+	using Schema::V13::ISupplementaryData;
+	using Schema::V13::NULL_VALUE_UNENCODED;
+	using Schema::V13::STACK_QTY_MAX;
+	using Schema::V13::STACK_SLOT_SPECIAL;
+	using Schema::V13::STACK_SLOT_WARMACHINES;
+	using Schema::V13::StackFlag1;
+	using GA = Schema::V13::GlobalAttribute;
+	using HA = Schema::V13::HexAttribute;
+	using PA = Schema::V13::PlayerAttribute;
+	using SA = StackAttribute;
+	using SF1 = StackFlag1;
+	using SF2 = StackFlag2;
 }
 
-std::string PadRight(const std::string & input, size_t desiredLength, char paddingChar)
+namespace
 {
-	std::ostringstream ss;
-	ss << std::left << std::setfill(paddingChar) << std::setw(desiredLength) << input;
-	return ss.str();
-}
-
-template<typename... Args>
-inline void expect(bool exp, const char * format, Args &&... args)
-{
-	if(exp)
-		return;
-
-	constexpr std::size_t bufferSize = 2048;
-	char buffer[bufferSize];
-
-	std::snprintf(buffer, bufferSize, format, std::forward<Args>(args)...);
-	throw std::runtime_error(buffer);
-}
-
-inline void expect(bool exp, const char * message)
-{
-	if(exp)
+	std::string PadLeft(const std::string & input, size_t desiredLength, char paddingChar)
 	{
-		return;
+		std::ostringstream ss;
+		ss << std::right << std::setfill(paddingChar) << std::setw(desiredLength) << input;
+		return ss.str();
 	}
-	// No formatting; just throw with the message
-	throw std::runtime_error(message);
+
+	std::string PadRight(const std::string & input, size_t desiredLength, char paddingChar)
+	{
+		std::ostringstream ss;
+		ss << std::left << std::setfill(paddingChar) << std::setw(desiredLength) << input;
+		return ss.str();
+	}
+
+	template<typename... Args>
+	inline void expect(bool exp, const char * format, Args &&... args)
+	{
+		if(exp)
+			return;
+
+		constexpr std::size_t bufferSize = 2048;
+		char buffer[bufferSize];
+
+		std::snprintf(buffer, bufferSize, format, std::forward<Args>(args)...);
+		throw std::runtime_error(buffer);
+	}
+
+	inline void expect(bool exp, const char * message)
+	{
+		if(exp)
+		{
+			return;
+		}
+		// No formatting; just throw with the message
+		throw std::runtime_error(message);
+	}
 }
 
 // This function used during model development and is never called otherwise
@@ -1044,14 +1063,13 @@ std::string Render(const Schema::IState * istate, const Action * action)
 	auto supdata_ = istate->getSupplementaryData();
 	expect(supdata_.has_value(), "supdata_ holds no value");
 	expect(supdata_.type() == typeid(const ISupplementaryData *), "supdata_ of unexpected type");
-	auto sup = std::any_cast<const ISupplementaryData *>(supdata_);
+	const auto * sup = std::any_cast<const ISupplementaryData *>(supdata_);
 	expect(sup, "sup holds a nullptr");
-	auto gstats = sup->getGlobalStats();
-	auto lpstats = sup->getLeftPlayerStats();
-	auto rpstats = sup->getRightPlayerStats();
-	auto mystats = gstats->getAttr(GA::BATTLE_SIDE) ? rpstats : lpstats;
+	const auto * gstats = sup->getGlobalStats();
+	const auto * lpstats = sup->getLeftPlayerStats();
+	const auto * rpstats = sup->getRightPlayerStats();
+	const auto * mystats = gstats->getAttr(GA::BATTLE_SIDE) ? rpstats : lpstats;
 	auto hexes = sup->getHexes();
-	auto color = sup->getColor();
 	auto alogs = sup->getAttackLogs();
 
 	const IStack * astack = nullptr;
@@ -1061,7 +1079,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 	{
 		for(auto & hex : row)
 		{
-			auto stack = hex->getStack();
+			const auto * const stack = hex->getStack();
 			if(stack && stack->getFlag(SF1::IS_ACTIVE))
 			{
 				expect(!astack || astack == stack, "two active stacks found");

@@ -14,6 +14,7 @@
 
 namespace MMAI::BAI::V13
 {
+using Schema::V13::NULL_VALUE_UNENCODED;
 using Side = Schema::Side;
 using A = Schema::V13::GlobalAttribute;
 

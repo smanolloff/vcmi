@@ -25,7 +25,7 @@ struct Action
 	static std::unique_ptr<Hex> initAMoveTargetHex(const Schema::Action & a, const Battlefield * bf);
 	static HexAction initHexAction(const Schema::Action & a, const Battlefield * bf);
 
-	Action(const Schema::Action action_, const Battlefield * bf, const std::string & color);
+	Action(Schema::Action action_, const Battlefield * bf, const std::string & color);
 
 	const std::string color;
 	const Schema::Action action;

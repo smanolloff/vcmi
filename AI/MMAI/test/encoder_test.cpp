@@ -15,15 +15,15 @@
 #include <stdexcept>
 
 using Encoder = MMAI::BAI::V13::Encoder;
-using namespace MMAI::Schema::V13;
+namespace SV = Schema::V13;
 
 TEST(Encoder, Encode)
 {
 	{
-		constexpr auto a = HexAttribute::Y_COORD;
-		constexpr auto e = std::get<1>(HEX_ENCODING.at(int(a)));
-		constexpr auto n = std::get<2>(HEX_ENCODING.at(int(a)));
-		static_assert(e == Encoding::CATEGORICAL_STRICT_NULL, "test needs to be updated");
+		constexpr auto a = SV::HexAttribute::Y_COORD;
+		constexpr auto e = std::get<1>(SV::HEX_ENCODING.at(int(a)));
+		constexpr auto n = std::get<2>(SV::HEX_ENCODING.at(int(a)));
+		static_assert(e == SV::Encoding::CATEGORICAL_STRICT_NULL, "test needs to be updated");
 		static_assert(n == 11, "test needs to be updated");
 
 		{
@@ -53,7 +53,7 @@ TEST(Encoder, Encode)
 
 TEST(Encoder, AccumulatingExplicitNull)
 {
-	static_assert(EI(Encoding::ACCUMULATING_EXPLICIT_NULL) == 0, "Encoding list has changed");
+	static_assert(EI(SV::Encoding::ACCUMULATING_EXPLICIT_NULL) == 0, "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 1, 1, 1, 1};
@@ -76,7 +76,7 @@ TEST(Encoder, AccumulatingExplicitNull)
 
 TEST(Encoder, AccumulatingImplicitNull)
 {
-	static_assert(EI(Encoding::ACCUMULATING_IMPLICIT_NULL) == 1 + EI(Encoding::ACCUMULATING_EXPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::ACCUMULATING_IMPLICIT_NULL) == 1 + EI(SV::Encoding::ACCUMULATING_EXPLICIT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{1, 1, 1, 1, 0};
@@ -99,7 +99,7 @@ TEST(Encoder, AccumulatingImplicitNull)
 
 TEST(Encoder, AccumulatingMaskingNull)
 {
-	static_assert(EI(Encoding::ACCUMULATING_MASKING_NULL) == 1 + EI(Encoding::ACCUMULATING_IMPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::ACCUMULATING_MASKING_NULL) == 1 + EI(SV::Encoding::ACCUMULATING_IMPLICIT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{1, 1, 1, 1, 0};
@@ -122,7 +122,7 @@ TEST(Encoder, AccumulatingMaskingNull)
 
 TEST(Encoder, AccumulatingStrictNull)
 {
-	static_assert(EI(Encoding::ACCUMULATING_STRICT_NULL) == 1 + EI(Encoding::ACCUMULATING_MASKING_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::ACCUMULATING_STRICT_NULL) == 1 + EI(SV::Encoding::ACCUMULATING_MASKING_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{1, 1, 1, 1, 0};
@@ -143,7 +143,7 @@ TEST(Encoder, AccumulatingStrictNull)
 
 TEST(Encoder, AccumulatingZeroNull)
 {
-	static_assert(EI(Encoding::ACCUMULATING_ZERO_NULL) == 1 + EI(Encoding::ACCUMULATING_STRICT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::ACCUMULATING_ZERO_NULL) == 1 + EI(SV::Encoding::ACCUMULATING_STRICT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{1, 1, 1, 1, 0};
@@ -166,7 +166,7 @@ TEST(Encoder, AccumulatingZeroNull)
 
 TEST(Encoder, BinaryExplicitNull)
 {
-	static_assert(EI(Encoding::BINARY_EXPLICIT_NULL) == 1 + EI(Encoding::ACCUMULATING_ZERO_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::BINARY_EXPLICIT_NULL) == 1 + EI(SV::Encoding::ACCUMULATING_ZERO_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 1, 1, 0, 0};
@@ -189,7 +189,7 @@ TEST(Encoder, BinaryExplicitNull)
 
 TEST(Encoder, BinaryMaskingNull)
 {
-	static_assert(EI(Encoding::BINARY_MASKING_NULL) == 1 + EI(Encoding::BINARY_EXPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::BINARY_MASKING_NULL) == 1 + EI(SV::Encoding::BINARY_EXPLICIT_NULL), "Encoding list has changed");
 
 	{
 		auto have = std::vector<float>{};
@@ -213,7 +213,7 @@ TEST(Encoder, BinaryMaskingNull)
 
 TEST(Encoder, BinaryStrictNull)
 {
-	static_assert(EI(Encoding::BINARY_STRICT_NULL) == 1 + EI(Encoding::BINARY_MASKING_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::BINARY_STRICT_NULL) == 1 + EI(SV::Encoding::BINARY_MASKING_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{1, 1, 0, 0, 0};
@@ -234,7 +234,7 @@ TEST(Encoder, BinaryStrictNull)
 
 TEST(Encoder, BinaryZeroNull)
 {
-	static_assert(EI(Encoding::BINARY_ZERO_NULL) == 1 + EI(Encoding::BINARY_STRICT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::BINARY_ZERO_NULL) == 1 + EI(SV::Encoding::BINARY_STRICT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{1, 1, 0, 0, 0};
@@ -257,7 +257,7 @@ TEST(Encoder, BinaryZeroNull)
 
 TEST(Encoder, CategoricalExplicitNull)
 {
-	static_assert(EI(Encoding::CATEGORICAL_EXPLICIT_NULL) == 1 + EI(Encoding::BINARY_ZERO_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::CATEGORICAL_EXPLICIT_NULL) == 1 + EI(SV::Encoding::BINARY_ZERO_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0, 0, 0, 1};
@@ -280,7 +280,7 @@ TEST(Encoder, CategoricalExplicitNull)
 
 TEST(Encoder, CategoricalImplicitNull)
 {
-	static_assert(EI(Encoding::CATEGORICAL_IMPLICIT_NULL) == 1 + EI(Encoding::CATEGORICAL_EXPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::CATEGORICAL_IMPLICIT_NULL) == 1 + EI(SV::Encoding::CATEGORICAL_EXPLICIT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0, 0, 1, 0};
@@ -303,7 +303,7 @@ TEST(Encoder, CategoricalImplicitNull)
 
 TEST(Encoder, CategoricalMaskingNull)
 {
-	static_assert(EI(Encoding::CATEGORICAL_MASKING_NULL) == 1 + EI(Encoding::CATEGORICAL_IMPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::CATEGORICAL_MASKING_NULL) == 1 + EI(SV::Encoding::CATEGORICAL_IMPLICIT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0, 0, 1, 0};
@@ -326,7 +326,7 @@ TEST(Encoder, CategoricalMaskingNull)
 
 TEST(Encoder, CategoricalStrictNull)
 {
-	static_assert(EI(Encoding::CATEGORICAL_STRICT_NULL) == 1 + EI(Encoding::CATEGORICAL_MASKING_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::CATEGORICAL_STRICT_NULL) == 1 + EI(SV::Encoding::CATEGORICAL_MASKING_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0, 0, 1, 0};
@@ -347,7 +347,7 @@ TEST(Encoder, CategoricalStrictNull)
 
 TEST(Encoder, CategoricalZeroNull)
 {
-	static_assert(EI(Encoding::CATEGORICAL_ZERO_NULL) == 1 + EI(Encoding::CATEGORICAL_STRICT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::CATEGORICAL_ZERO_NULL) == 1 + EI(SV::Encoding::CATEGORICAL_STRICT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0, 0, 1, 0};
@@ -370,7 +370,7 @@ TEST(Encoder, CategoricalZeroNull)
 
 TEST(Encoder, NormalizedExpExplicitNull)
 {
-	static_assert(EI(Encoding::EXPNORM_EXPLICIT_NULL) == 1 + EI(Encoding::CATEGORICAL_ZERO_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::EXPNORM_EXPLICIT_NULL) == 1 + EI(SV::Encoding::CATEGORICAL_ZERO_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0.876};
@@ -395,7 +395,7 @@ TEST(Encoder, NormalizedExpExplicitNull)
 
 TEST(Encoder, NormalizedExpMaskingNull)
 {
-	static_assert(EI(Encoding::EXPNORM_MASKING_NULL) == 1 + EI(Encoding::EXPNORM_EXPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::EXPNORM_MASKING_NULL) == 1 + EI(SV::Encoding::EXPNORM_EXPLICIT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0.876};
@@ -419,7 +419,7 @@ TEST(Encoder, NormalizedExpMaskingNull)
 
 TEST(Encoder, NormalizedExpStrictNull)
 {
-	static_assert(EI(Encoding::EXPNORM_STRICT_NULL) == 1 + EI(Encoding::EXPNORM_MASKING_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::EXPNORM_STRICT_NULL) == 1 + EI(SV::Encoding::EXPNORM_MASKING_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0.876};
@@ -441,7 +441,7 @@ TEST(Encoder, NormalizedExpStrictNull)
 
 TEST(Encoder, NormalizedExpZeroNull)
 {
-	static_assert(EI(Encoding::EXPNORM_ZERO_NULL) == 1 + EI(Encoding::EXPNORM_STRICT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::EXPNORM_ZERO_NULL) == 1 + EI(SV::Encoding::EXPNORM_STRICT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0.876};
@@ -465,7 +465,7 @@ TEST(Encoder, NormalizedExpZeroNull)
 
 TEST(Encoder, NormalizedLinExplicitNull)
 {
-	static_assert(EI(Encoding::LINNORM_EXPLICIT_NULL) == 1 + EI(Encoding::EXPNORM_ZERO_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::LINNORM_EXPLICIT_NULL) == 1 + EI(SV::Encoding::EXPNORM_ZERO_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0, 0.6};
@@ -488,7 +488,7 @@ TEST(Encoder, NormalizedLinExplicitNull)
 
 TEST(Encoder, NormalizedMaskingNull)
 {
-	static_assert(EI(Encoding::LINNORM_MASKING_NULL) == 1 + EI(Encoding::LINNORM_EXPLICIT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::LINNORM_MASKING_NULL) == 1 + EI(SV::Encoding::LINNORM_EXPLICIT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0.6};
@@ -511,7 +511,7 @@ TEST(Encoder, NormalizedMaskingNull)
 
 TEST(Encoder, NormalizedStrictNull)
 {
-	static_assert(EI(Encoding::LINNORM_STRICT_NULL) == 1 + EI(Encoding::LINNORM_MASKING_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::LINNORM_STRICT_NULL) == 1 + EI(SV::Encoding::LINNORM_MASKING_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0.6};
@@ -532,7 +532,7 @@ TEST(Encoder, NormalizedStrictNull)
 
 TEST(Encoder, NormalizedZeroNull)
 {
-	static_assert(EI(Encoding::LINNORM_ZERO_NULL) == 1 + EI(Encoding::LINNORM_STRICT_NULL), "Encoding list has changed");
+	static_assert(EI(SV::Encoding::LINNORM_ZERO_NULL) == 1 + EI(SV::Encoding::LINNORM_STRICT_NULL), "Encoding list has changed");
 	{
 		auto have = std::vector<float>{};
 		auto want = std::vector<float>{0.6};
