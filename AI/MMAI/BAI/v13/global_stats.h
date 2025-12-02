@@ -15,11 +15,11 @@
 namespace MMAI::BAI::V13
 {
 
-using Schema::V13::CombatResult;
-using Schema::V13::GlobalAction;
-using Schema::V13::GlobalAttribute;
-using Schema::V13::GlobalAttrs;
-using Schema::V13::IGlobalStats;
+using CombatResult = Schema::V13::CombatResult;
+using GlobalAction = Schema::V13::GlobalAction;
+using GlobalAttribute = Schema::V13::GlobalAttribute;
+using GlobalAttrs = Schema::V13::GlobalAttrs;
+using IGlobalStats = Schema::V13::IGlobalStats;
 
 using GlobalActionMask = std::bitset<EI(GlobalAction::_count)>;
 

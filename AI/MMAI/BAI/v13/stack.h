@@ -21,18 +21,18 @@
 namespace MMAI::BAI::V13
 {
 
-using Schema::V13::STACK_QUEUE_SIZE;
-using Schema::V13::StackAttribute;
-using Schema::V13::StackAttrs;
-using Schema::V13::StackFlag1;
-using Schema::V13::StackFlag2;
-using Schema::V13::StackFlags1;
-using Schema::V13::StackFlags2;
+namespace S13 = Schema::V13;
+using StackAttribute = Schema::V13::StackAttribute;
+using StackAttrs = Schema::V13::StackAttrs;
+using StackFlag1 = Schema::V13::StackFlag1;
+using StackFlag2 = Schema::V13::StackFlag2;
+using StackFlags1 = Schema::V13::StackFlags1;
+using StackFlags2 = Schema::V13::StackFlags2;
 
 using Queue = std::vector<uint32_t>; // item=unit id
-using BitQueue = std::bitset<STACK_QUEUE_SIZE>;
+using BitQueue = std::bitset<S13::STACK_QUEUE_SIZE>;
 
-static_assert(1 << STACK_QUEUE_SIZE < std::numeric_limits<int>::max(), "BitQueue must be convertible to int");
+static_assert(1 << S13::STACK_QUEUE_SIZE < std::numeric_limits<int>::max(), "BitQueue must be convertible to int");
 
 /*
  * A wrapper around CStack

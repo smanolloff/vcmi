@@ -16,9 +16,9 @@
 namespace MMAI::BAI::V13
 {
 
-using Schema::V13::IPlayerStats;
-using Schema::V13::PlayerAttribute;
-using Schema::V13::PlayerAttrs;
+using IPlayerStats = Schema::V13::IPlayerStats;
+using PlayerAttribute = Schema::V13::PlayerAttribute;
+using PlayerAttrs = Schema::V13::PlayerAttrs;
 
 class PlayerStats : public IPlayerStats
 {

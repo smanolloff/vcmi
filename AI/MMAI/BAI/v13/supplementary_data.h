@@ -18,8 +18,8 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::Side;
-using Schema::V13::ErrorCode;
+using Side = Schema::Side;
+using ErrorCode = Schema::V13::ErrorCode;
 
 // match sides for convenience when determining winner (see `victory`)
 static_assert(EI(CombatResult::LEFT_WINS) == EI(Side::LEFT));

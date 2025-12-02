@@ -90,12 +90,12 @@ Queue Battlefield::GetQueue(const CPlayerBattleCallback * battle, const CStack *
 	auto res = Queue{};
 
 	auto tmp = std::vector<battle::Units>{};
-	battle->battleGetTurnOrder(tmp, STACK_QUEUE_SIZE, 0);
+	battle->battleGetTurnOrder(tmp, S13::STACK_QUEUE_SIZE, 0);
 	for(auto & units : tmp)
 	{
 		for(auto & unit : units)
 		{
-			if(res.size() < STACK_QUEUE_SIZE)
+			if(res.size() < S13::STACK_QUEUE_SIZE)
 				res.push_back(unit->unitId());
 			else
 				break;

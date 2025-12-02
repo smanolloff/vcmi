@@ -18,10 +18,10 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::V13::NULL_VALUE_UNENCODED;
+namespace S13 = Schema::V13;
 
-using A = Schema::V13::HexAttribute;
-using S = Schema::V13::HexState;
+using HA = Schema::V13::HexAttribute;
+using HS = Schema::V13::HexState;
 using SA = Schema::V13::StackAttribute;
 
 constexpr HexStateMask S_PASSABLE = 1 << EI(HexState::PASSABLE);
@@ -108,47 +108,47 @@ Hex::Hex(
 )
 	: bhex(bhex_), id(CalcId(bhex_))
 {
-	attrs.fill(NULL_VALUE_UNENCODED);
+	attrs.fill(S13::NULL_VALUE_UNENCODED);
 
 	auto [x, y] = CalcXY(bhex);
 	auto it = hexstacks.find(bhex);
 	stack = it == hexstacks.end() ? nullptr : it->second;
 
-	setattr(A::Y_COORD, y);
-	setattr(A::X_COORD, x);
+	setattr(HA::Y_COORD, y);
+	setattr(HA::X_COORD, x);
 
 	// This is never N/A => set separately (not within the if below)
-	setattr(A::IS_REAR, stack && bhex == stack->cstack->occupiedHex());
+	setattr(HA::IS_REAR, stack && bhex == stack->cstack->occupiedHex());
 
 	static_assert(EI(SA::_count) == 25, "whistleblower in case attributes change");
 
-	auto attrmap = std::map<A, SA>{
-		{A::STACK_SIDE,                  SA::SIDE                 },
-		{A::STACK_SLOT,                  SA::SLOT                 },
-		{A::STACK_QUANTITY,              SA::QUANTITY             },
-		{A::STACK_ATTACK,                SA::ATTACK               },
-		{A::STACK_DEFENSE,               SA::DEFENSE              },
-		{A::STACK_SHOTS,                 SA::SHOTS                },
-		{A::STACK_DMG_MIN,               SA::DMG_MIN              },
-		{A::STACK_DMG_MAX,               SA::DMG_MAX              },
-		{A::STACK_HP,                    SA::HP                   },
-		{A::STACK_HP_LEFT,               SA::HP_LEFT              },
-		{A::STACK_SPEED,                 SA::SPEED                },
-		{A::STACK_QUEUE,                 SA::QUEUE                },
-		{A::STACK_VALUE_ONE,             SA::VALUE_ONE            },
-		{A::STACK_FLAGS1,                SA::FLAGS1               },
-		{A::STACK_FLAGS2,                SA::FLAGS2               },
+	auto attrmap = std::map<HA, SA>{
+		{HA::STACK_SIDE,                  SA::SIDE                 },
+		{HA::STACK_SLOT,                  SA::SLOT                 },
+		{HA::STACK_QUANTITY,              SA::QUANTITY             },
+		{HA::STACK_ATTACK,                SA::ATTACK               },
+		{HA::STACK_DEFENSE,               SA::DEFENSE              },
+		{HA::STACK_SHOTS,                 SA::SHOTS                },
+		{HA::STACK_DMG_MIN,               SA::DMG_MIN              },
+		{HA::STACK_DMG_MAX,               SA::DMG_MAX              },
+		{HA::STACK_HP,                    SA::HP                   },
+		{HA::STACK_HP_LEFT,               SA::HP_LEFT              },
+		{HA::STACK_SPEED,                 SA::SPEED                },
+		{HA::STACK_QUEUE,                 SA::QUEUE                },
+		{HA::STACK_VALUE_ONE,             SA::VALUE_ONE            },
+		{HA::STACK_FLAGS1,                SA::FLAGS1               },
+		{HA::STACK_FLAGS2,                SA::FLAGS2               },
 
-		{A::STACK_VALUE_REL,             SA::VALUE_REL            },
-		{A::STACK_VALUE_REL0,            SA::VALUE_REL0           },
-		{A::STACK_VALUE_KILLED_REL,      SA::VALUE_KILLED_REL     },
-		{A::STACK_VALUE_KILLED_ACC_REL0, SA::VALUE_KILLED_ACC_REL0},
-		{A::STACK_VALUE_LOST_REL,        SA::VALUE_LOST_REL       },
-		{A::STACK_VALUE_LOST_ACC_REL0,   SA::VALUE_LOST_ACC_REL0  },
-		{A::STACK_DMG_DEALT_REL,         SA::DMG_DEALT_REL        },
-		{A::STACK_DMG_DEALT_ACC_REL0,    SA::DMG_DEALT_ACC_REL0   },
-		{A::STACK_DMG_RECEIVED_REL,      SA::DMG_RECEIVED_REL     },
-		{A::STACK_DMG_RECEIVED_ACC_REL0, SA::DMG_RECEIVED_ACC_REL0},
+		{HA::STACK_VALUE_REL,             SA::VALUE_REL            },
+		{HA::STACK_VALUE_REL0,            SA::VALUE_REL0           },
+		{HA::STACK_VALUE_KILLED_REL,      SA::VALUE_KILLED_REL     },
+		{HA::STACK_VALUE_KILLED_ACC_REL0, SA::VALUE_KILLED_ACC_REL0},
+		{HA::STACK_VALUE_LOST_REL,        SA::VALUE_LOST_REL       },
+		{HA::STACK_VALUE_LOST_ACC_REL0,   SA::VALUE_LOST_ACC_REL0  },
+		{HA::STACK_DMG_DEALT_REL,         SA::DMG_DEALT_REL        },
+		{HA::STACK_DMG_DEALT_ACC_REL0,    SA::DMG_DEALT_ACC_REL0   },
+		{HA::STACK_DMG_RECEIVED_REL,      SA::DMG_RECEIVED_REL     },
+		{HA::STACK_DMG_RECEIVED_ACC_REL0, SA::DMG_RECEIVED_ACC_REL0},
 	};
 
 	if(stack)
@@ -202,14 +202,14 @@ void Hex::setattr(HexAttribute a, int value)
 
 std::string Hex::name() const
 {
-	// return boost::str(boost::format("(%d,%d)") % attr(A::Y_COORD) % attr(A::X_COORD));
-	return "(" + std::to_string(attr(A::Y_COORD)) + "," + std::to_string(attr(A::X_COORD)) + ")";
+	// return boost::str(boost::format("(%d,%d)") % attr(HA::Y_COORD) % attr(HA::X_COORD));
+	return "(" + std::to_string(attr(HA::Y_COORD)) + "," + std::to_string(attr(HA::X_COORD)) + ")";
 }
 
 void Hex::finalize()
 {
-	attrs.at(EI(A::ACTION_MASK)) = actmask.to_ulong();
-	attrs.at(EI(A::STATE_MASK)) = statemask.to_ulong();
+	attrs.at(EI(HA::ACTION_MASK)) = actmask.to_ulong();
+	attrs.at(EI(HA::STATE_MASK)) = statemask.to_ulong();
 }
 
 const Stack * Hex::getStack() const
@@ -305,7 +305,7 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 			//
 			// However, in case of GATE accessibility, we still need
 			// to set the PASSABLE flag accordingly.
-			side == BattleSide::DEFENDER ? statemask.set(EI(S::PASSABLE)) : statemask.reset(EI(S::PASSABLE));
+			side == BattleSide::DEFENDER ? statemask.set(EI(HS::PASSABLE)) : statemask.reset(EI(HS::PASSABLE));
 			break;
 		case EAccessibility::UNAVAILABLE:
 			statemask &= ~S_PASSABLE;

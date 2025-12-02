@@ -15,8 +15,9 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::Side;
-using Schema::V13::NULL_VALUE_UNENCODED;
+
+namespace S13 = Schema::V13;
+using Side = Schema::Side;
 using GA = Schema::V13::GlobalAttribute;
 using A = Schema::V13::PlayerAttribute;
 
@@ -27,7 +28,7 @@ PlayerStats::PlayerStats(BattleSide side, int value, int hp)
 {
 	// Fill with NA to guard against "forgotten" attrs
 	// (all attrs are strict so encoder will throw if NAs are found)
-	attrs.fill(NULL_VALUE_UNENCODED);
+	attrs.fill(S13::NULL_VALUE_UNENCODED);
 
 	static_assert(EI(A::_count) == 23, "whistleblower in case attributes change");
 

@@ -14,17 +14,17 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::V13::GlobalAttribute;
-using Schema::V13::HexAttribute;
-using Schema::V13::PlayerAttribute;
+using GA = Schema::V13::GlobalAttribute;
+using HA = Schema::V13::HexAttribute;
+using PA = Schema::V13::PlayerAttribute;
 using BS = Schema::BattlefieldState;
 
 class Encoder
 {
 public:
-	static void Encode(HexAttribute a, int v, BS & vec);
-	static void Encode(PlayerAttribute a, int v, BS & vec);
-	static void Encode(GlobalAttribute a, int v, BS & vec);
+	static void Encode(HA a, int v, BS & vec);
+	static void Encode(PA a, int v, BS & vec);
+	static void Encode(GA a, int v, BS & vec);
 	static void Encode(const std::string_view & attrname, int a, Schema::V13::Encoding e, int n, int vmax, double p, int v, BS & vec);
 
 	static void EncodeAccumulatingExplicitNull(int v, int n, BS & vec);

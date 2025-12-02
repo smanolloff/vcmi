@@ -19,7 +19,7 @@
 namespace MMAI::BAI::V13
 {
 
-using Schema::V13::LinkType;
+using LinkType = Schema::V13::LinkType;
 using Stacks = std::vector<std::shared_ptr<Stack>>;
 using Hexes = std::array<std::array<std::unique_ptr<Hex>, 15>, 11>;
 using AllLinks = std::map<LinkType, std::shared_ptr<Links>>;

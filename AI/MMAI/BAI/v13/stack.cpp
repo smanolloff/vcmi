@@ -20,9 +20,8 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::V13::STACK_SLOT_SPECIAL;
-using Schema::V13::STACK_SLOT_WARMACHINES;
-using A = Schema::V13::StackAttribute;
+namespace S13 = Schema::V13;
+using SA = Schema::V13::StackAttribute;
 using F1 = Schema::V13::StackFlag1;
 using F2 = Schema::V13::StackFlag2;
 using GA = Schema::V13::GlobalAttribute;
@@ -38,12 +37,12 @@ namespace
 		}
 		else if(slot == SlotID::WAR_MACHINES_SLOT)
 		{
-			return STACK_SLOT_WARMACHINES;
+			return S13::STACK_SLOT_WARMACHINES;
 		}
 		else
 		{
 			// "special" slot, e.g. summoned, commander, etc.
-			return STACK_SLOT_SPECIAL;
+			return S13::STACK_SLOT_SPECIAL;
 		}
 	}
 
@@ -51,10 +50,10 @@ namespace
 	{
 		switch(slot)
 		{
-			case STACK_SLOT_SPECIAL:
+			case S13::STACK_SLOT_SPECIAL:
 				return 'S';
 				break;
-			case STACK_SLOT_WARMACHINES:
+			case S13::STACK_SLOT_WARMACHINES:
 				return 'M';
 				break;
 			default:
@@ -77,10 +76,10 @@ int Stack::CalcValue(const CCreature * cr)
 	}
 
 	// Formula:
-	// 10 * (A + B) * C * D1 * D2 * ... * Dn
+	// 10 * (SA + B) * C * D1 * D2 * ... * Dn
 	//
 
-	// A = <offensive factor>
+	// SA = <offensive factor>
 	// B = <defensive factor>
 	// C = <speed factor>
 	// D* = <bonus factor>
@@ -192,7 +191,7 @@ std::pair<BitQueue, int> Stack::QBits(const CStack * cstack, const Queue & vec)
 {
 	BitQueue q;
 	int pos = -1;
-	if(vec.size() != STACK_QUEUE_SIZE)
+	if(vec.size() != S13::STACK_QUEUE_SIZE)
 		throw std::runtime_error("Unexpected queue size: " + std::to_string(vec.size()));
 
 	for(auto i = 0; i < vec.size(); ++i)
@@ -293,35 +292,35 @@ Stack::Stack(
 	auto bf_hpStart = gstats->attr(GA::BFIELD_HP_START_ABS);
 	auto value = valueOne * cstack->getCount();
 
-	setattr(A::SIDE, EI(cstack->unitSide()));
-	setattr(A::SLOT, slot);
-	setattr(A::QUANTITY, cstack->getCount());
-	setattr(A::ATTACK, cstack->getAttack(shots > 0));
-	setattr(A::DEFENSE, cstack->getDefense(false));
-	setattr(A::SHOTS, shots);
-	setattr(A::DMG_MIN, cstack->getMinDamage(shots > 0));
-	setattr(A::DMG_MAX, cstack->getMaxDamage(shots > 0));
-	setattr(A::HP, cstack->getMaxHealth());
-	setattr(A::HP_LEFT, cstack->getFirstHPleft());
-	setattr(A::SPEED, cstack->getMovementRange());
-	setattr(A::QUEUE, qbits.to_ulong());
-	setattr(A::VALUE_ONE, valueOne);
-	setattr(A::VALUE_REL, permille(value, bf_valueNow));
-	setattr(A::VALUE_REL0, permille(value, bf_valueStart));
-	setattr(A::VALUE_KILLED_REL, permille(stackStats.valueKilledNow, bf_valuePrev));
-	setattr(A::VALUE_KILLED_ACC_REL0, permille(stackStats.valueKilledTotal, bf_valueStart));
-	setattr(A::VALUE_LOST_REL, permille(stackStats.valueLostNow, bf_valuePrev));
-	setattr(A::VALUE_LOST_ACC_REL0, permille(stackStats.valueLostTotal, bf_valueStart));
-	setattr(A::DMG_DEALT_REL, permille(stackStats.dmgDealtNow, bf_hpPrev));
-	setattr(A::DMG_DEALT_ACC_REL0, permille(stackStats.dmgDealtTotal, bf_hpStart));
-	setattr(A::DMG_RECEIVED_REL, permille(stackStats.dmgReceivedNow, bf_hpPrev));
-	setattr(A::DMG_RECEIVED_ACC_REL0, permille(stackStats.dmgReceivedTotal, bf_hpStart));
+	setattr(SA::SIDE, EI(cstack->unitSide()));
+	setattr(SA::SLOT, slot);
+	setattr(SA::QUANTITY, cstack->getCount());
+	setattr(SA::ATTACK, cstack->getAttack(shots > 0));
+	setattr(SA::DEFENSE, cstack->getDefense(false));
+	setattr(SA::SHOTS, shots);
+	setattr(SA::DMG_MIN, cstack->getMinDamage(shots > 0));
+	setattr(SA::DMG_MAX, cstack->getMaxDamage(shots > 0));
+	setattr(SA::HP, cstack->getMaxHealth());
+	setattr(SA::HP_LEFT, cstack->getFirstHPleft());
+	setattr(SA::SPEED, cstack->getMovementRange());
+	setattr(SA::QUEUE, qbits.to_ulong());
+	setattr(SA::VALUE_ONE, valueOne);
+	setattr(SA::VALUE_REL, permille(value, bf_valueNow));
+	setattr(SA::VALUE_REL0, permille(value, bf_valueStart));
+	setattr(SA::VALUE_KILLED_REL, permille(stackStats.valueKilledNow, bf_valuePrev));
+	setattr(SA::VALUE_KILLED_ACC_REL0, permille(stackStats.valueKilledTotal, bf_valueStart));
+	setattr(SA::VALUE_LOST_REL, permille(stackStats.valueLostNow, bf_valuePrev));
+	setattr(SA::VALUE_LOST_ACC_REL0, permille(stackStats.valueLostTotal, bf_valueStart));
+	setattr(SA::DMG_DEALT_REL, permille(stackStats.dmgDealtNow, bf_hpPrev));
+	setattr(SA::DMG_DEALT_ACC_REL0, permille(stackStats.dmgDealtTotal, bf_hpStart));
+	setattr(SA::DMG_RECEIVED_REL, permille(stackStats.dmgReceivedNow, bf_hpPrev));
+	setattr(SA::DMG_RECEIVED_ACC_REL0, permille(stackStats.dmgReceivedTotal, bf_hpStart));
 
 	// The attrs set above must match the total count -2 (which are the FLAGS1 and FLAGS2)
-	static_assert(EI(A::_count) == 23 + 2, "whistleblower in case attributes change");
+	static_assert(EI(SA::_count) == 23 + 2, "whistleblower in case attributes change");
 
-	// setattr(A::CREATURE_ID, cid);
-	// setattr(A::ESTIMATED_DMG, dmgPermilleHP);
+	// setattr(SA::CREATURE_ID, cid);
+	// setattr(SA::ESTIMATED_DMG, dmgPermilleHP);
 
 	finalize();
 }
@@ -529,7 +528,7 @@ void Stack::addattr(StackAttribute a, int value)
 
 void Stack::finalize()
 {
-	setattr(A::FLAGS1, flags1.to_ulong());
-	setattr(A::FLAGS2, flags2.to_ulong());
+	setattr(SA::FLAGS1, flags1.to_ulong());
+	setattr(SA::FLAGS2, flags2.to_ulong());
 }
 }

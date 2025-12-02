@@ -23,10 +23,10 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::V13::HexAction;
-using Schema::V13::HexAttribute;
-using Schema::V13::HexAttrs;
-using Schema::V13::HexState;
+using HexAction = Schema::V13::HexAction;
+using HexAttribute = Schema::V13::HexAttribute;
+using HexAttrs = Schema::V13::HexAttrs;
+using HexState = Schema::V13::HexState;
 
 using HexActionMask = std::bitset<EI(HexAction::_count)>;
 using HexStateMask = std::bitset<EI(HexState::_count)>;

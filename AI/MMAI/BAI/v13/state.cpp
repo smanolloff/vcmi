@@ -24,11 +24,7 @@
 
 namespace MMAI::BAI::V13
 {
-using Schema::V13::ACTION_WAIT;
-using Schema::V13::BATTLEFIELD_STATE_SIZE;
-using Schema::V13::N_NONHEX_ACTIONS;
-using Schema::V13::NULL_VALUE_UNENCODED;
-using Schema::V13::STACK_ATTR_OFFSET;
+namespace S13 = Schema::V13;
 using GA = Schema::V13::GlobalAttribute;
 using PA = Schema::V13::PlayerAttribute;
 using HA = Schema::V13::HexAttribute;
@@ -37,31 +33,31 @@ using SA = Schema::V13::StackAttribute;
 //
 // Prevent human errors caused by the Stack / Hex attr overlap
 //
-static_assert(EI(HA::STACK_SIDE) == EI(SA::SIDE) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_SLOT) == EI(SA::SLOT) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_QUANTITY) == EI(SA::QUANTITY) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_ATTACK) == EI(SA::ATTACK) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DEFENSE) == EI(SA::DEFENSE) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_SHOTS) == EI(SA::SHOTS) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_MIN) == EI(SA::DMG_MIN) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_MAX) == EI(SA::DMG_MAX) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_HP) == EI(SA::HP) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_HP_LEFT) == EI(SA::HP_LEFT) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_SPEED) == EI(SA::SPEED) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_QUEUE) == EI(SA::QUEUE) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_ONE) == EI(SA::VALUE_ONE) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_FLAGS1) == EI(SA::FLAGS1) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_FLAGS2) == EI(SA::FLAGS2) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_REL) == EI(SA::VALUE_REL) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_REL0) == EI(SA::VALUE_REL0) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_KILLED_REL) == EI(SA::VALUE_KILLED_REL) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_KILLED_ACC_REL0) == EI(SA::VALUE_KILLED_ACC_REL0) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_LOST_REL) == EI(SA::VALUE_LOST_REL) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_LOST_ACC_REL0) == EI(SA::VALUE_LOST_ACC_REL0) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_DEALT_REL) == EI(SA::DMG_DEALT_REL) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_DEALT_ACC_REL0) == EI(SA::DMG_DEALT_ACC_REL0) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_RECEIVED_REL) == EI(SA::DMG_RECEIVED_REL) + STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_RECEIVED_ACC_REL0) == EI(SA::DMG_RECEIVED_ACC_REL0) + STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_SIDE) == EI(SA::SIDE) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_SLOT) == EI(SA::SLOT) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_QUANTITY) == EI(SA::QUANTITY) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_ATTACK) == EI(SA::ATTACK) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DEFENSE) == EI(SA::DEFENSE) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_SHOTS) == EI(SA::SHOTS) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DMG_MIN) == EI(SA::DMG_MIN) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DMG_MAX) == EI(SA::DMG_MAX) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_HP) == EI(SA::HP) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_HP_LEFT) == EI(SA::HP_LEFT) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_SPEED) == EI(SA::SPEED) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_QUEUE) == EI(SA::QUEUE) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_ONE) == EI(SA::VALUE_ONE) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_FLAGS1) == EI(SA::FLAGS1) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_FLAGS2) == EI(SA::FLAGS2) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_REL) == EI(SA::VALUE_REL) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_REL0) == EI(SA::VALUE_REL0) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_KILLED_REL) == EI(SA::VALUE_KILLED_REL) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_KILLED_ACC_REL0) == EI(SA::VALUE_KILLED_ACC_REL0) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_LOST_REL) == EI(SA::VALUE_LOST_REL) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_VALUE_LOST_ACC_REL0) == EI(SA::VALUE_LOST_ACC_REL0) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DMG_DEALT_REL) == EI(SA::DMG_DEALT_REL) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DMG_DEALT_ACC_REL0) == EI(SA::DMG_DEALT_ACC_REL0) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DMG_RECEIVED_REL) == EI(SA::DMG_RECEIVED_REL) + S13::STACK_ATTR_OFFSET);
+static_assert(EI(HA::STACK_DMG_RECEIVED_ACC_REL0) == EI(SA::DMG_RECEIVED_ACC_REL0) + S13::STACK_ATTR_OFFSET);
 static_assert(EI(StackAttribute::_count) == 25, "whistleblower in case attributes change");
 
 // static
@@ -69,7 +65,7 @@ std::vector<float> State::InitNullStack()
 {
 	auto res = std::vector<float>{};
 	for(int i = 0; i < EI(StackAttribute::_count); ++i)
-		Encoder::Encode(HA(STACK_ATTR_OFFSET + i), NULL_VALUE_UNENCODED, res);
+		Encoder::Encode(HA(S13::STACK_ATTR_OFFSET + i), S13::NULL_VALUE_UNENCODED, res);
 	return res;
 };
 
@@ -181,8 +177,8 @@ State::State(int version_, const std::string & colorname, const CPlayerBattleCal
 	rpstats = std::make_unique<PlayerStats>(BattleSide::RIGHT_SIDE, rv, rh);
 
 	battlefield = Battlefield::Create(battle, nullptr, gstats.get(), gstats.get(), sstats, false);
-	bfstate.reserve(Schema::V13::BATTLEFIELD_STATE_SIZE);
-	actmask.reserve(Schema::V13::N_ACTIONS);
+	bfstate.reserve(S13::BATTLEFIELD_STATE_SIZE);
+	actmask.reserve(S13::N_ACTIONS);
 }
 
 void State::onActiveStack(const CStack * astack, CombatResult result, bool recording, bool fastpath)
@@ -340,27 +336,27 @@ void State::_onActionStarted(const BattleAction & action)
 	switch(action.actionType)
 	{
 		case EActionType::WAIT:
-			startedAction = ACTION_WAIT;
+			startedAction = S13::ACTION_WAIT;
 			break;
 		case EActionType::SHOOT:
 		{
 			auto bh = action.target.at(0).hexValue;
 			auto id = Hex::CalcId(bh);
-			startedAction = N_NONHEX_ACTIONS + id * EI(HexAction::_count) + EI(HexAction::SHOOT);
+			startedAction = S13::N_NONHEX_ACTIONS + id * EI(HexAction::_count) + EI(HexAction::SHOOT);
 		}
 		break;
 		case EActionType::DEFEND:
 		{
 			auto bh = actingStack->getPosition();
 			auto id = Hex::CalcId(bh);
-			startedAction = N_NONHEX_ACTIONS + id * EI(HexAction::_count) + EI(HexAction::MOVE);
+			startedAction = S13::N_NONHEX_ACTIONS + id * EI(HexAction::_count) + EI(HexAction::MOVE);
 		}
 		break;
 		case EActionType::WALK:
 		{
 			auto bh = action.target.at(0).hexValue;
 			auto id = Hex::CalcId(bh);
-			startedAction = N_NONHEX_ACTIONS + id * EI(HexAction::_count) + EI(HexAction::MOVE);
+			startedAction = S13::N_NONHEX_ACTIONS + id * EI(HexAction::_count) + EI(HexAction::MOVE);
 		}
 		break;
 		case EActionType::WALK_AND_ATTACK:
@@ -398,7 +394,7 @@ void State::_onActionStarted(const BattleAction & action)
 				const auto & n_bhex = nbhexes.at(i);
 				if(n_bhex == bhTarget)
 				{
-					startedAction = N_NONHEX_ACTIONS + idMove * EI(HexAction::_count) + EI(HexAction(i));
+					startedAction = S13::N_NONHEX_ACTIONS + idMove * EI(HexAction::_count) + EI(HexAction(i));
 					break;
 				}
 			}
@@ -454,7 +450,7 @@ void State::encodeHex(const Hex * hex)
 
 void State::verify() const
 {
-	ASSERT(bfstate.size() == BATTLEFIELD_STATE_SIZE, "unexpected bfstate.size(): " + std::to_string(bfstate.size()));
+	ASSERT(bfstate.size() == S13::BATTLEFIELD_STATE_SIZE, "unexpected bfstate.size(): " + std::to_string(bfstate.size()));
 	ASSERT(actmask.size() == N_ACTIONS, "unexpected actmask.size(): " + std::to_string(actmask.size()));
 }
 

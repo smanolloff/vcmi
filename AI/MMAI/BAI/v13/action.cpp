@@ -18,9 +18,6 @@
 namespace MMAI::BAI::V13
 {
 
-using Schema::V13::ACTION_RETREAT;
-using Schema::V13::ACTION_WAIT;
-
 // static
 std::unique_ptr<Hex> Action::initHex(const Schema::Action & a, const Battlefield * bf)
 {
@@ -83,9 +80,9 @@ Action::Action(const Schema::Action action_, const Battlefield * bf, const std::
 
 std::string Action::name() const
 {
-	if(action == ACTION_RETREAT)
+	if(action == Schema::V13::ACTION_RETREAT)
 		return "Retreat";
-	else if(action == ACTION_WAIT)
+	else if(action == Schema::V13::ACTION_WAIT)
 		return "Wait";
 
 	ASSERT(hex, "hex is null");

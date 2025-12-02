@@ -29,7 +29,7 @@
 namespace MMAI::BAI::V13
 {
 
-using Schema::V13::ErrorCode;
+using ErrorCode = Schema::V13::ErrorCode;
 using PA = Schema::V13::PlayerAttribute;
 
 Schema::Action BAI::getNonRenderAction()
