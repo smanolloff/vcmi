@@ -8,8 +8,8 @@
  *
  */
 
-#include "BAI/model/util/bucketing.h"
 #include "StdInc.h"
+#include "BAI/model/util/bucketing.h"
 
 namespace MMAI::BAI::bucketing
 {

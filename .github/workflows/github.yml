@@ -6,6 +6,7 @@ on:
       - beta
       - master
       - develop
+      - mmai-build
   pull_request:
   workflow_dispatch:
 
