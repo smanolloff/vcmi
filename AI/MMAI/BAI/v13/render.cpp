@@ -47,13 +47,6 @@ namespace
 		return ss.str();
 	}
 
-	std::string PadRight(const std::string & input, size_t desiredLength, char paddingChar)
-	{
-		std::ostringstream ss;
-		ss << std::left << std::setfill(paddingChar) << std::setw(desiredLength) << input;
-		return ss.str();
-	}
-
 	template<typename... Args>
 	inline void expect(bool exp, const std::string_view format, Args &&... args)
 	{
