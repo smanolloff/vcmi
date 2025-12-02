@@ -42,110 +42,36 @@ namespace
 		std::mutex mutex;
 	};
 
-	void warncfg(const std::string & problem)
-	{
-		logAi->warn("MMAI: config error: %s", problem);
-	};
-
-	float readTemperatureConfig(JsonMap & config)
-	{
-		if(config["temperature"].isNumber())
-		{
-			if(config["temperature"].Float() < 0)
-			{
-				warncfg("temperature: value is negative");
-			}
-			else
-			{
-				return static_cast<float>(config["temperature"].Float());
-			}
-		}
-		else
-		{
-			warncfg("temperature: not a number");
-		}
-
-		return 1.0;
-	}
-
-	uint64_t readSeedConfig(JsonMap & config)
-	{
-		if(config["seed"].getType() == JsonNode::JsonType::DATA_INTEGER)
-		{
-			if(config["seed"].Integer() < 0)
-			{
-				warncfg("seed: value is negative");
-			}
-			else
-			{
-				return static_cast<uint64_t>(config["seed"].Integer());
-			}
-		}
-		else
-		{
-			warncfg("seed: not an integer");
-		}
-
-		return 0;
-	}
-
 	std::unique_ptr<ModelRepository> InitModelRepository()
 	{
 		auto repo = std::make_unique<ModelRepository>();
 		auto lock = std::lock_guard(repo->mutex);
 
-		auto jsonConfig = JsonUtils::assembleFromFiles("MMAI/CONFIG/mmai-settings.json");
-
-		if(!jsonConfig.isStruct())
+		auto json = JsonUtils::assembleFromFiles("MMAI/CONFIG/mmai-settings.json");
+		if(!json.isStruct())
 		{
 			logAi->error("Could not load MMAI config. Is MMAI mod enabled?");
 			return repo;
 		}
 
-		auto config = jsonConfig.Struct();
-		repo->temperature = readTemperatureConfig(config);
-		repo->seed = readSeedConfig(config);
-
-		if(config["models"].getType() != JsonNode::JsonType::DATA_STRUCT)
+		JsonUtils::validate(json, "vcmi:mmaiSettings", "mmai");
+		repo->temperature = static_cast<float>(json["temperature"].Float());
+		repo->seed = json["seed"].Integer();
+		for(const std::string & key : {"attacker", "defender"})
 		{
-			warncfg("seed: not a struct");
-		}
-		else
-		{
-			for(const auto & key : {"attacker", "defender"})
+			std::string value = "MMAI/models/" + json["models"][key].String();
+			logAi->debug("MMAI: Loading NN %s model from: %s", key, value);
+			try
 			{
-				if(config["models"][key].isString())
-				{
-					std::string value = "MMAI/models/" + config["models"][key].String();
-					logAi->debug("MMAI: Loading NN %s model from: %s", key, value);
-					repo->models.try_emplace(key, std::make_unique<NNModel>(value, repo->temperature, repo->seed));
-				}
-				else
-				{
-					warncfg(std::string(key) + ": not a string");
-				}
+				repo->models.try_emplace(key, std::make_unique<NNModel>(value, repo->temperature, repo->seed));
+			}
+			catch(std::exception & e)
+			{
+				logAi->error("MMAI: error loading " + key + ": " + std::string(e.what()));
 			}
 		}
 
-		std::string fallback = "BattleAI";
-
-		if(config["fallback"].getType() == JsonNode::JsonType::DATA_STRING)
-		{
-			auto fb = config["fallback"].String();
-			if(fb != "StupidAI" && fb != "BattleAI")
-			{
-				warncfg("fallback: expected StupidAI or BattleAI, got: " + fb);
-			}
-			else
-			{
-				fallback = fb;
-			}
-		}
-		else
-		{
-			warncfg("fallback: not a string");
-		}
-
+		auto fallback = json["fallback"].String();
 		logAi->debug("MMAI: preparing fallback model: %s", fallback);
 		repo->fallbackModel = std::make_unique<ScriptedModel>(fallback);
 		repo->fallbackName = fallback;

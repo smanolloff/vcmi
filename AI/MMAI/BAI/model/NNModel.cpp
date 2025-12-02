@@ -386,7 +386,7 @@ NNModel::NNModel(const std::string & path, float temperature, uint64_t seed)
 	if(seed == 0)
 		seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
-	logAi->info("Using rng seed %1%", seed);
+	logAi->debug("Using rng seed %1%", seed);
 	rng = std::mt19937(seed);
 
 	auto opts = Ort::SessionOptions();
@@ -403,7 +403,7 @@ NNModel::NNModel(const std::string & path, float temperature, uint64_t seed)
 	inputNames = readInputNames();
 	outputNames = readOutputNames();
 
-	logAi->info("MMAI version " + std::to_string(version) + "initialized on side=" + std::to_string(EI(side)));
+	logAi->info("MMAI version " + std::to_string(version) + " initialized on side=" + std::to_string(EI(side)));
 }
 
 Schema::ModelType NNModel::getType()
