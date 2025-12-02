@@ -57,7 +57,7 @@ namespace
 		JsonUtils::validate(json, "vcmi:mmaiSettings", "mmai");
 		repo->temperature = static_cast<float>(json["temperature"].Float());
 		repo->seed = json["seed"].Integer();
-		for(const std::string & key : {"attacker", "defender"})
+		for(const std::string key : {"attacker", "defender"})
 		{
 			std::string value = "MMAI/models/" + json["models"][key].String();
 			logAi->debug("MMAI: Loading NN %s model from: %s", key, value);

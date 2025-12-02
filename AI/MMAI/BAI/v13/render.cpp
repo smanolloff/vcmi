@@ -47,30 +47,40 @@ namespace
 		return ss.str();
 	}
 
-	template<typename... Args>
-	inline void expect(bool exp, const std::string_view format, Args &&... args)
+	// Plain message overload: expect(cond, "expectation failed");
+	inline void expect(bool exp, std::string_view message)
 	{
-		if(exp)
-			return;
+	    if (exp)
+	        return;
 
-		constexpr std::size_t bufferSize = 2048;
-		char buffer[bufferSize];
-		std::string fmt{format};
-		std::snprintf(buffer, bufferSize, fmt.c_str(), std::forward<Args>(args)...);
-		throw std::runtime_error(buffer);
+	    throw std::runtime_error(std::string(message));
 	}
 
 	template<typename... Args>
-	inline void expect(bool exp, const std::string_view format)
+	inline void expect(bool exp, std::string_view format, Args... args)
 	{
-		if(exp)
-			return;
+	    if (exp)
+	        return;
 
-		constexpr std::size_t bufferSize = 2048;
-		char buffer[bufferSize];
-		std::string fmt{format};
-		std::snprintf(buffer, bufferSize, "%s", fmt.c_str());
-		throw std::runtime_error(buffer);
+	    try
+	    {
+	        // Convert to std::string for boost::format
+	        boost::format f{std::string(format)};
+
+	        // Feed arguments into boost::format
+	        // (initializer_list trick to expand the pack)
+	        (void)std::initializer_list<int>{
+	            ( (f % std::forward<Args>(args)), 0 )...
+	        };
+
+	        throw std::runtime_error(f.str());
+	    }
+	    catch (const boost::io::format_error & e)
+	    {
+	        // Optional: handle format errors explicitly
+	        throw std::runtime_error(
+	            std::string("expect: format error: ") + e.what());
+	    }
 	}
 }
 
@@ -481,7 +491,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 							aa == EAccessibility::ACCESSIBLE || (EI(side) && aa == EAccessibility::GATE),
 							"HEX.STATE_MASK: PASSABLE bit is set, but accessibility is %d (side: %d)",
 							EI(aa),
-							side
+							EI(side)
 						);
 					}
 					else
@@ -795,131 +805,131 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 					break;
 				case HA::STACK_FLAGS1:
 				{
-					if(!isNA(v, cstack, "HEX.STACK_FLAGS"))
+					if(isNA(v, cstack, "HEX.STACK_FLAGS"))
+						break;
+
+					for(int j = 0; j < EI(StackFlag1::_count); j++)
 					{
-						for(int j = 0; j < EI(StackFlag1::_count); j++)
+						auto f = StackFlag1(j);
+						auto vf = hex->stack->flag(f);
+
+						switch(f)
 						{
-							auto f = StackFlag1(j);
-							auto vf = hex->stack->flag(f);
+							case SF1::IS_ACTIVE:
+								// at battle end, queue is messed up
+								// (the stack that dealt the killing blow is still "active", but not on 0 pos)
+								if(ended)
+									break;
 
-							switch(f)
+								if(vf == 0)
+									expect(cstack != astack, "HEX.STACK_FLAGS1.IS_ACTIVE: =0 but cstack == astack");
+								else
+									expect(cstack == astack, "HEX.STACK_FLAGS1.IS_ACTIVE: =%d but cstack != astack", vf);
+								break;
+							case SF1::WILL_ACT:
+								ensureValueMatch(vf, cstack->willMove(), "HEX.STACK_FLAGS1.WILL_ACT");
+								break;
+							case SF1::CAN_WAIT:
+								ensureValueMatch(vf, cstack->willMove() && !cstack->waitedThisTurn, "HEX.STACK_FLAGS1.CAN_WAIT");
+								break;
+							case SF1::CAN_RETALIATE:
+								// XXX: ableToRetaliate() calls CAmmo's (i.e. CRetaliations's) canUse() method
+								//      which takes into account relevant bonuses (e.g. NO_RETALIATION from expert Blind)
+								//      It does *NOT* take into account the attacker's BLOCKS_RETALIATION bonus
+								//      (if it did, what would be the correct CAN_RETALIATE value for friendly units?)
+								ensureValueMatch(vf, cstack->ableToRetaliate(), "HEX.STACK_FLAGS1.CAN_RETALIATE");
+								break;
+							case SF1::SLEEPING:
+								cstack->unitType()->getId() == CreatureID::AMMO_CART
+									? ensureValueMatch(vf, false, "HEX.STACK_FLAGS1.SLEEPING")
+									: ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::NOT_ACTIVE), "HEX.STACK_FLAGS1.SLEEPING");
+								break;
+							case SF1::BLOCKED:
+								ensureValueMatch(vf, cstack->canShoot() && battle->battleIsUnitBlocked(cstack), "HEX.STACK_FLAGS1.TWO_HEX_ATTACK_BREATH");
+								break;
+							case SF1::BLOCKING:
 							{
-								case SF1::IS_ACTIVE:
-									// at battle end, queue is messed up
-									// (the stack that dealt the killing blow is still "active", but not on 0 pos)
-									if(ended)
-										break;
-
-									if(vf == 0)
-										expect(cstack != astack, "HEX.STACK_FLAGS1.IS_ACTIVE: =0 but cstack == astack");
-									else
-										expect(cstack == astack, "HEX.STACK_FLAGS1.IS_ACTIVE: =%d but cstack != astack", vf);
-									break;
-								case SF1::WILL_ACT:
-									ensureValueMatch(vf, cstack->willMove(), "HEX.STACK_FLAGS1.WILL_ACT");
-									break;
-								case SF1::CAN_WAIT:
-									ensureValueMatch(vf, cstack->willMove() && !cstack->waitedThisTurn, "HEX.STACK_FLAGS1.CAN_WAIT");
-									break;
-								case SF1::CAN_RETALIATE:
-									// XXX: ableToRetaliate() calls CAmmo's (i.e. CRetaliations's) canUse() method
-									//      which takes into account relevant bonuses (e.g. NO_RETALIATION from expert Blind)
-									//      It does *NOT* take into account the attacker's BLOCKS_RETALIATION bonus
-									//      (if it did, what would be the correct CAN_RETALIATE value for friendly units?)
-									ensureValueMatch(vf, cstack->ableToRetaliate(), "HEX.STACK_FLAGS1.CAN_RETALIATE");
-									break;
-								case SF1::SLEEPING:
-									cstack->unitType()->getId() == CreatureID::AMMO_CART
-										? ensureValueMatch(vf, false, "HEX.STACK_FLAGS1.SLEEPING")
-										: ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::NOT_ACTIVE), "HEX.STACK_FLAGS1.SLEEPING");
-									break;
-								case SF1::BLOCKED:
-									ensureValueMatch(vf, cstack->canShoot() && battle->battleIsUnitBlocked(cstack), "HEX.STACK_FLAGS1.TWO_HEX_ATTACK_BREATH");
-									break;
-								case SF1::BLOCKING:
-								{
-									auto want = 0;
-									for(auto & adjstack : battle->battleAdjacentUnits(cstack))
+								auto adjUnits = battle->battleAdjacentUnits(cstack);
+								bool want = std::any_of(adjUnits.begin(), adjUnits.end(), [&battle, &cstack](const auto & adjstack)
 									{
-										if(adjstack->unitSide() != cstack->unitSide() && adjstack->canShoot() && battle->battleIsUnitBlocked(adjstack)
-										   && !adjstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !adjstack->hasBonusOfType(BonusType::SIEGE_WEAPON))
-										{
-											want = 1;
-											break;
-										}
-									}
-									ensureValueMatch(vf, want, "HEX.STACK_FLAGS1.BLOCKING");
-								}
-								break;
-								case SF1::IS_WIDE:
-									ensureValueMatch(vf, cstack->occupiedHex().isAvailable(), "HEX.STACK_FLAGS1.IS_WIDE");
-									break;
-								case SF1::FLYING:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::FLYING), "HEX.STACK_FLAGS1.FLYING");
-									break;
-								case SF1::ADDITIONAL_ATTACK:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::ADDITIONAL_ATTACK), "HEX.STACK_FLAGS1.ADDITIONAL_ATTACK");
-									break;
-								case SF1::NO_MELEE_PENALTY:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY), "HEX.STACK_FLAGS1.NO_MELEE_PENALTY");
-									break;
-								case SF1::TWO_HEX_ATTACK_BREATH:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::TWO_HEX_ATTACK_BREATH), "HEX.STACK_FLAGS1.TWO_HEX_ATTACK_BREATH");
-									break;
-								case SF1::BLOCKS_RETALIATION:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION), "HEX.STACK_FLAGS1.BLOCKS_RETALIATION");
-									break;
-								case SF1::SHOOTER:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::SHOOTER), "HEX.STACK_FLAGS1.SHOOTER");
-									// canShoot returns false if ammo = 0
-									// ensureValueMatch(vf, cstack->canShoot(), "HEX.STACK_FLAGS1.SHOOTER (canShoot)");
-									break;
-								case SF1::NON_LIVING:
-								{
-									auto undead = cstack->hasBonusOfType(BonusType::UNDEAD);
-									auto nonliving = cstack->hasBonusOfType(BonusType::NON_LIVING);
-									ensureValueMatch(vf, undead || nonliving, "HEX.STACK_FLAGS1.NON_LIVING", cstack->getDescription());
-								}
-								break;
-								case SF1::WAR_MACHINE:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::SIEGE_WEAPON), "HEX.STACK_FLAGS1.WAR_MACHINE");
-									break;
-								case SF1::FIREBALL:
-									ensureValueMatch(
-										vf, cstack->hasBonusOfType(BonusType::SPELL_LIKE_ATTACK, SpellID(SpellID::FIREBALL)), "HEX.STACK_FLAGS1.FIREBALL"
-									);
-									break;
-								case SF1::DEATH_CLOUD:
-									ensureValueMatch(
-										vf, cstack->hasBonusOfType(BonusType::SPELL_LIKE_ATTACK, SpellID(SpellID::DEATH_CLOUD)), "HEX.STACK_FLAGS1.DEATH_CLOUD"
-									);
-									break;
-								case SF1::THREE_HEADED_ATTACK:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::THREE_HEADED_ATTACK), "HEX.STACK_FLAGS1.THREE_HEADED_ATTACK");
-									break;
-								case SF1::ALL_AROUND_ATTACK:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::ATTACKS_ALL_ADJACENT), "HEX.STACK_FLAGS1.ALL_AROUND_ATTACK");
-									break;
-								case SF1::RETURN_AFTER_STRIKE:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::RETURN_AFTER_STRIKE), "HEX.STACK_FLAGS1.RETURN_AFTER_STRIKE");
-									break;
-								case SF1::ENEMY_DEFENCE_REDUCTION:
-									ensureValueMatch(
-										vf, cstack->hasBonusOfType(BonusType::ENEMY_DEFENCE_REDUCTION), "HEX.STACK_FLAGS1.ENEMY_DEFENCE_REDUCTION"
-									);
-									break;
-								case SF1::LIFE_DRAIN:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::LIFE_DRAIN), "HEX.STACK_FLAGS1.LIFE_DRAIN");
-									break;
-								case SF1::DOUBLE_DAMAGE_CHANCE:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::DOUBLE_DAMAGE_CHANCE), "HEX.STACK_FLAGS1.DOUBLE_DAMAGE_CHANCE");
-									break;
-								case SF1::DEATH_STARE:
-									ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::DEATH_STARE), "HEX.STACK_FLAGS1.DEATH_STARE");
-									break;
-								default:
-									THROW_FORMAT("Unexpected StackFlag: %d", EI(f));
+								        return adjstack->unitSide() != cstack->unitSide()
+								            && adjstack->canShoot()
+								            && battle->battleIsUnitBlocked(adjstack)
+								            && !adjstack->hasBonusOfType(BonusType::FREE_SHOOTING)
+								            && !adjstack->hasBonusOfType(BonusType::SIEGE_WEAPON);
+								    });
+
+								ensureValueMatch(vf, want, "HEX.STACK_FLAGS1.BLOCKING");
 							}
+							break;
+							case SF1::IS_WIDE:
+								ensureValueMatch(vf, cstack->occupiedHex().isAvailable(), "HEX.STACK_FLAGS1.IS_WIDE");
+								break;
+							case SF1::FLYING:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::FLYING), "HEX.STACK_FLAGS1.FLYING");
+								break;
+							case SF1::ADDITIONAL_ATTACK:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::ADDITIONAL_ATTACK), "HEX.STACK_FLAGS1.ADDITIONAL_ATTACK");
+								break;
+							case SF1::NO_MELEE_PENALTY:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::NO_MELEE_PENALTY), "HEX.STACK_FLAGS1.NO_MELEE_PENALTY");
+								break;
+							case SF1::TWO_HEX_ATTACK_BREATH:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::TWO_HEX_ATTACK_BREATH), "HEX.STACK_FLAGS1.TWO_HEX_ATTACK_BREATH");
+								break;
+							case SF1::BLOCKS_RETALIATION:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::BLOCKS_RETALIATION), "HEX.STACK_FLAGS1.BLOCKS_RETALIATION");
+								break;
+							case SF1::SHOOTER:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::SHOOTER), "HEX.STACK_FLAGS1.SHOOTER");
+								// canShoot returns false if ammo = 0
+								// ensureValueMatch(vf, cstack->canShoot(), "HEX.STACK_FLAGS1.SHOOTER (canShoot)");
+								break;
+							case SF1::NON_LIVING:
+							{
+								auto undead = cstack->hasBonusOfType(BonusType::UNDEAD);
+								auto nonliving = cstack->hasBonusOfType(BonusType::NON_LIVING);
+								ensureValueMatch(vf, undead || nonliving, "HEX.STACK_FLAGS1.NON_LIVING", cstack->getDescription());
+							}
+							break;
+							case SF1::WAR_MACHINE:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::SIEGE_WEAPON), "HEX.STACK_FLAGS1.WAR_MACHINE");
+								break;
+							case SF1::FIREBALL:
+								ensureValueMatch(
+									vf, cstack->hasBonusOfType(BonusType::SPELL_LIKE_ATTACK, SpellID(SpellID::FIREBALL)), "HEX.STACK_FLAGS1.FIREBALL"
+								);
+								break;
+							case SF1::DEATH_CLOUD:
+								ensureValueMatch(
+									vf, cstack->hasBonusOfType(BonusType::SPELL_LIKE_ATTACK, SpellID(SpellID::DEATH_CLOUD)), "HEX.STACK_FLAGS1.DEATH_CLOUD"
+								);
+								break;
+							case SF1::THREE_HEADED_ATTACK:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::THREE_HEADED_ATTACK), "HEX.STACK_FLAGS1.THREE_HEADED_ATTACK");
+								break;
+							case SF1::ALL_AROUND_ATTACK:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::ATTACKS_ALL_ADJACENT), "HEX.STACK_FLAGS1.ALL_AROUND_ATTACK");
+								break;
+							case SF1::RETURN_AFTER_STRIKE:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::RETURN_AFTER_STRIKE), "HEX.STACK_FLAGS1.RETURN_AFTER_STRIKE");
+								break;
+							case SF1::ENEMY_DEFENCE_REDUCTION:
+								ensureValueMatch(
+									vf, cstack->hasBonusOfType(BonusType::ENEMY_DEFENCE_REDUCTION), "HEX.STACK_FLAGS1.ENEMY_DEFENCE_REDUCTION"
+								);
+								break;
+							case SF1::LIFE_DRAIN:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::LIFE_DRAIN), "HEX.STACK_FLAGS1.LIFE_DRAIN");
+								break;
+							case SF1::DOUBLE_DAMAGE_CHANCE:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::DOUBLE_DAMAGE_CHANCE), "HEX.STACK_FLAGS1.DOUBLE_DAMAGE_CHANCE");
+								break;
+							case SF1::DEATH_STARE:
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::DEATH_STARE), "HEX.STACK_FLAGS1.DEATH_STARE");
+								break;
+							default:
+								THROW_FORMAT("Unexpected StackFlag: %d", EI(f));
 						}
 					}
 				}
@@ -1143,7 +1153,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 	lines.emplace_back() << "    ₀▏₁▏₂▏₃▏₄▏₅▏₆▏₇▏₈▏₉▏₀▏₁▏₂▏₃▏₄";
 	lines.emplace_back() << " ┃▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔┃ ";
 
-	static std::array<std::string, 10> nummap{"₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"};
+	static constexpr std::array<std::string, 10> nummap{"₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"};
 
 	bool addspace = true;
 
@@ -1453,103 +1463,106 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 			for(int i = 0; i < sidestacks.size(); ++i)
 			{
 				auto & [stack, hex] = sidestacks.at(i);
-				auto color = nocol;
-				std::string value;
+				auto colid = 2 + i + side + (max_stacks_per_side * side);
 
-				if(stack)
+				if(!stack)
 				{
-					// MSVC mandates constexpr `n` here
-					constexpr int n1 = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS1)]);
-					constexpr int n2 = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS2)]);
-					auto flags1 = std::bitset<n1>(stack->getAttr(SA::FLAGS1));
-					auto flags2 = std::bitset<n2>(stack->getAttr(SA::FLAGS2));
-
-					color = stack->getAttr(SA::SIDE) ? bluecol : redcol;
-					// } else if (a == SA::ACTSTATE) {
-					//     switch(StackActState(stack->getAttr(a))) {
-					//     break; case StackActState::READY: value = "R";
-					//     break; case StackActState::WAITING: value = "W";
-					//     break; case StackActState::DONE: value = "D";
-					//     break; default:
-					//         throw std::runtime_error("Unexpected actstate:: " + std::to_string(EI(stack->getAttr(a))));
-					//     }
-					if(a == SA::QUEUE)
-					{
-						auto qbits = std::bitset<S13::STACK_QUEUE_SIZE>(stack->getAttr(SA::QUEUE));
-						for(int i = 0; i < S13::STACK_QUEUE_SIZE; ++i)
-						{
-							if(qbits.test(i))
-							{
-								value = std::to_string(i);
-								break;
-							}
-						}
-					}
-					else if(a == SA::VALUE_ONE && stack->getAttr(a) >= 1000)
-					{
-						std::ostringstream oss;
-						oss << std::fixed << std::setprecision(1) << (stack->getAttr(a) / 1000.0);
-						value = oss.str();
-						value[value.size() - 2] = 'k';
-						if(value.rfind("K0") == (value.size() - 2))
-							value.resize(value.size() - 1);
-					}
-					else if(a == SA::FLAGS1)
-					{
-						auto fmt = boost::format("%d/%d");
-
-						// Y_COORD, "State"},  // "WAR" = CAN_WAIT, WILL_ACT, CAN_RETAL
-						// Y_COORD, "Attack type"}, // "DB" = Double strike, Blind-like
-						// Y_COORD, "Blocked/ing"},
-						// Y_COORD, "Fly/Sleep"},
-						// Y_COORD, "No Retal/Melee"},
-						// Y_COORD, "Wide/Breath"},
-						switch(specialcounter)
-						{
-							case 0:
-								value = std::string(1, stack->getAlias());
-								break;
-							case 1:
-							{
-								value = std::string("");
-								value += flags1.test(EI(SF1::CAN_WAIT)) ? "W" : " ";
-								value += flags1.test(EI(SF1::WILL_ACT)) ? "A" : " ";
-								value += flags1.test(EI(SF1::CAN_RETALIATE)) ? "R" : " ";
-							}
-							break;
-							case 2:
-							{
-								value = std::string("");
-								value += flags1.test(EI(SF1::ADDITIONAL_ATTACK)) ? "D" : " ";
-								value += flags2.test(EI(SF2::BLIND_ATTACK)) ? "B" : " ";
-							}
-							break;
-							case 3:
-								value = boost::str(fmt % flags1.test(EI(SF1::BLOCKED)) % flags1.test(EI(SF1::BLOCKING)));
-								break;
-							case 4:
-								value = boost::str(fmt % flags1.test(EI(SF1::FLYING)) % flags1.test(EI(SF1::SLEEPING)));
-								break;
-							case 5:
-								value = boost::str(fmt % flags1.test(EI(SF1::BLOCKS_RETALIATION)) % flags1.test(EI(SF1::NO_MELEE_PENALTY)));
-								break;
-							case 6:
-								value = boost::str(fmt % flags1.test(EI(SF1::IS_WIDE)) % flags1.test(EI(SF1::TWO_HEX_ATTACK_BREATH)));
-								break;
-							default:
-								THROW_FORMAT("Unexpected specialcounter: %d", specialcounter);
-						}
-					}
-					else
-					{
-						value = std::to_string(stack->getAttr(a));
-					}
-
-					if((stack->getAttr(SA::QUEUE) & 1) && !ended)
-						color += activemod;
+					row.at(colid) = {nocol, colwidths.at(colid), ""};
+					continue;
 				}
 
-				auto colid = 2 + i + side + (max_stacks_per_side * side);
+				std::string value;
+
+				// MSVC mandates constexpr `n` here
+				constexpr int n1 = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS1)]);
+				constexpr int n2 = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS2)]);
+				auto flags1 = std::bitset<n1>(stack->getAttr(SA::FLAGS1));
+				auto flags2 = std::bitset<n2>(stack->getAttr(SA::FLAGS2));
+
+				auto color = stack->getAttr(SA::SIDE) ? bluecol : redcol;
+				// } else if (a == SA::ACTSTATE) {
+				//     switch(StackActState(stack->getAttr(a))) {
+				//     break; case StackActState::READY: value = "R";
+				//     break; case StackActState::WAITING: value = "W";
+				//     break; case StackActState::DONE: value = "D";
+				//     break; default:
+				//         throw std::runtime_error("Unexpected actstate:: " + std::to_string(EI(stack->getAttr(a))));
+				//     }
+				if(a == SA::QUEUE)
+				{
+					auto qbits = std::bitset<S13::STACK_QUEUE_SIZE>(stack->getAttr(SA::QUEUE));
+					for(int i = 0; i < S13::STACK_QUEUE_SIZE; ++i)
+					{
+						if(qbits.test(i))
+						{
+							value = std::to_string(i);
+							break;
+						}
+					}
+				}
+				else if(a == SA::VALUE_ONE && stack->getAttr(a) >= 1000)
+				{
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << (stack->getAttr(a) / 1000.0);
+					value = oss.str();
+					value[value.size() - 2] = 'k';
+					if(value.rfind("K0") == (value.size() - 2))
+						value.resize(value.size() - 1);
+				}
+				else if(a == SA::FLAGS1)
+				{
+					auto fmt = boost::format("%d/%d");
+
+					// Y_COORD, "State"},  // "WAR" = CAN_WAIT, WILL_ACT, CAN_RETAL
+					// Y_COORD, "Attack type"}, // "DB" = Double strike, Blind-like
+					// Y_COORD, "Blocked/ing"},
+					// Y_COORD, "Fly/Sleep"},
+					// Y_COORD, "No Retal/Melee"},
+					// Y_COORD, "Wide/Breath"},
+					switch(specialcounter)
+					{
+						case 0:
+							value = std::string(1, stack->getAlias());
+							break;
+						case 1:
+						{
+							value = std::string("");
+							value += flags1.test(EI(SF1::CAN_WAIT)) ? "W" : " ";
+							value += flags1.test(EI(SF1::WILL_ACT)) ? "A" : " ";
+							value += flags1.test(EI(SF1::CAN_RETALIATE)) ? "R" : " ";
+						}
+						break;
+						case 2:
+						{
+							value = std::string("");
+							value += flags1.test(EI(SF1::ADDITIONAL_ATTACK)) ? "D" : " ";
+							value += flags2.test(EI(SF2::BLIND_ATTACK)) ? "B" : " ";
+						}
+						break;
+						case 3:
+							value = boost::str(fmt % flags1.test(EI(SF1::BLOCKED)) % flags1.test(EI(SF1::BLOCKING)));
+							break;
+						case 4:
+							value = boost::str(fmt % flags1.test(EI(SF1::FLYING)) % flags1.test(EI(SF1::SLEEPING)));
+							break;
+						case 5:
+							value = boost::str(fmt % flags1.test(EI(SF1::BLOCKS_RETALIATION)) % flags1.test(EI(SF1::NO_MELEE_PENALTY)));
+							break;
+						case 6:
+							value = boost::str(fmt % flags1.test(EI(SF1::IS_WIDE)) % flags1.test(EI(SF1::TWO_HEX_ATTACK_BREATH)));
+							break;
+						default:
+							THROW_FORMAT("Unexpected specialcounter: %d", specialcounter);
+					}
+				}
+				else
+				{
+					value = std::to_string(stack->getAttr(a));
+				}
+
+				if((stack->getAttr(SA::QUEUE) & 1) && !ended)
+					color += activemod;
+
 				row.at(colid) = {color, colwidths.at(colid), value};
 			}
 		}

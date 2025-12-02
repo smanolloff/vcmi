@@ -69,7 +69,7 @@ public:
 	ErrorCode getErrorCode() const override
 	{
 		return errcode;
-	}; // TODO
+	};
 
 	bool getIsBattleEnded() const override
 	{
