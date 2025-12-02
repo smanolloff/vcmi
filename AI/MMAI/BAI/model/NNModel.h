@@ -22,7 +22,7 @@ namespace MMAI::BAI
 class NNModel : public MMAI::Schema::IModel
 {
 public:
-	explicit NNModel(std::string & path, float temperature, uint64_t seed);
+	explicit NNModel(const std::string & path, float temperature, uint64_t seed);
 
 	Schema::ModelType getType() override;
 	std::string getName() override;
@@ -58,6 +58,7 @@ private:
 	template<typename T>
 	Ort::Value toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape);
 
+	std::unique_ptr<Ort::Session> loadModel(const std::string & path, const Ort::SessionOptions & opts);
 	int readVersion(const Ort::ModelMetadata & md) const;
 	Schema::Side readSide(const Ort::ModelMetadata & md) const;
 	Vec3D<int32_t> readBucketSizes(const Ort::ModelMetadata & md) const;

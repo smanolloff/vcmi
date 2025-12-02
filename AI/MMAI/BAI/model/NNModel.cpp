@@ -8,16 +8,6 @@
  *
  */
 
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <memory>
-#include <random>
-#include <stdexcept>
-#include <string>
-#include <tuple>
-#include <vector>
-
 #include <onnxruntime_c_api.h>
 #include <onnxruntime_cxx_api.h>
 
@@ -26,6 +16,7 @@
 #include "BAI/model/util/common.h"
 #include "BAI/model/util/sampling.h"
 #include "NNModel.h"
+#include "filesystem/Filesystem.h"
 #include "vstd/CLoggerBase.h"
 #include "json/JsonNode.h"
 
@@ -44,25 +35,6 @@ namespace MMAI::BAI
 
 namespace
 {
-	inline std::basic_string<ORTCHAR_T> ToOrtPath(const std::string & utf8_path)
-	{
-// https://github.com/microsoft/onnxruntime/discussions/21915
-#ifdef _WIN32
-		if(utf8_path.empty())
-			return std::basic_string<ORTCHAR_T>();
-
-		int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8_path.c_str(), static_cast<int>(utf8_path.size()), nullptr, 0);
-
-		std::wstring wpath(size_needed, L'\0');
-		MultiByteToWideChar(CP_UTF8, 0, utf8_path.c_str(), static_cast<int>(utf8_path.size()), &wpath[0], size_needed);
-
-		return wpath; // ORTCHAR_T == wchar_t on Windows
-#else
-		// On non-Windows, ORTCHAR_T == char, so no conversion needed.
-		return utf8_path;
-#endif
-	}
-
 	struct ScopedTimer
 	{
 		std::string name;
@@ -103,6 +75,18 @@ namespace
 
 		return res;
 	}
+}
+
+std::unique_ptr<Ort::Session> NNModel::loadModel(const std::string & path, const Ort::SessionOptions & opts)
+{
+	static const auto env = Ort::Env{ORT_LOGGING_LEVEL_WARNING, "vcmi"};
+	const auto rpath = ResourcePath(path, EResType::AI_MODEL);
+	const auto * rhandler = CResourceHandler::get();
+	if(!rhandler->existsResource(rpath))
+		throwf("resource does not exist: %s", rpath.getName());
+
+	const auto & [data, length] = rhandler->load(rpath)->readAll();
+	return std::make_unique<Ort::Session>(env, data.get(), length, opts);
 }
 
 int NNModel::readVersion(const Ort::ModelMetadata & md) const
@@ -394,26 +378,24 @@ std::vector<const char *> NNModel::readOutputNames()
 	return res;
 }
 
-NNModel::NNModel(std::string & path, float temperature, uint64_t seed)
+NNModel::NNModel(const std::string & path, float temperature, uint64_t seed)
 	: path(path), temperature(temperature), meminfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
 {
 	logAi->info("MMAI: NNModel params: seed=%1%, temperature=%2%, model=%3%", seed, temperature, path);
 
 	if(seed == 0)
-	{
 		seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-		logAi->info("Seed is 0, using %1%", seed);
-	}
+
+	logAi->info("Using rng seed %1%", seed);
 	rng = std::mt19937(seed);
 
 	auto opts = Ort::SessionOptions();
 	opts.SetIntraOpNumThreads(4);
 	opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
 
-	static const auto env = Ort::Env{ORT_LOGGING_LEVEL_WARNING, "vcmi"};
-	model = std::make_unique<Ort::Session>(env, ToOrtPath(path).c_str(), opts);
-	auto md = model->GetModelMetadata();
+	model = loadModel(path, opts);
 
+	auto md = model->GetModelMetadata();
 	version = readVersion(md);
 	side = readSide(md);
 	bucketSizes = readBucketSizes(md);

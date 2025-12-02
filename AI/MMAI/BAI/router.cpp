@@ -42,22 +42,6 @@ namespace
 		std::mutex mutex;
 	};
 
-	std::unique_ptr<NNModel> InitNNModel(const std::string & key, const std::string & path, float temperature, uint64_t seed)
-	{
-		auto rpath = ResourcePath(path);
-		auto loaders = CResourceHandler::get()->getResourcesWithName(rpath);
-
-		if(loaders.size() != 1)
-			THROW_FORMAT("Expected 1 %s loader, found %d", rpath.getName() % EI(loaders.size()));
-
-		auto fullpath = loaders.at(0)->getResourceName(rpath);
-		ASSERT(fullpath.has_value(), "could not obtain path for resource " + rpath.getName());
-		auto fullpathstr = fullpath.value().string();
-
-		logAi->info("Loading MMAI %s model from %s", key, fullpathstr);
-		return std::make_unique<NNModel>(fullpathstr, temperature, seed);
-	}
-
 	void warncfg(const std::string & problem)
 	{
 		logAi->warn("MMAI: config error: %s", problem);
@@ -133,8 +117,8 @@ namespace
 				if(config["models"][key].isString())
 				{
 					std::string value = "MMAI/models/" + config["models"][key].String();
-					logAi->debug("Loading NN %s model from: %s", key, value);
-					repo->models.try_emplace(key, InitNNModel(key, value, repo->temperature, repo->seed));
+					logAi->debug("MMAI: Loading NN %s model from: %s", key, value);
+					repo->models.try_emplace(key, std::make_unique<NNModel>(value, repo->temperature, repo->seed));
 				}
 				else
 				{
