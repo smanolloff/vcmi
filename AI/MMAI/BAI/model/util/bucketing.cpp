@@ -9,6 +9,8 @@
  */
 
 #include "BAI/model/util/bucketing.h"
+#include "vstd/CLoggerBase.h"
+#include <numeric>
 
 namespace MMAI::BAI::bucketing
 {
