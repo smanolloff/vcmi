@@ -174,7 +174,7 @@ Router::Router()
 	std::ostringstream oss;
 	// Store the memory address and include it in logging
 	// Convert the pointer value to an integer type
-	std::uintptr_t addr = reinterpret_cast<std::uintptr_t>(this);
+	auto addr = reinterpret_cast<std::uintptr_t>(this);
 	oss << std::hex << addr;
 	addrstr = oss.str();
 	info("+++ constructor +++"); // log after addrstr is set

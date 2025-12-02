@@ -237,17 +237,17 @@ std::tuple<Stacks, Queue> Battlefield::InitStacks(
 	// otherwise for melee attack
 	auto estdmg = std::map<const CStack *, DamageEstimation>{};
 
-	auto estimateDamage = [&battle, &estdmg, &blocked](const CStack * astack, const CStack * cstack)
+	auto estimateDamage = [&battle, &astack, &estdmg, &blocked](const CStack * cstack)
 	{
 		if(!astack)
 		{
 			// no active stack (e.g. called during battleStart or battleEnd)
-			estdmg.try_emplace(cstack, DamageEstimation());
+			estdmg.try_emplace(cstack);
 		}
 		else if(astack->unitSide() == cstack->unitSide())
 		{
 			// no damage to friendly units
-			estdmg.try_emplace(cstack, DamageEstimation());
+			estdmg.try_emplace(cstack);
 		}
 		else
 		{
@@ -265,7 +265,7 @@ std::tuple<Stacks, Queue> Battlefield::InitStacks(
 		if(cstack != astack)
 			setBlockedBlocking(cstack);
 
-		estimateDamage(astack, cstack);
+		estimateDamage(cstack);
 
 		auto stack = std::make_shared<Stack>(
 			cstack,

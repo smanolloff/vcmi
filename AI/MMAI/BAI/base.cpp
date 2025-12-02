@@ -40,7 +40,11 @@ Base::Base(Schema::IModel * model, int version, const std::shared_ptr<Environmen
 	: colorname(cb->getPlayerID()->toString()), model(model), cb(cb), name("BAI-v" + std::to_string(version)), version(version), env(env)
 {
 	std::ostringstream oss;
-	oss << this; // Store this memory address
+
+	// Store the memory address and include it in logging
+	// Convert the pointer value to an integer type
+	auto addr = reinterpret_cast<std::uintptr_t>(this);
+	oss << std::hex << addr;
 	addrstr = oss.str();
 
 	const char * envvar = std::getenv("MMAI_VERBOSE");

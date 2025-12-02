@@ -20,6 +20,7 @@
 #include "BAI/v13/hex.h"
 #include "BAI/v13/hexactmask.h"
 #include "BAI/v13/render.h"
+
 #include "schema/v13/constants.h"
 #include "schema/v13/types.h"
 
@@ -63,33 +64,36 @@ namespace
 	}
 
 	template<typename... Args>
-	inline void expect(bool exp, const char * format, Args &&... args)
+	inline void expect(bool exp, const std::string_view format, Args &&... args)
 	{
 		if(exp)
 			return;
 
 		constexpr std::size_t bufferSize = 2048;
 		char buffer[bufferSize];
-
-		std::snprintf(buffer, bufferSize, format, std::forward<Args>(args)...);
+		std::string fmt{format};
+		std::snprintf(buffer, bufferSize, fmt.c_str(), std::forward<Args>(args)...);
 		throw std::runtime_error(buffer);
 	}
 
-	inline void expect(bool exp, const char * message)
+	template<typename... Args>
+	inline void expect(bool exp, const std::string_view format)
 	{
 		if(exp)
-		{
 			return;
-		}
-		// No formatting; just throw with the message
-		throw std::runtime_error(message);
+
+		constexpr std::size_t bufferSize = 2048;
+		char buffer[bufferSize];
+		std::string fmt{format};
+		std::snprintf(buffer, bufferSize, "%s", fmt.c_str());
+		throw std::runtime_error(buffer);
 	}
 }
 
 // This function used during model development and is never called otherwise
-void Verify(const State * state)
-{ // NOSONAR - debugging only
-	auto battle = state->battle;
+void Verify(const State * state) // NOSONAR - function used for debugging only
+{
+	const auto * battle = state->battle;
 	auto hexes = Hexes();
 
 	expect(battle, "no battle to verify");
@@ -108,7 +112,7 @@ void Verify(const State * state)
 	std::sort(
 		allstacks.begin(),
 		allstacks.end(),
-		[&](const CStack * a, const CStack * b)
+		[](const CStack * a, const CStack * b)
 		{
 			return a->unitId() < b->unitId();
 		}
@@ -133,7 +137,7 @@ void Verify(const State * state)
 
 		rinfos.insert({cstack, battle->getReachability(cstack)});
 
-		for(auto & bh : cstack->getHexes())
+		for(const auto & bh : cstack->getHexes())
 		{
 			if(!bh.isAvailable())
 				continue; // war machines rear hex, arrow towers
@@ -160,7 +164,7 @@ void Verify(const State * state)
 	r_CStacksExtra.insert(r_CStacksExtra.end(), r_CStacksSummons.begin(), r_CStacksSummons.end());
 	r_CStacksExtra.insert(r_CStacksExtra.end(), r_CStacksMachines.begin(), r_CStacksMachines.end());
 
-	auto getAllStacksForSide = [&](bool side)
+	auto getAllStacksForSide = [&r_CStacksAll, &l_CStacksAll](bool side)
 	{
 		return side ? r_CStacksAll : l_CStacksAll;
 	};
@@ -183,7 +187,7 @@ void Verify(const State * state)
 	}
 
 	// Return (attr == N/A), but after performing some checks
-	auto isNA = [](int v, const CStack * stack, const char * attrname)
+	auto isNA = [](int v, const CStack * stack, const std::string_view attrname)
 	{
 		if(v == NULL_VALUE_UNENCODED)
 		{
@@ -209,22 +213,20 @@ void Verify(const State * state)
 		expect(checkReachable(bh, v, stack), "%s: (bhex=%d) reachability expected: %d", attrname, bh.toInt(), v);
 	};
 
-	auto ensureValueMatch = [](int have, int want, const char * attrname, std::string desc = "")
+	auto ensureValueMatch = [](int have, int want, const std::string_view attrname, const std::string & desc = "")
 	{
 		desc.empty() ? expect(have == want, "%s: have: %d, want: %d", attrname, have, want)
 					 : expect(have == want, "%s: have: %d, want: %d (%s)", attrname, have, want, desc.c_str());
 	};
 
-	auto ensureStackNullOrMatch = [=](HexAttribute a, const CStack * cstack, int have, std::function<int()> wantfunc, const char * attrname)
+	auto ensureStackNullOrMatch = [=](HexAttribute a, const CStack * cstack, int have, auto wantfunc, const std::string_view attrname)
 	{
 		auto vmax = std::get<3>(HEX_ENCODING.at(EI(a)));
 		if(isNA(have, cstack, attrname))
 			return;
-		auto want = wantfunc();
-		if(want > vmax)
-			want = vmax;
-		if(have > vmax)
-			have = vmax; // this is usually done by the encoder
+		int want = wantfunc();
+		want = std::min(want, vmax);
+		have = std::min(have, vmax); // this is usually done by the encoder
 		ensureValueMatch(have, want, attrname);
 	};
 
@@ -294,7 +296,7 @@ void Verify(const State * state)
 			}
 		);
 
-		auto estack = it == estacks.end() ? nullptr : *it;
+		const auto * estack = it == estacks.end() ? nullptr : *it;
 
 		if(mv)
 		{
@@ -336,7 +338,7 @@ void Verify(const State * state)
 			}
 		);
 
-		auto estack = it == estacks.end() ? nullptr : *it;
+		const auto * estack = it == estacks.end() ? nullptr : *it;
 
 		// XXX: the estack on `bh` might be "hidden" from the state
 		//      in which case the mask for shooting will be 0 although
@@ -354,7 +356,7 @@ void Verify(const State * state)
 		}
 	};
 
-	auto ensureCorrectMaskOrNA = [=](BattleHex bh, int v, const CStack * cstack, const CPlayerBattleCallback * battle, const char * attrname)
+	auto ensureCorrectMaskOrNA = [=](BattleHex bh, int v, const CStack * cstack, const CPlayerBattleCallback * battle, const std::string_view attrname)
 	{
 		if(isNA(v, cstack, attrname))
 			return;
@@ -394,7 +396,7 @@ void Verify(const State * state)
 		}
 	}
 
-	auto gstats = state->supdata->getGlobalStats();
+	const auto * gstats = state->supdata->getGlobalStats();
 	auto gmask = GlobalActionMask(gstats->getAttr(GA::ACTION_MASK));
 	ensureValueMatch(gmask.test(EI(GlobalAction::RETREAT)), false, "GA.ACTION_MASK[RETREAT]");
 
@@ -451,7 +453,7 @@ void Verify(const State * state)
 		{
 			auto attr = HexAttribute(i);
 			auto v = hex->attrs.at(i);
-			auto cstack = hexstacks.at(ihex);
+			const auto * cstack = hexstacks.at(ihex);
 
 			if(cstack)
 			{
@@ -474,12 +476,12 @@ void Verify(const State * state)
 				case HA::STATE_MASK:
 				{
 					auto obstacles = battle->battleGetAllObstaclesOnPos(bh, false);
-					auto anyobstacle = [&obstacles](std::function<bool(const CObstacleInstance *)> fn)
+					auto anyobstacle = [&obstacles](auto fn)
 					{
 						return std::any_of(
 							obstacles.begin(),
 							obstacles.end(),
-							[&fn](std::shared_ptr<const CObstacleInstance> obstacle)
+							[&fn](std::shared_ptr<const CObstacleInstance> & obstacle)
 							{
 								return fn(obstacle.get());
 							}
@@ -509,11 +511,8 @@ void Verify(const State * state)
 								throw std::runtime_error("HEX.STATE_MASK: PASSABLE bit not set, but accessibility is ACCESSIBLE");
 								break;
 							case EAccessibility::ALIVE_STACK:
-								break;
 							case EAccessibility::OBSTACLE:
-								break;
 							case EAccessibility::DESTRUCTIBLE_WALL:
-								break;
 							case EAccessibility::GATE:
 								break;
 							case EAccessibility::UNAVAILABLE:
@@ -553,8 +552,9 @@ void Verify(const State * state)
 									return true;
 								if(s != SpellID::LAND_MINE)
 									return false;
-								auto so = dynamic_cast<const SpellCreatedObstacle *>(o);
-								return (side == so->casterSide) ? bool(side) : !bool(side);
+								const auto * so = dynamic_cast<const SpellCreatedObstacle *>(o);
+								auto bside = static_cast<bool>(side);
+								return (side == so->casterSide) ? bside : !bside;
 							}
 						);
 						expect(damaging, "HEX.STATE_MASK: DAMAGING bit is set, but no obstacle triggers a damaging effect");
@@ -574,8 +574,9 @@ void Verify(const State * state)
 									return true;
 								if(s != SpellID::LAND_MINE)
 									return false;
-								auto so = dynamic_cast<const SpellCreatedObstacle *>(o);
-								return (side == so->casterSide) ? !bool(side) : bool(side);
+								const auto * so = dynamic_cast<const SpellCreatedObstacle *>(o);
+								auto bside = static_cast<bool>(side);
+								return (side == so->casterSide) ? !bside : bside;
 							}
 						);
 						expect(damaging, "HEX.STATE_MASK: DAMAGING bit is set, but no obstacle triggers a damaging effect");
@@ -609,7 +610,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return EI(cstack->unitSide());
 						},
@@ -637,9 +638,9 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
-							return std::round(STACK_QTY_MAX * float(cstack->getCount()) / STACK_QTY_MAX);
+							return std::round(STACK_QTY_MAX * static_cast<float>(cstack->getCount()) / STACK_QTY_MAX);
 						},
 						"HEX.STACK_QUANTITY"
 					);
@@ -649,7 +650,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getAttack(false);
 						},
@@ -661,7 +662,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getDefense(false);
 						},
@@ -673,7 +674,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->shots.available();
 						},
@@ -685,7 +686,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getMinDamage(false);
 						},
@@ -697,7 +698,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getMaxDamage(false);
 						},
@@ -709,7 +710,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getMaxHealth();
 						},
@@ -721,7 +722,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getFirstHPleft();
 						},
@@ -733,7 +734,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return cstack->getMovementRange();
 						},
@@ -753,7 +754,7 @@ void Verify(const State * state)
 					{
 						int have = qbits.test(i);
 						int want = (queue.at(i) == cstack);
-						ensureValueMatch(have, want, ("HEX.STACK_QUEUE[" + std::to_string(i) + "]").c_str());
+						ensureValueMatch(have, want, ("HEX.STACK_QUEUE[" + std::to_string(i) + "]"));
 					}
 				}
 				break;
@@ -763,7 +764,7 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack]
 						{
 							return Stack::CalcValue(cstack->unitType());
 						},
@@ -788,35 +789,25 @@ void Verify(const State * state)
 						attr,
 						cstack,
 						v,
-						[&]
+						[&cstack, &tot]
 						{
 							return 1000ll * cstack->getCount() * Stack::CalcValue(cstack->unitType()) / tot;
 						},
 						"HEX.STACK_VALUE_REL"
 					);
 				}
-
+				break;
 				// These require historical information
 				// (CPlayerCallback does not provide such)
-				break;
 				case HA::STACK_VALUE_REL0:
-					break;
 				case HA::STACK_VALUE_KILLED_REL:
-					break;
 				case HA::STACK_VALUE_KILLED_ACC_REL0:
-					break;
 				case HA::STACK_VALUE_LOST_REL:
-					break;
 				case HA::STACK_VALUE_LOST_ACC_REL0:
-					break;
 				case HA::STACK_DMG_DEALT_REL:
-					break;
 				case HA::STACK_DMG_DEALT_ACC_REL0:
-					break;
 				case HA::STACK_DMG_RECEIVED_REL:
-					break;
 				case HA::STACK_DMG_RECEIVED_ACC_REL0:
-
 					break;
 				case HA::STACK_FLAGS1:
 				{
@@ -873,7 +864,7 @@ void Verify(const State * state)
 											break;
 										}
 									}
-									ensureValueMatch(vf, bool(want), "HEX.STACK_FLAGS1.BLOCKING");
+									ensureValueMatch(vf, want, "HEX.STACK_FLAGS1.BLOCKING");
 								}
 								break;
 								case SF1::IS_WIDE:
@@ -1057,7 +1048,7 @@ void Verify(const State * state)
 
 // This intentionally uses the IState interface to ensure that
 // the schema is properly exposing all needed informaton
-std::string Render(const Schema::IState * istate, const Action * action)
+std::string Render(const Schema::IState * istate, const Action * action) // NOSONAR - function used for debugging only
 {
 	// auto bfstate = istate->getBattlefieldState();
 	auto supdata_ = istate->getSupplementaryData();
@@ -1184,7 +1175,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 		{
 			auto sym = std::string("?");
 			auto & hex = hexes.at(y).at(x);
-			auto stack = hex->getStack();
+			const auto * stack = hex->getStack();
 
 			auto & row = (x == 0) ? (lines.emplace_back() << nummap.at(y % 10) << "┨" << (y % 2 == 0 ? " " : "")) : lines.back();
 
@@ -1271,7 +1262,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 					seenstacks.insert({stack, hex});
 			}
 
-			row << (col + sym + nocol);
+			row << col << sym << nocol;
 
 			if(x == 15 - 1)
 			{
@@ -1385,12 +1376,12 @@ std::string Render(const Schema::IState * istate, const Action * action)
 	constexpr int max_stacks_per_side = 10;
 
 	// All cell text is aligned right
-	auto colwidths = std::array<int, 4 + 2 * max_stacks_per_side>{};
+	auto colwidths = std::array<int, 4 + (2 * max_stacks_per_side)>{};
 	colwidths.fill(5); // default col width
 	colwidths.at(0) = 16; // header col
 
 	// Divider column indexes
-	auto divcolids = {1, max_stacks_per_side + 2, 2 * max_stacks_per_side + 3};
+	auto divcolids = {1, max_stacks_per_side + 2, (2 * max_stacks_per_side) + 3};
 
 	for(int i : divcolids)
 		colwidths.at(i) = 2; // divider col
@@ -1439,7 +1430,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 	int specialcounter = 0;
 
 	// Attribute rows
-	for(auto & [a, aname] : rowdefs)
+	for(const auto & [a, aname] : rowdefs)
 	{
 		if(a == SA::SIDE)
 		{ // divider row
@@ -1453,7 +1444,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 		row.at(0) = {nocol, colwidths.at(0), aname};
 
 		// Div cols
-		for(int i : {1, 2 + max_stacks_per_side, int(colwidths.size() - 1)})
+		for(int i : {1, 2 + max_stacks_per_side, static_cast<int>(colwidths.size() - 1)})
 			row.at(i) = {nocol, colwidths.at(i), "|"};
 
 		// Stack cols
@@ -1479,7 +1470,7 @@ std::string Render(const Schema::IState * istate, const Action * action)
 			{
 				auto & [stack, hex] = sidestacks.at(i);
 				auto color = nocol;
-				std::string value = "";
+				std::string value;
 
 				if(stack)
 				{

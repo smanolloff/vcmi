@@ -15,7 +15,7 @@
 #	define strcpy_s(a, b, c) strncpy(a, c, b)
 #endif
 
-static const char * g_cszAiName = "MMAI";
+static const char * const g_cszAiName = "MMAI";
 
 extern "C" DLL_EXPORT int GetGlobalAiVersion()
 {

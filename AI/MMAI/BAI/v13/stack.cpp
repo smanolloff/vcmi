@@ -17,7 +17,6 @@
 #include "BAI/v13/stack.h"
 #include "schema/v13/constants.h"
 #include "schema/v13/types.h"
-#include <cmath>
 
 namespace MMAI::BAI::V13
 {

@@ -157,13 +157,13 @@ Vec3D<int32_t> NNModel::readBucketSizes(const Ort::ModelMetadata & md) const
 	 *   shape=[5, 7, 2]:
 	 *     d1: bucket size (S, M, L, XL, XXL)
 	 *     d2: edge type (see Schema::V13::LinkType enum)
-	 *     d3: pairs of [emax, kmax]:
-	 *      emax = max number of outbound node edges
-	 *      kmax = max number of inbound node edges
+	 *     d3: pairs of [Emax, Kmax]:
+	 *      Emax = max number of outbound node edges
+	 *      Kmax = max number of inbound node edges
 	 *
 	 * Stats (10K steps):
 	 *
-	 *        Num edges (E)   avg   max   p99   p90   p75   p50   p25
+	 *   Outbound edges (E)   avg   max   p99   p90   p75   p50   p25
 	 * -----------------------------------------------------------------
 	 *             ADJACENT   888   888   888   888   888   888   888
 	 *                REACH   355   988   820   614   478   329   209
@@ -183,7 +183,7 @@ Vec3D<int32_t> NNModel::readBucketSizes(const Ort::ModelMetadata & md) const
 	 *        RETAL_DMG_REL   0.2   10    9     8     6     5     3
 	 *       RANGED_DMG_REL   0.1   8     6     3     2     2     1
 	 *
-	 * Approx. sizes are S=p50 / M=p90 / L=p99 / XL=max / XXL=fallback
+	 * Approx. sizes are S=p50 / M=p90 / L=p99 / XL=max / XXL=2*max
 	 * Exact values defined in the vcmi-gym project and are subject to change.
 	 *
 	 */
@@ -241,8 +241,8 @@ Vec3D<int32_t> NNModel::readActionTable(const Ort::ModelMetadata & md) const
 	 *   dtype=int
 	 *   shape=[4, 165, 165]:
 	 *     d1: action (WAIT, MOVE, AMOVE, SHOOT)
-	 *     d2: target hex for MOVE, AMOVE or SHOOT
-	 *     d3: target hex for AMOVE (attack destination)
+	 *     d2: target hex for MOVE, AMOVE (hex to move to) or SHOOT
+	 *     d3: target hex for AMOVE (hex to melee-attack at after moving)
 	 *
 	 */
 
@@ -474,6 +474,8 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 
 double NNModel::getValue(const MMAI::Schema::IState * s)
 {
+	// This quantifies how good is the current state as perceived by the model
+	// (not used, not implemented)
 	return 0;
 }
 

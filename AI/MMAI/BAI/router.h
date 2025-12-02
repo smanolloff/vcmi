@@ -23,10 +23,6 @@ public:
 	Router();
 	~Router() override;
 
-	std::shared_ptr<Environment> env;
-	std::shared_ptr<CBattleCallback> cb;
-	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
-
 	/*
 	 * Handled locally (not delegated)
 	 */
@@ -68,6 +64,10 @@ public:
 	void yourTacticPhase(const BattleID & bid, int distance) override;
 
 private:
+	std::shared_ptr<Environment> env;
+	std::shared_ptr<CBattleCallback> cb;
+	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
+
 	bool wasWaitingForRealize = false;
 	AutocombatPreferences autocombatPreferences;
 	std::string addrstr = "?";

@@ -25,8 +25,8 @@ using Schema::V13::STACK_QUEUE_SIZE;
 using Schema::V13::StackAttribute;
 using Schema::V13::StackAttrs;
 using Schema::V13::StackFlag1;
-using Schema::V13::StackFlags1;
 using Schema::V13::StackFlag2;
+using Schema::V13::StackFlags1;
 using Schema::V13::StackFlags2;
 
 using Queue = std::vector<uint32_t>; // item=unit id
