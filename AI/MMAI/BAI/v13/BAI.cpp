@@ -35,7 +35,7 @@ using PA = Schema::V13::PlayerAttribute;
 Schema::Action BAI::getNonRenderAction()
 {
 	// info("getNonRenderAciton called with result type: " + std::to_string(result->type));
-	auto * s = state.get();
+	auto * const s = state.get();
 	auto action = model->getAction(s);
 	debug("Got action: " + std::to_string(action));
 	while(action == Schema::ACTION_RENDER_ANSI)
@@ -150,7 +150,6 @@ void BAI::yourTacticPhase(const BattleID & bid, int distance)
 
 bool BAI::maybeCastSpell(const CStack * astack, const BattleID & bid)
 {
-	// return false;
 	if(!enableSpellsUsage)
 		return false;
 
@@ -633,7 +632,7 @@ void BAI::handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & 
 	}
 }
 
-std::string BAI::debugInfo(Action * action, const CStack * astack, BattleHex * nbh)
+std::string BAI::debugInfo(Action * action, const CStack * astack, const BattleHex * const nbh)
 {
 	auto info = std::stringstream();
 	info << "\n*** DEBUG INFO ***\n";

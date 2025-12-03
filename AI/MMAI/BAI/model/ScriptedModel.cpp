@@ -16,7 +16,7 @@
 namespace MMAI::BAI
 {
 
-ScriptedModel::ScriptedModel(std::string & keyword) : keyword(keyword)
+ScriptedModel::ScriptedModel(const std::string & keyword) : keyword(keyword)
 {
 	static const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI"};
 	auto it = std::find(FALLBACKS.begin(), FALLBACKS.end(), keyword);

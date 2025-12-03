@@ -228,11 +228,7 @@ void Router::battleStart(
 	auto realside = static_cast<Schema::Side>(EI(side));
 
 	if(modelside != realside && modelside != Schema::Side::BOTH)
-	{
 		logAi->warn("The loaded '%s' model was not trained to play as %s", modelkey, modelkey);
-	}
-
-	// printf("(side=%d) hero0: %s, hero1: %s\n", EI(side), hero1->nameCustomTextId.c_str(), hero2->nameCustomTextId.c_str());
 
 	switch(model->getType())
 	{

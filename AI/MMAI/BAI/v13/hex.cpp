@@ -202,7 +202,6 @@ void Hex::setattr(HexAttribute a, int value)
 
 std::string Hex::name() const
 {
-	// return boost::str(boost::format("(%d,%d)") % attr(HA::Y_COORD) % attr(HA::X_COORD));
 	return "(" + std::to_string(attr(HA::Y_COORD)) + "," + std::to_string(attr(HA::X_COORD)) + ")";
 }
 
@@ -258,11 +257,14 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 					case SpellID::LAND_MINE:
 						auto casterside = dynamic_cast<const SpellCreatedObstacle *>(obstacle.get())->casterSide;
 						// XXX: in practice, there is no situation where enemy
-						//      mines are visible as the UI simply does not allow
-						//      to cast the spell in this case (e.g. if there is a
-						//      terrain-native stack in the enemy army).
-						statemask |= (side == casterside) ? (side == BattleSide::DEFENDER ? S_DAMAGING_L : S_DAMAGING_R)
-														  : (side == BattleSide::DEFENDER ? S_DAMAGING_R : S_DAMAGING_L);
+						//      mines are visible (e.g. when our army has a stack
+						// 		which is native to the battlefield terrain),
+						// 		as the UI simply does not allow to cast the spell
+						// 		in this case .
+						if(side == casterside)
+							statemask |= (side == BattleSide::DEFENDER ? S_DAMAGING_L : S_DAMAGING_R);
+						else
+							statemask |= (side == BattleSide::DEFENDER ? S_DAMAGING_R : S_DAMAGING_L);
 				}
 				break;
 			default:
@@ -313,9 +315,6 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 		default:
 			THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EI(accessibility));
 	}
-
-	// if (bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)
-	//     statemask |= S_GATE;
 }
 
 void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks)
@@ -352,7 +351,7 @@ void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, con
 			continue;
 
 		const auto & n_cstack = it->second->cstack;
-		auto hexaction = HexAction(i);
+		auto hexaction = static_cast<HexAction>(i);
 
 		if(n_cstack->unitSide() == a_cstack->unitSide())
 			return;

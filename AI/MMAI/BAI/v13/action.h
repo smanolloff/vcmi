@@ -27,11 +27,11 @@ struct Action
 
 	Action(Schema::Action action_, const Battlefield * bf, const std::string & color);
 
-	const std::string color;
 	const Schema::Action action;
 	const std::unique_ptr<Hex> hex;
 	const std::unique_ptr<Hex> aMoveTargetHex;
 	const HexAction hexaction; // XXX: must come after action
+	const std::string color;
 
 	std::string name() const;
 };

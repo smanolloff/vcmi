@@ -33,8 +33,6 @@ public:
 	void update(BattleSide side, CombatResult res, int value, int hp, bool canWait);
 	void setattr(GlobalAttribute a, int value);
 	GlobalAttrs attrs = {};
-
-private:
 	GlobalActionMask actmask = 0; // for active stack only
 };
 }

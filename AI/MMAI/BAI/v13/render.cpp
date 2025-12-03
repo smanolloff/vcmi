@@ -50,125 +50,56 @@ namespace
 	// Plain message overload: expect(cond, "expectation failed");
 	inline void expect(bool exp, std::string_view message)
 	{
-	    if (exp)
-	        return;
+		if(exp)
+			return;
 
-	    throw std::runtime_error(std::string(message));
+		throw std::runtime_error(std::string(message));
 	}
 
-	template<typename... Args, typename = std::enable_if_t<(sizeof...(Args) > 0)>>
+	template<typename... Args>
 	inline void expect(bool exp, std::string_view format, const Args &... args)
+	requires(sizeof...(Args) > 0)
 	{
-	    if (exp)
-	        return;
+		if(exp)
+			return;
 
-	    boost::format f{std::string(format)};
+		boost::format f{std::string(format)};
 
-	    // Fold expression: expands to (f % arg1, f % arg2, ...)
-	    ((f % args), ...);
+		// Fold expression: expands to (f % arg1, f % arg2, ...)
+		((f % args), ...);
 
-	    throw std::runtime_error(f.str());
+		throw std::runtime_error(f.str());
 	}
 }
 
-// This function used during model development and is never called otherwise
-void Verify(const State * state) // NOSONAR - function used for debugging only
+namespace
 {
-	const auto * battle = state->battle;
-	auto hexes = Hexes();
-
-	expect(battle, "no battle to verify");
-
-	const CStack * astack = nullptr; // XXX: can remain nullptr (for terminal obs)
-	auto l_CStacks = std::array<const CStack *, 7>{};
-	auto r_CStacks = std::array<const CStack *, 7>{};
-	auto l_CStacksSummons = std::vector<const CStack *>{};
-	auto r_CStacksSummons = std::vector<const CStack *>{};
-	auto l_CStacksMachines = std::vector<const CStack *>{};
-	auto r_CStacksMachines = std::vector<const CStack *>{};
-	auto hexstacks = std::array<const CStack *, 165>{};
-
-	auto rinfos = std::map<const CStack *, ReachabilityInfo>{};
-	auto allstacks = battle->battleGetStacks();
-	std::sort(
-		allstacks.begin(),
-		allstacks.end(),
-		[](const CStack * a, const CStack * b)
-		{
-			return a->unitId() < b->unitId();
-		}
-	);
-
-	for(auto & cstack : allstacks)
+	struct Context
 	{
-		if(cstack->unitId() == battle->battleActiveUnit()->unitId())
-			astack = cstack;
+		const CPlayerBattleCallback * battle{};
+		std::vector<const CStack *> allstacks;
+		std::array<const CStack *, 7> l_CStacks{};
+		std::array<const CStack *, 7> r_CStacks{};
+		std::vector<const CStack *> l_CStacksAll;
+		std::vector<const CStack *> r_CStacksAll;
+		std::vector<const CStack *> l_CStacksExtra;
+		std::vector<const CStack *> r_CStacksExtra;
+		std::vector<const CStack *> l_CStacksSummons;
+		std::vector<const CStack *> r_CStacksSummons;
+		std::vector<const CStack *> l_CStacksMachines;
+		std::vector<const CStack *> r_CStacksMachines;
+		std::array<const CStack *, 165> hexstacks{};
 
-		if(cstack->unitSlot() < 0)
-		{
-			if(cstack->unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER)
-				cstack->unitSide() == BattleSide::DEFENDER ? r_CStacksSummons.push_back(cstack) : l_CStacksSummons.push_back(cstack);
-			else if(cstack->unitSlot() == SlotID::WAR_MACHINES_SLOT)
-				cstack->unitSide() == BattleSide::DEFENDER ? r_CStacksMachines.push_back(cstack) : l_CStacksMachines.push_back(cstack);
-		}
-		else
-		{
-			cstack->unitSide() == BattleSide::DEFENDER ? r_CStacks.at(cstack->unitSlot()) = cstack : l_CStacks.at(cstack->unitSlot()) = cstack;
-		}
-
-		rinfos.insert({cstack, battle->getReachability(cstack)});
-
-		for(const auto & bh : cstack->getHexes())
-		{
-			if(!bh.isAvailable())
-				continue; // war machines rear hex, arrow towers
-			expect(!hexstacks.at(Hex::CalcId(bh)), "hex occupied by multiple stacks?");
-			hexstacks.at(Hex::CalcId(bh)) = cstack;
-		}
-	}
-
-	auto l_CStacksAll = std::vector<const CStack *>{};
-	l_CStacksAll.insert(l_CStacksAll.end(), l_CStacks.begin(), l_CStacks.end());
-	l_CStacksAll.insert(l_CStacksAll.end(), l_CStacksSummons.begin(), l_CStacksSummons.end());
-	l_CStacksAll.insert(l_CStacksAll.end(), l_CStacksMachines.begin(), l_CStacksMachines.end());
-
-	auto r_CStacksAll = std::vector<const CStack *>{};
-	r_CStacksAll.insert(r_CStacksAll.end(), r_CStacks.begin(), r_CStacks.end());
-	r_CStacksAll.insert(r_CStacksAll.end(), r_CStacksSummons.begin(), r_CStacksSummons.end());
-	r_CStacksAll.insert(r_CStacksAll.end(), r_CStacksMachines.begin(), r_CStacksMachines.end());
-
-	auto l_CStacksExtra = std::vector<const CStack *>{};
-	l_CStacksExtra.insert(l_CStacksExtra.end(), l_CStacksSummons.begin(), l_CStacksSummons.end());
-	l_CStacksExtra.insert(l_CStacksExtra.end(), l_CStacksMachines.begin(), l_CStacksMachines.end());
-
-	auto r_CStacksExtra = std::vector<const CStack *>{};
-	r_CStacksExtra.insert(r_CStacksExtra.end(), r_CStacksSummons.begin(), r_CStacksSummons.end());
-	r_CStacksExtra.insert(r_CStacksExtra.end(), r_CStacksMachines.begin(), r_CStacksMachines.end());
-
-	auto getAllStacksForSide = [&r_CStacksAll, &l_CStacksAll](bool side)
-	{
-		return side ? r_CStacksAll : l_CStacksAll;
+		std::map<const CStack *, ReachabilityInfo> rinfos;
 	};
 
-	auto ended = state->supdata->ended;
-
-	if(!astack)
-		expect(ended, "astack is NULL, but ended is not true");
-	else if(ended)
+	std::array<const CStack *, 7> getAllStacksForSide(const Context & ctx, bool side)
 	{
-		// at battle-end, activeStack is usually the ENEMY stack
-		// XXX: this expect will incorrectly throw if we retreated as a regular action
-		//      (in which case our stack will be active, but we would have lost the battle)
-		// expect(state->supdata->victory == (astack->getOwner() == battle->battleGetMySide()), "state->supdata->victory is %d, but astack->side=%d and myside=%d", state->supdata->victory, astack->getOwner(), battle->battleGetMySide());
-
-		// at battle-end, even regardless of the actual active stack,
-		// battlefield->astack must be nullptr
-		expect(!state->battlefield->astack, "ended, but battlefield->astack is not NULL");
-		expect(state->supdata->getIsBattleEnded(), "ended, but state->supdata->getIsBattleEnded() is false");
+		return side ? ctx.l_CStacks : ctx.r_CStacks;
 	}
 
 	// Return (attr == N/A), but after performing some checks
-	auto isNA = [](int v, const CStack * stack, const std::string_view attrname)
+	bool isNA(int v, const CStack * stack, const std::string_view attrname)
 	{
 		if(v == S13::NULL_VALUE_UNENCODED)
 		{
@@ -179,9 +110,9 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		return false;
 	};
 
-	auto checkReachable = [=](BattleHex bh, bool v, const CStack * stack)
+	bool checkReachable(const Context & ctx, BattleHex bh, bool v, const CStack * stack)
 	{
-		auto distance = rinfos.at(stack).distances.at(bh.toInt());
+		auto distance = ctx.rinfos.at(stack).distances.at(bh.toInt());
 		auto canreach = (stack->getMovementRange() >= distance);
 
 		// XXX: if v=false, returns true when UNreachable
@@ -189,18 +120,18 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		return v ? canreach : !canreach;
 	};
 
-	auto ensureReachability = [=](BattleHex bh, bool v, const CStack * stack, const char * attrname)
+	void ensureReachability(const Context & ctx, BattleHex bh, bool v, const CStack * stack, const char * attrname)
 	{
-		expect(checkReachable(bh, v, stack), "%s: (bhex=%d) reachability expected: %d", attrname, bh.toInt(), v);
+		expect(checkReachable(ctx, bh, v, stack), "%s: (bhex=%d) reachability expected: %d", attrname, bh.toInt(), v);
 	};
 
-	auto ensureValueMatch = [](int have, int want, const std::string_view attrname, const std::string & desc = "")
+	void ensureValueMatch(int have, int want, const std::string_view attrname, const std::string & desc = "")
 	{
 		desc.empty() ? expect(have == want, "%s: have: %d, want: %d", attrname, have, want)
 					 : expect(have == want, "%s: have: %d, want: %d (%s)", attrname, have, want, desc.c_str());
 	};
 
-	auto ensureStackNullOrMatch = [=](HexAttribute a, const CStack * cstack, int have, auto wantfunc, const std::string_view attrname)
+	void ensureStackNullOrMatch(HexAttribute a, const CStack * cstack, int have, auto wantfunc, const std::string_view attrname)
 	{
 		auto vmax = std::get<3>(S13::HEX_ENCODING.at(EI(a)));
 		if(isNA(have, cstack, attrname))
@@ -211,14 +142,14 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		ensureValueMatch(have, want, attrname);
 	};
 
-	auto ensureMeleeability = [=](BattleHex bh, HexActMask mask, HexAction ha, const CStack * cstack, const char * attrname)
+	void ensureMeleeability(const Context & ctx, BattleHex bh, HexActMask mask, HexAction ha, const CStack * cstack, const char * attrname)
 	{
 		auto mv = mask.test(EI(ha));
 
 		// if AMOVE is allowed, we must be able to reach hex
 		// (no else -- we may still be able to reach it)
 		if(mv == 1)
-			ensureReachability(bh, 1, cstack, attrname);
+			ensureReachability(ctx, bh, true, cstack, attrname);
 
 		auto r_nbh = bh.cloneInDirection(BattleHex::EDir::RIGHT, false);
 		auto l_nbh = bh.cloneInDirection(BattleHex::EDir::LEFT, false);
@@ -267,10 +198,9 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 				break;
 		}
 
-		auto estacks = getAllStacksForSide(!EI(cstack->unitSide()));
-		auto it = std::find_if(
-			estacks.begin(),
-			estacks.end(),
+		auto estacks = getAllStacksForSide(ctx, !EI(cstack->unitSide()));
+		const auto * it = std::ranges::find_if(
+			estacks,
 			[&nbh](auto stack)
 			{
 				return stack && stack->coversPos(nbh);
@@ -306,13 +236,12 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 
 	// as opposed to ensureHexShootableOrNA, this hexattr works with a mask
 	// values are 0 or 1 and this check requires a valid target
-	auto ensureShootability = [=](BattleHex bh, int v, const CStack * cstack, const char * attrname)
+	void ensureShootability(const Context & ctx, BattleHex bh, int v, const CStack * cstack, const char * attrname)
 	{
-		auto canshoot = battle->battleCanShoot(cstack);
-		auto estacks = getAllStacksForSide(!EI(cstack->unitSide()));
-		auto it = std::find_if(
-			estacks.begin(),
-			estacks.end(),
+		auto canshoot = ctx.battle->battleCanShoot(cstack);
+		auto estacks = getAllStacksForSide(ctx, !EI(cstack->unitSide()));
+		const auto * it = std::ranges::find_if(
+			estacks,
 			[&bh](auto estack)
 			{
 				return estack && estack->coversPos(bh);
@@ -337,7 +266,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		}
 	};
 
-	auto ensureCorrectMaskOrNA = [=](BattleHex bh, int v, const CStack * cstack, const CPlayerBattleCallback * battle, const std::string_view attrname)
+	void ensureCorrectMaskOrNA(const Context & ctx, BattleHex bh, int v, const CStack * cstack, const std::string_view attrname)
 	{
 		if(isNA(v, cstack, attrname))
 			return;
@@ -345,21 +274,108 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		auto basename = std::string(attrname);
 		auto mask = HexActMask(v);
 
-		ensureReachability(bh, mask.test(EI(HexAction::MOVE)), cstack, (basename + "{MOVE}").c_str());
-		ensureShootability(bh, mask.test(EI(HexAction::SHOOT)), cstack, (basename + "{SHOOT}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_TR, cstack, (basename + "{AMOVE_TR}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_R, cstack, (basename + "{AMOVE_R}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_BR, cstack, (basename + "{AMOVE_BR}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_BL, cstack, (basename + "{AMOVE_BL}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_L, cstack, (basename + "{AMOVE_L}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_TL, cstack, (basename + "{AMOVE_TL}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_2TR, cstack, (basename + "{AMOVE_2TR}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_2R, cstack, (basename + "{AMOVE_2R}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_2BR, cstack, (basename + "{AMOVE_2BR}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_2BL, cstack, (basename + "{AMOVE_2BL}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_2L, cstack, (basename + "{AMOVE_2L}").c_str());
-		ensureMeleeability(bh, mask, HexAction::AMOVE_2TL, cstack, (basename + "{AMOVE_2TL}").c_str());
+		ensureReachability(ctx, bh, mask.test(EI(HexAction::MOVE)), cstack, (basename + "{MOVE}").c_str());
+		ensureShootability(ctx, bh, mask.test(EI(HexAction::SHOOT)), cstack, (basename + "{SHOOT}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_TR, cstack, (basename + "{AMOVE_TR}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_R, cstack, (basename + "{AMOVE_R}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_BR, cstack, (basename + "{AMOVE_BR}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_BL, cstack, (basename + "{AMOVE_BL}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_L, cstack, (basename + "{AMOVE_L}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_TL, cstack, (basename + "{AMOVE_TL}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2TR, cstack, (basename + "{AMOVE_2TR}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2R, cstack, (basename + "{AMOVE_2R}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2BR, cstack, (basename + "{AMOVE_2BR}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2BL, cstack, (basename + "{AMOVE_2BL}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2L, cstack, (basename + "{AMOVE_2L}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2TL, cstack, (basename + "{AMOVE_2TL}").c_str());
 	};
+
+}
+
+// This function used during model development and is never called otherwise
+void Verify(const State * state) // NOSONAR - function used for debugging only
+{
+	const auto * battle = state->battle;
+	auto hexes = Hexes();
+	const CStack * astack = nullptr;
+
+	expect(battle, "no battle to verify");
+
+	Context ctx;
+	ctx.battle = battle;
+
+	ctx.allstacks = battle->battleGetStacks();
+	std::ranges::sort(
+		ctx.allstacks,
+		[](const CStack * a, const CStack * b)
+		{
+			return a->unitId() < b->unitId();
+		}
+	);
+
+	for(auto & cstack : ctx.allstacks)
+	{
+		if(cstack->unitId() == battle->battleActiveUnit()->unitId())
+			astack = cstack;
+
+		if(cstack->unitSlot() < 0)
+		{
+			if(cstack->unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER)
+				cstack->unitSide() == BattleSide::DEFENDER ? ctx.r_CStacksSummons.push_back(cstack) : ctx.l_CStacksSummons.push_back(cstack);
+			else if(cstack->unitSlot() == SlotID::WAR_MACHINES_SLOT)
+				cstack->unitSide() == BattleSide::DEFENDER ? ctx.r_CStacksMachines.push_back(cstack) : ctx.l_CStacksMachines.push_back(cstack);
+		}
+		else
+		{
+			cstack->unitSide() == BattleSide::DEFENDER ? ctx.r_CStacks.at(cstack->unitSlot()) = cstack : ctx.l_CStacks.at(cstack->unitSlot()) = cstack;
+		}
+
+		ctx.rinfos.insert({cstack, battle->getReachability(cstack)});
+
+		for(const auto & bh : cstack->getHexes())
+		{
+			if(!bh.isAvailable())
+				continue; // war machines rear hex, arrow towers
+			expect(!ctx.hexstacks.at(Hex::CalcId(bh)), "hex occupied by multiple stacks?");
+			ctx.hexstacks.at(Hex::CalcId(bh)) = cstack;
+		}
+	}
+
+	ctx.l_CStacksAll.insert(ctx.l_CStacksAll.end(), ctx.l_CStacks.begin(), ctx.l_CStacks.end());
+	ctx.l_CStacksAll.insert(ctx.l_CStacksAll.end(), ctx.l_CStacksSummons.begin(), ctx.l_CStacksSummons.end());
+	ctx.l_CStacksAll.insert(ctx.l_CStacksAll.end(), ctx.l_CStacksMachines.begin(), ctx.l_CStacksMachines.end());
+
+	ctx.r_CStacksAll.insert(ctx.r_CStacksAll.end(), ctx.r_CStacks.begin(), ctx.r_CStacks.end());
+	ctx.r_CStacksAll.insert(ctx.r_CStacksAll.end(), ctx.r_CStacksSummons.begin(), ctx.r_CStacksSummons.end());
+	ctx.r_CStacksAll.insert(ctx.r_CStacksAll.end(), ctx.r_CStacksMachines.begin(), ctx.r_CStacksMachines.end());
+
+	ctx.l_CStacksExtra.insert(ctx.l_CStacksExtra.end(), ctx.l_CStacksSummons.begin(), ctx.l_CStacksSummons.end());
+	ctx.l_CStacksExtra.insert(ctx.l_CStacksExtra.end(), ctx.l_CStacksMachines.begin(), ctx.l_CStacksMachines.end());
+
+	ctx.r_CStacksExtra.insert(ctx.r_CStacksExtra.end(), ctx.r_CStacksSummons.begin(), ctx.r_CStacksSummons.end());
+	ctx.r_CStacksExtra.insert(ctx.r_CStacksExtra.end(), ctx.r_CStacksMachines.begin(), ctx.r_CStacksMachines.end());
+
+	auto SideStacks = std::map<bool, std::vector<const CStack *> *>{
+		{false, &ctx.l_CStacksAll},
+        {true,  &ctx.r_CStacksAll}
+	};
+
+	auto ended = state->supdata->ended;
+
+	if(!astack)
+		expect(ended, "astack is NULL, but ended is not true");
+	else if(ended)
+	{
+		// at battle-end, activeStack is usually the ENEMY stack
+		// XXX: this expect will incorrectly throw if we retreated as a regular action
+		//      (in which case our stack will be active, but we would have lost the battle)
+		// expect(state->supdata->victory == (astack->getOwner() == battle->battleGetMySide()), "state->supdata->victory is %d, but astack->side=%d and myside=%d", state->supdata->victory, astack->getOwner(), battle->battleGetMySide());
+
+		// at battle-end, even regardless of the actual active stack,
+		// battlefield->astack must be nullptr
+		expect(!state->battlefield->astack, "ended, but battlefield->astack is not NULL");
+		expect(state->supdata->getIsBattleEnded(), "ended, but state->supdata->getIsBattleEnded() is false");
+	}
 
 	// XXX: good morale is NOT handled here for simplicity
 	//      See comments in Battlefield::GetQueue how to handle it.
@@ -434,7 +450,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		{
 			auto attr = HexAttribute(i);
 			auto v = hex->attrs.at(i);
-			const auto * cstack = hexstacks.at(ihex);
+			const auto * cstack = ctx.hexstacks.at(ihex);
 
 			if(cstack)
 			{
@@ -577,7 +593,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 					}
 					else
 					{
-						ensureCorrectMaskOrNA(bh, v, astack, battle, "HEX.ACTION_MASK");
+						ensureCorrectMaskOrNA(ctx, bh, v, astack, "HEX.ACTION_MASK");
 					}
 				}
 				break;
@@ -756,7 +772,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 				case HA::STACK_VALUE_REL:
 				{
 					int tot = 0;
-					for(auto & s : allstacks)
+					for(auto & s : ctx.allstacks)
 						tot += s->getCount() * Stack::CalcValue(s->unitType());
 
 					// if (cstack) {
@@ -772,7 +788,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 						v,
 						[&cstack, &tot]
 						{
-							return 1000ll * cstack->getCount() * Stack::CalcValue(cstack->unitType()) / tot;
+							return 1000LL * cstack->getCount() * Stack::CalcValue(cstack->unitType()) / tot;
 						},
 						"HEX.STACK_VALUE_REL"
 					);
@@ -847,14 +863,15 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 								// 	}
 								// }
 								auto adjUnits = battle->battleAdjacentUnits(cstack);
-								bool want = std::any_of(adjUnits.begin(), adjUnits.end(), [&battle, &cstack](const auto & adjstack)
+								bool want = std::any_of(
+									adjUnits.begin(),
+									adjUnits.end(),
+									[&battle, &cstack](const auto & adjstack)
 									{
-								        return adjstack->unitSide() != cstack->unitSide()
-								            && adjstack->canShoot()
-								            && battle->battleIsUnitBlocked(adjstack)
-								            && !adjstack->hasBonusOfType(BonusType::FREE_SHOOTING)
-								            && !adjstack->hasBonusOfType(BonusType::SIEGE_WEAPON);
-								    });
+										return adjstack->unitSide() != cstack->unitSide() && adjstack->canShoot() && battle->battleIsUnitBlocked(adjstack)
+											&& !adjstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !adjstack->hasBonusOfType(BonusType::SIEGE_WEAPON);
+									}
+								);
 
 								ensureValueMatch(vf, want, "HEX.STACK_FLAGS1.BLOCKING");
 							}
@@ -912,9 +929,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::RETURN_AFTER_STRIKE), "HEX.STACK_FLAGS1.RETURN_AFTER_STRIKE");
 								break;
 							case SF1::ENEMY_DEFENCE_REDUCTION:
-								ensureValueMatch(
-									vf, cstack->hasBonusOfType(BonusType::ENEMY_DEFENCE_REDUCTION), "HEX.STACK_FLAGS1.ENEMY_DEFENCE_REDUCTION"
-								);
+								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::ENEMY_DEFENCE_REDUCTION), "HEX.STACK_FLAGS1.ENEMY_DEFENCE_REDUCTION");
 								break;
 							case SF1::LIFE_DRAIN:
 								ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::LIFE_DRAIN), "HEX.STACK_FLAGS1.LIFE_DRAIN");
@@ -1250,7 +1265,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 				}
 
 				if(!seen)
-					seenstacks.insert({stack, hex});
+					seenstacks.try_emplace(stack, hex);
 			}
 
 			row << col << sym << nocol;

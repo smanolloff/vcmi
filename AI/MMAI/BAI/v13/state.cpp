@@ -99,19 +99,21 @@ namespace
 		return {lv, lh, rv, rh};
 	}
 
-	std::tuple<int, int, int, int, int, int, int, int>
-	ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Stack::Stats> sstats)
+	struct AttackLogAggregateData
 	{
-		// dmg dealt / dmg received / value killed / value lost
-		int ldd = 0;
-		int ldr = 0;
-		int lvk = 0;
-		int lvl = 0;
-		int rdd = 0;
-		int rdr = 0;
-		int rvk = 0;
-		int rvl = 0;
+		int ldd = 0; // left damage dealt
+		int ldr = 0; // left damage received
+		int lvk = 0; // left value killed
+		int lvl = 0; // left value lost
+		int rdd = 0; // right damage dealt
+		int rdr = 0; // right damage received
+		int rvk = 0; // right value killed
+		int rvl = 0; // right value lost
+	};
 
+	AttackLogAggregateData ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Stack::Stats> sstats)
+	{
+		auto res = AttackLogAggregateData{};
 		for(auto & [cstack, ss] : sstats)
 		{
 			ss.dmgDealtNow = 0;
@@ -122,45 +124,47 @@ namespace
 
 		for(const auto & al : attackLogs)
 		{
-			if(al->cattacker)
+			const auto & ald = al->data;
+			if(ald.cattacker)
 			{
-				sstats[al->cattacker].dmgDealtNow += al->dmg;
-				sstats[al->cattacker].dmgDealtTotal += al->dmg;
-				sstats[al->cattacker].valueKilledNow += al->value;
-				sstats[al->cattacker].valueKilledTotal += al->value;
+				sstats[ald.cattacker].dmgDealtNow += ald.dmg;
+				sstats[ald.cattacker].dmgDealtTotal += ald.dmg;
+				sstats[ald.cattacker].valueKilledNow += ald.value;
+				sstats[ald.cattacker].valueKilledTotal += ald.value;
 
-				if(al->cattacker->unitSide() == BattleSide::LEFT_SIDE)
+				if(ald.cattacker->unitSide() == BattleSide::LEFT_SIDE)
 				{
-					ldd += al->dmg;
-					lvk += al->value;
+					res.ldd += ald.dmg;
+					res.lvk += ald.value;
 				}
 				else
 				{
-					rdd += al->dmg;
-					rvk += al->value;
+					res.rdd += ald.dmg;
+					res.rvk += ald.value;
 				}
 			}
 
-			ASSERT(al->cdefender, "AttackLog cdefender is nullptr!");
-			sstats[al->cdefender].dmgReceivedNow += al->dmg;
-			sstats[al->cdefender].dmgReceivedTotal += al->dmg;
-			sstats[al->cdefender].valueLostNow += al->value;
-			sstats[al->cdefender].valueLostTotal += al->value;
+			ASSERT(ald.cdefender, "AttackLog cdefender is nullptr!");
+			sstats[ald.cdefender].dmgReceivedNow += ald.dmg;
+			sstats[ald.cdefender].dmgReceivedTotal += ald.dmg;
+			sstats[ald.cdefender].valueLostNow += ald.value;
+			sstats[ald.cdefender].valueLostTotal += ald.value;
 
-			if(al->cdefender->unitSide() == BattleSide::LEFT_SIDE)
+			if(ald.cdefender->unitSide() == BattleSide::LEFT_SIDE)
 			{
-				ldr += al->dmg;
-				lvl += al->value;
+				res.ldr += ald.dmg;
+				res.lvl += ald.value;
 			}
 			else
 			{
-				rdr += al->dmg;
-				rvl += al->value;
+				res.rdr += ald.dmg;
+				res.rvl += ald.value;
 			}
 		}
 
-		return {ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl};
+		return res;
 	}
+
 }
 
 State::State(int version_, const std::string & colorname, const CPlayerBattleCallback * battle, bool enableTransitions)
@@ -184,8 +188,8 @@ State::State(int version_, const std::string & colorname, const CPlayerBattleCal
 void State::onActiveStack(const CStack * astack, CombatResult result, bool recording, bool fastpath)
 {
 	logAi->debug("onActiveStack: result=%d, recording=%d, fastpath=%d", EI(result), recording, fastpath);
-	auto [lv, lh, rv, rh] = CalcGlobalStats(battle);
-	auto [ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl] = ProcessAttackLogs(attackLogs, sstats);
+	const auto & [lv, lh, rv, rh] = CalcGlobalStats(battle);
+	const auto & [ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl] = ProcessAttackLogs(attackLogs, sstats);
 	auto ogstats = *gstats; // a copy of the "old" gstats
 
 	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn)
@@ -493,30 +497,23 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		auto bf_hpNow = gstats->attr(GA::BFIELD_HP_NOW_ABS);
 		auto value = elem.killedAmount * Stack::CalcValue(cdefender->unitType());
 
-		// std::cout << "AttackLog";
-		// std::cout << ": attacker=" << (cattacker ? cattacker->getDescription() : "null");
-		// std::cout << ", defender=" << (cdefender ? cdefender->getDescription() : "null");
-		// std::cout << ", dmg=" << (elem.damageAmount);
-		// std::cout << ", value=" << (value);
-		// std::cout << "\n";
+		// XXX: attacker can be NULL when an effect does dmg (eg. Acid)
+		// XXX: attacker or defender can be NULL if it did not exist
+		//      when `stacks` was built (e.g. during our last turn),
+		//      Can happen if the enemy has now summonned/resurrected it.
+		auto ald = AttackLogData{
+			.attacker = (attacker != stacks.end() ? *attacker : nullptr),
+			.defender = (defender != stacks.end() ? *defender : nullptr),
+			.cattacker = cattacker,
+			.cdefender = cdefender,
+			.dmg = static_cast<int>(elem.damageAmount),
+			.dmgPermille = static_cast<int>(1000 * elem.damageAmount / bf_hpNow),
+			.units = static_cast<int>(elem.killedAmount),
+			.value = static_cast<int>(value),
+			.valuePermille = static_cast<int>(1000 * value / bf_valueNow)
+		};
 
-		attackLogs.push_back(
-			std::make_shared<AttackLog>(
-				// XXX: attacker can be NULL when an effect does dmg (eg. Acid)
-				// XXX: attacker or defender can be NULL if it did not exist
-				//      when `stacks` was built (e.g. during our last turn),
-				//      but the enemy just summonned/resurrected it
-				attacker != stacks.end() ? *attacker : nullptr,
-				defender != stacks.end() ? *defender : nullptr,
-				cattacker,
-				cdefender,
-				elem.damageAmount,
-				1000 * elem.damageAmount / bf_hpNow,
-				elem.killedAmount,
-				value,
-				1000 * value / bf_valueNow
-			)
-		);
+		attackLogs.push_back(std::make_shared<AttackLog>(std::move(ald)));
 	}
 }
 

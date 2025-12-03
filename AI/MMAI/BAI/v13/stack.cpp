@@ -281,7 +281,7 @@ Stack::Stack(
 	auto permille = [](int v1, int v2)
 	{
 		// ll (long long) ensures long is 64-bit even on 32-bit systems
-		return static_cast<int>((1000ll * v1) / v2);
+		return static_cast<int>((1000LL * v1) / v2);
 	};
 
 	// std::cout << "[" << cstack->unitType()->getNameSingularTextID() << "] lgstats->valueNow:" << lgstats->valueNow << ", rgstats->valueNow: " << rgstats->valueNow << "\n";

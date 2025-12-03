@@ -290,7 +290,7 @@ AllLinks Battlefield::InitAllLinks(const CPlayerBattleCallback * battle, const S
 	auto allLinks = AllLinks();
 
 	for(auto i = 0; i < EI(LT::_count); ++i)
-		allLinks[LT(i)] = std::make_shared<Links>();
+		allLinks[static_cast<LT>(i)] = std::make_shared<Links>();
 
 	for(auto & srcrow : *hexes)
 	{

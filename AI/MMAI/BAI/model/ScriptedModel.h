@@ -17,7 +17,7 @@ namespace MMAI::BAI
 class ScriptedModel : public MMAI::Schema::IModel
 {
 public:
-	explicit ScriptedModel(std::string & keyword);
+	explicit ScriptedModel(const std::string & keyword);
 
 	Schema::ModelType getType() override;
 	std::string getName() override;

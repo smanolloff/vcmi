@@ -23,38 +23,38 @@ using Encoding = Schema::V13::Encoding;
 using BS = Schema::BattlefieldState;
 using clock = std::chrono::system_clock;
 
-#define ADD_ZEROS_AND_RETURN(n, vec) \
-	vec.insert(vec.end(), n, 0);     \
-	return;
+#define ADD_ZEROS_AND_RETURN(n, out) \
+	out.insert(out.end(), n, 0);     \
+	return
 
-#define MAYBE_ADD_ZEROS_AND_RETURN(v, n, vec) \
+#define MAYBE_ADD_ZEROS_AND_RETURN(v, n, out) \
 	if(v <= 0)                                \
 	{                                         \
-		ADD_ZEROS_AND_RETURN(n, vec)          \
+		ADD_ZEROS_AND_RETURN(n, out);         \
 	}
 
-#define MAYBE_ADD_MASKED_AND_RETURN(v, n, vec)        \
+#define MAYBE_ADD_MASKED_AND_RETURN(v, n, out)             \
 	if(v == S13::NULL_VALUE_UNENCODED)                     \
-	{                                                 \
-		vec.insert(vec.end(), n, S13::NULL_VALUE_ENCODED); \
-		return;                                       \
+	{                                                      \
+		out.insert(out.end(), n, S13::NULL_VALUE_ENCODED); \
+		return;                                            \
 	}
 
-#define MAYBE_THROW_STRICT_ERROR(v)                                                  \
-	if(v == S13::NULL_VALUE_UNENCODED)                                                    \
-	{                                                                                \
-		throw std::runtime_error("NULL values are not allowed for strict encoding"); \
-	}
+#define MAYBE_THROW_STRICT_ERROR(v)    \
+	if(v == S13::NULL_VALUE_UNENCODED) \
+		throw std::runtime_error("NULL values are not allowed for strict encoding");
 
-void Encoder::Encode(const std::string_view & attrname, int a, Encoding e, int n, int vmax, double p, int v, BS & vec)
+void Encoder::Encode(const EncoderInput & in, BS & out)
 {
-	if(e == Encoding::RAW)
+	if(in.e == Encoding::RAW)
 	{
-		vec.push_back(v);
+		out.push_back(in.v);
 		return;
 	}
 
-	if(v > vmax)
+	auto v = in.v;
+
+	if(in.v > in.vmax)
 	{
 		// THROW_FORMAT("Cannot encode value: %d (vmax=%d, a=%d, n=%d, e=%d)", v % vmax % EI(a) % n % EI(e));
 		// Can happen (e.g. DMG_*_ACC_REL0 > 1 if there were resurrected stacks)
@@ -62,194 +62,196 @@ void Encoder::Encode(const std::string_view & attrname, int a, Encoding e, int n
 		// Warn at most once every 600s
 		auto now = clock::now();
 		static thread_local std::map<std::string, std::map<int, clock::time_point>> warns;
-		auto & warned_at = warns[std::string(attrname)][EI(a)];
+		auto & warned_at = warns[std::string(in.attrname)][EI(in.a)];
 
 		if(std::chrono::duration_cast<std::chrono::seconds>(now - warned_at) > std::chrono::seconds(600))
 		{
 			// This is not critical; the value will be capped to vmax (should not occur often)
-			logAi->info("MMAI: Attribute value out of bounds: v=%d (vmax=%d, a=%d, e=%d, n=%d, attrname=%s)\n", v, vmax, EI(a), EI(e), n, attrname);
-			warns[std::string(attrname)][EI(a)] = now;
+			logAi->info(
+				"MMAI: Attribute value out of bounds: v=%d (vmax=%d, a=%d, e=%d, n=%d, attrname=%s)\n", in.v, in.vmax, EI(in.a), EI(in.e), in.n, in.attrname
+			);
+			warns[std::string(in.attrname)][EI(in.a)] = now;
 		}
-		v = vmax;
+		v = in.vmax;
 	}
 
-	switch(e)
+	switch(in.e)
 	{
 		case Encoding::BINARY_EXPLICIT_NULL:
-			EncodeBinaryExplicitNull(v, n, vec);
+			EncodeBinaryExplicitNull(v, in.n, out);
 			break;
 		case Encoding::BINARY_MASKING_NULL:
-			EncodeBinaryMaskingNull(v, n, vec);
+			EncodeBinaryMaskingNull(v, in.n, out);
 			break;
 		case Encoding::BINARY_STRICT_NULL:
-			EncodeBinaryStrictNull(v, n, vec);
+			EncodeBinaryStrictNull(v, in.n, out);
 			break;
 		case Encoding::BINARY_ZERO_NULL:
-			EncodeBinaryZeroNull(v, n, vec);
+			EncodeBinaryZeroNull(v, in.n, out);
 			break;
 		case Encoding::EXPNORM_EXPLICIT_NULL:
-			EncodeExpnormExplicitNull(v, vmax, p, vec);
+			EncodeExpnormExplicitNull(v, in.vmax, in.p, out);
 			break;
 		case Encoding::EXPNORM_MASKING_NULL:
-			EncodeExpnormMaskingNull(v, vmax, p, vec);
+			EncodeExpnormMaskingNull(v, in.vmax, in.p, out);
 			break;
 		case Encoding::EXPNORM_STRICT_NULL:
-			EncodeExpnormStrictNull(v, vmax, p, vec);
+			EncodeExpnormStrictNull(v, in.vmax, in.p, out);
 			break;
 		case Encoding::EXPNORM_ZERO_NULL:
-			EncodeExpnormZeroNull(v, vmax, p, vec);
+			EncodeExpnormZeroNull(v, in.vmax, in.p, out);
 			break;
 		case Encoding::LINNORM_EXPLICIT_NULL:
-			EncodeLinnormExplicitNull(v, vmax, vec);
+			EncodeLinnormExplicitNull(v, in.vmax, out);
 			break;
 		case Encoding::LINNORM_MASKING_NULL:
-			EncodeLinnormMaskingNull(v, vmax, vec);
+			EncodeLinnormMaskingNull(v, in.vmax, out);
 			break;
 		case Encoding::LINNORM_STRICT_NULL:
-			EncodeLinnormStrictNull(v, vmax, vec);
+			EncodeLinnormStrictNull(v, in.vmax, out);
 			break;
 		case Encoding::LINNORM_ZERO_NULL:
-			EncodeLinnormZeroNull(v, vmax, vec);
+			EncodeLinnormZeroNull(v, in.vmax, out);
 			break;
 		case Encoding::CATEGORICAL_EXPLICIT_NULL:
-			EncodeCategoricalExplicitNull(v, n, vec);
+			EncodeCategoricalExplicitNull(v, in.n, out);
 			break;
 		case Encoding::CATEGORICAL_IMPLICIT_NULL:
-			EncodeCategoricalImplicitNull(v, n, vec);
+			EncodeCategoricalImplicitNull(v, in.n, out);
 			break;
 		case Encoding::CATEGORICAL_MASKING_NULL:
-			EncodeCategoricalMaskingNull(v, n, vec);
+			EncodeCategoricalMaskingNull(v, in.n, out);
 			break;
 		case Encoding::CATEGORICAL_STRICT_NULL:
-			EncodeCategoricalStrictNull(v, n, vec);
+			EncodeCategoricalStrictNull(v, in.n, out);
 			break;
 		case Encoding::CATEGORICAL_ZERO_NULL:
-			EncodeCategoricalZeroNull(v, n, vec);
+			EncodeCategoricalZeroNull(v, in.n, out);
 			break;
 		case Encoding::ACCUMULATING_EXPLICIT_NULL:
-			EncodeAccumulatingExplicitNull(v, n, vec);
+			EncodeAccumulatingExplicitNull(v, in.n, out);
 			break;
 		case Encoding::ACCUMULATING_IMPLICIT_NULL:
-			EncodeAccumulatingImplicitNull(v, n, vec);
+			EncodeAccumulatingImplicitNull(v, in.n, out);
 			break;
 		case Encoding::ACCUMULATING_MASKING_NULL:
-			EncodeAccumulatingMaskingNull(v, n, vec);
+			EncodeAccumulatingMaskingNull(v, in.n, out);
 			break;
 		case Encoding::ACCUMULATING_STRICT_NULL:
-			EncodeAccumulatingStrictNull(v, n, vec);
+			EncodeAccumulatingStrictNull(v, in.n, out);
 			break;
 		case Encoding::ACCUMULATING_ZERO_NULL:
-			EncodeAccumulatingZeroNull(v, n, vec);
+			EncodeAccumulatingZeroNull(v, in.n, out);
 			break;
 		default:
-			THROW_FORMAT("Unexpected Encoding: %d", EI(e));
+			THROW_FORMAT("Unexpected Encoding: %d", EI(in.e));
 	}
 }
 
-void Encoder::Encode(const S13::HexAttribute a, int v, BS & vec)
+void Encoder::Encode(const S13::HexAttribute a, int v, BS & out)
 {
 	const auto & [_, e, n, vmax, p] = S13::HEX_ENCODING.at(EI(a));
-	Encode("HexAttribute", EI(a), e, n, vmax, p, v, vec);
+	Encode(EncoderInput{.attrname = "HexAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
 }
 
-void Encoder::Encode(const S13::PlayerAttribute a, int v, BS & vec)
+void Encoder::Encode(const S13::PlayerAttribute a, int v, BS & out)
 {
 	const auto & [_, e, n, vmax, p] = S13::PLAYER_ENCODING.at(EI(a));
-	Encode("PlayerAttribute", EI(a), e, n, vmax, p, v, vec);
+	Encode(EncoderInput{.attrname = "PlayerAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
 }
 
-void Encoder::Encode(const S13::GlobalAttribute a, int v, BS & vec)
+void Encoder::Encode(const S13::GlobalAttribute a, int v, BS & out)
 {
 	const auto & [_, e, n, vmax, p] = S13::GLOBAL_ENCODING.at(EI(a));
-	Encode("GlobalAttribute", EI(a), e, n, vmax, p, v, vec);
+	Encode(EncoderInput{.attrname = "GlobalAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
 }
 
 //
 // ACCUMULATING
 //
-void Encoder::EncodeAccumulatingExplicitNull(int v, int n, BS & vec)
+void Encoder::EncodeAccumulatingExplicitNull(int v, int n, BS & out)
 {
 	if(v == S13::NULL_VALUE_UNENCODED)
 	{
-		vec.push_back(1);
-		ADD_ZEROS_AND_RETURN(n - 1, vec);
-	};
-	vec.push_back(0);
-	EncodeAccumulating(v, n - 1, vec);
-}
-
-void Encoder::EncodeAccumulatingImplicitNull(int v, int n, BS & vec)
-{
-	if(v == S13::NULL_VALUE_UNENCODED)
-	{
-		ADD_ZEROS_AND_RETURN(n, vec);
+		out.push_back(1);
+		ADD_ZEROS_AND_RETURN(n - 1, out);
 	}
-	EncodeAccumulating(v, n, vec);
+	out.push_back(0);
+	EncodeAccumulating(v, n - 1, out);
 }
 
-void Encoder::EncodeAccumulatingMaskingNull(int v, int n, BS & vec)
+void Encoder::EncodeAccumulatingImplicitNull(int v, int n, BS & out)
 {
-	MAYBE_ADD_MASKED_AND_RETURN(v, n, vec);
-	EncodeAccumulating(v, n, vec);
+	if(v == S13::NULL_VALUE_UNENCODED)
+	{
+		ADD_ZEROS_AND_RETURN(n, out);
+	}
+	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulatingStrictNull(int v, int n, BS & vec)
+void Encoder::EncodeAccumulatingMaskingNull(int v, int n, BS & out)
+{
+	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
+	EncodeAccumulating(v, n, out);
+}
+
+void Encoder::EncodeAccumulatingStrictNull(int v, int n, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeAccumulating(v, n, vec);
+	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulatingZeroNull(int v, int n, BS & vec)
+void Encoder::EncodeAccumulatingZeroNull(int v, int n, BS & out)
 {
 	if(v <= 0)
 	{
-		vec.push_back(1);
-		ADD_ZEROS_AND_RETURN(n - 1, vec);
+		out.push_back(1);
+		ADD_ZEROS_AND_RETURN(n - 1, out);
 	}
-	EncodeAccumulating(v, n, vec);
+	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulating(int v, int n, BS & vec)
+void Encoder::EncodeAccumulating(int v, int n, BS & out)
 {
-	vec.insert(vec.end(), v + 1, 1);
-	vec.insert(vec.end(), n - v - 1, 0);
+	out.insert(out.end(), v + 1, 1);
+	out.insert(out.end(), n - v - 1, 0);
 }
 
 //
 // BINARY
 //
 
-void Encoder::EncodeBinaryExplicitNull(int v, int n, BS & vec)
+void Encoder::EncodeBinaryExplicitNull(int v, int n, BS & out)
 {
-	vec.push_back(v == S13::NULL_VALUE_UNENCODED);
-	EncodeBinary(v, n - 1, vec);
+	out.push_back(v == S13::NULL_VALUE_UNENCODED);
+	EncodeBinary(v, n - 1, out);
 }
 
-void Encoder::EncodeBinaryMaskingNull(int v, int n, BS & vec)
+void Encoder::EncodeBinaryMaskingNull(int v, int n, BS & out)
 {
-	MAYBE_ADD_MASKED_AND_RETURN(v, n, vec);
-	EncodeBinary(v, n, vec);
+	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
+	EncodeBinary(v, n, out);
 }
 
-void Encoder::EncodeBinaryStrictNull(int v, int n, BS & vec)
+void Encoder::EncodeBinaryStrictNull(int v, int n, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeBinary(v, n, vec);
+	EncodeBinary(v, n, out);
 }
 
-void Encoder::EncodeBinaryZeroNull(int v, int n, BS & vec)
+void Encoder::EncodeBinaryZeroNull(int v, int n, BS & out)
 {
-	EncodeBinary(v, n, vec);
+	EncodeBinary(v, n, out);
 }
 
-void Encoder::EncodeBinary(int v, int n, BS & vec)
+void Encoder::EncodeBinary(int v, int n, BS & out)
 {
-	MAYBE_ADD_ZEROS_AND_RETURN(v, n, vec);
+	MAYBE_ADD_ZEROS_AND_RETURN(v, n, out);
 
 	int vtmp = v;
 	for(int i = 0; i < n; ++i)
 	{
-		vec.push_back(vtmp % 2);
+		out.push_back(vtmp % 2);
 		vtmp /= 2;
 	}
 }
@@ -258,62 +260,62 @@ void Encoder::EncodeBinary(int v, int n, BS & vec)
 // CATEGORICAL
 //
 
-void Encoder::EncodeCategoricalExplicitNull(int v, int n, BS & vec)
+void Encoder::EncodeCategoricalExplicitNull(int v, int n, BS & out)
 {
 	if(v == S13::NULL_VALUE_UNENCODED)
 	{
-		vec.push_back(v == S13::NULL_VALUE_UNENCODED);
-		ADD_ZEROS_AND_RETURN(n - 1, vec);
+		out.push_back(v == S13::NULL_VALUE_UNENCODED);
+		ADD_ZEROS_AND_RETURN(n - 1, out);
 	}
-	vec.push_back(0);
-	EncodeCategorical(v, n - 1, vec);
+	out.push_back(0);
+	EncodeCategorical(v, n - 1, out);
 }
 
-void Encoder::EncodeCategoricalImplicitNull(int v, int n, BS & vec)
+void Encoder::EncodeCategoricalImplicitNull(int v, int n, BS & out)
 {
 	if(v == S13::NULL_VALUE_UNENCODED)
 	{
-		ADD_ZEROS_AND_RETURN(n, vec);
+		ADD_ZEROS_AND_RETURN(n, out);
 	}
 
-	EncodeCategorical(v, n, vec);
+	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategoricalMaskingNull(int v, int n, BS & vec)
+void Encoder::EncodeCategoricalMaskingNull(int v, int n, BS & out)
 {
-	MAYBE_ADD_MASKED_AND_RETURN(v, n, vec);
-	EncodeCategorical(v, n, vec);
+	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
+	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategoricalStrictNull(int v, int n, BS & vec)
+void Encoder::EncodeCategoricalStrictNull(int v, int n, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeCategorical(v, n, vec);
+	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategoricalZeroNull(int v, int n, BS & vec)
+void Encoder::EncodeCategoricalZeroNull(int v, int n, BS & out)
 {
-	EncodeCategorical(v, n, vec);
+	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategorical(int v, int n, BS & vec)
+void Encoder::EncodeCategorical(int v, int n, BS & out)
 {
 	if(v <= 0)
 	{
-		vec.push_back(1);
-		ADD_ZEROS_AND_RETURN(n - 1, vec);
+		out.push_back(1);
+		ADD_ZEROS_AND_RETURN(n - 1, out);
 	}
 
 	for(int i = 0; i < n; ++i)
 	{
 		if(i == v)
 		{
-			vec.push_back(1);
-			ADD_ZEROS_AND_RETURN(n - i - 1, vec);
+			out.push_back(1);
+			ADD_ZEROS_AND_RETURN(n - i - 1, out);
 		}
 		else
 		{
-			vec.push_back(0);
+			out.push_back(0);
 		}
 	}
 }
@@ -322,42 +324,42 @@ void Encoder::EncodeCategorical(int v, int n, BS & vec)
 // EXPNORM
 //
 
-void Encoder::EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out)
 {
-	vec.push_back(v == S13::NULL_VALUE_UNENCODED);
-	EncodeExpnorm(v, vmax, slope, vec);
+	out.push_back(v == S13::NULL_VALUE_UNENCODED);
+	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out)
 {
 	if(v == S13::NULL_VALUE_UNENCODED)
 	{
-		vec.push_back(S13::NULL_VALUE_ENCODED);
+		out.push_back(S13::NULL_VALUE_ENCODED);
 		return;
 	}
-	EncodeExpnorm(v, vmax, slope, vec);
+	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnormStrictNull(int v, int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeExpnorm(v, vmax, slope, vec);
+	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnormZeroNull(int v, int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out)
 {
-	EncodeExpnorm(v, vmax, slope, vec);
+	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnorm(int v, int vmax, double slope, BS & vec)
+void Encoder::EncodeExpnorm(int v, int vmax, double slope, BS & out)
 {
 	if(v <= 0)
 	{
-		vec.push_back(0);
+		out.push_back(0);
 		return;
 	}
 
-	vec.push_back(CalcExpnorm(v, vmax, slope));
+	out.push_back(CalcExpnorm(v, vmax, slope));
 }
 
 // Visualise on https://www.desmos.com/calculator:
@@ -375,43 +377,43 @@ float Encoder::CalcExpnorm(int v, int vmax, double slope)
 // LINNORM
 //
 
-void Encoder::EncodeLinnormExplicitNull(int v, int vmax, BS & vec)
+void Encoder::EncodeLinnormExplicitNull(int v, int vmax, BS & out)
 {
-	vec.push_back(v == S13::NULL_VALUE_UNENCODED);
-	EncodeLinnorm(v, vmax, vec);
+	out.push_back(v == S13::NULL_VALUE_UNENCODED);
+	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnormMaskingNull(int v, int vmax, BS & vec)
+void Encoder::EncodeLinnormMaskingNull(int v, int vmax, BS & out)
 {
 	if(v == S13::NULL_VALUE_UNENCODED)
 	{
-		vec.push_back(S13::NULL_VALUE_ENCODED);
+		out.push_back(S13::NULL_VALUE_ENCODED);
 		return;
 	}
-	EncodeLinnorm(v, vmax, vec);
+	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnormStrictNull(int v, int vmax, BS & vec)
+void Encoder::EncodeLinnormStrictNull(int v, int vmax, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeLinnorm(v, vmax, vec);
+	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnormZeroNull(int v, int vmax, BS & vec)
+void Encoder::EncodeLinnormZeroNull(int v, int vmax, BS & out)
 {
-	EncodeLinnorm(v, vmax, vec);
+	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnorm(int v, int vmax, BS & vec)
+void Encoder::EncodeLinnorm(int v, int vmax, BS & out)
 {
 	if(v <= 0)
 	{
-		vec.push_back(0);
+		out.push_back(0);
 		return;
 	}
 
 	// XXX: this is a simplified version for 0..1 norm
-	vec.push_back(CalcLinnorm(v, vmax));
+	out.push_back(CalcLinnorm(v, vmax));
 }
 
 float Encoder::CalcLinnorm(int v, int vmax)

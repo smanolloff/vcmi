@@ -87,7 +87,7 @@ std::string Action::name() const
 
 	ASSERT(hex, "hex is null");
 
-	auto ha = HexAction((action - EI(GlobalAction::_count)) % EI(HexAction::_count));
+	auto ha = static_cast<HexAction>((action - EI(GlobalAction::_count)) % EI(HexAction::_count));
 	auto res = std::string{};
 	std::shared_ptr<const Stack> stack = nullptr;
 	std::string stackstr;

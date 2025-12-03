@@ -37,7 +37,7 @@ Base::Create(Schema::IModel * model, const std::shared_ptr<Environment> & env, c
 }
 
 Base::Base(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb)
-	: colorname(cb->getPlayerID()->toString()), model(model), cb(cb), name("BAI-v" + std::to_string(version)), version(version), env(env)
+	: cb(cb), env(env), version(version), model(model), colorname(cb->getPlayerID()->toString()), name("BAI-v" + std::to_string(version))
 {
 	std::ostringstream oss;
 

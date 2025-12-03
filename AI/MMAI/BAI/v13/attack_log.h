@@ -15,60 +15,55 @@
 
 namespace MMAI::BAI::V13
 {
+
+struct AttackLogData
+{
+	const std::shared_ptr<Stack> attacker; // XXX: can be nullptr if dmg is not from creature
+	const std::shared_ptr<Stack> defender;
+	const CStack * cattacker;
+	const CStack * cdefender;
+	const int dmg;
+	const int dmgPermille;
+	const int units;
+	const int value;
+	const int valuePermille;
+};
+
 class AttackLog : public Schema::V13::IAttackLog
 {
 public:
-	AttackLog(
-		std::shared_ptr<Stack> attacker_,
-		std::shared_ptr<Stack> defender_,
-		const CStack * cattacker_,
-		const CStack * cdefender_,
-		int dmg_,
-		int dmgPermille_,
-		int units_,
-		int value_,
-		int valuePermille_
-	)
-		: attacker(attacker_)
-		, defender(defender_)
-		, cattacker(cattacker_)
-		, cdefender(cdefender_)
-		, dmg(dmg_)
-		, dmgPermille(dmgPermille_)
-		, units(units_)
-		, value(value_)
-		, valuePermille(valuePermille_)
-	{
-	}
+	explicit AttackLog(const AttackLogData & data) : data(data) {};
+
+	const AttackLogData data;
 
 	// IAttackLog impl
 	Stack * getAttacker() const override
 	{
-		return attacker.get();
+		return data.attacker.get();
 	}
 	Stack * getDefender() const override
 	{
-		return defender.get();
+		return data.defender.get();
 	}
 	int getDamageDealt() const override
 	{
-		return dmg;
+		return data.dmg;
 	}
 	int getDamageDealtPermille() const override
 	{
-		return dmgPermille;
+		return data.dmgPermille;
 	}
 	int getUnitsKilled() const override
 	{
-		return units;
+		return data.units;
 	}
 	int getValueKilled() const override
 	{
-		return value;
+		return data.value;
 	}
 	int getValueKilledPermille() const override
 	{
-		return valuePermille;
+		return data.valuePermille;
 	}
 
 	/*
@@ -79,18 +74,5 @@ public:
 	 *  we would count it as our dmg dealt - that is OK (we have "tricked" the enemy!)
 	 * => store only defender slot
 	 */
-
-	const std::shared_ptr<Stack> attacker; // XXX: can be nullptr if dmg is not from creature
-	const std::shared_ptr<Stack> defender;
-	const CStack * cattacker;
-	const CStack * cdefender;
-	const int dmg;
-	const int dmgPermille;
-	const int units;
-
-	// NOTE: "value" is hard-coded in original H3 and can be found online:
-	// https://heroes.thelazy.net/index.php/List_of_creatures
-	const int value;
-	const int valuePermille;
 };
 }

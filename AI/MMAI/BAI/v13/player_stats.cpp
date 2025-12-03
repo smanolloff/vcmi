@@ -43,27 +43,27 @@ void PlayerStats::update(const GlobalStats * gstats, int value, int hp, int dmgD
 {
 	// ll (long long) ensures long is 64-bit even on 32-bit systems
 	setattr(A::ARMY_VALUE_NOW_ABS, value);
-	setattr(A::ARMY_VALUE_NOW_REL, 1000ll * value / gstats->attr(GA::BFIELD_VALUE_NOW_ABS));
-	setattr(A::ARMY_VALUE_NOW_REL0, 1000ll * value / gstats->attr(GA::BFIELD_VALUE_START_ABS));
+	setattr(A::ARMY_VALUE_NOW_REL, 1000LL * value / gstats->attr(GA::BFIELD_VALUE_NOW_ABS));
+	setattr(A::ARMY_VALUE_NOW_REL0, 1000LL * value / gstats->attr(GA::BFIELD_VALUE_START_ABS));
 	setattr(A::ARMY_HP_NOW_ABS, hp);
-	setattr(A::ARMY_HP_NOW_REL, 1000ll * hp / gstats->attr(GA::BFIELD_HP_NOW_ABS));
-	setattr(A::ARMY_HP_NOW_REL0, 1000ll * hp / gstats->attr(GA::BFIELD_HP_START_ABS));
+	setattr(A::ARMY_HP_NOW_REL, 1000LL * hp / gstats->attr(GA::BFIELD_HP_NOW_ABS));
+	setattr(A::ARMY_HP_NOW_REL0, 1000LL * hp / gstats->attr(GA::BFIELD_HP_START_ABS));
 	setattr(A::VALUE_KILLED_NOW_ABS, valueKilled);
-	setattr(A::VALUE_KILLED_NOW_REL, 1000ll * valueKilled / gstats->attr(GA::BFIELD_VALUE_NOW_ABS));
+	setattr(A::VALUE_KILLED_NOW_REL, 1000LL * valueKilled / gstats->attr(GA::BFIELD_VALUE_NOW_ABS));
 	addattr(A::VALUE_KILLED_ACC_ABS, valueKilled);
-	setattr(A::VALUE_KILLED_ACC_REL0, 1000ll * attr(A::VALUE_KILLED_ACC_ABS) / gstats->attr(GA::BFIELD_VALUE_START_ABS));
+	setattr(A::VALUE_KILLED_ACC_REL0, 1000LL * attr(A::VALUE_KILLED_ACC_ABS) / gstats->attr(GA::BFIELD_VALUE_START_ABS));
 	setattr(A::VALUE_LOST_NOW_ABS, valueLost);
-	setattr(A::VALUE_LOST_NOW_REL, 1000ll * valueLost / gstats->attr(GA::BFIELD_VALUE_NOW_ABS));
+	setattr(A::VALUE_LOST_NOW_REL, 1000LL * valueLost / gstats->attr(GA::BFIELD_VALUE_NOW_ABS));
 	addattr(A::VALUE_LOST_ACC_ABS, valueLost);
-	setattr(A::VALUE_LOST_ACC_REL0, 1000ll * attr(A::VALUE_LOST_ACC_ABS) / gstats->attr(GA::BFIELD_VALUE_START_ABS));
+	setattr(A::VALUE_LOST_ACC_REL0, 1000LL * attr(A::VALUE_LOST_ACC_ABS) / gstats->attr(GA::BFIELD_VALUE_START_ABS));
 	setattr(A::DMG_DEALT_NOW_ABS, dmgDealt);
-	setattr(A::DMG_DEALT_NOW_REL, 1000ll * dmgDealt / gstats->attr(GA::BFIELD_HP_NOW_ABS));
+	setattr(A::DMG_DEALT_NOW_REL, 1000LL * dmgDealt / gstats->attr(GA::BFIELD_HP_NOW_ABS));
 	addattr(A::DMG_DEALT_ACC_ABS, dmgDealt);
-	setattr(A::DMG_DEALT_ACC_REL0, 1000ll * attr(A::DMG_DEALT_ACC_ABS) / gstats->attr(GA::BFIELD_HP_START_ABS));
+	setattr(A::DMG_DEALT_ACC_REL0, 1000LL * attr(A::DMG_DEALT_ACC_ABS) / gstats->attr(GA::BFIELD_HP_START_ABS));
 	setattr(A::DMG_RECEIVED_NOW_ABS, dmgReceived);
-	setattr(A::DMG_RECEIVED_NOW_REL, 1000ll * dmgReceived / gstats->attr(GA::BFIELD_HP_NOW_ABS));
+	setattr(A::DMG_RECEIVED_NOW_REL, 1000LL * dmgReceived / gstats->attr(GA::BFIELD_HP_NOW_ABS));
 	addattr(A::DMG_RECEIVED_ACC_ABS, dmgReceived);
-	setattr(A::DMG_RECEIVED_ACC_REL0, 1000ll * attr(A::DMG_RECEIVED_ACC_ABS) / gstats->attr(GA::BFIELD_HP_START_ABS));
+	setattr(A::DMG_RECEIVED_ACC_REL0, 1000LL * attr(A::DMG_RECEIVED_ACC_ABS) / gstats->attr(GA::BFIELD_HP_START_ABS));
 }
 
 int PlayerStats::getAttr(PlayerAttribute a) const
