@@ -361,6 +361,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 			if(ba)
 			{
 				debug("Action is VALID: " + state->action->name());
+				std::cout << Render(state.get(), state->action.get()) << "\n";
 				errcounter = 0;
 				cb->battleMakeUnitAction(bid, *ba);
 				break;

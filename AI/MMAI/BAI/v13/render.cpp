@@ -202,9 +202,11 @@ namespace
 		}
 
 		auto estacks = getAllStacksForSide(ctx, !EI(cstack->unitSide()));
-		const auto * it = std::ranges::find_if(
+
+		// NOLINTNEXTLINE(readability-qualified-auto) - const * ... breaks MSVC
+		const auto it = std::ranges::find_if(
 			estacks,
-			[&nbh](auto stack)
+			[&nbh](const auto & stack)
 			{
 				return stack && stack->coversPos(nbh);
 			}
