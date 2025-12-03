@@ -56,31 +56,18 @@ namespace
 	    throw std::runtime_error(std::string(message));
 	}
 
-	template<typename... Args>
-	inline void expect(bool exp, std::string_view format, Args... args)
+	template<typename... Args, typename = std::enable_if_t<(sizeof...(Args) > 0)>>
+	inline void expect(bool exp, std::string_view format, const Args &... args)
 	{
 	    if (exp)
 	        return;
 
-	    try
-	    {
-	        // Convert to std::string for boost::format
-	        boost::format f{std::string(format)};
+	    boost::format f{std::string(format)};
 
-	        // Feed arguments into boost::format
-	        // (initializer_list trick to expand the pack)
-	        (void)std::initializer_list<int>{
-	            ( (f % std::forward<Args>(args)), 0 )...
-	        };
+	    // Fold expression: expands to (f % arg1, f % arg2, ...)
+	    ((f % args), ...);
 
-	        throw std::runtime_error(f.str());
-	    }
-	    catch (const boost::io::format_error & e)
-	    {
-	        // Optional: handle format errors explicitly
-	        throw std::runtime_error(
-	            std::string("expect: format error: ") + e.what());
-	    }
+	    throw std::runtime_error(f.str());
 	}
 }
 
@@ -849,6 +836,16 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 								break;
 							case SF1::BLOCKING:
 							{
+								// auto want = 0;
+								// for(auto & adjstack : battle->battleAdjacentUnits(cstack))
+								// {
+								// 	if(adjstack->unitSide() != cstack->unitSide() && adjstack->canShoot() && battle->battleIsUnitBlocked(adjstack)
+								// 	   && !adjstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !adjstack->hasBonusOfType(BonusType::SIEGE_WEAPON))
+								// 	{
+								// 		want = 1;
+								// 		break;
+								// 	}
+								// }
 								auto adjUnits = battle->battleAdjacentUnits(cstack);
 								bool want = std::any_of(adjUnits.begin(), adjUnits.end(), [&battle, &cstack](const auto & adjstack)
 									{
