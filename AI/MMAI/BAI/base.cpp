@@ -147,7 +147,7 @@ void Base::battleSpellCast(const BattleID & bid, const BattleSpellCast * sc)
 	{
 		std::string res = "Spellcast info:";
 		auto battle = cb->getBattle(bid);
-		auto caster = battle->battleGetStackByID(sc->casterStack, false);
+		const auto * caster = battle->battleGetStackByID(sc->casterStack, false);
 
 		res += "\n\t* spell: " + sc->spellID.toSpell()->identifier;
 		res += "\n\t* castByHero=" + std::to_string(sc->castByHero);
@@ -157,15 +157,15 @@ void Base::battleSpellCast(const BattleID & bid, const BattleSpellCast * sc)
 		res += "\n\t* tile=" + std::to_string(sc->tile.toInt());
 
 		res += "\n\t* affected:";
-		for(auto & cid : sc->affectedCres)
+		for(const auto & cid : sc->affectedCres)
 			res += "\n\t  > " + battle->battleGetStackByID(cid, false)->getDescription();
 
 		res += "\n\t* resisted:";
-		for(auto & cid : sc->resistedCres)
+		for(const auto & cid : sc->resistedCres)
 			res += "\n\t  > " + battle->battleGetStackByID(cid, false)->getDescription();
 
 		res += "\n\t* reflected:";
-		for(auto & cid : sc->reflectedCres)
+		for(const auto & cid : sc->reflectedCres)
 			res += "\n\t  > " + battle->battleGetStackByID(cid, false)->getDescription();
 
 		std::cout << "MMAI_VERBOSE: " << res << "\n";
@@ -213,7 +213,7 @@ void Base::battleStacksEffectsSet(const BattleID & bid, const SetStackEffect & s
 
 		for(const auto & [unitid, bonuses] : sse.toAdd)
 		{
-			auto cstack = battle->battleGetStackByID(unitid);
+			const auto & cstack = battle->battleGetStackByID(unitid);
 			res += "\n\t* stack=" + (cstack ? cstack->getDescription() : "");
 			for(const auto & bonus : bonuses)
 			{
@@ -223,7 +223,7 @@ void Base::battleStacksEffectsSet(const BattleID & bid, const SetStackEffect & s
 
 		for(const auto & [unitid, bonuses] : sse.toRemove)
 		{
-			auto cstack = battle->battleGetStackByID(unitid);
+			const auto & cstack = battle->battleGetStackByID(unitid);
 			res += "\n\t* stack=" + (cstack ? cstack->getDescription() : "");
 			for(const auto & bonus : bonuses)
 			{
@@ -233,7 +233,7 @@ void Base::battleStacksEffectsSet(const BattleID & bid, const SetStackEffect & s
 
 		for(const auto & [unitid, bonuses] : sse.toUpdate)
 		{
-			auto cstack = battle->battleGetStackByID(unitid);
+			const auto & cstack = battle->battleGetStackByID(unitid);
 			res += "\n\t* stack=" + (cstack ? cstack->getDescription() : "");
 			for(const auto & bonus : bonuses)
 			{
@@ -267,7 +267,7 @@ void Base::battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect &
 	if(verbose)
 	{
 		auto battle = cb->getBattle(bid);
-		auto cstack = battle->battleGetStackByID(bte.stackID);
+		const auto * cstack = battle->battleGetStackByID(bte.stackID);
 		std::string res = "Effect triggered:";
 		res += "\n\t* bonus id=" + std::to_string(EI(bte.effect));
 		res += "\n\t* bonus value=" + std::to_string(bte.val);

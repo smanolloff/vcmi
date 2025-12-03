@@ -14,6 +14,7 @@
 #include "BAI/v13/action.h"
 #include "BAI/v13/hex.h"
 #include "BAI/v13/hexaction.h"
+#include "common.h"
 
 namespace MMAI::BAI::V13
 {

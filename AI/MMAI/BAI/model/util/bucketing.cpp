@@ -11,6 +11,8 @@
 #include "StdInc.h"
 #include "BAI/model/util/bucketing.h"
 
+#include <boost/range/numeric.hpp>
+
 namespace MMAI::BAI::bucketing
 {
 BucketBuilder::BucketBuilder(const std::array<IndexContainer, LT_COUNT> & containers, const std::vector<std::vector<std::vector<int32_t>>> & all_sizes)
@@ -111,7 +113,7 @@ BucketChoice BucketBuilder::choose_bucket(const Requirements & req) const
 
 void BucketBuilder::build_edges_flat(const std::array<int32_t, LT_COUNT> & emax, BucketData & bdata) const
 {
-	const size_t sum_emax = std::accumulate(emax.begin(), emax.end(), static_cast<size_t>(0));
+	const size_t sum_emax = boost::accumulate(emax, static_cast<size_t>(0));
 
 	bdata.edgeIndex_flat.at(0).clear();
 	bdata.edgeIndex_flat.at(1).clear();
@@ -155,7 +157,7 @@ void BucketBuilder::build_edges_flat(const std::array<int32_t, LT_COUNT> & emax,
 
 void BucketBuilder::build_neighbors_flat(const std::array<int32_t, LT_COUNT> & kmax, BucketData & bdata) const
 {
-	const size_t sum_kmax = std::accumulate(kmax.begin(), kmax.end(), static_cast<size_t>(0));
+	const size_t sum_kmax = boost::accumulate(kmax, static_cast<size_t>(0));
 
 	for(int v = 0; v < 165; ++v)
 	{

@@ -9,7 +9,6 @@
  */
 
 #include "StdInc.h"
-#include "VCMIDirs.h"
 #include "callback/CBattleCallback.h"
 #include "callback/CDynLibHandler.h"
 #include "callback/IGameInfoCallback.h"

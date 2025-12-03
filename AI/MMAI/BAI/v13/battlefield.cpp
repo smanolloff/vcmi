@@ -18,6 +18,7 @@
 #include "common.h"
 #include <algorithm>
 #include <memory>
+#include <ranges>
 
 namespace MMAI::BAI::V13
 {
@@ -108,7 +109,7 @@ Queue Battlefield::GetQueue(const CPlayerBattleCallback * battle, const CStack *
 	if(isMorale && astack && res.at(0) != astack->unitId())
 	{
 		// logAi->debug("Morale triggered -- will rearrange stack queue");
-		std::rotate(res.rbegin(), res.rbegin() + 1, res.rend());
+		std::ranges::rotate(std::ranges::reverse_view(res), res.rbegin() + 1);
 		res.at(0) = astack->unitId();
 	}
 	else
@@ -185,9 +186,8 @@ std::tuple<Stacks, Queue> Battlefield::InitStacks(
 	auto cstacks = battle->battleGetStacks();
 
 	// Sorting needed to ensure ordered insertion of summons/machines
-	std::sort(
-		cstacks.begin(),
-		cstacks.end(),
+	std::ranges::sort(
+		cstacks,
 		[](const CStack * a, const CStack * b)
 		{
 			return a->unitId() < b->unitId();

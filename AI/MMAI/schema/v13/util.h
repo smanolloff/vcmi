@@ -29,7 +29,7 @@ constexpr T Sqrt(T x, T lo, T hi)
 template<typename T>
 constexpr T CTSqrt(T x)
 {
-	return Sqrt<T>(x, 0, x / 2 + 1);
+	return Sqrt<T>(x, 0, (x / 2) + 1);
 }
 
 /*

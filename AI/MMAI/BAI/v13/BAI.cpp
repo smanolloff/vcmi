@@ -24,6 +24,7 @@
 #include "schema/v13/types.h"
 
 #include "AI/BattleAI/BattleEvaluator.h"
+#include <algorithm>
 #include <optional>
 
 namespace MMAI::BAI::V13
@@ -233,9 +234,8 @@ std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack) c
 			return std::make_shared<BattleAction>(BattleAction::makeDefend(astack));
 
 		auto allstacks = battle->battleGetStacks(CBattleInfoEssentials::ONLY_ENEMY);
-		auto target = std::max_element(
-			allstacks.begin(),
-			allstacks.end(),
+		auto target = std::ranges::max_element(
+			allstacks,
 			[](const CStack * a, const CStack * b)
 			{
 				return Stack::CalcValue(a->unitType()) < Stack::CalcValue(b->unitType());
@@ -330,9 +330,8 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 
 	while(true)
 	{
-		for(int i = 0; i < static_cast<int>(state->transitions.size()); ++i)
+		for(const auto & [a, m, s] : state->transitions)
 		{
-			auto [a, m, s] = state->transitions.at(i);
 			logAi->debug("PRE-GET_ACTION[%d]: m.size=" + std::to_string(m->size()) + ", s.size()=" + std::to_string(s->size()));
 		}
 

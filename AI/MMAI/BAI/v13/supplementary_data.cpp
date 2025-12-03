@@ -76,7 +76,7 @@ const Schema::V13::StateTransitions SupplementaryData::getStateTransitions() con
 	res.reserve(transitions.size());
 
 	for(const auto & [action, actmask, transition] : transitions)
-		res.push_back({action, actmask.get(), transition.get()});
+		res.emplace_back(action, actmask.get(), transition.get());
 
 	return res;
 }

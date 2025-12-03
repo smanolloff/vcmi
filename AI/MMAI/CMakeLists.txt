@@ -41,8 +41,6 @@ set(MMAI_FILES
   BAI/v13/state.h
   BAI/v13/supplementary_data.cpp
   BAI/v13/supplementary_data.h
-  BAI/v13/util.cpp
-  BAI/v13/util.h
 
   schema/schema.h
   schema/v13/constants.h

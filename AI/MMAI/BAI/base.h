@@ -194,8 +194,9 @@ public:
 		log(ELogLevel::TRACE, f);
 	}
 
-	template<typename F, std::enable_if_t<std::is_invocable_r_v<std::string, F &>, int> = 0>
+	template<typename F>
 	void log(ELogLevel::ELogLevel level, F & f) const
+	requires(std::is_invocable_r_v<std::string, F &>)
 	{
 		if(logAi->getEffectiveLevel() <= level)
 			_log(level, "%s", f());

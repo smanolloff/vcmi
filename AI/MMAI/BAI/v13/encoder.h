@@ -37,7 +37,7 @@ public:
 	static void Encode(PA a, int v, BS & out);
 	static void Encode(GA a, int v, BS & out);
 
-	static void Encode(const EncoderInput & data, BS & out);
+	static void Encode(const EncoderInput & in, BS & out);
 
 	static void EncodeAccumulatingExplicitNull(int v, int n, BS & out);
 	static void EncodeAccumulatingImplicitNull(int v, int n, BS & out);

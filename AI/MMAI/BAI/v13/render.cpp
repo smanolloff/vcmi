@@ -20,6 +20,9 @@
 #include "BAI/v13/hex.h"
 #include "BAI/v13/hexactmask.h"
 #include "BAI/v13/render.h"
+#include "common.h"
+
+#include <algorithm>
 
 #include "schema/v13/constants.h"
 #include "schema/v13/types.h"
@@ -863,9 +866,8 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 								// 	}
 								// }
 								auto adjUnits = battle->battleAdjacentUnits(cstack);
-								bool want = std::any_of(
-									adjUnits.begin(),
-									adjUnits.end(),
+								bool want = std::ranges::any_of(
+									adjUnits,
 									[&battle, &cstack](const auto & adjstack)
 									{
 										return adjstack->unitSide() != cstack->unitSide() && adjstack->canShoot() && battle->battleIsUnitBlocked(adjstack)

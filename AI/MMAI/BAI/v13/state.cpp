@@ -17,6 +17,7 @@
 #include "BAI/v13/hexaction.h"
 #include "BAI/v13/state.h"
 #include "BAI/v13/supplementary_data.h"
+#include "common.h"
 #include "schema/v13/constants.h"
 
 #include <algorithm>
@@ -262,7 +263,7 @@ void State::onActiveStack(const CStack * astack, CombatResult result, bool recor
 	{
 		ASSERT(startedAction >= 0, "unexpected startedAction: " + std::to_string(startedAction));
 		// NOTE: this creates a copy of bfstate (which is what we want)
-		transitions.push_back({startedAction, std::make_shared<Schema::ActionMask>(actmask), std::make_shared<Schema::BattlefieldState>(bfstate)});
+		transitions.emplace_back(startedAction, std::make_shared<Schema::ActionMask>(actmask), std::make_shared<Schema::BattlefieldState>(bfstate));
 	}
 	else
 	{
@@ -370,9 +371,8 @@ void State::_onActionStarted(const BattleAction & action)
 			auto idMove = Hex::CalcId(bhMove);
 
 			// Can't use `battlefield` (old state)
-			auto it = std::find_if(
-				stacks.begin(),
-				stacks.end(),
+			auto it = std::ranges::find_if(
+				stacks,
 				[&bhTarget](const CStack * cstack)
 				{
 					return cstack->coversPos(bhTarget);
@@ -470,10 +470,9 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		ASSERT(cdefender, "defender cannot be NULL");
 		// logAi->debug("Attack: %s -> %s (%d dmg, %d died)", attacker->getName(), defender->getName(), elem.damageAmount, elem.killedAmount);
 
-		const auto defender = std::find_if(
-			stacks.begin(),
-			stacks.end(),
-			[&cdefender](std::shared_ptr<Stack> stack)
+		const auto defender = std::ranges::find_if(
+			stacks,
+			[&cdefender](const std::shared_ptr<Stack> & stack)
 			{
 				return cdefender == stack->cstack;
 			}
@@ -484,9 +483,8 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 			logAi->info("defender cstack '%s' not found in stacks. Maybe it was just summoned/resurrected?", cdefender->getDescription());
 		}
 
-		const auto attacker = std::find_if(
-			stacks.begin(),
-			stacks.end(),
+		const auto attacker = std::ranges::find_if(
+			stacks,
 			[&cattacker](std::shared_ptr<Stack> & stack)
 			{
 				return cattacker == stack->cstack;

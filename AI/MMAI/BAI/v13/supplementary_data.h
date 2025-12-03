@@ -13,7 +13,6 @@
 #include "BAI/v13/battlefield.h"
 #include "BAI/v13/global_stats.h"
 #include "BAI/v13/player_stats.h"
-// #include "BAI/v13/util.h"
 #include "schema/v13/types.h"
 
 namespace MMAI::BAI::V13
@@ -118,6 +117,6 @@ public:
 
 	// Optionally modified (during activeStack if action was RENDER)
 	Type type = Type::REGULAR;
-	std::string ansiRender = "";
+	std::string ansiRender;
 };
 }

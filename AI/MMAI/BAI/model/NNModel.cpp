@@ -11,6 +11,8 @@
 #include <onnxruntime_c_api.h>
 #include <onnxruntime_cxx_api.h>
 
+#include <algorithm>
+
 #include "StdInc.h"
 #include "BAI/model/util/bucketing.h"
 #include "BAI/model/util/common.h"
@@ -56,9 +58,9 @@ namespace
 	{
 		// Validate and count degrees per node
 		std::array<int, 165> deg{};
-		for(size_t e = 0; e < dst.size(); ++e)
+		for(auto e : dst)
 		{
-			auto v = static_cast<int>(dst[e]);
+			auto v = static_cast<int>(e);
 			if(v < 0 || v >= 165)
 				throwf("dst contains node id out of range: %d", v);
 			++deg[v];
@@ -525,7 +527,7 @@ std::pair<std::vector<Ort::Value>, int> NNModel::prepareInputsV13(const MMAI::Sc
 
 	const auto * state = s->getBattlefieldState();
 	auto estate = std::vector<float>(state->size());
-	std::copy(state->begin(), state->end(), estate.begin());
+	std::ranges::copy(*state, estate.begin());
 
 	int sum_e = bdata.edgeIndex_flat.at(0).size();
 	int sum_k = bdata.neighbourhoods_flat.at(0).size();

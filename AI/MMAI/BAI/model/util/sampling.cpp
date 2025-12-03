@@ -13,7 +13,6 @@
 #include <cstdint>
 #include <limits>
 #include <random>
-#include <stdexcept>
 #include <vector>
 
 #include <onnxruntime_cxx_api.h>
@@ -53,8 +52,8 @@ std::vector<double> softmax(const std::vector<double> & logits)
 	if(logits.empty())
 		return {};
 	double m = -std::numeric_limits<double>::infinity();
-	for(size_t i = 0; i < logits.size(); ++i)
-		m = std::max(m, logits.at(i));
+	for(double logit : logits)
+		m = std::max(m, logit);
 	std::vector<double> exps(logits.size(), 0.0);
 	double sum = 0.0;
 	for(size_t i = 0; i < logits.size(); ++i)
@@ -66,8 +65,8 @@ std::vector<double> softmax(const std::vector<double> & logits)
 	}
 	if(std::fabs(sum) < 1e-8)
 		return std::vector<double>(logits.size(), 0.0);
-	for(size_t i = 0; i < exps.size(); ++i)
-		exps.at(i) /= sum;
+	for(double & exp : exps)
+		exp /= sum;
 	return exps;
 }
 
@@ -82,16 +81,6 @@ int argmax(const std::vector<double> & xs)
 			best = i;
 	}
 	return static_cast<int>(best);
-}
-
-int count_valid(const std::vector<int32_t> & mask_1d)
-{
-	int n_valid = 0;
-	for(size_t i = 0; i < mask_1d.size(); ++i)
-	{
-		n_valid += (mask_1d.at(i) != 0);
-	}
-	return n_valid;
 }
 
 std::vector<double> make_masked_logits(const std::vector<float> & logits_1d, const std::vector<int32_t> & mask_1d)
@@ -128,7 +117,7 @@ SampleResult sample_uniform_over_mask(const std::vector<int32_t> & mask_1d, int 
 	const int idx_chosen = dist(rng);
 	const double p_chosen = probs.at(static_cast<size_t>(idx_chosen));
 
-	return {idx_chosen, p_chosen, false};
+	return {.index = idx_chosen, .prob = p_chosen, .fallback = false};
 }
 
 SampleResult sample_softmax_over_mask(const std::vector<double> & masked_logits, const std::vector<int32_t> & mask_1d, double temperature, std::mt19937 & rng)
@@ -146,19 +135,20 @@ SampleResult sample_softmax_over_mask(const std::vector<double> & masked_logits,
 	}
 
 	const std::vector<double> probs = softmax(scaled);
-	for(size_t i = 0; i < probs.size(); ++i)
-	{
-		if(!std::isfinite(probs.at(i)))
-		{
-			throwf("sampling: non-finite probabilities");
-		}
-	}
+	if(!std::ranges::all_of(
+		   probs,
+		   [](double prob)
+		   {
+			   return std::isfinite(prob);
+		   }
+	   ))
+		throwf("sampling: non-finite probabilities");
 
 	std::discrete_distribution<int> dist(probs.begin(), probs.end());
 	const int idx_chosen = dist(rng);
 	const double p_chosen = probs.at(static_cast<size_t>(idx_chosen));
 
-	return {idx_chosen, p_chosen, false};
+	return {.index = idx_chosen, .prob = p_chosen, .fallback = false};
 }
 
 // Masked categorical sampling given a logits vector
@@ -171,12 +161,19 @@ sample_masked_logits(const std::vector<float> & logits_1d, const std::vector<int
 	if(temperature < 0.0)
 		throwf("sampling: negative temperature");
 
-	const int n_valid = sampling::count_valid(mask_1d);
+	const int n_valid = std::ranges::count_if(
+		mask_1d,
+		[](int v)
+		{
+			return v != 0;
+		}
+	);
+
 	if(n_valid == 0)
 	{
 		if(throw_if_empty)
 			throwf("sampling: no valid options available");
-		return {0, 0.0, true};
+		return {.index = 0, .prob = 0.0, .fallback = true};
 	}
 
 	const std::vector<double> masked_logits = sampling::make_masked_logits(logits_1d, mask_1d);
@@ -189,7 +186,7 @@ sample_masked_logits(const std::vector<float> & logits_1d, const std::vector<int
 	if(temperature < 1e-8)
 	{
 		const int idx_chosen = argmax(masked_logits);
-		return {idx_chosen, 1.0, false};
+		return {.index = idx_chosen, .prob = 1.0, .fallback = false};
 	}
 
 	return sampling::sample_softmax_over_mask(masked_logits, mask_1d, temperature, rng);
@@ -266,6 +263,6 @@ sample_triplet(const MaskedLogits & act0_logits, const MaskedLogits & hex1_logit
 	// ---- joint confidence ----
 	const double confidence = act0.prob * (hex1.fallback ? 1.0 : hex1.prob) * (hex2.fallback ? 1.0 : hex2.prob);
 
-	return {act0.index, hex1.index, hex2.index, confidence};
+	return {.act0 = act0.index, .hex1 = hex1.index, .hex2 = hex2.index, .confidence = confidence};
 }
 }

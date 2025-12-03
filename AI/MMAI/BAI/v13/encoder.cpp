@@ -24,24 +24,24 @@ using BS = Schema::BattlefieldState;
 using clock = std::chrono::system_clock;
 
 #define ADD_ZEROS_AND_RETURN(n, out) \
-	out.insert(out.end(), n, 0);     \
+	out.insert((out).end(), n, 0);   \
 	return
 
 #define MAYBE_ADD_ZEROS_AND_RETURN(v, n, out) \
-	if(v <= 0)                                \
+	if((v) <= 0)                              \
 	{                                         \
 		ADD_ZEROS_AND_RETURN(n, out);         \
 	}
 
-#define MAYBE_ADD_MASKED_AND_RETURN(v, n, out)             \
-	if(v == S13::NULL_VALUE_UNENCODED)                     \
-	{                                                      \
-		out.insert(out.end(), n, S13::NULL_VALUE_ENCODED); \
-		return;                                            \
+#define MAYBE_ADD_MASKED_AND_RETURN(v, n, out)                 \
+	if((v) == S13::NULL_VALUE_UNENCODED)                       \
+	{                                                          \
+		(out).insert((out).end(), n, S13::NULL_VALUE_ENCODED); \
+		return;                                                \
 	}
 
-#define MAYBE_THROW_STRICT_ERROR(v)    \
-	if(v == S13::NULL_VALUE_UNENCODED) \
+#define MAYBE_THROW_STRICT_ERROR(v)      \
+	if((v) == S13::NULL_VALUE_UNENCODED) \
 		throw std::runtime_error("NULL values are not allowed for strict encoding");
 
 void Encoder::Encode(const EncoderInput & in, BS & out)
