@@ -83,7 +83,6 @@ namespace
 		{
 			auto v = stack->getCount() * Stack::CalcValue(stack->unitType());
 			auto h = stack->getAvailableHealth();
-			// std::cout << "[" << EI(stack->unitSide()) << "] v=" << v << ", h=" << h << ", lv=" << lv << ", rv=" << rv << "\n";
 
 			if(stack->unitSide() == BattleSide::ATTACKER)
 			{
@@ -467,7 +466,6 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		const auto * cattacker = battle->battleGetStackByID(elem.attackerID, false);
 
 		ASSERT(cdefender, "defender cannot be NULL");
-		// logAi->debug("Attack: %s -> %s (%d dmg, %d died)", attacker->getName(), defender->getName(), elem.damageAmount, elem.killedAmount);
 
 		const auto defender = std::ranges::find_if(
 			stacks,
