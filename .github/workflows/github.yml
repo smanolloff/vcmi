@@ -6,6 +6,7 @@ on:
       - beta
       - master
       - develop
+      - mmai-tmp
   pull_request:
   workflow_dispatch:
 
@@ -239,6 +240,14 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
+
+    - name: Free up disk space
+      run: |
+        echo "Disk usage BEFORE cleanup:"
+        df -h
+        sudo rm -rf /opt/ghc /usr/local/.ghcup /usr/share/dotnet || :
+        echo "Disk usage AFTER cleanup:"
+        df -h
 
     # a hack to build ID for x64 build in order for Google Play to allow upload of both 32 and 64 bit builds
     # TODO: x86_64
