@@ -169,8 +169,19 @@ bool BAI::maybeCastSpell(const CStack * astack, const BattleID & bid)
 	return evaluator.attemptCastingSpell(astack);
 }
 
-std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack) const
+std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack, const BattleID & bid) const
 {
+	// Guard against infinite battles
+	// (print warning once, make only fallback actions from there on)
+	if (getActionTotalCalls == 100)
+		warn("Reached 100 predictions, will fall back to BattleAI until this combat ends");
+
+	if (getActionTotalCalls >= 100)
+	{
+		auto evaluator = BattleEvaluator(env, cb, astack, *cb->getPlayerID(), bid, battle->battleGetMySide(), 1.0f, 2);
+		return std::make_shared<BattleAction>(evaluator.selectStackAction(astack));
+	}
+
 	if(astack->creatureId() == CreatureID::FIRST_AID_TENT)
 	{
 		const CStack * target = nullptr;
@@ -285,7 +296,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
 	Base::activeStack(bid, astack);
 
-	auto ba = maybeBuildAutoAction(astack);
+	auto ba = maybeBuildAutoAction(astack, bid);
 
 	if(ba)
 	{

@@ -73,7 +73,7 @@ public:
 	std::string debugInfo(Action * action, const CStack * astack, const BattleHex * nbh); // DEBUG ONLY
 	void handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & hex, Action * action);
 	std::shared_ptr<BattleAction> buildBattleAction();
-	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack) const;
+	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack, const BattleID & bid) const;
 	bool maybeCastSpell(const CStack * stack, const BattleID & bid);
 
 	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);
