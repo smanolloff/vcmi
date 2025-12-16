@@ -233,7 +233,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode & parent)
 	{
 		parentsToPropagate -= &parent;
 	}
-	else
+	else if(!IS_ML)
 	{
 		logBonus->error("Error on Detach. Node %s (nodeType=%d) has not parent %s (nodeType=%d)",
 			nodeShortInfo(), static_cast<int>(nodeType), parent.nodeShortInfo(), static_cast<int>(parent.nodeType));
@@ -243,7 +243,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode & parent)
 	{
 		if(vstd::contains(parent.children, this))
 			parent.children -= this;
-		else
+		else if (!IS_ML)
 		{
 			logBonus->error("Error on Detach. Node %s (nodeType=%d) is not a child of %s (nodeType=%d)",
 				nodeShortInfo(), static_cast<int>(nodeType), parent.nodeShortInfo(), static_cast<int>(parent.nodeType));
