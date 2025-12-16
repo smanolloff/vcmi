@@ -143,6 +143,6 @@
     "enemyAI" : "MMAI",
     "friendlyAI" : "StupidAI",
     "neutralAI" : "MMAI",
-    "playerAI" : "VCAI"
+    "playerAI" : "Nullkiller"
   }
 }
