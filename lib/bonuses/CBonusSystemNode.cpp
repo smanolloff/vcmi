@@ -269,7 +269,7 @@ void CBonusSystemNode::detachFromSource(const CBonusSystemNode & parent)
 	{
 		parentsToInherit -= &parent;
 	}
-	else
+	else if(!IS_ML)
 	{
 		logBonus->error("Error on Detach. Node %s (nodeType=%d) has not parent %s (nodeType=%d)",
 			nodeShortInfo(), static_cast<int>(nodeType), parent.nodeShortInfo(), static_cast<int>(parent.nodeType));
