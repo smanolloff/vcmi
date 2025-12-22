@@ -10,6 +10,7 @@
 
 #include "StdInc.h"
 
+#include "BAI/v14/global_stats.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "networkPacks/PacksForClientBattle.h"
 
@@ -553,7 +554,6 @@ void State::onBattleEnd(const BattleResult * br)
 void State::onBattleNewRound()
 {
 	++battleRound;
-	std::cout << "onBattleNewRound: " << battleRound << "\n";
 	gstats->setattr(GA::BATTLE_ROUND, battleRound);
 }
 };

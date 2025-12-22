@@ -136,6 +136,7 @@ void BAI::battleNewRound(const BattleID & bid)
 void BAI::battleStacksAttacked(const BattleID & bid, const std::vector<BattleStackAttacked> & bsa, bool ranged)
 {
 	Base::battleStacksAttacked(bid, bsa, ranged);
+	state->onBattleStacksAttacked(bsa);
 }
 
 void BAI::battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & bte)
