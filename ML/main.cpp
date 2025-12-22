@@ -25,7 +25,7 @@
 #include "ML/model_wrappers/path.h"
 #include "MLClient.h"
 
-#include "user_agents/agent-v13.h"
+#include "user_agents/agent-v14.h"
 
 
 namespace po = boost::program_options;
@@ -269,7 +269,7 @@ namespace ML {
         std::string rightModelFile = "";
 
         if (leftAi == AI_MMAI_USER) {
-            leftModel = new UserAgents::AgentV13(benchmark, interactive, autorender, false, recordings);
+            leftModel = new UserAgents::AgentV14(benchmark, interactive, autorender, false, recordings);
             // prevent double render if both models are MMAI_USER
             autorender = false;
         } else if (leftAi == AI_MMAI_MODEL) {
@@ -280,7 +280,7 @@ namespace ML {
         }
 
         if (rightAi == AI_MMAI_USER) {
-            rightModel = new UserAgents::AgentV13(benchmark, interactive, autorender, false, recordings);
+            rightModel = new UserAgents::AgentV14(benchmark, interactive, autorender, false, recordings);
         } else if (rightAi == AI_MMAI_MODEL) {
             // BAI will load the actual model based on leftModel->getName()
             rightModel = new ModelWrappers::Path(omap.at("right-model"));

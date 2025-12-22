@@ -17,26 +17,27 @@
 #include "mapObjects/CGTownInstance.h"
 #include "vcmi/spells/Caster.h"
 
-#include "BAI/v13/hex.h"
-#include "BAI/v13/hexactmask.h"
-#include "BAI/v13/render.h"
+#include "BAI/v14/hex.h"
+#include "BAI/v14/hexactmask.h"
+#include "BAI/v14/render.h"
 #include "common.h"
 
 #include <algorithm>
+#include <string>
 
-#include "schema/v13/constants.h"
-#include "schema/v13/types.h"
+#include "schema/v14/constants.h"
+#include "schema/v14/types.h"
 
-namespace MMAI::BAI::V13
+namespace MMAI::BAI::V14
 {
 
-namespace S13 = Schema::V13;
-using IHex = Schema::V13::IHex;
-using IStack = Schema::V13::IStack;
-using ISupplementaryData = Schema::V13::ISupplementaryData;
-using GA = Schema::V13::GlobalAttribute;
-using HA = Schema::V13::HexAttribute;
-using PA = Schema::V13::PlayerAttribute;
+namespace S14 = Schema::V14;
+using IHex = Schema::V14::IHex;
+using IStack = Schema::V14::IStack;
+using ISupplementaryData = Schema::V14::ISupplementaryData;
+using GA = Schema::V14::GlobalAttribute;
+using HA = Schema::V14::HexAttribute;
+using PA = Schema::V14::PlayerAttribute;
 using SA = StackAttribute;
 using SF1 = StackFlag1;
 using SF2 = StackFlag2;
@@ -80,6 +81,7 @@ namespace
 	struct Context
 	{
 		const CPlayerBattleCallback * battle{};
+		const State * state = nullptr;
 		std::vector<const CStack *> allstacks;
 		std::array<const CStack *, 7> l_CStacks{};
 		std::array<const CStack *, 7> r_CStacks{};
@@ -104,7 +106,7 @@ namespace
 	// Return (attr == N/A), but after performing some checks
 	bool isNA(int v, const CStack * stack, const std::string_view attrname)
 	{
-		if(v == S13::NULL_VALUE_UNENCODED)
+		if(v == S14::NULL_VALUE_UNENCODED)
 		{
 			expect(!stack, "%s: N/A but stack != nullptr", attrname);
 			return true;
@@ -136,7 +138,7 @@ namespace
 
 	void ensureStackNullOrMatch(HexAttribute a, const CStack * cstack, int have, auto wantfunc, const std::string_view attrname)
 	{
-		auto vmax = std::get<3>(S13::HEX_ENCODING.at(EI(a)));
+		auto vmax = std::get<3>(S14::HEX_ENCODING.at(EI(a)));
 		if(isNA(have, cstack, attrname))
 			return;
 		int want = wantfunc();
@@ -204,7 +206,7 @@ namespace
 		auto estacks = getAllStacksForSide(ctx, !EI(cstack->unitSide()));
 		const auto it = std::ranges::find_if( // NOLINT(readability-qualified-auto)
 			estacks,
-			[&nbh](const auto & stack)
+			[&nbh](const CStack * & stack)
 			{
 				return stack && stack->coversPos(nbh);
 			}
@@ -373,13 +375,13 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 	// XXX: good morale is NOT handled here for simplicity
 	//      See comments in Battlefield::GetQueue how to handle it.
 	auto tmp = std::vector<battle::Units>{};
-	battle->battleGetTurnOrder(tmp, S13::STACK_QUEUE_SIZE, 0);
+	battle->battleGetTurnOrder(tmp, S14::STACK_QUEUE_SIZE, 0);
 	auto queue = std::vector<const battle::Unit *>{};
 	for(auto & units : tmp)
 	{
 		for(auto & unit : units)
 		{
-			if(queue.size() < S13::STACK_QUEUE_SIZE)
+			if(queue.size() < S14::STACK_QUEUE_SIZE)
 				queue.push_back(unit);
 			else
 				break;
@@ -405,7 +407,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		if(fin.has_value())
 		{
 			// NONE means draw (no units on battlefield) -- our value will be null in this case
-			(fin == BattleSide::NONE) ? ensureValueMatch(gstats->getAttr(GA::BATTLE_WINNER), S13::NULL_VALUE_UNENCODED, "GA.BATTLE_WINNER (draw)")
+			(fin == BattleSide::NONE) ? ensureValueMatch(gstats->getAttr(GA::BATTLE_WINNER), S14::NULL_VALUE_UNENCODED, "GA.BATTLE_WINNER (draw)")
 									  : ensureValueMatch(gstats->getAttr(GA::BATTLE_WINNER), EI(fin.value()), "GA.BATTLE_WINNER");
 		}
 		else
@@ -414,7 +416,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 			// There seems to be no way to ask vcmi "which side retreated"
 		}
 
-		ensureValueMatch(gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER), S13::NULL_VALUE_UNENCODED, "GA.BATTLE_SIDE_ACTIVE_PLAYER");
+		ensureValueMatch(gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER), S14::NULL_VALUE_UNENCODED, "GA.BATTLE_SIDE_ACTIVE_PLAYER");
 		ensureValueMatch(gmask.test(EI(GlobalAction::WAIT)), false, "GA.ACTION_MASK[WAIT]");
 	}
 	else
@@ -422,7 +424,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		static_assert(EI(Side::LEFT) == EI(BattleSide::LEFT_SIDE));
 		static_assert(EI(Side::RIGHT) == EI(BattleSide::RIGHT_SIDE));
 		ASSERT(astack != nullptr, "not ended, but no astack either");
-		ensureValueMatch(gstats->getAttr(GA::BATTLE_WINNER), S13::NULL_VALUE_UNENCODED, "GA.BATTLE_WINNER (battle ongoing)");
+		ensureValueMatch(gstats->getAttr(GA::BATTLE_WINNER), S14::NULL_VALUE_UNENCODED, "GA.BATTLE_WINNER (battle ongoing)");
 		ensureValueMatch(gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER), EI(astack->unitSide()), "GA.BATTLE_SIDE_ACTIVE_PLAYER");
 		ensureValueMatch(gmask.test(EI(GlobalAction::WAIT)), !astack->waitedThisTurn, "GA.ACTION_MASK[WAIT]");
 	}
@@ -609,9 +611,9 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 
 					auto want = static_cast<int>(cstack->unitSlot());
 					if(want == SlotID::WAR_MACHINES_SLOT)
-						want = S13::STACK_SLOT_WARMACHINES;
+						want = S14::STACK_SLOT_WARMACHINES;
 					else if(want < 0 || want > 7)
-						want = S13::STACK_SLOT_SPECIAL;
+						want = S14::STACK_SLOT_SPECIAL;
 
 					ensureValueMatch(v, want, "HA.STACK_SLOT");
 				}
@@ -623,7 +625,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 						v,
 						[&cstack]
 						{
-							return std::round(S13::STACK_QTY_MAX * static_cast<float>(cstack->getCount()) / S13::STACK_QTY_MAX);
+							return std::round(S14::STACK_QTY_MAX * static_cast<float>(cstack->getCount()) / S14::STACK_QTY_MAX);
 						},
 						"HEX.STACK_QUANTITY"
 					);
@@ -731,9 +733,9 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 					if(ended || !cstack)
 						break;
 
-					auto qbits = std::bitset<S13::STACK_QUEUE_SIZE>(v);
+					auto qbits = std::bitset<S14::STACK_QUEUE_SIZE>(v);
 
-					for(int n = 0; n < S13::STACK_QUEUE_SIZE; ++n)
+					for(int n = 0; n < S14::STACK_QUEUE_SIZE; ++n)
 					{
 						int have = qbits.test(n);
 						int want = (queue.at(n) == cstack);
@@ -1052,7 +1054,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 		}
 	}
 
-	auto ended = gstats->getAttr(GA::BATTLE_WINNER) != S13::NULL_VALUE_UNENCODED;
+	auto ended = gstats->getAttr(GA::BATTLE_WINNER) != S14::NULL_VALUE_UNENCODED;
 
 	if(!astack && !ended)
 		logAi->error("could not find an active stack (battle has not ended).");
@@ -1210,7 +1212,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 			{
 				auto seen = seenstacks.find(stack) != seenstacks.end();
 				// MSVC mandates constexpr `n` here
-				constexpr int n = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS1)]);
+				constexpr int n = std::get<2>(S14::HEX_ENCODING[EI(HA::STACK_FLAGS1)]);
 				auto flags = std::bitset<n>(stack->getAttr(SA::FLAGS1));
 				sym = std::string(1, stack->getAlias());
 				col = stack->getAttr(SA::SIDE) ? bluecol : redcol;
@@ -1282,20 +1284,24 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 				value = boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::DMG_DEALT_NOW_ABS) % mystats->getAttr(PA::DMG_DEALT_ACC_ABS));
 				break;
 			case 4:
+				name = "Round";
+				value = std::to_string(gstats->getAttr(GA::BATTLE_ROUND));
+				break;
+			case 5:
 				name = "DMG received";
 				value =
 					boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::DMG_RECEIVED_NOW_ABS) % mystats->getAttr(PA::DMG_RECEIVED_ACC_ABS));
 				break;
-			case 5:
+			case 6:
 				name = "Value killed";
 				value =
 					boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::VALUE_KILLED_NOW_ABS) % mystats->getAttr(PA::VALUE_KILLED_ACC_ABS));
 				break;
-			case 6:
+			case 7:
 				name = "Value lost";
 				value = boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::VALUE_LOST_NOW_ABS) % mystats->getAttr(PA::VALUE_LOST_ACC_ABS));
 				break;
-			case 7:
+			case 8:
 			{
 				// XXX: if there's a draw, this text will be incorrect
 				auto restext = gstats->getAttr(GA::BATTLE_WINNER) ? (bluecol + "BLUE WINS") : (redcol + "RED WINS");
@@ -1304,19 +1310,19 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 				value = ended ? (restext + nocol) : "";
 			}
 			break;
-			case 8:
+			case 9:
 				name = "Army value (L)";
 				value = boost::str(
 					boost::format("%d (%.0f‰ of current BF value)") % lpstats->getAttr(PA::ARMY_VALUE_NOW_ABS) % lpstats->getAttr(PA::ARMY_VALUE_NOW_REL)
 				);
 				break;
-			case 9:
+			case 10:
 				name = "Army value (R)";
 				value = boost::str(
 					boost::format("%d (%.0f‰ of current BF value)") % rpstats->getAttr(PA::ARMY_VALUE_NOW_ABS) % rpstats->getAttr(PA::ARMY_VALUE_NOW_REL)
 				);
 				break;
-			case 10:
+			case 11:
 				name = "Current BF value";
 				value = boost::str(
 					boost::format("%d (%.0f‰ of starting BF value)") % gstats->getAttr(GA::BFIELD_VALUE_NOW_ABS) % gstats->getAttr(GA::BFIELD_VALUE_NOW_REL0)
@@ -1454,8 +1460,8 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 				std::string value;
 
 				// MSVC mandates constexpr `n` here
-				constexpr int n1 = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS1)]);
-				constexpr int n2 = std::get<2>(S13::HEX_ENCODING[EI(HA::STACK_FLAGS2)]);
+				constexpr int n1 = std::get<2>(S14::HEX_ENCODING[EI(HA::STACK_FLAGS1)]);
+				constexpr int n2 = std::get<2>(S14::HEX_ENCODING[EI(HA::STACK_FLAGS2)]);
 				auto flags1 = std::bitset<n1>(stack->getAttr(SA::FLAGS1));
 				auto flags2 = std::bitset<n2>(stack->getAttr(SA::FLAGS2));
 
@@ -1463,8 +1469,8 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 
 				if(a == SA::QUEUE)
 				{
-					auto qbits = std::bitset<S13::STACK_QUEUE_SIZE>(stack->getAttr(SA::QUEUE));
-					for(int n = 0; n < S13::STACK_QUEUE_SIZE; ++n)
+					auto qbits = std::bitset<S14::STACK_QUEUE_SIZE>(stack->getAttr(SA::QUEUE));
+					for(int n = 0; n < S14::STACK_QUEUE_SIZE; ++n)
 					{
 						if(qbits.test(n))
 						{

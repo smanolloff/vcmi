@@ -1,5 +1,5 @@
 /*
- * schema.h, part of VCMI engine
+ * render.h, part of VCMI engine
  *
  * Authors: listed in file AUTHORS in main folder
  *
@@ -10,14 +10,12 @@
 
 #pragma once
 
-/*
- * THIS FILE LIVES IN:
- *
- * vcmi/AI/MMAI/export/export.h
- *
- */
-
+#include "BAI/v14/action.h"
+#include "BAI/v14/state.h"
 #include "schema/base.h"
 
-#include "schema/v13/schema.h"
-#include "schema/v14/schema.h"
+namespace MMAI::BAI::V14
+{
+std::string Render(const Schema::IState * istate, const Action * action);
+void Verify(const State * state);
+}

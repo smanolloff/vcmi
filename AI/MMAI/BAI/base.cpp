@@ -16,6 +16,7 @@
 #include "vcmi/Environment.h"
 
 #include "BAI/v13/BAI.h"
+#include "BAI/v14/BAI.h"
 #include "base.h"
 
 namespace MMAI::BAI
@@ -29,6 +30,8 @@ Base::Create(Schema::IModel * model, const std::shared_ptr<Environment> & env, c
 
 	if(version == 13)
 		res = std::make_shared<V13::BAI>(model, version, env, cb);
+	if(version == 14)
+		res = std::make_shared<V14::BAI>(model, version, env, cb);
 	else
 		throw std::runtime_error("Unsupported schema version: " + std::to_string(version));
 
