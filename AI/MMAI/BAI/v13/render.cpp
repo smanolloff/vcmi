@@ -204,9 +204,9 @@ namespace
 		auto estacks = getAllStacksForSide(ctx, !EI(cstack->unitSide()));
 		const auto it = std::ranges::find_if( // NOLINT(readability-qualified-auto)
 			estacks,
-			[&nbh](const auto & stack)
+			[&nbh](const auto & estack)
 			{
-				return stack && stack->coversPos(nbh);
+				return estack && estack->coversPos(nbh);
 			}
 		);
 
