@@ -10,11 +10,11 @@
 
 #include "StdInc.h"
 
-#include "BAI/model/util/bucketing.h"
-#include "BAI/model/util/common.h"
-#include "BAI/model/util/sampling.h"
+#include "BAI/v13/hexaction.h"
 #include "NNModel.h"
 #include "filesystem/Filesystem.h"
+#include "schema/base.h"
+#include "schema/v13/constants.h"
 #include "vstd/CLoggerBase.h"
 #include "json/JsonNode.h"
 
@@ -27,6 +27,98 @@ namespace MMAI::BAI
 
 namespace
 {
+	constexpr int LT_COUNT = EI(MMAI::Schema::V13::LinkType::_count);
+
+	template<class... Args>
+	[[noreturn]] inline void throwf(const std::string & fmt, Args &&... args)
+	{
+		boost::format f("NNModel: " + fmt);
+		(void)std::initializer_list<int>{((f % std::forward<Args>(args)), 0)...};
+		throw std::runtime_error(f.str());
+	}
+
+	template<typename T>
+	void assertValidTensor(const std::string & name, const Ort::Value & tensor, int ndim)
+	{
+		auto type_info = tensor.GetTensorTypeAndShapeInfo();
+		auto shape = type_info.GetShape();
+		auto dtype = type_info.GetElementType();
+
+		if(shape.size() != ndim)
+			throwf("assertValidTensor: %s: bad ndim: want: %d, have: %d", name, ndim, shape.size());
+
+		if constexpr(std::is_same_v<T, float>)
+		{
+			if(dtype != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+				throwf("assertValidTensor: %s: bad dtype: want: %d, have: %d", name, EI(ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT), EI(dtype));
+		}
+		else if constexpr(std::is_same_v<T, int>)
+		{
+			if(dtype != ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
+				throwf("assertValidTensor: %s: bad dtype: want: %d, have: %d", name, EI(ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32), EI(dtype));
+		}
+		else if constexpr(std::is_same_v<T, int64_t>)
+		{
+			if(dtype != ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
+				throwf("assertValidTensor: %s: bad dtype: want: %d, have: %d", name, EI(ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64), EI(dtype));
+		}
+		else if constexpr(std::is_same_v<T, bool>)
+		{
+			if(dtype != ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL)
+				throwf("assertValidTensor: %s: bad dtype: want: %d, have: %d", name, EI(ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL), EI(dtype));
+		}
+		else
+		{
+			throwf("assertValidTensor: %s: can only work with bool, int and float", name);
+		}
+	}
+
+	template<typename T>
+	std::vector<T> toVec1D(const std::string & name, const Ort::Value & tensor, int numel)
+	{
+		assertValidTensor<T>(name, tensor, 1);
+
+		auto type_info = tensor.GetTensorTypeAndShapeInfo();
+		auto shape = type_info.GetShape();
+
+		if(shape.at(0) != numel)
+			throwf("toVec1D: %s: bad numel: want: %d, have: %d", name, numel, shape.at(0));
+
+		const T * data = tensor.GetTensorData<T>();
+
+		auto res = std::vector<T>{};
+		res.reserve(numel);
+		res.assign(data, data + numel); // v now owns a copy
+		return res;
+	}
+
+	template<typename T>
+	Vec2D<T> toVec2D(const std::string & name, const Ort::Value & tensor, const std::pair<int64_t, int64_t> & dims)
+	{
+		assertValidTensor<T>(name, tensor, 2);
+
+		const auto & [d0, d1] = dims;
+		auto type_info = tensor.GetTensorTypeAndShapeInfo();
+		auto shape = type_info.GetShape();
+
+		if(shape.at(0) != d0)
+			throwf("toVec2D: %s: bad dim0: want: %d, have: %d", name, d0, shape.at(0));
+		if(shape.at(1) != d1)
+			throwf("toVec2D: %s: bad dim1: want: %d, have: %d", name, d1, shape.at(1));
+
+		const T * data = tensor.GetTensorData<T>();
+
+		auto res = Vec2D<T>{};
+		res.resize(static_cast<size_t>(d0));
+		for(auto i = 0; i < d0; ++i)
+		{
+			auto & row = res[i];
+			row.resize(d1);
+			std::memcpy(row.data(), data + i * d1, static_cast<size_t>(d1) * sizeof(T));
+		}
+		return res;
+	}
+
 	struct ScopedTimer
 	{
 		std::string name;
@@ -44,29 +136,87 @@ namespace
 		}
 	};
 
-	std::array<std::vector<int32_t>, 165> buildNeighbourhoods_unpadded(const std::vector<int64_t> & dst)
+	struct Sample
 	{
-		// Validate and count degrees per node
-		std::array<int, 165> deg{};
-		for(auto e : dst)
+		int index;
+		double confidence;
+		double prob; // original (non-tempered) probability
+	};
+
+	std::pair<Sample, Sample> categorical(const std::vector<float> & probs, float temperature, std::mt19937 & rng)
+	{
+		auto sample = Sample{};
+		auto greedy = Sample{};
+
+		if(temperature < 0.0f)
+			throwf("sample: negative temperature");
+
+		// Greedy sample: argmax, first tie.
 		{
-			auto v = static_cast<int>(e);
-			if(v < 0 || v >= 165)
-				throwf("dst contains node id out of range: %d", v);
-			++deg[v];
+			int best = 0;
+			for(int i = 0; i < probs.size(); ++i)
+				if(probs[i] > probs[best])
+					best = i; // '>' keeps the first tie
+
+			greedy.index = best;
+			greedy.prob = probs[best];
+			greedy.confidence = 1.0f;
 		}
 
-		std::array<std::vector<int32_t>, 165> res{};
-		for(int v = 0; v < 165; ++v)
-			res[v].reserve(deg[v]);
-		for(size_t e = 0; e < dst.size(); ++e)
+		if(temperature < 1e-5)
+			return {greedy, greedy};
+
+		// Stochastic sample (only if temperature > 0)
+		// Sample with weights w_i = exp(log(p_i)/T), and return original probs[idx].
+		std::vector<double> logw(probs.size(), -std::numeric_limits<double>::infinity());
+		double max_logw = -std::numeric_limits<double>::infinity();
+		bool valid = false;
+
+		for(std::size_t i = 0; i < probs.size(); ++i)
 		{
-			auto v = static_cast<int>(dst[e]);
-			res[v].push_back(static_cast<int32_t>(e));
+			float p = probs[i];
+			if(p < 0.0f)
+				throwf("sample: negative probabilities");
+
+			if(p > 0.0f)
+			{
+				valid = true;
+				double lw = std::log(p) / temperature;
+				logw[i] = lw;
+				max_logw = std::max(lw, max_logw);
+			}
 		}
 
-		return res;
+		if(!valid)
+			throwf("sample: all probabilities are 0");
+
+		std::vector<double> weights(probs.size(), 0.0);
+		double wsum = 0.0;
+
+		for(std::size_t i = 0; i < probs.size(); ++i)
+		{
+			if(std::isfinite(logw[i]))
+			{
+				// shift by max for numerical stability
+				double wi = std::exp(logw[i] - max_logw);
+				weights[i] = wi;
+				wsum += wi;
+			}
+		}
+
+		if(wsum <= 0.0)
+			throwf("sample: negative weight sum: %f", wsum);
+
+		std::discrete_distribution<int> dist(weights.begin(), weights.end());
+		int idx = dist(rng);
+
+		sample.index = idx;
+		sample.prob = probs[idx];
+		sample.confidence = weights[idx] / wsum;
+
+		return {sample, greedy};
 	}
+
 }
 
 std::unique_ptr<Ort::Session> NNModel::loadModel(const std::string & path, const Ort::SessionOptions & opts)
@@ -141,92 +291,6 @@ Schema::Side NNModel::readSide(const Ort::ModelMetadata & md) const
 	return res;
 }
 
-Vec3D<int32_t> NNModel::readBucketSizes(const Ort::ModelMetadata & md) const
-{
-	/*
-	 * all_sizes
-	 *   dtype=int
-	 *   shape=[5, 7, 2]:
-	 *     d1: bucket size (S, M, L, XL, XXL)
-	 *     d2: edge type (see Schema::V13::LinkType enum)
-	 *     d3: pairs of [Emax, Kmax]:
-	 *      Emax = max number of outbound node edges
-	 *      Kmax = max number of inbound node edges
-	 *
-	 * Stats (10K steps):
-	 *
-	 *   Outbound edges (E)   avg   max   p99   p90   p75   p50   p25
-	 * -----------------------------------------------------------------
-	 *             ADJACENT   888   888   888   888   888   888   888
-	 *                REACH   355   988   820   614   478   329   209
-	 *           RANGED_MOD   408   2403  1285  646   483   322   162
-	 *          ACTS_BEFORE   51    268   203   118   75    35    15
-	 *        MELEE_DMG_REL   43    198   160   103   60    31    14
-	 *        RETAL_DMG_REL   27    165   113   67    38    18    8
-	 *       RANGED_DMG_REL   12    133   60    29    18    9     4
-	 *
-	 *    Inbound edges (K)   avg   max   p99   p90   p75   p50   p25
-	 * -----------------------------------------------------------------
-	 *             ADJACENT   5.4   6     6     6     6     6     6
-	 *                REACH   2.2   13    10    8     6     4     3
-	 *           RANGED_MOD   2.5   15    8     4     3     2     1
-	 *          ACTS_BEFORE   0.3   23    19    15    12    8     5
-	 *        MELEE_DMG_REL   0.3   10    9     8     7     5     3
-	 *        RETAL_DMG_REL   0.2   10    9     8     6     5     3
-	 *       RANGED_DMG_REL   0.1   8     6     3     2     2     1
-	 *
-	 * Approx. sizes are S=p50 / M=p90 / L=p99 / XL=max / XXL=2*max
-	 * Exact values defined in the vcmi-gym project and are subject to change.
-	 * NOTE: bucketed inputs are deprecated and will soon be removed.
-	 *
-	 */
-
-	Vec3D<int32_t> res = {};
-	Ort::AllocatedStringPtr ab = md.LookupCustomMetadataMapAllocated("all_sizes", allocator);
-	if(!ab)
-		throw std::runtime_error("metadata key 'all_sizes' missing");
-	const std::string jsonstr(ab.get());
-	try
-	{
-		auto jn = JsonNode(jsonstr.data(), jsonstr.size(), "<ONNX metadata: all_sizes>");
-
-		if(!jn.isVector())
-			throwf("readBucketSizes: bad JsonType: want: %d, have: %d", EI(JsonNode::JsonType::DATA_VECTOR), EI(jn.getType()));
-
-		for(auto & jv0 : jn.Vector())
-		{
-			auto vec1 = std::vector<std::vector<int32_t>>{};
-			for(auto & jv1 : jv0.Vector())
-			{
-				auto vec2 = std::vector<int32_t>{};
-				for(auto & jv2 : jv1.Vector())
-				{
-					if(!jv2.isNumber())
-					{
-						throwf("readBucketSizes: invalid data type: want: %d, got: %d", EI(JsonNode::JsonType::DATA_INTEGER), EI(jv2.getType()));
-					}
-					vec2.push_back(static_cast<int32_t>(jv2.Integer()));
-				}
-				vec1.emplace_back(vec2);
-			}
-			res.emplace_back(vec1);
-		}
-	}
-	catch(const std::exception & e)
-	{
-		throw std::runtime_error(std::string("readBucketSizes: failed to parse JSON: ") + e.what());
-	}
-
-	if(res.size() != 5)
-		throwf("readBucketSizes: bad size for d1: want: 5, have: %zu", res.size());
-	if(res[0].size() != 7)
-		throwf("readBucketSizes: bad size for d2: want: 7, have: %zu", res[0].size());
-	if(res[0][0].size() != 2)
-		throwf("readBucketSizes: bad size for d3: want: 2, have: %zu", res[0][0].size());
-
-	return res;
-}
-
 Vec3D<int32_t> NNModel::readActionTable(const Ort::ModelMetadata & md) const
 {
 	/*
@@ -283,21 +347,7 @@ Vec3D<int32_t> NNModel::readActionTable(const Ort::ModelMetadata & md) const
 	return res;
 }
 
-bool NNModel::readIsDynamic(const Ort::ModelMetadata & md) const
-{
-	/*
-	 * is_dynamic
-	 *   dtype=int
-	 *   shape=scalar
-	 *
-	 * Might not be present on older models (return false in this case).
-	 */
-
-	Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("is_dynamic", allocator);
-	return v && std::string(v.get()) == "1";
-}
-
-std::vector<const char *> NNModel::readInputNames(int want)
+std::vector<const char *> NNModel::readInputNames()
 {
 	/*
 	 * Model inputs (4):
@@ -309,18 +359,15 @@ std::vector<const char *> NNModel::readInputNames(int want)
 	 *        shape=[2, E*] where E is the number of edges
 	 * 	 [2] edge attributes
 	 *        dtype=float
-	 *        shape=[E*, 1] where E
-	 * 	 [3] node neighbourhoods
+	 *        shape=[E*, 1]
+	 * 	 [3] lengths
 	 *        dtype=int
-	 *        shape=[165, K*] where K is the max number of inbound edges per hex
-	 * 	 [4] size
-	 *        dtype=int
-	 *        shape=[7, 2]
+	 *        shape=[LT_COUNT]
 	 */
 	std::vector<const char *> res;
 	auto count = model->GetInputCount();
-	if(count != want)
-		throwf("wrong input count: want: %d, have: %lld", want, count);
+	if(count != 4)
+		throwf("wrong input count: want: %d, have: %lld", 4, count);
 
 	inputNamePtrs.reserve(count);
 	res.reserve(count);
@@ -336,45 +383,30 @@ std::vector<const char *> NNModel::readInputNames(int want)
 std::vector<const char *> NNModel::readOutputNames()
 {
 	/*
-	 * Model outputs (10):
-     *   [0] greedy action
-	 *        dtype=int
-	 *        shape=[1]
-     *   [1] main action logits (see readActionTable, d0)
-	 *        dtype=float
-	 *        shape=[4]
-     *   [2] hex#1 logits (see readActionTable, d1)
-	 *        dtype=float
-	 *        shape=[165]
-     *   [3] hex#2 logits (see readActionTable, d2)
-	 *        dtype=float
-	 *        shape=[165]
-     *   [4] main action mask
-	 *        dtype=int
-	 *        shape=[4]
-     *   [5] hex#1 mask
-	 *        dtype=int
-	 *        shape=[165]
-     *   [6] hex#2 mask
-	 *        dtype=int
-	 *        shape=[165]
-     *   [7] greedy main action
-	 *        dtype=int
-	 *        shape=[1]
-     *   [8] greedy hex1
-	 *        dtype=int
-	 *        shape=[1]
-     *   [9] greedy hex2
-	 *        dtype=int
-	 *        shape=[1]
-	 *
-	 * The greedy output values are unused since their stochastic counterparts
-	 * are sampled here instead (see sampling::sample_triplet).
+	 * Model outputs (6):
+     *   [0] main action logits (see readActionTable, d0)
+     *        dtype=float
+     *        shape=[4]
+     *   [1] hex#1 logits (see readActionTable, d1)
+     *        dtype=float
+     *        shape=[165]
+     *   [2] hex#2 logits (see readActionTable, d2)
+     *        dtype=float
+     *        shape=[165]
+     *   [3] main action mask
+     *        dtype=int
+     *        shape=[4]
+     *   [4] hex#1 mask
+     *        dtype=int
+     *        shape=[165]
+     *   [5] hex#2 mask
+     *        dtype=int
+     *        shape=[165]
 	 */
 	std::vector<const char *> res;
 	auto count = model->GetOutputCount();
-	if(count != 10)
-		throwf("wrong output count: want: %d, have: %lld", count, count);
+	if(count != 6)
+		throwf("wrong output count: want: %d, have: %lld", 6, count);
 
 	outputNamePtrs.reserve(count);
 	res.reserve(count);
@@ -388,19 +420,8 @@ std::vector<const char *> NNModel::readOutputNames()
 	return res;
 }
 
-/*
- * XXX:
- * hex1_logits and hex2_logits are based on a greedy act0.
- * However, if temp > 0 and a non-greedy act0 is chosen,
- * the hex logits become inconsistent with the chosen action.
- * As a temporary workaround, force greedy actions with temperature = 0.
- * Proper fix would require:
- * 1) re-exporting the model, changing its output dimensions to
- *    [4, 165] and [4, 165, 165] for hex1_logits and hex2_logits respectively
- * 2) changing the logic here to pick the proper hex logits after sampling
- */
-NNModel::NNModel(const std::string & path, float _temperature, uint64_t seed)
-	: path(path), temperature(0), meminfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
+NNModel::NNModel(const std::string & path, float temperature, uint64_t seed)
+	: path(path), temperature(temperature), meminfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
 {
 	logAi->info("MMAI: NNModel params: seed=%1%, temperature=%2%, model=%3%", seed, temperature, path);
 
@@ -413,8 +434,22 @@ NNModel::NNModel(const std::string & path, float _temperature, uint64_t seed)
 	rng = std::mt19937(seed);
 
 	auto opts = Ort::SessionOptions();
-	opts.SetIntraOpNumThreads(4);
-	opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
+
+	/*
+	 * IMPORTANT:
+	 * There seems to be an UB in the model unless either of the below is set:
+	 *	a) GraphOptimizationLevel::ORT_DISABLE_ALL
+	 * 	b) DisableMemPattern
+	 *
+	 * Mem pattern does not impact performance => disable.
+	 * Graph optimization causes < 15% speedup => not worth the risk, disable.
+	 *
+	 */
+	opts.DisableMemPattern();
+	opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+	opts.SetExecutionMode(ORT_SEQUENTIAL); // ORT_SEQUENTIAL = no inter-op parallelism
+	opts.SetIntraOpNumThreads(1); // Inter-op threads matter in ORT_PARALLEL
+	opts.SetIntraOpNumThreads(4); // Parallelism inside kernels/operators
 
 	model = loadModel(path, opts);
 
@@ -422,12 +457,10 @@ NNModel::NNModel(const std::string & path, float _temperature, uint64_t seed)
 	version = readVersion(md);
 	side = readSide(md);
 	actionTable = readActionTable(md);
-	bucketSizes = readBucketSizes(md);
-	isDynamic = readIsDynamic(md);
-	inputNames = readInputNames(isDynamic ? 5 : 4);
+	inputNames = readInputNames();
 	outputNames = readOutputNames();
 
-	logAi->info("MMAI version %d initialized on side=%d (dynamic=%d)", version, EI(side), isDynamic);
+	logAi->info("MMAI version %d initialized on side=%d", version, EI(side));
 }
 
 Schema::ModelType NNModel::getType()
@@ -475,35 +508,74 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	auto inputs = prepareInputsV13(s, sup);
 	auto outputs = model->Run(Ort::RunOptions(), inputNames.data(), inputs.data(), inputs.size(), outputNames.data(), outputNames.size());
 
-	if(outputs.size() != 10)
-		throwf("getAction: bad output size: want: 10, have: %d", outputs.size());
+	if(outputs.size() != 6)
+		throwf("getAction: bad output size: want: 6, have: %d", outputs.size());
 
-	// Deterministic (greedy) action
-	auto action = toVector<int32_t>("getAction: t_action", outputs[0], 1).at(0);
+	const auto act0_probs = toVec1D<float>("act0_probs", outputs[0], 4); // WAIT, MOVE, AMOVE, SHOOT
+	const auto hex1_probs = toVec2D<float>("hex1_probs", outputs[1], {4, 165});
+	const auto hex2_probs = toVec2D<float>("hex2_probs", outputs[2], {165, 165});
+	const auto act0_mask = toVec1D<int>("act0_mask", outputs[3], 4); // WAIT, MOVE, AMOVE, SHOOT
+	const auto hex1_mask = toVec2D<int>("hex1_mask", outputs[4], {4, 165});
+	const auto hex2_mask = toVec2D<int>("hex2_mask", outputs[5], {165, 165});
 
-	timer.name = "MMAI action: " + std::to_string(action);
+	const auto [act0_sample, act0_greedy] = categorical(act0_probs, temperature, rng);
+	const auto [hex1_sample, hex1_greedy] = categorical(hex1_probs.at(act0_sample.index), temperature, rng);
+	const auto [hex2_sample, hex2_greedy] = categorical(hex2_probs.at(hex1_sample.index), temperature, rng);
 
-	// Stochastic action (used instead of the greedy action if temperature > 0)
-	if(temperature > 1e-8)
+	if(act0_sample.prob == 0)
+		throwf("getAction: act0_sample has 0 probability");
+	else if(act0_mask.at(act0_sample.index) == 0)
+		throwf("getAction: act0_sample is masked out");
+
+	// Hex1 is always needed if act0 != 0 (WAIT)
+	if(act0_sample.index > 0)
 	{
-		auto sample = sampling::sample_triplet(
-			MaskedLogits{.logits = outputs[1], .mask = outputs[4]}, // act0 [4]
-			MaskedLogits{.logits = outputs[2], .mask = outputs[5]}, // hex1 [165]
-			MaskedLogits{.logits = outputs[3], .mask = outputs[6]}, // hex2 [165]
-			temperature,
-			rng
-		);
-
-		auto s_action = actionTable.at(sample.act0).at(sample.hex1).at(sample.hex2);
-
-		if(s_action != action)
-			logAi->debug("Sampled a non-greedy action: %d with confidence=%.2f", s_action, sample.confidence);
-
-		timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f)") % s_action % sample.confidence);
-		action = s_action;
+		if(hex1_sample.prob == 0)
+			throwf("getAction: hex1_sample has 0 probability");
+		else if(hex1_mask.at(act0_sample.index).at(hex1_sample.index) == 0)
+			throwf("getAction: hex1_sample is masked out");
 	}
 
-	return static_cast<MMAI::Schema::Action>(action);
+	// Hex2 is only needed if act0 == 2 (AMOVE)
+	if(act0_sample.index == 2)
+	{
+		if(hex2_sample.prob == 0)
+			throwf("getAction: hex2_sample has 0 probability");
+		else if(hex2_mask.at(hex1_sample.index).at(hex2_sample.index) == 0)
+			throwf("getAction: hex2_sample is masked out");
+	}
+
+	const auto & saction = actionTable.at(act0_sample.index).at(hex1_sample.index).at(hex2_sample.index);
+	const auto & gaction = actionTable.at(act0_greedy.index).at(hex1_greedy.index).at(hex2_greedy.index);
+
+	const auto & mask = s->getActionMask();
+	if(!mask->at(saction))
+		throwf("getAction: sampled action is masked"); // Incorrect mask?
+
+	auto sconf = act0_sample.confidence * hex1_sample.confidence * hex2_sample.confidence;
+	auto sprob = act0_sample.prob * hex1_sample.prob * hex2_sample.prob;
+
+	auto gconf = act0_greedy.confidence * hex1_greedy.confidence * hex2_greedy.confidence;
+	auto gprob = act0_greedy.prob * hex1_greedy.prob * hex2_greedy.prob;
+
+	auto fmt = boost::format("MMAI %s: %d (prob=%.2f conf=%.2f). Detail: [%d %d %d] (prob=[%.2f %.2f %.2f] conf=[%.2f %.2f %.2f])");
+
+	logAi->debug(
+		boost::str(
+			fmt % "greedy" % gaction % gprob % gconf % act0_greedy.index % hex1_greedy.index % hex2_greedy.index % act0_greedy.prob % hex1_greedy.prob
+			% hex2_greedy.prob % act0_greedy.confidence % hex1_greedy.confidence % hex2_greedy.confidence
+		)
+	);
+
+	logAi->debug(
+		boost::str(
+			fmt % "sample" % saction % sprob % sconf % act0_sample.index % hex1_sample.index % hex2_sample.index % act0_sample.prob % hex1_sample.prob
+			% hex2_sample.prob % act0_sample.confidence % hex1_sample.confidence % hex2_sample.confidence
+		)
+	);
+
+	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f)") % saction % sconf);
+	return saction;
 };
 
 double NNModel::getValue(const MMAI::Schema::IState * s)
@@ -515,23 +587,27 @@ double NNModel::getValue(const MMAI::Schema::IState * s)
 
 std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup)
 {
-	auto containers = std::array<IndexContainer, LT_COUNT>{};
+	auto lengths = std::vector<int>{};
+	lengths.reserve(LT_COUNT);
 
-	int count = 0;
+	auto ei_flat_src = std::vector<int>{};
+	auto ei_flat_dst = std::vector<int>{};
+	auto ea_flat = std::vector<float>{};
+
+	std::ostringstream oss;
+	int i = 0;
 
 	for(const auto & [type, links] : sup->getAllLinks())
 	{
 		// assert order
-		if(EI(type) != count)
-			throwf("unexpected link type: want: %d, have: %d", count, EI(type));
+		if(EI(type) != i)
+			throwf("unexpected link type: want: %d, have: %d", i, EI(type));
 
-		auto & c = containers.at(count);
+		const auto & srcinds = links->getSrcIndex();
+		const auto & dstinds = links->getDstIndex();
+		const auto & attrs = links->getAttributes();
 
-		const auto srcinds = links->getSrcIndex();
-		const auto dstinds = links->getDstIndex();
-		const auto attrs = links->getAttributes();
-
-		auto nlinks = srcinds.size();
+		const auto nlinks = srcinds.size();
 
 		if(dstinds.size() != nlinks)
 			throwf("unexpected dstinds.size() for LinkType(%d): want: %d, have: %d", EI(type), nlinks, dstinds.size());
@@ -539,73 +615,38 @@ std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s
 		if(attrs.size() != nlinks)
 			throwf("unexpected attrs.size() for LinkType(%d): want: %d, have: %d", EI(type), nlinks, attrs.size());
 
-		c.edgeIndex.at(0).reserve(nlinks);
-		c.edgeIndex.at(1).reserve(nlinks);
-		c.edgeIndex.at(0).insert(c.edgeIndex.at(0).end(), srcinds.begin(), srcinds.end());
-		c.edgeIndex.at(1).insert(c.edgeIndex.at(1).end(), dstinds.begin(), dstinds.end());
+		oss << nlinks << " ";
 
-		c.edgeAttrs.reserve(nlinks);
-		c.edgeAttrs.insert(c.edgeAttrs.end(), attrs.begin(), attrs.end());
+		lengths.push_back(static_cast<int>(nlinks));
 
-		c.neighbourhoods = buildNeighbourhoods_unpadded(dstinds);
-
-		++count;
+		ei_flat_src.insert(ei_flat_src.end(), srcinds.begin(), srcinds.end());
+		ei_flat_dst.insert(ei_flat_dst.end(), dstinds.begin(), dstinds.end());
+		ea_flat.insert(ea_flat.end(), attrs.begin(), attrs.end());
+		++i;
 	}
 
-	if(count != LT_COUNT)
-		throwf("unexpected links count: want: %d, have: %d", LT_COUNT, count);
+	if(i != LT_COUNT)
+		throwf("unexpected links count: want: %d, have: %d", LT_COUNT, i);
 
-	auto bdata = bucketing::BucketBuilder(containers, bucketSizes).build_bucket_data(isDynamic);
+	auto sum_e = ei_flat_src.size();
+	auto ei_flat = std::vector<int64_t>{};
+
+	ei_flat.reserve(2 * sum_e);
+	ei_flat.insert(ei_flat.end(), ei_flat_src.begin(), ei_flat_src.end());
+	ei_flat.insert(ei_flat.end(), ei_flat_dst.begin(), ei_flat_dst.end());
 
 	const auto * state = s->getBattlefieldState();
 	auto estate = std::vector<float>(state->size());
 	std::ranges::copy(*state, estate.begin());
 
-	int sum_e = bdata.edgeIndex_flat.at(0).size();
-	int sum_k = bdata.neighbourhoods_flat.at(0).size();
-
-	if(bdata.edgeIndex_flat.at(0).size() != sum_e)
-		throwf("unexpected bdata.edgeIndex_flat.at(0).size(): want: %d, have: %d", sum_e, bdata.edgeIndex_flat.at(0).size());
-	if(bdata.edgeIndex_flat.at(1).size() != sum_e)
-		throwf("unexpected bdata.edgeIndex_flat.at(1).size(): want: %d, have: %d", sum_e, bdata.edgeIndex_flat.at(1).size());
-	if(bdata.edgeAttrs_flat.size() != sum_e)
-		throwf("unexpected bdata.edgeAttrs_flat.size(): want: %d, have: %d", sum_e, bdata.edgeAttrs_flat.size());
-
-	for(int i = 0; i < 165; ++i)
-	{
-		if(bdata.neighbourhoods_flat.at(i).size() != sum_k)
-			throwf("unexpected bdata.neighbourhoods_flat.at(%d).size(): want: %d, have: %d", i, sum_k, bdata.neighbourhoods_flat.at(i).size());
-	}
-
-	auto edgeIndex_flat = std::vector<int32_t>{};
-	edgeIndex_flat.reserve(2 * sum_e);
-	for(auto & ei : bdata.edgeIndex_flat)
-		edgeIndex_flat.insert(edgeIndex_flat.end(), ei.begin(), ei.end());
-
-	auto neighbourhoods = std::vector<int32_t>{};
-	neighbourhoods.reserve(165 * sum_k);
-	for(auto & nbr : bdata.neighbourhoods_flat)
-		neighbourhoods.insert(neighbourhoods.end(), nbr.begin(), nbr.end());
-
 	auto tensors = std::vector<Ort::Value>{};
-	tensors.push_back(toTensor("state", estate, {static_cast<int64_t>(estate.size())}));
-	tensors.push_back(toTensor("edgeIndex_flat", edgeIndex_flat, {2, sum_e}));
-	tensors.push_back(toTensor("edgeAttrs_flat", bdata.edgeAttrs_flat, {sum_e, 1}));
-	tensors.push_back(toTensor("nbr_flat", neighbourhoods, {165, sum_k}));
+	tensors.push_back(toTensor("obs", estate, {static_cast<int64_t>(estate.size())}));
+	tensors.push_back(toTensor("ei_flat", ei_flat, {2, static_cast<int64_t>(sum_e)}));
+	tensors.push_back(toTensor("ea_flat", ea_flat, {static_cast<int64_t>(sum_e), 1}));
+	tensors.push_back(toTensor("lengths", lengths, {LT_COUNT}));
 
-	if(isDynamic)
-	{
-		auto size = std::vector<int64_t>{};
-		size.reserve(EI(LT_COUNT) * 2);
-		for(int i = 0; i < EI(LT_COUNT); ++i)
-		{
-			size.push_back(bdata.size.emax.at(i));
-			size.push_back(bdata.size.kmax.at(i));
-		}
-		tensors.push_back(toTensor("size", size, {EI(LT_COUNT), 2}));
-	}
-
-	logAi->debug("Model input shapes: state={%d} edgeIndex={2, %d} edgeAttrs={%d, 1} nbr={165, %d}", estate.size(), sum_e, sum_e, sum_k);
+	logAi->debug("Edge lengths: [ " + oss.str() + "]");
+	logAi->debug("Model input shapes: state={%d} edgeIndex={2, %d} edgeAttrs={%d, 1}", estate.size(), sum_e, sum_e);
 
 	return tensors;
 }

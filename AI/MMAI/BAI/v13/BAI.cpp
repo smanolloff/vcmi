@@ -21,6 +21,7 @@
 #include "BAI/v13/render.h"
 #include "BAI/v13/supplementary_data.h"
 #include "common.h"
+#include "schema/base.h"
 #include "schema/v13/types.h"
 
 #include "AI/BattleAI/BattleEvaluator.h"
@@ -385,6 +386,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		{
 			++errcounter;
 			error("Action is INVALID: " + state->action->name());
+
 			if(errcounter > 10)
 			{
 				warn("Got 10 consecutive errors, will fall back to BattleAI until this combat ends");
@@ -408,6 +410,11 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	auto & hex = bf->hexes->at(y).at(x);
 	std::shared_ptr<BattleAction> res = nullptr;
 
+	if(state->action->action == Schema::ACTION_ERROR)
+	{
+		error("ACTION_ERROR");
+		return nullptr;
+	}
 	if(!state->action->hex)
 	{
 		switch(static_cast<GlobalAction>(state->action->action))
@@ -421,7 +428,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 					ASSERT(!state->actmask.at(EI(GlobalAction::WAIT)), "mask allowed wait when stack has already waited");
 					state->supdata->errcode = ErrorCode::ALREADY_WAITED;
 					error("Action error: %s (%d): ALREADY_WAITED", action->name(), EI(action->action));
-					return res;
+					return nullptr;
 				}
 				res = std::make_shared<BattleAction>(BattleAction::makeWait(acstack));
 				break;
@@ -507,7 +514,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	handleUnexpectedAction(acstack, hex, action);
 	ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, acstack, nullptr));
 
-	return res;
+	return nullptr;
 }
 
 void BAI::handleUnexpectedAction(const CStack * acstack, std::unique_ptr<Hex> & hex, Action * action)
