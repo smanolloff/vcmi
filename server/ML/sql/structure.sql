@@ -2,7 +2,7 @@
 -- Query to create the `stats` table.
 --
 -- To run the query:
---  $ sqlite3 stats.db < structure.sql
+--  $ sqlite3 stats.db < server/ML/sql/structure.sql
 --
 BEGIN;
 CREATE TABLE stats (

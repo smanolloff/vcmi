@@ -9,7 +9,7 @@
 --  3: the side from which stats are collected (0 for left, 1 for right side)
 --
 -- To seed for 2 pools, 4 heroes per pool and side 0:
---  $ sed -e "s/--.*//" -e "1,/\?/s/\?/2/" -e "1,/\?/s/\?/4/" -e "1,/\?/s/\?/0/" seed.sql | sqlite3 stats.db
+--  $ sed -e "s/--.*//" -e "1,/\?/s/\?/2/" -e "1,/\?/s/\?/4/" -e "1,/\?/s/\?/0/" server/ML/sql/seed.sql | sqlite3 stats.db
 --
 BEGIN;
 
