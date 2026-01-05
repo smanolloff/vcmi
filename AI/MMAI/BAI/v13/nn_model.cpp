@@ -1,5 +1,5 @@
 /*
- * NNModelStochastic.cpp, part of VCMI engine
+ * nn_model.cpp, part of VCMI engine
  *
  * Authors: listed in file AUTHORS in main folder
  *
@@ -10,23 +10,30 @@
 
 #include "StdInc.h"
 
-#include "BAI/model/util/bucketing.h"
-#include "BAI/model/util/common.h"
-#include "BAI/model/util/sampling.h"
-#include "NNModelStochastic.h"
+#include "common.h"
 #include "filesystem/Filesystem.h"
+#include "nn_model.h"
+#include "schema/base.h"
 #include "vstd/CLoggerBase.h"
 #include "json/JsonNode.h"
 
-#include <algorithm>
-#include <onnxruntime_c_api.h>
 #include <onnxruntime_cxx_api.h>
 
-namespace MMAI::BAI
+namespace MMAI::BAI::V13
 {
 
 namespace
 {
+	constexpr int LT_COUNT = EI(MMAI::Schema::V13::LinkType::_count);
+
+	template<class... Args>
+	[[noreturn]] inline void throwf(const std::string & fmt, Args &&... args)
+	{
+		boost::format f("NNModel: " + fmt);
+		(void)std::initializer_list<int>{((f % std::forward<Args>(args)), 0)...};
+		throw std::runtime_error(f.str());
+	}
+
 	template<typename T>
 	void assertValidTensor(const std::string & name, const Ort::Value & tensor, int ndim)
 	{
@@ -109,6 +116,23 @@ namespace
 		return res;
 	}
 
+	struct ScopedTimer
+	{
+		std::string name;
+		std::chrono::steady_clock::time_point t0;
+		explicit ScopedTimer(const std::string & n) : name(n), t0(std::chrono::steady_clock::now()) {}
+
+		ScopedTimer(const ScopedTimer &) = delete;
+		ScopedTimer & operator=(const ScopedTimer &) = delete;
+		ScopedTimer(ScopedTimer &&) = delete;
+		ScopedTimer & operator=(ScopedTimer &&) = delete;
+		~ScopedTimer()
+		{
+			auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+			logAi->info("%s: %lld ms", name, dt);
+		}
+	};
+
 	struct Sample
 	{
 		int index;
@@ -190,81 +214,20 @@ namespace
 		return {sample, greedy};
 	}
 
-	struct ScopedTimer
-	{
-		std::string name;
-		std::chrono::steady_clock::time_point t0;
-		explicit ScopedTimer(const std::string & n) : name(n), t0(std::chrono::steady_clock::now()) {}
-
-		ScopedTimer(const ScopedTimer &) = delete;
-		ScopedTimer & operator=(const ScopedTimer &) = delete;
-		ScopedTimer(ScopedTimer &&) = delete;
-		ScopedTimer & operator=(ScopedTimer &&) = delete;
-		~ScopedTimer()
-		{
-			auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
-			logAi->info("%s: %lld ms", name, dt);
-		}
-	};
 }
 
-std::unique_ptr<Ort::Session> NNModelStochastic::loadModel(const std::string & path, const Ort::SessionOptions & opts)
-{
-	static const auto env = Ort::Env{ORT_LOGGING_LEVEL_WARNING, "vcmi"};
-	const auto rpath = ResourcePath(path, EResType::AI_MODEL);
-	const auto * rhandler = CResourceHandler::get();
-	if(!rhandler->existsResource(rpath))
-		throwf("resource does not exist: %s", rpath.getName());
-
-	const auto & [data, length] = rhandler->load(rpath)->readAll();
-	return std::make_unique<Ort::Session>(env, data.get(), length, opts);
-}
-
-int NNModelStochastic::readVersion(const Ort::ModelMetadata & md) const
+Schema::Side NNModel::readSide() const
 {
 	/*
-     * version
-     *   dtype=int
-     *   shape=scalar
-     *
-     * Version of the model (current implementation is at version 13).
-     * If needed, NNModel may be extended to support other versions as well.
-     *
-     */
-	int res = -1;
-
-	Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("version", allocator);
-	if(!v)
-		throwf("readVersion: no such key");
-
-	std::string vs(v.get());
-	try
-	{
-		res = std::stoi(vs);
-	}
-	catch(...)
-	{
-		throwf("readVersion: not an int: %s", vs);
-	}
-
-	if(res != 13)
-		throwf("readVersion: want: 13, have: %d (%s)", res, vs);
-
-	return res;
-}
-
-Schema::Side NNModelStochastic::readSide(const Ort::ModelMetadata & md) const
-{
-	/*
-     * side
-     *   dtype=int
-     *   shape=scalar
-     *
-     * Battlefield side the model was trained on (see Schema::Side enum).
-     *
-     */
+	 * side
+	 *   dtype=int
+	 *   shape=scalar
+	 *
+	 * Battlefield side the model was trained on (see Schema::Side enum).
+	 *
+	 */
 	Schema::Side res;
-	Ort::AllocatedStringPtr v = md.LookupCustomMetadataMapAllocated("side", allocator);
+	Ort::AllocatedStringPtr v = container->metadata.LookupCustomMetadataMapAllocated("side", container->allocator);
 	if(!v)
 		throw std::runtime_error("metadata error: side: no such key");
 	std::string vs(v.get());
@@ -280,20 +243,20 @@ Schema::Side NNModelStochastic::readSide(const Ort::ModelMetadata & md) const
 	return res;
 }
 
-Vec3D<int32_t> NNModelStochastic::readActionTable(const Ort::ModelMetadata & md) const
+Vec3D<int32_t> NNModel::readActionTable() const
 {
 	/*
-     * action_table
-     *   dtype=int
-     *   shape=[4, 165, 165]:
-     *     d1: action (WAIT, MOVE, AMOVE, SHOOT)
-     *     d2: target hex for MOVE, AMOVE (hex to move to) or SHOOT
-     *     d3: target hex for AMOVE (hex to melee-attack at after moving)
-     *
-     */
+	 * action_table
+	 *   dtype=int
+	 *   shape=[4, 165, 165]:
+	 *     d1: action (WAIT, MOVE, AMOVE, SHOOT)
+	 *     d2: target hex for MOVE, AMOVE (hex to move to) or SHOOT
+	 *     d3: target hex for AMOVE (hex to melee-attack at after moving)
+	 *
+	 */
 
 	Vec3D<int32_t> res = {};
-	Ort::AllocatedStringPtr ab = md.LookupCustomMetadataMapAllocated("action_table", allocator);
+	Ort::AllocatedStringPtr ab = container->metadata.LookupCustomMetadataMapAllocated("action_table", container->allocator);
 	if(!ab)
 		throwf("readActionTable: metadata key 'action_table' missing");
 	const std::string jsonstr(ab.get());
@@ -336,25 +299,25 @@ Vec3D<int32_t> NNModelStochastic::readActionTable(const Ort::ModelMetadata & md)
 	return res;
 }
 
-std::vector<const char *> NNModelStochastic::readInputNames()
+std::vector<const char *> NNModel::readInputNames()
 {
 	/*
-     * Model inputs (4):
-     *   [0] battlefield state
-     *        dtype=float
-     *        shape=[S] where S=Schema::V13::BATTLEFIELD_STATE_SIZE
-     *   [1] edge index
-     *        dtype=int32
-     *        shape=[2, E*] where E is the number of edges
-     *   [2] edge attributes
-     *        dtype=float
-     *        shape=[E*, 1]
-     *   [3] lengths
-     *        dtype=int
-     *        shape=[LT_COUNT]
-     */
+	 * Model inputs (4):
+	 *   [0] battlefield state
+	 *        dtype=float
+	 *        shape=[S] where S=Schema::V13::BATTLEFIELD_STATE_SIZE
+	 *   [1] edge index
+	 *        dtype=int32
+	 *        shape=[2, E*] where E is the number of edges
+	 *   [2] edge attributes
+	 *        dtype=float
+	 *        shape=[E*, 1]
+	 *   [3] lengths
+	 *        dtype=int
+	 *        shape=[LT_COUNT]
+	 */
 	std::vector<const char *> res;
-	auto count = model->GetInputCount();
+	auto count = container->session->GetInputCount();
 	if(count != 4)
 		throwf("wrong input count: want: %d, have: %lld", 4, count);
 
@@ -362,38 +325,38 @@ std::vector<const char *> NNModelStochastic::readInputNames()
 	res.reserve(count);
 	for(size_t i = 0; i < count; ++i)
 	{
-		inputNamePtrs.emplace_back(model->GetInputNameAllocated(i, allocator));
+		inputNamePtrs.emplace_back(container->session->GetInputNameAllocated(i, container->allocator));
 		res.push_back(inputNamePtrs.back().get());
 	}
 
 	return res;
 }
 
-std::vector<const char *> NNModelStochastic::readOutputNames()
+std::vector<const char *> NNModel::readOutputNames()
 {
 	/*
-     * Model outputs (6):
-     *   [0] main action probabilities (see readActionTable, d0)
-     *        dtype=float
-     *        shape=[4]
-     *   [1] hex#1 probabilities (see readActionTable, d1)
-     *        dtype=float
-     *        shape=[4, 165]
-     *   [2] hex#2 probabilities (see readActionTable, d2)
-     *        dtype=float
-     *        shape=[165, 165]
-     *   [3] main action mask
-     *        dtype=int
-     *        shape=[4]
-     *   [4] hex#1 mask
-     *        dtype=int
-     *        shape=[4, 165]
-     *   [5] hex#2 mask
-     *        dtype=int
-     *        shape=[165, 165]
-     */
+	 * Model outputs (6):
+	 *   [0] main action probabilities (see readActionTable, d0)
+	 *        dtype=float
+	 *        shape=[4]
+	 *   [1] hex#1 probabilities (see readActionTable, d1)
+	 *        dtype=float
+	 *        shape=[4, 165]
+	 *   [2] hex#2 probabilities (see readActionTable, d2)
+	 *        dtype=float
+	 *        shape=[165, 165]
+	 *   [3] main action mask
+	 *        dtype=int
+	 *        shape=[4]
+	 *   [4] hex#1 mask
+	 *        dtype=int
+	 *        shape=[4, 165]
+	 *   [5] hex#2 mask
+	 *        dtype=int
+	 *        shape=[165, 165]
+	 */
 	std::vector<const char *> res;
-	auto count = model->GetOutputCount();
+	auto count = container->session->GetOutputCount();
 	if(count != 6)
 		throwf("wrong output count: want: %d, have: %lld", 6, count);
 
@@ -402,72 +365,54 @@ std::vector<const char *> NNModelStochastic::readOutputNames()
 
 	for(size_t i = 0; i < count; ++i)
 	{
-		outputNamePtrs.emplace_back(model->GetOutputNameAllocated(i, allocator));
+		outputNamePtrs.emplace_back(container->session->GetOutputNameAllocated(i, container->allocator));
 		res.push_back(outputNamePtrs.back().get());
 	}
 
 	return res;
 }
 
-NNModelStochastic::NNModelStochastic(const std::string & path, float temperature, uint64_t seed)
-	: path(path), temperature(temperature), meminfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
+NNModel::NNModel(const std::shared_ptr<NNContainer> & container, float temperature, uint64_t seed) : container(container), temperature(temperature)
 {
-	logAi->info("MMAI: NNModel params: seed=%1%, temperature=%2%, model=%3%", seed, temperature, path);
+	NestedLogTag _("NN");
+	logAi->info("Params: seed=%1%, temperature=%2%", seed, temperature);
+
+	if(container->version != version)
+		throwf("Bad version: want: %d, have: %d", version, container->version);
 
 	rng = std::mt19937(seed);
-
-	/*
-     * IMPORTANT:
-     * There seems to be an UB in the model unless either (or both):
-     *  a) DisableMemPattern
-     *  b) GraphOptimizationLevel::ORT_DISABLE_ALL
-     *
-     * Mem pattern does not impact performance => disable.
-     * Graph optimization causes < 30% speedup => not worth the risk, disable.
-     *
-     */
-	auto opts = Ort::SessionOptions();
-	opts.DisableMemPattern();
-	opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
-	opts.SetExecutionMode(ORT_SEQUENTIAL); // ORT_SEQUENTIAL = no inter-op parallelism
-	opts.SetInterOpNumThreads(1); // Inter-op threads matter in ORT_PARALLEL
-	opts.SetIntraOpNumThreads(4); // Parallelism inside kernels/operators
-
-	model = loadModel(path, opts);
-
-	auto md = model->GetModelMetadata();
-	version = readVersion(md);
-	side = readSide(md);
-	actionTable = readActionTable(md);
+	side = readSide();
+	actionTable = readActionTable();
 	inputNames = readInputNames();
 	outputNames = readOutputNames();
 
-	logAi->info("MMAI: version %d initialized on side=%d (stochastic=1)", version, EI(side));
+	logAi->info("MMAI version %d initialized on side=%d", version, EI(side));
 }
 
-Schema::ModelType NNModelStochastic::getType()
+Schema::ModelType NNModel::getType()
 {
 	return Schema::ModelType::NN;
 };
 
-std::string NNModelStochastic::getName()
+std::string NNModel::getName()
 {
 	return "MMAI_MODEL";
 };
 
-int NNModelStochastic::getVersion()
+int NNModel::getVersion()
 {
 	return version;
 };
 
-Schema::Side NNModelStochastic::getSide()
+Schema::Side NNModel::getSide()
 {
 	return side;
 };
 
-int NNModelStochastic::getAction(const MMAI::Schema::IState * s)
+int NNModel::getAction(const MMAI::Schema::IState * s)
 {
-	auto timer = ScopedTimer("getAction");
+	NestedLogTag _("getAction");
+	auto timer = ScopedTimer("call");
 	auto any = s->getSupplementaryData();
 
 	if(s->version() != version)
@@ -488,7 +433,7 @@ int NNModelStochastic::getAction(const MMAI::Schema::IState * s)
 	}
 
 	auto inputs = prepareInputsV13(s, sup);
-	auto outputs = model->Run(Ort::RunOptions(), inputNames.data(), inputs.data(), inputs.size(), outputNames.data(), outputNames.size());
+	auto outputs = container->session->Run(Ort::RunOptions(), inputNames.data(), inputs.data(), inputs.size(), outputNames.data(), outputNames.size());
 
 	if(outputs.size() != 6)
 		throwf("getAction: bad output size: want: 6, have: %d", outputs.size());
@@ -544,14 +489,14 @@ int NNModelStochastic::getAction(const MMAI::Schema::IState * s)
 
 	logAi->debug(
 		boost::str(
-			fmt % "MMAI (greedy)" % gaction % gprob % gconf % act0_greedy.index % hex1_greedy.index % hex2_greedy.index % act0_greedy.prob % hex1_greedy.prob
+			fmt % "greedy" % gaction % gprob % gconf % act0_greedy.index % hex1_greedy.index % hex2_greedy.index % act0_greedy.prob % hex1_greedy.prob
 			% hex2_greedy.prob % act0_greedy.confidence % hex1_greedy.confidence % hex2_greedy.confidence
 		)
 	);
 
 	logAi->debug(
 		boost::str(
-			fmt % "MMAI (sample)" % saction % sprob % sconf % act0_sample.index % hex1_sample.index % hex2_sample.index % act0_sample.prob % hex1_sample.prob
+			fmt % "sample" % saction % sprob % sconf % act0_sample.index % hex1_sample.index % hex2_sample.index % act0_sample.prob % hex1_sample.prob
 			% hex2_sample.prob % act0_sample.confidence % hex1_sample.confidence % hex2_sample.confidence
 		)
 	);
@@ -560,15 +505,16 @@ int NNModelStochastic::getAction(const MMAI::Schema::IState * s)
 	return saction;
 };
 
-double NNModelStochastic::getValue(const MMAI::Schema::IState * s)
+double NNModel::getValue(const MMAI::Schema::IState * s)
 {
 	// This quantifies how good is the current state as perceived by the model
 	// (not used, not implemented)
 	return 0;
 }
 
-std::vector<Ort::Value> NNModelStochastic::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup)
+std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup)
 {
+	NestedLogTag _("prepareInputsV13");
 	auto lengths = std::vector<int>{};
 	lengths.reserve(LT_COUNT);
 
@@ -627,14 +573,14 @@ std::vector<Ort::Value> NNModelStochastic::prepareInputsV13(const MMAI::Schema::
 	tensors.push_back(toTensor("ea_flat", ea_flat, {static_cast<int64_t>(sum_e), 1}));
 	tensors.push_back(toTensor("lengths", lengths, {LT_COUNT}));
 
-	logAi->debug("NNModel: Edge lengths: [ " + oss.str() + "]");
-	logAi->debug("NNModel: Input shapes: state={%d} edgeIndex={2, %d} edgeAttrs={%d, 1}", estate.size(), sum_e, sum_e);
+	logAi->debug("Edge lengths: [ " + oss.str() + "]");
+	logAi->debug("Model input shapes: state={%d} edgeIndex={2, %d} edgeAttrs={%d, 1}", estate.size(), sum_e, sum_e);
 
 	return tensors;
 }
 
 template<typename T>
-Ort::Value NNModelStochastic::toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape)
+Ort::Value NNModel::toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape)
 {
 	// Sanity check
 	int64_t numel = 1;
@@ -645,7 +591,7 @@ Ort::Value NNModelStochastic::toTensor(const std::string & name, std::vector<T> 
 		throwf("toTensor: %s: numel check failed: want: %d, have: %d", name, numel, vec.size());
 
 	// Create a memory-owning tensor then copy data
-	auto res = Ort::Value::CreateTensor<T>(allocator, shape.data(), shape.size());
+	auto res = Ort::Value::CreateTensor<T>(container->allocator, shape.data(), shape.size());
 	T * dst = res.template GetTensorMutableData<T>();
 	std::memcpy(dst, vec.data(), vec.size() * sizeof(T));
 	return res;
