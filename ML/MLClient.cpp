@@ -338,12 +338,20 @@ namespace ML {
         Settings(settings.write({"server", "ML", "statsPersistFreq"}))->Integer() = a.statsPersistFreq;
         Settings(settings.write({"server", "ML", "statsLoglevel"}))->String() = a.loglevelStats;
 
-        // Set all adventure AIs to AAI, which always create BAIs
-        Settings(settings.write({"server", "playerAI"}))->String() = "MMAI";
-        Settings(settings.write({"server", "oneGoodAI"}))->Bool() = false;
+        // Adventure MMAI = AAI
+        // Combat MMAI = BAI
 
-        // Set CPlayerInterface (aka. GUI) to create BAI for auto-combat
-        Settings(settings.write({"server", "friendlyAI"}))->String() = "MMAI";
+        // Set all adventure AIs to MMAI (i.e. AAI, which creates BAI for combat)
+        Settings(settings.write({"ai", "adventureAlliedAI"}))->String() = "MMAI";
+        Settings(settings.write({"ai", "adventureEnemyAI"}))->String() = "MMAI";
+        Settings(settings.write({"session", "oneGoodAI"}))->Bool() = false;
+
+        // With GUI, the player's "adventure" AI is CPlayerInterface
+        // When auto-combat is pressed, it creates whatever combatAlliedAI says
+        Settings(settings.write({"server", "combatAlliedAI"}))->String() = "MMAI";
+
+        // Set all adventure AIs to AAI, which always create BAIs
+
 
         // Set max difficulty (affects BattleAI number of simulated turns)
         // TODO: make configurable
@@ -486,9 +494,9 @@ namespace ML {
         if (mapname == "")
             throw std::runtime_error("call init_vcmi first");
 
-        logGlobal->info("friendlyAI -> " + settings["server"]["friendlyAI"].String());
-        logGlobal->info("playerAI -> " + settings["server"]["playerAI"].String());
-        logGlobal->info("enemyAI -> " + settings["server"]["enemyAI"].String());
+        logGlobal->info("friendlyAI -> " + settings["ai"]["combatAlliedAI"].String());
+        logGlobal->info("playerAI -> " + settings["ai"]["adventureEnemyAI"].String());
+        logGlobal->info("enemyAI -> " + settings["ai"]["combatEnemyAI"].String());
         logGlobal->info("headless -> " + std::to_string(settings["session"]["headless"].Bool()));
         logGlobal->info("onlyai -> " + std::to_string(settings["session"]["onlyai"].Bool()));
         logGlobal->info("quickCombat -> " + std::to_string(settings["adventure"]["quickCombat"].Bool()));
