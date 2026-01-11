@@ -58,6 +58,7 @@ namespace ML {
         int randomStackChance = 0;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
+        int vipShooterChance = 0;
         std::string battlefieldPattern = "";
         int townChance = 0;
         int warmachineChance = 0;
@@ -116,6 +117,8 @@ namespace ML {
                 "Percent chance to set a tight army formation (default 0*)")
             ("random-terrain-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a random terrain (default 0*)")
+            ("vip-shooter-chance", po::value<int>()->value_name("<N>"),
+                "Percent chance to swap entire army with 1 random shooter + guards terrain (default 0*)")
             ("battlefield-pattern", po::value<std::string>()->value_name("<REGEX>"),
                 "If given, it will be used as a regex pattern for filtering battlefields"
                 "based on their json key (see config/battlefields.json)")
@@ -203,6 +206,9 @@ namespace ML {
 
         if (vm.count("random-terrain-chance"))
             randomTerrainChance = vm.at("random-terrain-chance").as<int>();
+
+        if (vm.count("vip-shooter-chance"))
+            vipShooterChance = vm.at("vip-shooter-chance").as<int>();
 
         if (vm.count("battlefield-pattern"))
             battlefieldPattern = vm.at("battlefield-pattern").as<std::string>();
@@ -301,6 +307,7 @@ namespace ML {
             randomStackChance,
             tightFormationChance,
             randomTerrainChance,
+            vipShooterChance,
             battlefieldPattern,
             manaMin,
             manaMax,

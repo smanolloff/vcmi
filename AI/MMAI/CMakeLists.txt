@@ -12,6 +12,8 @@ set(MMAI_FILES
   BAI/model/ScriptedModel.cpp
   BAI/model/NNModel.h
   BAI/model/NNModel.cpp
+  BAI/model/MLBot.h
+  BAI/model/MLBot.cpp
 
   BAI/v13/BAI.cpp
   BAI/v13/BAI.h

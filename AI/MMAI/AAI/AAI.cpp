@@ -597,8 +597,8 @@ void AAI::yourTacticPhase(const BattleID & bid, int distance)
 }
 
 /*
-     * private
-     */
+* private
+*/
 
 template<typename... Args>
 void AAI::_log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const

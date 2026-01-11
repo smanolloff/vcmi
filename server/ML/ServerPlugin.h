@@ -67,20 +67,50 @@ namespace ML {
 
     private:
         CGameHandler * gh;
-        // CGameState * gs;
         const Config config;
-        std::map<std::string, HeroPool> heropools;
-        std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
         std::vector<CGTownInstance*> alltowns;
-        std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
-        std::vector<CreatureID> allcreatures;
+        std::map<std::string, HeroPool> heropools;
+        const std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
+        const std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
+        const std::vector<CreatureID> allcreatures;
+        const std::vector<CreatureID> allshooters;
+        const std::vector<CreatureID> allguards;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools
         std::mt19937 rng;
+
+        std::map<CreatureID, int> creatureValues;
+
+        CGHeroInstance* vipHero1 = nullptr;
+        CGHeroInstance* vipHero2 = nullptr;
 
         int towncounter = 0;
         int battlecounter = 0;
         int poolcounter = 0;
         int redside = 0;
+
+        void handleRandomHeroes(
+            const CArmedInstance *&army1,
+            const CArmedInstance *&army2,
+            const CGHeroInstance *&hero1,
+            const CGHeroInstance *&hero2
+        );
+
+        void handleVipShooters(
+            const CArmedInstance *&army1,
+            const CArmedInstance *&army2,
+            const CGHeroInstance *&hero1,
+            const CGHeroInstance *&hero2
+        );
+
+        void _setVipArmy(CGHeroInstance * heroA, CGHeroInstance * heroB);
+
+        void handleRandomStacks(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleWarmachines(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleTightFormation(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleMinMaxMana(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleSwapSides(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+
+
     };
 }
 

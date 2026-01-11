@@ -14,6 +14,10 @@
 #include "BAI/v13/action.h"
 #include "BAI/v13/state.h"
 
+#ifdef ENABLE_ML
+#include "BAI/model/MLBot.h"
+#endif
+
 namespace MMAI::BAI::V13
 {
 class BAI : public Base
@@ -79,5 +83,10 @@ public:
 	void _activeStack(const BattleID & bid, const CStack * stack);
 
 	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);
+
+#ifdef ENABLE_ML
+	// TODO: if grail in MISC5
+	std::shared_ptr<MLBot> mlbot = nullptr;
+#endif
 };
 }

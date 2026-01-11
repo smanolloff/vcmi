@@ -96,9 +96,9 @@ namespace
 		std::map<const CStack *, ReachabilityInfo> rinfos;
 	};
 
-	std::array<const CStack *, 7> getAllStacksForSide(const Context & ctx, bool side)
+	std::vector<const CStack *> getAllStacksForSide(const Context & ctx, bool side)
 	{
-		return side ? ctx.r_CStacks : ctx.l_CStacks;
+		return side ? ctx.r_CStacksAll : ctx.l_CStacksAll;
 	}
 
 	// Return (attr == N/A), but after performing some checks

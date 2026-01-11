@@ -245,6 +245,11 @@ namespace ML {
             exit(1);
         }
 
+        if (a.vipShooterChance < 0 || a.vipShooterChance > 100) {
+            std::cerr << "Bad value for vipShooterChance: expected an integer between 0 and 100, got: " << a.vipShooterChance << "\n";
+            exit(1);
+        }
+
         if (a.swapSides < 0) {
             std::cerr << "Bad value for swapSides: expected a non-negative integer, got: " << a.swapSides << "\n";
             exit(1);
@@ -328,6 +333,7 @@ namespace ML {
         Settings(settings.write({"server", "ML", "randomStackChance"}))->Integer() = a.randomStackChance;
         Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
         Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;
+        Settings(settings.write({"server", "ML", "vipShooterChance"}))->Integer() = a.vipShooterChance;
         Settings(settings.write({"server", "ML", "battlefieldPattern"}))->String() = a.battlefieldPattern;
         Settings(settings.write({"server", "ML", "manaMin"}))->Integer() = a.manaMin;
         Settings(settings.write({"server", "ML", "manaMax"}))->Integer() = a.manaMax;
@@ -420,6 +426,7 @@ namespace ML {
         fs::current_path(fs::path(VCMI_BIN_DIR));
         std::cout.flags(std::ios::unitbuf);
         console = new CConsoleHandler();
+        console->start();
 
         const boost::filesystem::path logPath = VCMIDirs::get().userLogsPath() / "VCMI_Client_log.txt";
         logConfig = new CBasicLogConfigurator(logPath, console);
@@ -445,6 +452,10 @@ namespace ML {
         Settings(settings.write({"logging", "console", "threshold"}))->String() = "trace";
 
         Settings(settings.write({"session", "disableVideo"}))->Bool() = true;
+        Settings(settings.write({"video", "fullscreen"}))->Bool() = false;
+        Settings(settings.write({"battle", "cellBorders"}))->Bool() = true;
+        Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
+        Settings(settings.write({"battle", "speedFactor"}))->Integer() = 9;
 
         // logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
 
@@ -458,10 +469,8 @@ namespace ML {
         aco.other = std::make_any<MMAI::Schema::Baggage*>(baggage);
         GAME = std::make_unique<GameInstance>(aco);
 
-        if (!headless) {
-            ENGINE->init();
+        if (!headless)
             ENGINE->setEngineUser(GAME.get());
-        }
 
         boost::thread loading([]() {
             try
@@ -511,6 +520,7 @@ namespace ML {
             std::cout << "VCMI shutdown complete.\n";
             t.join();
         } else {
+            // GAME->mainmenu()->makeActiveInterface();
             si.debugStartTest(mapname, false);
             ENGINE->mainLoop();
         }

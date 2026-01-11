@@ -27,14 +27,14 @@ namespace ML {
     constexpr auto AI_BATTLEAI = "BattleAI";
     constexpr auto AI_MMAI_USER = "MMAI_USER"; // for user-provided getAction (gym)
     constexpr auto AI_MMAI_MODEL = "MMAI_MODEL"; // for pre-trained model's getAction
-    constexpr auto AI_MMAI_SCRIPT_SUMMONER = "MMAI_SCRIPT_SUMMONER";
+    constexpr auto AI_MMAI_ML_OPPONENT = "MMAI_ML_OPPONENT";
 
     const std::vector<std::string> AIS = {
         AI_STUPIDAI,
         AI_BATTLEAI,
         AI_MMAI_USER,
         AI_MMAI_MODEL,
-        AI_MMAI_SCRIPT_SUMMONER,
+        AI_MMAI_ML_OPPONENT,
     };
 
     const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};
@@ -65,6 +65,7 @@ namespace ML {
             int randomStackChance,
             int tightFormationChance,
             int randomTerrainChance,
+            int vipShooterChance,
             std::string battlefieldPattern,
             int manaMin,
             int manaMax,
@@ -88,6 +89,7 @@ namespace ML {
           , warmachineChance(warmachineChance)
           , randomStackChance(randomStackChance)
           , tightFormationChance(tightFormationChance)
+          , vipShooterChance(vipShooterChance)
           , randomTerrainChance(randomTerrainChance)
           , battlefieldPattern(battlefieldPattern)
           , manaMin(manaMin)
@@ -117,6 +119,7 @@ namespace ML {
         const int randomStackChance;
         const int tightFormationChance;
         const int randomTerrainChance;
+        const int vipShooterChance;
         const std::string battlefieldPattern;
         const int manaMin;
         const int manaMax;

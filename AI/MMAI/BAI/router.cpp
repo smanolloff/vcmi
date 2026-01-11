@@ -17,6 +17,7 @@
 
 #include "BAI/base.h"
 #include "BAI/model/NNModel.h"
+#include "BAI/model/MLBot.h"
 #include "BAI/model/ScriptedModel.h"
 #include "BAI/router.h"
 
@@ -307,6 +308,13 @@ void Router::battleStart(
 				bai = CDynLibHandler::getNewBattleAI("BattleAI");
 				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
+#ifdef ENABLE_ML
+			else if(model->getName() == "MMAI_ML_OPPONENT")
+			{
+                bai = std::make_shared<MLBot>("BattleAI");
+                bai->initBattleInterface(env, cb, aiCombatOptions);
+			}
+#endif
 			else
 			{
 				THROW_FORMAT("Unexpected scripted model name: %s", model->getName());
@@ -367,6 +375,6 @@ void Router::trace(const std::string & text) const
 void Router::log(ELogLevel::ELogLevel level, const std::string & text) const
 {
 	if(logAi->getEffectiveLevel() <= level)
-		logAi->debug("Router-%s [%s] %s", addrstr, colorname, text);
+		logAi->log(level, "Router-%s [%s] %s", addrstr, colorname, text);
 }
 }

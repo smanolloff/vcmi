@@ -9,6 +9,7 @@
  */
 
 #include "StdInc.h"
+#include "BAI/model/MLBot.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleStateInfoForRetreat.h"
 #include "battle/CBattleInfoEssentials.h"
@@ -74,9 +75,21 @@ void BAI::battleStart(
 {
 	Base::battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);
 	battle = cb->getBattle(bid);
+
+#ifdef ENABLE_ML
+	const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
+	if (model->getName() != "USER_AGENT" && art && art->getTypeId() == ArtifactID::GRAIL) {
+		info("GRAIL found in hero -- preparing MLBot");
+		mlbot = std::make_shared<MLBot>("BattleAI");
+		mlbot->initBattleInterface(env, cb, {.enableSpellsUsage = false});
+		mlbot->battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);
+	}
+#endif
+
 	state = initState(battle.get());
 	getActionTotalMs = 0;
 	getActionTotalCalls = 0;
+
 }
 
 // XXX: battleEnd() is NOT called by CPlayerInterface (i.e. GUI)
@@ -286,16 +299,28 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
 	Base::activeStack(bid, astack);
 
+#ifdef ENABLE_ML
+	if (mlbot) {
+		info("Delegating activeStack to MLBot");
+		mlbot->activeStack(bid, astack);
+		return;
+	}
+#endif
+
 	try
 	{
 		_activeStack(bid, astack);
 	}
 	catch(const std::exception & e)
 	{
+#ifdef ENABLE_ML
+		throw;
+#else
 		error("Falling back to BattleAI due to MMAI error: " + std::string(e.what()));
 		auto evaluator = BattleEvaluator(env, cb, astack, *cb->getPlayerID(), bid, battle->battleGetMySide(), 1.0f, 2);
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
+#endif
 	}
 }
 
@@ -310,6 +335,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifndef ENABLE_ML
 	// Guard against infinite battles
 	// (print warning once, make only fallback actions from there on)
 	if(!inFallback && getActionTotalCalls >= 100)
@@ -324,11 +350,14 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
+#endif
 
 	state->onActiveStack(astack);
 
+#ifndef ENABLE_ML
 	if(maybeCastSpell(astack, bid))
 		return;
+#endif
 
 	if(state->battlefield->astack == nullptr)
 	{
@@ -342,6 +371,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifndef ENABLE_ML
 	auto concede = maybeFleeOrSurrender(bid);
 	if(concede)
 	{
@@ -351,6 +381,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 
 	logAi->debug("Not conceding.");
+#endif
 
 	while(true)
 	{
@@ -389,11 +420,15 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 
 			if(errcounter > 10)
 			{
+#ifdef ENABLE_ML
+				throw std::runtime_error("Got 10 consecutive errors");
+#else
 				warn("Got 10 consecutive errors, will fall back to BattleAI until this combat ends");
 				auto evaluator = BattleEvaluator(env, cb, astack, *cb->getPlayerID(), bid, battle->battleGetMySide(), 1.0f, 2);
 				cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 				inFallback = true;
 				break;
+#endif
 			}
 		}
 	}
@@ -415,6 +450,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 		error("ACTION_ERROR");
 		return nullptr;
 	}
+
 	if(!state->action->hex)
 	{
 		switch(static_cast<GlobalAction>(state->action->action))

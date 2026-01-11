@@ -20,7 +20,7 @@
 
 namespace ML {
     namespace UserAgents {
-        std::string AgentV13::getName() { return "UserAgent (v13)"; };
+        std::string AgentV13::getName() { return "USER_AGENT"; };
         int AgentV13::getVersion() { return 13; };
         double AgentV13::getValue(const MMAI::Schema::IState * s) { return -666; };
 
