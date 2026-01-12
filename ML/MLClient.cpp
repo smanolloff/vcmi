@@ -430,6 +430,8 @@ namespace ML {
         // (then is again changed to VCMI_BIN_DIR to prevent VCMI errors)
         auto wd = fs::current_path();
 
+        std::cout << "INITARGS: " << a.leftVipChance << "|" << a.rightVipChance << "\n";
+
         // chdir needed for VCMI init
         fs::current_path(fs::path(VCMI_BIN_DIR));
         std::cout.flags(std::ios::unitbuf);

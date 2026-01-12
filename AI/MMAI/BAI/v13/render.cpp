@@ -826,9 +826,11 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 									? ensureValueMatch(vf, false, "HEX.STACK_FLAGS1.SLEEPING")
 									: ensureValueMatch(vf, cstack->hasBonusOfType(BonusType::NOT_ACTIVE), "HEX.STACK_FLAGS1.SLEEPING");
 								break;
-							case SF1::BLOCKED:
-								ensureValueMatch(vf, cstack->canShoot() && battle->battleIsUnitBlocked(cstack), "HEX.STACK_FLAGS1.TWO_HEX_ATTACK_BREATH");
+							case SF1::BLOCKED: {
+								auto want = cstack->canShoot() && battle->battleIsUnitBlocked(cstack) && !cstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !cstack->hasBonusOfType(BonusType::SIEGE_WEAPON);
+								ensureValueMatch(vf, want, "HEX.STACK_FLAGS1.BLOCKED");
 								break;
+							}
 							case SF1::BLOCKING:
 							{
 								auto adjUnits = battle->battleAdjacentUnits(cstack);

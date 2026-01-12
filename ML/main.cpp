@@ -291,7 +291,7 @@ namespace ML {
         if (leftAi == AI_MMAI_USER) {
             leftModel = new UserAgents::AgentV13(benchmark, interactive, autorender, false, recordings);
             // prevent double render if both models are MMAI_USER
-            autorender = false;
+            autorender &= !headless;
         } else if (leftAi == AI_MMAI_MODEL) {
             // BAI will load the actual model based on leftModel->getName()
             leftModel = new ModelWrappers::Path(omap.at("left-model"));

@@ -182,8 +182,25 @@ void MLBot::yourTacticPhase(const BattleID & battleID, int distance)
 void MLBot::activeStack(const BattleID & bid, const CStack * astack)
 {
     ++nturns;
-    if (nturns > 500)
+    if (nturns > 500) {
+        error("More than 500 turns in this battle (vip=%d)", vip ? vip->getDescription() : "n/a");
+        for (const auto & cstack : battle->battleGetAllStacks()) {
+            error("-----------------------");
+            error("- cstack: %s", cstack->getDescription());
+            error("  vip=%d alive=%d side=%d qty=%d basqty=%d position=%d initial=%d cart=%d canshoot=%d isShooter=%d shots=%d"
+                    , cstack == vip
+                    , cstack->alive()
+                    , static_cast<int>(cstack->unitSide())
+                    , cstack->getCount()
+                    , cstack->unitBaseAmount()
+                    , cstack->getPosition().toInt()
+                    , cstack->initialPosition.toInt()
+                    , cstack->canShoot()
+                    , cstack->isShooter()
+                    , cstack->shots.available());
+        }
         throw std::runtime_error("More than 500 turns in this battle, aborting");
+    }
 
     if (!vip) {
         debug("No VIP => invoke bot");
