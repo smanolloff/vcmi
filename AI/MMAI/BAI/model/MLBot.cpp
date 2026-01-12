@@ -187,7 +187,7 @@ void MLBot::activeStack(const BattleID & bid, const CStack * astack)
         for (const auto & cstack : battle->battleGetAllStacks()) {
             error("-----------------------");
             error("- cstack: %s", cstack->getDescription());
-            error("  vip=%d alive=%d side=%d qty=%d basqty=%d position=%d initial=%d cart=%d canshoot=%d isShooter=%d shots=%d"
+            error("  vip=%d alive=%d side=%d qty=%d basqty=%d position=%d initial=%d canshoot=%d isShooter=%d shots=%d"
                     , cstack == vip
                     , cstack->alive()
                     , static_cast<int>(cstack->unitSide())
