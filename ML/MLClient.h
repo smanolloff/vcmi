@@ -67,7 +67,8 @@ namespace ML {
             int randomStackChance,
             int tightFormationChance,
             int randomTerrainChance,
-            int vipShooterChance,
+            int leftVipChance,
+            int rightVipChance,
             std::string battlefieldPattern,
             int manaMin,
             int manaMax,
@@ -93,7 +94,8 @@ namespace ML {
           , warmachineChance(warmachineChance)
           , randomStackChance(randomStackChance)
           , tightFormationChance(tightFormationChance)
-          , vipShooterChance(vipShooterChance)
+          , leftVipChance(leftVipChance)
+          , rightVipChance(rightVipChance)
           , randomTerrainChance(randomTerrainChance)
           , battlefieldPattern(battlefieldPattern)
           , manaMin(manaMin)
@@ -125,7 +127,8 @@ namespace ML {
         const int randomStackChance;
         const int tightFormationChance;
         const int randomTerrainChance;
-        const int vipShooterChance;
+        const int leftVipChance;
+        const int rightVipChance;
         const std::string battlefieldPattern;
         const int manaMin;
         const int manaMax;

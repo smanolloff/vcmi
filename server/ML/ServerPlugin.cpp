@@ -359,12 +359,13 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 , creatureValues(InitCreatureValues())
 {
     // XXX: Take out the first two heroes from the first heropool
-    if (config.vipShooterChance > 0) {
+    if (config.leftVipChance > 0 || config.rightVipChance > 0) {
         auto & p = heropools.begin()->second.heroes;
 
         if (p.size() < 4) {
-            std::cout << "WARNING: vipShooterChance > 0, but there are less than 4 total on this map. Will not enable VIP shooters.\n";
-            config.vipShooterChance = 0;
+            std::cout << "WARNING: VipChance > 0, but there are less than 4 total on this map. Will not enable VIP shooters.\n";
+            config.leftVipChance = 0;
+            config.rightVipChance = 0;
         } else {
             vipHero1 = p[0];
             vipHero2 = p[1];
@@ -554,7 +555,7 @@ void ServerPlugin::_setVipArmy(
     gh->insertNewStack(StackLocation(heroA->id, SlotID(shooterslot)), shooter, shooterQty);
 }
 
-void ServerPlugin::handleVipShooters(
+void ServerPlugin::handleVips(
     const CArmedInstance *&army1,
     const CArmedInstance *&army2,
     const CGHeroInstance *&hero1,
@@ -562,7 +563,7 @@ void ServerPlugin::handleVipShooters(
 ) {
     auto dist100 = std::uniform_int_distribution<>(0, 99);
 
-    if (dist100(rng) < config.vipShooterChance) {
+    if (dist100(rng) < config.leftVipChance) {
         // XXX: heroes must be different (objects must have different tempOwner)
         // modification by reference
         hero1 = vipHero1;
@@ -570,7 +571,7 @@ void ServerPlugin::handleVipShooters(
         _setVipArmy(const_cast<CGHeroInstance*>(hero1), const_cast<CGHeroInstance*>(hero2));
     }
 
-    if (dist100(rng) < config.vipShooterChance) {
+    if (dist100(rng) < config.rightVipChance) {
         hero2 = vipHero2;
         army2 = hero2->getArmy();
         _setVipArmy(const_cast<CGHeroInstance*>(hero2), const_cast<CGHeroInstance*>(hero1));
@@ -696,7 +697,7 @@ void ServerPlugin::startBattleHook(
     // printf("config.randomHeroes = %d\n", config.randomHeroes);
 
     handleRandomHeroes(army1, army2, hero1, hero2);
-    handleVipShooters(army1, army2, hero1, hero2);
+    handleVips(army1, army2, hero1, hero2);
     handleRandomStacks(hero1, hero2);
     handleWarmachines(hero1, hero2);
     handleTightFormation(hero1, hero2);

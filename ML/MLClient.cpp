@@ -245,8 +245,13 @@ namespace ML {
             exit(1);
         }
 
-        if (a.vipShooterChance < 0 || a.vipShooterChance > 100) {
-            std::cerr << "Bad value for vipShooterChance: expected an integer between 0 and 100, got: " << a.vipShooterChance << "\n";
+        if (a.leftVipChance < 0 || a.leftVipChance > 100) {
+            std::cerr << "Bad value for leftVipChance: expected an integer between 0 and 100, got: " << a.leftVipChance << "\n";
+            exit(1);
+        }
+
+        if (a.rightVipChance < 0 || a.rightVipChance > 100) {
+            std::cerr << "Bad value for rightVipChance: expected an integer between 0 and 100, got: " << a.rightVipChance << "\n";
             exit(1);
         }
 
@@ -335,7 +340,8 @@ namespace ML {
         Settings(settings.write({"server", "ML", "randomStackChance"}))->Integer() = a.randomStackChance;
         Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
         Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;
-        Settings(settings.write({"server", "ML", "vipShooterChance"}))->Integer() = a.vipShooterChance;
+        Settings(settings.write({"server", "ML", "leftVipChance"}))->Integer() = a.leftVipChance;
+        Settings(settings.write({"server", "ML", "rightVipChance"}))->Integer() = a.rightVipChance;
         Settings(settings.write({"server", "ML", "battlefieldPattern"}))->String() = a.battlefieldPattern;
         Settings(settings.write({"server", "ML", "manaMin"}))->Integer() = a.manaMin;
         Settings(settings.write({"server", "ML", "manaMax"}))->Integer() = a.manaMax;

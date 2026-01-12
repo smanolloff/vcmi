@@ -95,7 +95,7 @@ namespace ML {
             const CGHeroInstance *&hero2
         );
 
-        void handleVipShooters(
+        void handleVips(
             const CArmedInstance *&army1,
             const CArmedInstance *&army2,
             const CGHeroInstance *&hero1,

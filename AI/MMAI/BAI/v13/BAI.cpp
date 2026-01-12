@@ -78,7 +78,7 @@ void BAI::battleStart(
 
 #ifdef ENABLE_ML
 	const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
-	error("allowMlBot: %d", allowMlBot);
+	// info("allowMlBot: %d", allowMlBot);
 	if (allowMlBot && art && art->getTypeId() == ArtifactID::GRAIL) {
 		info("GRAIL found in hero -- preparing MLBot (for model: %s)", model->getName());
 		mlbot = std::make_shared<MLBot>("BattleAI");
