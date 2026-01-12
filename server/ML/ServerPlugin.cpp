@@ -344,9 +344,9 @@ namespace {
     }
 }
 
-ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config)
+ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 : gh(gh)
-, config(config)
+, config(config_)
 , alltowns(InitTowns(gs))
 , heropools(InitHeroPools(gs))
 , battleterrains(InitBattleterrains(config.battlefieldPattern))
@@ -359,23 +359,29 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config)
 , creatureValues(InitCreatureValues())
 {
     // XXX: Take out the first two heroes from the first heropool
-    auto & p = heropools.begin()->second.heroes;
-    if (p.size() < 4)
-        throw std::runtime_error("Need at least 4 heroes (so 2 can be taken as vip)");
-    vipHero1 = p[0];
-    vipHero2 = p[1];
-    std::rotate(p.begin(), p.begin() + 2, p.end());  // shift 2
+    if (config.vipShooterChance > 0) {
+        auto & p = heropools.begin()->second.heroes;
 
-    // Mark heres with "VIP shooter" armies via grail in backpack
-    auto grailId = ArtifactID::GRAIL;
-    for (const auto & h : {vipHero1, vipHero2}) {
-        auto artloc = ArtifactLocation(h->id, ArtifactPosition::BACKPACK_START);
-        // XXX: createArtifact (via GS, not GH) must be done BEFORE map is sent to clients?
-        // (does not work if done in setupBattle hook, for example: client does not see new artifact)
-        const auto * art = gs->createArtifact(grailId);
-        // std::cout << "+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n";
-        h->putArtifact(artloc.slot, art);
-        // gh->putArtifact(artloc, art->getId(), false);
+        if (p.size() < 4) {
+            std::cout << "WARNING: vipShooterChance > 0, but there are less than 4 total on this map. Will not enable VIP shooters.\n";
+            config.vipShooterChance = 0;
+        } else {
+            vipHero1 = p[0];
+            vipHero2 = p[1];
+            std::rotate(p.begin(), p.begin() + 2, p.end());  // shift 2
+
+            // Mark heres with "VIP shooter" armies via grail in backpack
+            auto grailId = ArtifactID::GRAIL;
+            for (const auto & h : {vipHero1, vipHero2}) {
+                auto artloc = ArtifactLocation(h->id, ArtifactPosition::BACKPACK_START);
+                // XXX: createArtifact (via GS, not GH) must be done BEFORE map is sent to clients?
+                // (does not work if done in setupBattle hook, for example: client does not see new artifact)
+                const auto * art = gs->createArtifact(grailId);
+                // std::cout << "+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n";
+                h->putArtifact(artloc.slot, art);
+                // gh->putArtifact(artloc, art->getId(), false);
+            }
+        }
     }
 
 

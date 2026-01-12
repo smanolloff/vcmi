@@ -78,8 +78,9 @@ void BAI::battleStart(
 
 #ifdef ENABLE_ML
 	const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
-	if (model->getName() != "USER_AGENT" && art && art->getTypeId() == ArtifactID::GRAIL) {
-		info("GRAIL found in hero -- preparing MLBot");
+	error("allowMlBot: %d", allowMlBot);
+	if (allowMlBot && art && art->getTypeId() == ArtifactID::GRAIL) {
+		info("GRAIL found in hero -- preparing MLBot (for model: %s)", model->getName());
 		mlbot = std::make_shared<MLBot>("BattleAI");
 		mlbot->initBattleInterface(env, cb, {.enableSpellsUsage = false});
 		mlbot->battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);

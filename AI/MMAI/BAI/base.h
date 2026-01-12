@@ -101,6 +101,10 @@ public:
 
 	bool enableSpellsUsage = false;
 
+#ifdef ENABLE_ML
+	bool allowMlBot = false; // ML only
+#endif
+
 	/*
 	 * Templates defined in the header
 	 * Needed to prevent linker errors for calls from derived classes

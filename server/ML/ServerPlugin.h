@@ -43,7 +43,7 @@ namespace ML {
 
     class DLL_LINKAGE ServerPlugin {
     public:
-        ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config);
+        ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_);
 
         void setupBattleHook(
             const CGTownInstance *& town,
@@ -67,7 +67,7 @@ namespace ML {
 
     private:
         CGameHandler * gh;
-        const Config config;
+        Config config;
         std::vector<CGTownInstance*> alltowns;
         std::map<std::string, HeroPool> heropools;
         const std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;

@@ -44,6 +44,7 @@ private:
     std::string colorname = "?";
 
     const CStack * vip = nullptr;
+    const std::string botname = "?";
     int nturns = 0;
 
     void handleVip(const BattleID & bid, const CStack * vip);

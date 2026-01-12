@@ -27,14 +27,14 @@ namespace ML {
     constexpr auto AI_BATTLEAI = "BattleAI";
     constexpr auto AI_MMAI_USER = "MMAI_USER"; // for user-provided getAction (gym)
     constexpr auto AI_MMAI_MODEL = "MMAI_MODEL"; // for pre-trained model's getAction
-    constexpr auto AI_MMAI_ML_OPPONENT = "MMAI_ML_OPPONENT";
+    constexpr auto AI_MMAI_BATTLEAI = "MMAI_BATTLEAI";
 
     const std::vector<std::string> AIS = {
         AI_STUPIDAI,
         AI_BATTLEAI,
         AI_MMAI_USER,
         AI_MMAI_MODEL,
-        AI_MMAI_ML_OPPONENT,
+        AI_MMAI_BATTLEAI,
     };
 
     const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};
@@ -56,6 +56,8 @@ namespace ML {
             std::string mapname,
             MMAI::Schema::IModel * leftModel,
             MMAI::Schema::IModel * rightModel,
+            bool leftAllowMlBot,
+            bool rightAllowMlBot,
             int maxBattles,
             int seed,
             int randomHeroes,
@@ -81,6 +83,8 @@ namespace ML {
         ) : mapname(mapname)
           , leftModel(leftModel)
           , rightModel(rightModel)
+          , leftAllowMlBot(leftAllowMlBot)
+          , rightAllowMlBot(rightAllowMlBot)
           , maxBattles(maxBattles)
           , seed(seed)
           , randomHeroes(randomHeroes)
@@ -106,6 +110,8 @@ namespace ML {
 
         MMAI::Schema::IModel * leftModel;
         MMAI::Schema::IModel * rightModel;
+        const bool leftAllowMlBot;
+        const bool rightAllowMlBot;
 
         const std::string leftModelFile;
         const std::string rightModelFile;

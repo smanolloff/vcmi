@@ -261,6 +261,8 @@ void Router::battleStart(
 )
 {
 	Schema::IModel * model;
+	bool allowMlBot;
+
 	const std::string modelkey = side == BattleSide::ATTACKER ? "attacker" : "defender";
 
 	if(baggage)
@@ -272,7 +274,13 @@ void Router::battleStart(
 		// XXX: dev mode assumes there are no neutral players in battle
 		ASSERT(baggage, "baggage is nullptr");
 		ASSERT(cb->getPlayerID()->hasValue(), "cb->getPlayerID() has no value");
-		model = cb->getPlayerID()->num ? baggage->modelRight : baggage->modelLeft;
+		if (cb->getPlayerID()->num) {
+			model = baggage->modelRight;
+			allowMlBot = baggage->allowMlBotRight;
+		} else {
+			model = baggage->modelLeft;
+			allowMlBot = baggage->allowMlBotLeft;
+		}
 		ASSERT(model, "model is nullptr");
 		if(model->getType() == Schema::ModelType::PATH)
 		{
@@ -283,6 +291,9 @@ void Router::battleStart(
 			// model as usual"
 			model = GetModel(side == BattleSide::ATTACKER ? "attacker" : "defender", baggage);
 		}
+
+		ASSERT(model, "model is nullptr");
+
 	}
 	else
 	{
@@ -309,7 +320,7 @@ void Router::battleStart(
 				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
 #ifdef ENABLE_ML
-			else if(model->getName() == "MMAI_ML_OPPONENT")
+			else if(model->getName() == "MMAI_BATTLEAI")
 			{
                 bai = std::make_shared<MLBot>("BattleAI");
                 bai->initBattleInterface(env, cb, aiCombatOptions);
@@ -321,11 +332,15 @@ void Router::battleStart(
 			}
 			break;
 		case Schema::ModelType::NN:
-        case Schema::ModelType::USER:
+        case Schema::ModelType::USER: {
 			// XXX: must not call initBattleInterface here
-			bai = Base::Create(model, env, cb, aiCombatOptions.enableSpellsUsage);
+			std::shared_ptr<Base> base = Base::Create(model, env, cb, aiCombatOptions.enableSpellsUsage);
+#ifdef ENABLE_ML
+			base->allowMlBot = allowMlBot;
+#endif
+			bai = base; // implicit upcast to CBattleGameInterface
 			break;
-
+		}
 		default:
 			THROW_FORMAT("Unexpected model type: %d", EI(model->getType()));
 	}

@@ -118,6 +118,10 @@ struct MMAI_DLL_LINKAGE Baggage
 {
 	IModel * modelLeft;
 	IModel * modelRight;
+
+	// ML bot is used in "VIP shooter" army scenarios
+	bool allowMlBotLeft;
+	bool allowMlBotRight;
 };
 
 // Convenience formatter for std::any cast errors

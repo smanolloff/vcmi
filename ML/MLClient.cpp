@@ -314,6 +314,8 @@ namespace ML {
         baggage = new MMAI::Schema::Baggage;
         baggage->modelLeft = a.leftModel;
         baggage->modelRight = a.rightModel;
+        baggage->allowMlBotLeft = a.leftAllowMlBot;
+        baggage->allowMlBotRight = a.rightAllowMlBot;
 
         Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
         Settings(settings.write({"session", "headless"}))->Bool() = headless;

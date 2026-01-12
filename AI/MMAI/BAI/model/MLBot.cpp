@@ -126,6 +126,7 @@ namespace {
 }
 
 MLBot::MLBot(const std::string & botname)
+: botname(botname)
 {
     std::ostringstream oss;
     // Store the memory address and include it in logging
@@ -151,21 +152,26 @@ void MLBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
 
 void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
 {
+    vip = nullptr;
     nturns = 0;
     battle = cb->getBattle(battleID);
     bot->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 
-    for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
-        if (cstack->getCount() > 1 && cstack->isShooter()) {
-            vip = cstack;
-            break;
+    const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
+    if (art && art->getTypeId() == ArtifactID::GRAIL) {
+        info("GRAIL found in hero -- looking for VIP stack");
+        for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
+            if (cstack->getCount() > 1 && cstack->isShooter()) {
+                vip = cstack;
+                break;
+            }
         }
     }
 
     if (vip)
         info("Found VIP stack: %s", vip->getDescription());
     else
-        info("Could not find VIP stack");
+        info("Could not find VIP stack, will delegate all calls to %s", botname);
 }
 
 void MLBot::yourTacticPhase(const BattleID & battleID, int distance)
