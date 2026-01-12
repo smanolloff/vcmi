@@ -228,10 +228,10 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
 {
     info("Handling GUARD stack %s (vip=%s)", guard->getDescription(), vip->getDescription());
 
-    if(!vip->canShoot()) {
-        // XXX: this will only trigger when out of shots or forgetful
+    if(!(vip->alive() && vip->canShoot())) {
+        // XXX: for alive VIPs, this can only trigger when out of shots or forgetful
         //      (i.e. will NOT trigger if blocked by enemy)
-        info("VIP can't shoot => invoke bot");
+        info("VIP is dead or can't shoot => invoke bot");
         bot->activeStack(bid, guard);
         return;
     }
