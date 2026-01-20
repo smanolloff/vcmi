@@ -19,6 +19,8 @@
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
 
+#include <boost/circular_buffer.hpp>
+
 namespace MMAI::BAI
 {
 
@@ -35,6 +37,9 @@ public:
     // Custom logic
     void activeStack(const BattleID & bid, const CStack * astack) override;
 
+    // Debug
+    void actionStarted(const BattleID & bid, const BattleAction & action) override;
+
 private:
     std::shared_ptr<CBattleCallback> cb;
     std::shared_ptr<CBattleGameInterface> bot; // calls will be delegated to this object
@@ -46,9 +51,14 @@ private:
     const CStack * vip = nullptr;
     const std::string botname = "?";
     int nturns = 0;
+    int nrounds = 0;
+
+    boost::circular_buffer<std::string> msgbuf;
+    void addmsg(const CStack* astack, const CStack* vip, const std::string & event);
 
     void handleVip(const BattleID & bid, const CStack * vip);
     void handleGuard(const BattleID & bid, const CStack * guard, const CStack * vip);
+    void battleNewRound(const BattleID & bid) override;
 
     /*
      * Logging

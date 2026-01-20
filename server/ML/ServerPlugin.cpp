@@ -369,7 +369,8 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
         } else {
             vipHero1 = p[0];
             vipHero2 = p[1];
-            std::rotate(p.begin(), p.begin() + 2, p.end());  // shift 2
+
+            p.erase(p.begin(), p.begin() + 2);
 
             // Mark heres with "VIP shooter" armies via grail in backpack
             auto grailId = ArtifactID::GRAIL;
@@ -388,6 +389,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 
     if (config.randomHeroes > 0) {
         for (auto &[poolname, pool] : heropools) {
+            std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
             if (pool.heroes.size() % 2 != 0) {
                 throw std::runtime_error("An even number of heroes is required in each hero pool.");
             }

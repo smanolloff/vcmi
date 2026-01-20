@@ -19,6 +19,7 @@
 #include "battle/BattleAction.h"
 #include "battle/BattleHex.h"
 #include "battle/BattleHexArray.h"
+#include "battle/CObstacleInstance.h"
 #include "battle/ReachabilityInfo.h"
 #include "callback/CBattleCallback.h"
 #include "callback/CDynLibHandler.h"
@@ -26,6 +27,7 @@
 
 #include "MLBot.h"
 #include <algorithm>
+#include <boost/range/numeric.hpp>
 #include <span>
 #include <stdexcept>
 
@@ -126,7 +128,7 @@ namespace {
 }
 
 MLBot::MLBot(const std::string & botname)
-: botname(botname)
+: botname(botname), msgbuf(500)
 {
     std::ostringstream oss;
     // Store the memory address and include it in logging
@@ -150,10 +152,70 @@ void MLBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
     bot->initBattleInterface(ENV, cb, aiCombatOptions);
 }
 
+void MLBot::addmsg(const CStack* astack, const CStack* vip, const std::string & event) {
+    std::ostringstream oss;
+    oss << boost::str(boost::format("[round %d][%d] %s") % nrounds % nturns % event) << "\n";
+
+    for (const auto & cstack : battle->battleGetAllStacks()) {
+        oss << boost::str(boost::format("- %s active=%d vip=%d alive=%d side=%d qty=%d basqty=%d position=%d shots=%d text=%s")
+            % (cstack->alive() ? "S" : "X")
+            % (cstack == astack)
+            % (cstack == vip)
+            % cstack->alive()
+            % static_cast<int>(cstack->unitSide())
+            % cstack->getCount()
+            % cstack->unitBaseAmount()
+            % cstack->getPosition().toInt()
+            % cstack->shots.available()
+            % cstack->getDescription()) << "\n";
+    }
+
+    for (const auto & obstacle : battle->battleGetAllObstacles()) {
+        const auto & affected = obstacle->getAffectedTiles();
+        auto tostr = [&](const BattleHexArray & v){
+            std::ostringstream os;
+            bool first = true;
+            for (const auto& h : v) {
+                if (!first) os << ' ';
+                first = false;
+                os << h.toInt();
+            }
+            return os.str();
+        };
+
+        std::string affectedstr = tostr(obstacle->getAffectedTiles());
+        std::string blockedstr = tostr(obstacle->getBlockedTiles());
+
+        oss << boost::str(boost::format("- O type=%d affected=[%s] blocked=[%s]")
+            % static_cast<int>(obstacle->obstacleType)
+            % affectedstr
+            % blockedstr) << "\n";
+    }
+
+
+    msgbuf.push_back(oss.str());
+}
+
+void MLBot::actionStarted(const BattleID & bid, const BattleAction & action) {
+    // addmsg(battle->battleActiveUnit(), vip, "actionStarted: " + action.toString()))
+    const CStack * astack = nullptr;
+    if (battle->battleActiveUnit())
+        astack = battle->battleGetStackByID(battle->battleActiveUnit()->unitId());
+
+    addmsg(astack, vip, "actionStarted: " + action.toString());
+};
+
+void MLBot::battleNewRound(const BattleID & bid) {
+    ++nrounds;
+    msgbuf.push_back(boost::str(boost::format("[round %d][%d] battleNewRound\n") % nrounds % nturns));
+}
+
+
 void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
 {
     vip = nullptr;
     nturns = 0;
+    nrounds = 0;
     battle = cb->getBattle(battleID);
     bot->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 
@@ -172,6 +234,8 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
         info("Found VIP stack: %s", vip->getDescription());
     else
         info("Could not find VIP stack, will delegate all calls to %s", botname);
+
+    msgbuf.push_back(boost::str(boost::format("[round %d][%d] battleStart\n") % nrounds % nturns));
 }
 
 void MLBot::yourTacticPhase(const BattleID & battleID, int distance)
@@ -182,23 +246,13 @@ void MLBot::yourTacticPhase(const BattleID & battleID, int distance)
 void MLBot::activeStack(const BattleID & bid, const CStack * astack)
 {
     ++nturns;
+    msgbuf.push_back(boost::str(boost::format("[round %d][%d] activeStack: %s\n") % nrounds % nturns % astack->getDescription()));
+
+    // TODO change to 500
     if (nturns > 500) {
         error("More than 500 turns in this battle (vip=%d)", vip ? vip->getDescription() : "n/a");
-        for (const auto & cstack : battle->battleGetAllStacks()) {
-            error("-----------------------");
-            error("- cstack: %s", cstack->getDescription());
-            error("  vip=%d alive=%d side=%d qty=%d basqty=%d position=%d initial=%d canshoot=%d isShooter=%d shots=%d"
-                    , cstack == vip
-                    , cstack->alive()
-                    , static_cast<int>(cstack->unitSide())
-                    , cstack->getCount()
-                    , cstack->unitBaseAmount()
-                    , cstack->getPosition().toInt()
-                    , cstack->initialPosition.toInt()
-                    , cstack->canShoot()
-                    , cstack->isShooter()
-                    , cstack->shots.available());
-        }
+        for (const auto & msg : msgbuf)
+            error(msg);
         throw std::runtime_error("More than 500 turns in this battle, aborting");
     }
 
@@ -231,7 +285,7 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
     if(!(vip->alive() && vip->canShoot())) {
         // XXX: for alive VIPs, this can only trigger when out of shots or forgetful
         //      (i.e. will NOT trigger if blocked by enemy)
-        info("VIP is dead or can't shoot => invoke bot");
+        warn("VIP is dead or can't shoot => invoke bot");
         bot->activeStack(bid, guard);
         return;
     }
