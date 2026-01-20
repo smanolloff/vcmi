@@ -261,7 +261,7 @@ void Router::battleStart(
 )
 {
 	Schema::IModel * model;
-	bool allowMlBot;
+	bool allowMlBot = false;
 
 	const std::string modelkey = side == BattleSide::ATTACKER ? "attacker" : "defender";
 
