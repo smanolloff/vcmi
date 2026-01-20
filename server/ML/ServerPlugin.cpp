@@ -389,7 +389,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 
     if (config.randomHeroes > 0) {
         for (auto &[poolname, pool] : heropools) {
-            std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
+            // std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
             if (pool.heroes.size() % 2 != 0) {
                 throw std::runtime_error("An even number of heroes is required in each hero pool.");
             }
