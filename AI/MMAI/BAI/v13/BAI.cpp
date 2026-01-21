@@ -99,7 +99,7 @@ void BAI::battleStart(
 void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID)
 {
 	Base::battleEnd(bid, br, queryID);
-	state->onBattleEnd(br);
+	state->onBattleEnd(br, roundcounter);
 
 	debug("MMAI %s this battle.", (br->winner == battle->battleGetMySide() ? "won" : "lost"));
 
@@ -153,6 +153,13 @@ void BAI::battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & 
 	Base::battleTriggerEffect(bid, bte);
 	state->onBattleTriggerEffect(bte);
 }
+
+void BAI::battleNewRound(const BattleID & bid)
+{
+	Base::battleNewRound(bid);
+	++roundcounter;
+	debug("rounds: %d", roundcounter);
+};
 
 void BAI::yourTacticPhase(const BattleID & bid, int distance)
 {
@@ -336,7 +343,13 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
-#ifndef ENABLE_ML
+#ifdef ENABLE_ML
+	if (roundcounter > Schema::V13::MAX_ROUNDS) {
+		warn("Max rounds (%d) exceeded, retreating...", Schema::V13::MAX_ROUNDS);
+		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
+		return;
+	}
+#else
 	// Guard against infinite battles
 	// (print warning once, make only fallback actions from there on)
 	if(!inFallback && getActionTotalCalls >= 100)
@@ -353,7 +366,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 #endif
 
-	state->onActiveStack(astack);
+	state->onActiveStack(astack, roundcounter);
 
 #ifndef ENABLE_ML
 	if(maybeCastSpell(astack, bid))
@@ -774,7 +787,7 @@ std::string BAI::renderANSI() const
 void BAI::actionStarted(const BattleID & bid, const BattleAction & action)
 {
 	Base::actionStarted(bid, action);
-	state->onActionStarted(action);
+	state->onActionStarted(action, roundcounter);
 };
 
 void BAI::actionFinished(const BattleID & bid, const BattleAction & action)
