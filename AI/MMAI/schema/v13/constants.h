@@ -177,8 +177,10 @@ constexpr auto BFIELD_VALUE_SLOPE = 5;
 constexpr auto BFIELD_HP_MAX = static_cast<int>(200e3); // 90k max for 4x1024.vmap
 constexpr auto BFIELD_HP_SLOPE = 7.5;
 
+constexpr auto MAX_ROUNDS = 30;
+
 constexpr GlobalEncoding GLOBAL_ENCODING{
-	E5(X::GA::BATTLE_SIDE, X::CS, 1),
+	E5(X::GA::BATTLE_ROUND, X::LS, MAX_ROUNDS + 1),
 	E5(X::GA::BATTLE_SIDE_ACTIVE_PLAYER, X::CE, 1), // NULL means no battle
 	E5(X::GA::BATTLE_WINNER, X::CE, 1), // NULL means ongoing battle
 	E5(X::GA::BFIELD_VALUE_START_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
