@@ -193,7 +193,7 @@ void State::onActiveStack(const CStack * astack, int round, CombatResult result,
 	auto ogstats = *gstats; // a copy of the "old" gstats
 
 	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn, round)
-								   : gstats->update(BattleSide::NONE, result, lv + rv, lh + rh, false, round);
+								   : gstats->update(battle->battleGetMySide(), result, lv + rv, lh + rh, false, round);
 	lpstats->update(&ogstats, lv, lh, ldd, ldr, lvk, lvl);
 	rpstats->update(&ogstats, rv, rh, rdd, rdr, rvk, rvl);
 
