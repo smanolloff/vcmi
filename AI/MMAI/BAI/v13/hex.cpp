@@ -358,6 +358,14 @@ void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, con
 
 		if(hexaction <= HexAction::AMOVE_TL)
 		{
+			// XXX: There is an edge case where MOVE is possible, but AMOVE is not:
+			// If AMOVE would need to move onto a moat hex, then attack is not performed.
+			// However, this can NOT be set here - it requires knowledge of:
+			// - (ok) whether the active unit already stands on this hex
+			// - (ok) whether the active unit is wide
+			// - (NOT ok) whether the left (or right) neighbouring hex is a moat (or quicksand)
+			// We don't have information about other hexes here
+			// => the mask must be updated afterwards...
 			ASSERT(CStack::isMeleeAttackPossible(a_cstack, n_cstack, bhex), "vcmi says melee attack is IMPOSSIBLE [1]");
 			actmask.set(i);
 		}
