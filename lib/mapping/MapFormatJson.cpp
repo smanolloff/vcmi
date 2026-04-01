@@ -1297,7 +1297,7 @@ void CMapLoaderJson::readObjects()
 			continue;
 
 		if (debugHeroesOnMap.count(hero->getHeroTypeID()))
-			logGlobal->error("Hero is already on the map at %s", hero->visitablePos().toString());
+			logGlobal->warn("Hero is already on the map at %s", hero->visitablePos().toString());
 
 		debugHeroesOnMap.insert(hero->getHeroTypeID());
 	}

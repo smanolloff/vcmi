@@ -336,8 +336,14 @@ BattleAction BattleEvaluator::selectStackAction(const CStack * stack)
 		{
 			activeActionMade = true;
 
-			if(stack->doubleWide() && vstd::contains(brokenWallMoat, stack->getPosition()))
-				return BattleAction::makeMove(stack, stack->getPosition().cloneInDirection(BattleHex::RIGHT));
+			if(stack->doubleWide() && vstd::contains(brokenWallMoat, stack->getPosition())) {
+				// XXX: Fix for bug where stack tries to move onto a friendly stack to the right
+				auto dsthex = stack->getPosition().cloneInDirection(BattleHex::RIGHT);
+				if (cb->getBattle(battleID)->getAccessibility(stack).accessible(dsthex, stack))
+					return BattleAction::makeMove(stack, stack->getPosition().cloneInDirection(BattleHex::RIGHT));
+				else
+					return BattleAction::makeDefend(stack);
+			}
 			else
 				return goTowardsNearest(stack, brokenWallMoat, *targets);
 		}

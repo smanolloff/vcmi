@@ -12,9 +12,11 @@
 
 #include "StdInc.h"
 
-#include "battle/AutocombatPreferences.h"
+#include "battle/AICombatOptions.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
+
+#include "schema/base.h"
 
 namespace MMAI::BAI
 {
@@ -34,8 +36,7 @@ public:
 	 * Handled locally (not delegated)
 	 */
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences prefs) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
 
 	/*
 	 * Delegated to BAI
@@ -73,10 +74,13 @@ public:
 private:
 	std::shared_ptr<Environment> env;
 	std::shared_ptr<CBattleCallback> cb;
+
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
+	AICombatOptions aiCombatOptions;
+	Schema::Baggage * baggage = nullptr;
+
 	bool wasWaitingForRealize = false;
-	AutocombatPreferences autocombatPreferences;
 	std::string addrstr = "?";
 	std::string colorname = "?";
 	std::string logtag = "?";

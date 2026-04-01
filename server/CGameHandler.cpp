@@ -577,6 +577,8 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 	for (const auto & elem : gameState().players)
 		turnOrder->addPlayer(elem.first);
 
+	ML(mlplugin = std::make_unique<ML::ServerPlugin>(this, gs.get(), si->mlconfig));
+
 	reinitScripting();
 }
 
@@ -3399,7 +3401,7 @@ bool CGameHandler::queryReply(QueryID qid, std::optional<int32_t> answer, Player
 		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer())
 			currentQuery->setReply(answer);
 
-		COMPLAIN_RET("This player top query has different ID!"); //topQuery->queryID != qid
+		COMPLAIN_RETF("This player top query has different ID: want: %d, have: %d", static_cast<int>(qid) % static_cast<int>(topQuery->queryID)); //topQuery->queryID != qid
 	}
 	COMPLAIN_RET_FALSE_IF(!topQuery->endsByPlayerAnswer(), "This query cannot be ended by player's answer!");
 

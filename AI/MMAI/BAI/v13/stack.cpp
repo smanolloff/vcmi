@@ -257,6 +257,12 @@ Stack::Stack(
 
 	processBonuses();
 
+#ifdef ENABLE_ML
+	if(cstack->creatureId().num > Schema::V13::CREATURE_ID_MAX)
+		throw std::runtime_error("unknown creature id: " + std::to_string(cstack->creatureId().num));
+#endif
+
+
 	if(cstack->willMove())
 	{
 		setflag(F1::WILL_ACT);
