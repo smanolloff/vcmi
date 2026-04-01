@@ -61,13 +61,13 @@ public:
 		bool enableTransitions = false // disabled for performance
 	);
 
-	void onActiveStack(const CStack * astack, CombatResult result = CombatResult::NONE, bool recording = false, bool fastpath = false);
+	void onActiveStack(const CStack * astack, int round, CombatResult result = CombatResult::NONE, bool recording = false, bool fastpath = false);
 	void onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa);
 	void onBattleTriggerEffect(const BattleTriggerEffect & bte);
-	void onActionStarted(const BattleAction & ba);
-	void _onActionStarted(const BattleAction & ba);
+	void onActionStarted(const BattleAction & ba, int round);
+	void _onActionStarted(const BattleAction & ba, int round);
 	void onActionFinished(const BattleAction & ba) const;
-	void onBattleEnd(const BattleResult * br);
+	void onBattleEnd(const BattleResult * br, int round);
 
 	// Subsequent versions may override this if they only change
 	// the data type of encoded values (i.e. have their own HEX_ENCODING)

@@ -485,6 +485,36 @@ endif()
 assign_source_group(${vcmiclientcommon_SRCS} ${vcmiclientcommon_HEADERS})
 add_library(vcmiclientcommon STATIC ${vcmiclientcommon_SRCS} ${vcmiclientcommon_HEADERS})
 
+<<<<<<< HEAD
+=======
+if(NOT ENABLE_STATIC_LIBS)
+	add_dependencies(vcmiclientcommon EmptyAI)
+
+	if(ENABLE_NULLKILLER2_AI)
+		add_dependencies(vcmiclientcommon Nullkiller2)
+	endif()
+
+	if(ENABLE_STUPID_AI)
+		add_dependencies(vcmiclientcommon StupidAI)
+	endif()
+
+	if(ENABLE_BATTLE_AI)
+		add_dependencies(vcmiclientcommon BattleAI)
+	endif()
+
+	if(ENABLE_MMAI)
+		add_dependencies(vcmiclientcommon MMAI)
+	endif()
+endif()
+if(IOS)
+	add_dependencies(vcmiclientcommon vcmiLua)
+endif()
+
+if(ENABLE_ML)
+  set_target_properties(vcmiclientcommon PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
+
+>>>>>>> 2b7b6ba16 (MMAI: ML-related changes)
 if(WIN32)
 	set_target_properties(vcmiclientcommon
 		PROPERTIES

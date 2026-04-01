@@ -26,8 +26,8 @@
 
 std::unique_ptr<GameInstance> GAME = nullptr;
 
-GameInstance::GameInstance()
-	: serverInstance(std::make_unique<CServerHandler>())
+GameInstance::GameInstance(AICombatOptions aco)
+	: serverInstance(std::make_unique<CServerHandler>(aco))
 	, interfaceInstance(nullptr)
 {
 }

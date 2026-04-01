@@ -52,3 +52,7 @@ class VCMIApp(VCMI):
         elif self.settings.os == "Windows":
             tc.variables["CONAN_RUNENV_SCRIPT"] = self._pathForCmake(os.path.join(self.build_folder, "conanrun"))
         tc.generate()
+
+    def requirements(self):
+        super().requirements()
+        self.requires("sqlite3/^3.39")

@@ -15,6 +15,10 @@
 #include "BAI/v13/state.h"
 #include "callback/CBattleGameInterface.h"
 
+#ifdef ENABLE_ML
+#include "BAI/fallback/MLBot.h"
+#endif
+
 namespace MMAI::BAI::V13
 {
 class BAI : public CBattleGameInterface
@@ -25,6 +29,7 @@ public:
 	void activeStack(const BattleID & bid, const CStack * stack) override;
 	void actionStarted(const BattleID & bid, const BattleAction & action) override;
 	void actionFinished(const BattleID & bid, const BattleAction & action) override;
+	void battleNewRound(const BattleID & bid) override;
 	void yourTacticPhase(const BattleID & bid, int distance) override;
 
 	void battleStacksAttacked(
@@ -62,6 +67,7 @@ public:
 
 	// consecutive invalid actions counter
 	int errcounter = 0;
+	int roundcounter = 0;
 	bool inFallback = false;
 
 	int getActionTotalMs = 0;
@@ -80,5 +86,10 @@ public:
 	void _activeStack(const BattleID & bid, const CStack * stack);
 
 	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);
+
+#ifdef ENABLE_ML
+	bool allowMlBot = false;
+	std::shared_ptr<MLBot> mlbot = nullptr;
+#endif
 };
 }

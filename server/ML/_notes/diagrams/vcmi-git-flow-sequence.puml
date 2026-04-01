@@ -1,0 +1,100 @@
+@startuml "vcmi-git-flow"
+
+title "VCMI GIT flow"
+
+
+skinparam DefaultTextAlignment center
+skinparam DefaultFontName monospaced
+skinparam SequenceDividerFontName SansSerif
+skinparam NoteFontName SansSerif
+
+participant master
+participant beta
+participant fix1
+participant fix2
+participant develop
+participant feature1
+participant feature2
+
+activate master
+activate beta
+activate develop
+
+master ->o develop : <back:#ccc>merge</back>
+note left
+  tag 1.5.6
+end note
+|||
+create feature1
+develop -[#red]>> feature1 : <back:fcb><color:red>branch</color></back>
+activate feature1
+feature1 o/[#blue]-? : <back:lightblue><color:blue>commit</color></back>
+|||
+create feature2
+develop -[#red]>> feature2 :
+activate feature2
+feature2 o/[#blue]-? :
+feature1 o/[#blue]-? :
+
+note left of develop
+  ""feature2"" will be
+  included in 1.6.0
+end note
+feature2 ->o develop :
+
+deactivate feature2
+note over feature2
+  branch deleted
+  after merge
+end note
+
+group Major Release
+  develop ->o beta :
+
+  beta o/[#blue]-? : <back:lightblue><color:blue>changelog
+
+  beta ->o master :
+  note left
+    tag 1.6.0
+  end note
+
+  beta ->o develop :
+end
+
+develop -> feature1 :
+feature1 o/[#blue]-? :
+
+note left of develop
+  ""feature1"" will be
+  included in 1.7.0
+end note
+feature1 ->o develop :
+deactivate feature1
+|||
+
+create fix1
+beta -[#red]>> fix1 :
+activate fix1
+fix1 o/[#blue]-? :
+fix1 ->o beta :
+deactivate fix1
+
+create fix2
+beta -[#red]>> fix2 :
+activate fix2
+fix2 o/[#blue]-? :
+fix2 ->o beta :
+deactivate fix2
+
+group Bugfix Release
+  beta o/[#blue]-? :
+
+  beta ->o master :
+  note left
+    tag 1.6.1
+  end note
+  |||
+  beta ->o develop :
+end
+
+@enduml

@@ -47,6 +47,7 @@
 #include "../lib/StartInfo.h"
 #include "../lib/TurnTimerInfo.h"
 #include "../lib/VCMIDirs.h"
+#include "../lib/battle/AICombatOptions.h"
 #include "../lib/campaign/CampaignState.h"
 #include "../lib/gameState/CGameState.h"
 #include "../lib/gameState/HighScore.h"
@@ -100,7 +101,7 @@ void CServerHandler::endNetwork()
 	}
 }
 
-CServerHandler::CServerHandler()
+CServerHandler::CServerHandler(AICombatOptions aiCombatOptions)
 	: networkHandler(INetworkHandler::createHandler())
 	, lobbyClient(std::make_unique<GlobalLobbyClient>())
 	, gameChat(std::make_unique<GameChatHandler>())
@@ -114,6 +115,7 @@ CServerHandler::CServerHandler()
 	, hotseatMode(false)
 	, battleMode(false)
 	, client(nullptr)
+	, aiCombatOptions(aiCombatOptions)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());
 }
@@ -200,6 +202,8 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 
 	auto lastDifficulty = settings["general"]["lastDifficulty"];
 	si->difficulty = lastDifficulty.Integer();
+
+	ML(si->mlconfig.init(settings));
 
 	logNetwork->trace("\tStarting local server");
 	serverRunner->start(loadMode == ELoadMode::MULTI, connectToLobby, si);
@@ -657,6 +661,8 @@ void CServerHandler::startGameplay(std::shared_ptr<CGameState> gameState)
 	if (isGuest())
 		networkLagCompensator = std::make_unique<NetworkLagCompensator>(getNetworkHandler(), gameState);
 
+	client->aiCombatOptions = aiCombatOptions;
+
 	switch(si->mode)
 	{
 	case EStartMode::NEW_GAME:
@@ -902,10 +908,13 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		setMapInfo(mapInfo);
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
-	// "Click" on color to remove us from it
-	setPlayer(myFirstColor());
-	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	if(settings["session"]["onlyai"].Bool())
+	{
+		// "Click" on color to remove us from it
+		setPlayer(myFirstColor());
+		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
 
 	while(true)
 	{

@@ -10,6 +10,7 @@
 #pragma once
 #include "Destination.h"
 #include "../GameConstants.h"
+#include "Global.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 

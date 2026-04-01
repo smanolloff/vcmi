@@ -346,8 +346,10 @@ void ModsPresetState::setValidatedChecksum(const TModID & modName, std::optional
 
 void ModsPresetState::saveConfigurationState() const
 {
+#ifndef ENABLE_ML
 	std::fstream file(CResourceHandler::get()->getResourceName(ResourcePath("config/modSettings.json"))->c_str(), std::ofstream::out | std::ofstream::trunc);
 	file << modConfig.toCompactString();
+#endif
 }
 
 void ModsPresetState::createNewPreset(const std::string & presetName)

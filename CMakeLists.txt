@@ -91,6 +91,7 @@ if(IOS OR ANDROID)
 	set(ENABLE_LOBBY OFF)
 	set(ENABLE_SERVER OFF)
 	set(COPY_CONFIG_ON_BUILD OFF)
+	set(ENABLE_ML OFF)
 	set(ENABLE_DISCORD OFF)
 else()
 	option(ENABLE_MONOLITHIC_INSTALL "Install everything in single directory on Linux and Mac" OFF) # Used for Snap packages and also useful for debugging
@@ -100,6 +101,22 @@ else()
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and launcher as single executable" OFF)
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
+<<<<<<< HEAD
+=======
+	option(ENABLE_ML "Enable compilation of extensions for MMAI training" OFF)
+
+	include(CheckCXXCompilerFlag)
+	if(MSVC)
+		check_cxx_compiler_flag("/std:c++23" COMPILER_SUPPORTS_CXX23)
+		if(NOT COMPILER_SUPPORTS_CXX23)
+			check_cxx_compiler_flag("/std:c++23preview" COMPILER_SUPPORTS_CXX23_PREVIEW)
+			set(COMPILER_SUPPORTS_CXX23 ${COMPILER_SUPPORTS_CXX23_PREVIEW})
+		endif()
+	else()
+		check_cxx_compiler_flag("-std=c++23" COMPILER_SUPPORTS_CXX23)
+	endif()
+
+>>>>>>> 2b7b6ba16 (MMAI: ML-related changes)
 	option(ENABLE_DISCORD "Enable compilation of discord integration" ON)
 
 	if (ENABLE_DISCORD)
@@ -322,6 +339,11 @@ endif()
 
 if(ENABLE_GOLDMASTER)
 	add_definitions(-DENABLE_GOLDMASTER)
+endif()
+
+if(ENABLE_ML)
+	add_definitions(-DENABLE_ML)
+	set(ENABLE_MMAI ON)
 endif()
 
 if(ENABLE_NULLKILLER2_AI)
@@ -712,6 +734,10 @@ if(ENABLE_TEST)
 	add_subdirectory(test)
 endif()
 
+if(ENABLE_ML)
+   add_subdirectory(ML)
+endif()
+
 #######################################
 #        Installation section         #
 #######################################
@@ -773,6 +799,8 @@ else()
 	set(CPACK_PACKAGE_FILE_NAME "${PACKAGE_FILE_NAME}")
 endif()
 set(CPACK_PACKAGE_VENDOR "VCMI team")
+
+add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
 
 if(WIN32)
 	# This needs to be removed in future as we already migrated to Inno Setup and artifacts in CI are always packed to ZIP
