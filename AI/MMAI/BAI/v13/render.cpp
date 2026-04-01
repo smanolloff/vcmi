@@ -202,9 +202,9 @@ namespace
 		auto estacks = getAllStacksForSide(ctx, !EI(cstack->unitSide()));
 		const auto it = std::ranges::find_if( // NOLINT(readability-qualified-auto)
 			estacks,
-			[&nbh](const auto & stack)
+			[&nbh](const auto & estack)
 			{
-				return stack && stack->coversPos(nbh);
+				return estack && estack->coversPos(nbh);
 			}
 		);
 
@@ -1034,7 +1034,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 	const auto * gstats = sup->getGlobalStats();
 	const auto * lpstats = sup->getLeftPlayerStats();
 	const auto * rpstats = sup->getRightPlayerStats();
-	const auto * mystats = gstats->getAttr(GA::BATTLE_SIDE) ? rpstats : lpstats;
+	const auto * mystats = gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER) ? rpstats : lpstats;
 	auto hexes = sup->getHexes();
 	auto alogs = sup->getAttackLogs();
 
@@ -1264,7 +1264,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 	{
 		std::string name;
 		std::string value;
-		auto side = gstats->getAttr(GA::BATTLE_SIDE);
+		auto side = gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER);
 
 		switch(i)
 		{
@@ -1276,28 +1276,32 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 					value = side ? bluecol + "BLUE" + nocol : redcol + "RED" + nocol;
 				break;
 			case 2:
+				name = "Round";
+				value = std::to_string(gstats->getAttr(GA::BATTLE_ROUND));
+				break;
+			case 3:
 				name = "Last action";
 				value = action ? action->name() + " [" + std::to_string(action->action) + "]" : "";
 				break;
-			case 3:
+			case 4:
 				name = "DMG dealt";
 				value = boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::DMG_DEALT_NOW_ABS) % mystats->getAttr(PA::DMG_DEALT_ACC_ABS));
 				break;
-			case 4:
+			case 5:
 				name = "DMG received";
 				value =
 					boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::DMG_RECEIVED_NOW_ABS) % mystats->getAttr(PA::DMG_RECEIVED_ACC_ABS));
 				break;
-			case 5:
+			case 6:
 				name = "Value killed";
 				value =
 					boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::VALUE_KILLED_NOW_ABS) % mystats->getAttr(PA::VALUE_KILLED_ACC_ABS));
 				break;
-			case 6:
+			case 7:
 				name = "Value lost";
 				value = boost::str(boost::format("%d (%d since start)") % mystats->getAttr(PA::VALUE_LOST_NOW_ABS) % mystats->getAttr(PA::VALUE_LOST_ACC_ABS));
 				break;
-			case 7:
+			case 8:
 			{
 				// XXX: if there's a draw, this text will be incorrect
 				auto restext = gstats->getAttr(GA::BATTLE_WINNER) ? (bluecol + "BLUE WINS") : (redcol + "RED WINS");
@@ -1306,19 +1310,19 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 				value = ended ? (restext + nocol) : "";
 			}
 			break;
-			case 8:
+			case 9:
 				name = "Army value (L)";
 				value = boost::str(
 					boost::format("%d (%.0f‰ of current BF value)") % lpstats->getAttr(PA::ARMY_VALUE_NOW_ABS) % lpstats->getAttr(PA::ARMY_VALUE_NOW_REL)
 				);
 				break;
-			case 9:
+			case 10:
 				name = "Army value (R)";
 				value = boost::str(
 					boost::format("%d (%.0f‰ of current BF value)") % rpstats->getAttr(PA::ARMY_VALUE_NOW_ABS) % rpstats->getAttr(PA::ARMY_VALUE_NOW_REL)
 				);
 				break;
-			case 10:
+			case 11:
 				name = "Current BF value";
 				value = boost::str(
 					boost::format("%d (%.0f‰ of starting BF value)") % gstats->getAttr(GA::BFIELD_VALUE_NOW_ABS) % gstats->getAttr(GA::BFIELD_VALUE_NOW_REL0)

@@ -83,6 +83,18 @@ std::shared_ptr<rett> createAny(const boost::filesystem::path & libpath, const s
 
 	if (!dll)
 	{
+#ifdef VCMI_WINDOWS
+		DWORD errorCode = GetLastError();
+		LPWSTR messageBuffer = nullptr;
+		size_t size = FormatMessageW(
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		    NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&messageBuffer, 0, NULL);
+		std::wcerr << L"LoadLibraryW failed: error code " << errorCode << ": " << messageBuffer << std::endl;
+		LocalFree(messageBuffer);
+#else
+		fprintf(stderr, "dlopen failed: %s\n", dlerror());
+#endif
+
 		logGlobal->error("Cannot open dynamic library (%s). Throwing...", libpath.string());
 		throw std::runtime_error("Cannot open dynamic library");
 	}
@@ -117,6 +129,12 @@ std::shared_ptr<CGlobalAI> createAny(const boost::filesystem::path & libpath, co
 #ifdef ENABLE_NULLKILLER2_AI
 	if(libpath.stem() == "libNullkiller2")
 		return std::make_shared<NK2AI::AIGateway>();
+#endif
+
+#ifdef ENABLE_ML
+	// AAI is used for ML only, not during regular gameplay
+	if(libpath.stem() == "libMMAI") {
+		return std::make_shared<MMAI::AAI>();
 #endif
 
 	return std::make_shared<CEmptyAI>();

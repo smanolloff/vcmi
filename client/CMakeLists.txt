@@ -487,6 +487,10 @@ if(IOS)
 	endif()
 endif()
 
+if(ENABLE_ML)
+  set_target_properties(vcmiclientcommon PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
+
 if(WIN32)
 	set_target_properties(vcmiclientcommon
 		PROPERTIES

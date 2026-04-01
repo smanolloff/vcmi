@@ -69,3 +69,11 @@ compile_commands.json
 
 # CLion
 .idea/
+
+# ML
+.cmake
+*.sqlite3
+*.db
+rel/
+actions.txt
+data/
