@@ -85,7 +85,7 @@ void BAI::battleStart(
 //      since the terminal result is needed only during training.
 void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID)
 {
-	state->onBattleEnd(br);
+	state->onBattleEnd(br, roundcounter);
 
 	logger.debug("MMAI %s this battle.", (br->winner == battle->battleGetMySide() ? "won" : "lost"));
 
@@ -137,6 +137,12 @@ void BAI::battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & 
 {
 	state->onBattleTriggerEffect(bte);
 }
+
+void BAI::battleNewRound(const BattleID & bid)
+{
+	++roundcounter;
+	logger.debug("rounds: %d", roundcounter);
+};
 
 void BAI::yourTacticPhase(const BattleID & bid, int distance)
 {
@@ -320,7 +326,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
-	state->onActiveStack(astack);
+	state->onActiveStack(astack, roundcounter);
 
 	if(maybeCastSpell(astack, bid))
 		return;
@@ -732,7 +738,7 @@ std::string BAI::renderANSI() const
 
 void BAI::actionStarted(const BattleID & bid, const BattleAction & action)
 {
-	state->onActionStarted(action);
+	state->onActionStarted(action, roundcounter);
 };
 
 void BAI::actionFinished(const BattleID & bid, const BattleAction & action)

@@ -31,7 +31,7 @@ GlobalStats::GlobalStats(BattleSide side, int value, int hp)
 	static_assert(EI(GA::_count) == 10, "whistleblower in case attributes change");
 
 	setattr(GA::BATTLE_WINNER, S13::NULL_VALUE_UNENCODED);
-	setattr(GA::BATTLE_SIDE, EI(side));
+	setattr(GA::BATTLE_ROUND, 0);
 	setattr(GA::BATTLE_SIDE_ACTIVE_PLAYER, S13::NULL_VALUE_UNENCODED);
 	setattr(GA::BFIELD_VALUE_START_ABS, value);
 	setattr(GA::BFIELD_VALUE_NOW_ABS, value);
@@ -44,8 +44,9 @@ GlobalStats::GlobalStats(BattleSide side, int value, int hp)
 
 static_assert(EI(GlobalAction::_count) == 2); // RETREAT, WAIT
 
-void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, bool canWait)
+void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, bool canWait, int round)
 {
+	setattr(GA::BATTLE_ROUND, round);
 	(res == CombatResult::NONE) ? setattr(GA::BATTLE_WINNER, S13::NULL_VALUE_UNENCODED) : setattr(GA::BATTLE_WINNER, EI(res));
 
 	(side == BattleSide::NONE) ? setattr(GA::BATTLE_SIDE_ACTIVE_PLAYER, S13::NULL_VALUE_UNENCODED) : setattr(GA::BATTLE_SIDE_ACTIVE_PLAYER, EI(side));
