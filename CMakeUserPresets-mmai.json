@@ -1,5 +1,20 @@
 {
-    "version": 2,
+    "version": 10,
+    "$comment": [
+        "To use this preset, include it via CmakeUserPresets.json",
+        "// CmakeUserPresets.json (replace single with double quotes):",
+        "{",
+        "    'version': 4,",
+        "    'vendor': {",
+        "        'conan': {}",
+        "    },",
+        "    'include': [",
+        "        'CMakeUserPresets-mmai.json',",
+        "        'conan-generated/CMakePresets.json',",
+        "        'conan-generated-debug/CMakePresets.json'",
+        "    ]",
+        "}"
+    ],
     "configurePresets": [
         {
             "name": "mmai-common",
@@ -52,29 +67,5 @@
                 "ENABLE_ML": "OFF"
             }
         }
-
-        // To use this preset, include it via CmakeUserPresets.json
-        //
-        // // CmakeUserPresets.json:
-        // {
-        //     "version": 4,
-        //     "vendor": {
-        //         "conan": {}
-        //     },
-        //     "include": [
-        //         "CMakeUserPresets-mmai.json",
-        //         "conan-generated/CMakePresets.json",
-        //         "conan-generated-debug/CMakePresets.json"
-        //     ]
-        // }
-
-
-        // XXX: For mmai PLAY:
-        //
-        //      0. cd $PROJ/vcmi-play
-        //      1. gco mmai                         # in VCMI root
-        //      2. gco main                         # in AI/MMAI
-        //      3. cmake --preset mmai-build-play   # in VCMI root
-        //         cmake --build build-play -- -j8
     ]
 }

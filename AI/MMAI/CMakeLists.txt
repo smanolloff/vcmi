@@ -43,10 +43,44 @@ set(MMAI_FILES
   BAI/v13/supplementary_data.cpp
   BAI/v13/supplementary_data.h
 
+  BAI/v14/BAI.cpp
+  BAI/v14/BAI.h
+  BAI/v14/nn_model.h
+  BAI/v14/nn_model.cpp
+  BAI/v14/action.cpp
+  BAI/v14/action.h
+  BAI/v14/attack_log.h
+  BAI/v14/battlefield.cpp
+  BAI/v14/battlefield.h
+  BAI/v14/cache.cpp
+  BAI/v14/cache.h
+  BAI/v14/encoder.cpp
+  BAI/v14/encoder.h
+  BAI/v14/global_stats.cpp
+  BAI/v14/global_stats.h
+  BAI/v14/hex.cpp
+  BAI/v14/hex.h
+  BAI/v14/hexaction.h
+  BAI/v14/hexactmask.h
+  BAI/v14/links.h
+  BAI/v14/player_stats.cpp
+  BAI/v14/player_stats.h
+  BAI/v14/render.cpp
+  BAI/v14/render.h
+  BAI/v14/stack.cpp
+  BAI/v14/stack.h
+  BAI/v14/state.cpp
+  BAI/v14/state.h
+  BAI/v14/supplementary_data.cpp
+  BAI/v14/supplementary_data.h
+
   schema/schema.h
   schema/v13/constants.h
   schema/v13/schema.h
   schema/v13/types.h
+  schema/v14/constants.h
+  schema/v14/schema.h
+  schema/v14/types.h
 
   MMAI.h
   StdInc.h

@@ -20,7 +20,7 @@
 #include "BAI/fallback/scripted_model.h"
 #include "BAI/router.h"
 #include "BAI/fallback/MLBot.h"
-#include "BAI/v13/BAI.h"
+#include "BAI/v14/BAI.h"
 
 #include "common.h"
 
@@ -413,8 +413,8 @@ void Router::battleStart(
 			bai = CreateBAI(model, env, cb, aiCombatOptions.enableSpellsUsage);
 #ifdef ENABLE_ML
         	{
-				auto bai_ = dynamic_cast<V13::BAI*>(bai.get());
-				ASSERT(bai_, "dynamic cast to V13::BAI failed");
+				auto bai_ = dynamic_cast<V14::BAI*>(bai.get());
+				ASSERT(bai_, "dynamic cast to V14::BAI failed");
 				bai_->allowMlBot = allowMlBot;
 			}
 #endif

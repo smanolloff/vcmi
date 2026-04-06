@@ -10,7 +10,5 @@
 
 #pragma once
 
-#include "schema/base.h"
-
-#include "schema/v13/schema.h"
-#include "schema/v14/schema.h"
+#include "schema/v14/constants.h"
+#include "schema/v14/types.h"
