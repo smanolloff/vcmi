@@ -14,7 +14,9 @@
 #include <onnxruntime_c_api.h>
 
 #include "BAI/v13/BAI.h"
+#include "BAI/v14/BAI.h"
 #include "BAI/v13/nn_model.h"
+#include "BAI/v14/nn_model.h"
 
 namespace MMAI::BAI
 {
@@ -112,6 +114,8 @@ CreateBAI(Schema::IModel * model, const std::shared_ptr<Environment> & env, cons
 
 	if(version == 13)
 		return std::make_shared<V13::BAI>(model, version, env, cb, enableSpellsUsage);
+	else if(version == 14)
+		return std::make_shared<V14::BAI>(model, version, env, cb, enableSpellsUsage);
 	else
 		throw std::runtime_error("CreateBAI: unsupported schema version: " + std::to_string(version));
 
