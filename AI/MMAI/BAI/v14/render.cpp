@@ -9,11 +9,13 @@
  */
 
 #include "StdInc.h"
+#include "BAI/v14/global_stats.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleAttackInfo.h"
 #include "battle/CObstacleInstance.h"
 #include "battle/IBattleInfoCallback.h"
 #include "constants/EntityIdentifiers.h"
+#include "constants/Enumerations.h"
 #include "mapObjects/CGTownInstance.h"
 #include "vcmi/spells/Caster.h"
 
@@ -166,6 +168,8 @@ namespace
 		if(mv == 1)
 			ensureReachability(ctx, bh, true, cstack, attrname);
 
+		auto r_nbh = bh.cloneInDirection(BattleHex::EDir::RIGHT, false);
+		auto l_nbh = bh.cloneInDirection(BattleHex::EDir::LEFT, false);
 		auto nbh = BattleHex{};
 
 		switch(ha)
@@ -187,6 +191,24 @@ namespace
 				break;
 			case HexAction::AMOVE_TL:
 				nbh = bh.cloneInDirection(BattleHex::EDir::TOP_LEFT, false);
+				break;
+			case HexAction::AMOVE_2TR:
+				nbh = r_nbh.cloneInDirection(BattleHex::EDir::TOP_RIGHT, false);
+				break;
+			case HexAction::AMOVE_2R:
+				nbh = r_nbh.cloneInDirection(BattleHex::EDir::RIGHT, false);
+				break;
+			case HexAction::AMOVE_2BR:
+				nbh = r_nbh.cloneInDirection(BattleHex::EDir::BOTTOM_RIGHT, false);
+				break;
+			case HexAction::AMOVE_2BL:
+				nbh = l_nbh.cloneInDirection(BattleHex::EDir::BOTTOM_LEFT, false);
+				break;
+			case HexAction::AMOVE_2L:
+				nbh = l_nbh.cloneInDirection(BattleHex::EDir::LEFT, false);
+				break;
+			case HexAction::AMOVE_2TL:
+				nbh = l_nbh.cloneInDirection(BattleHex::EDir::TOP_LEFT, false);
 				break;
 			default:
 				THROW_FORMAT("Unexpected HexAction: %d", EI(ha));
@@ -269,6 +291,12 @@ namespace
 		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_BL, cstack, (basename + "{AMOVE_BL}").c_str());
 		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_L, cstack, (basename + "{AMOVE_L}").c_str());
 		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_TL, cstack, (basename + "{AMOVE_TL}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2TR, cstack, (basename + "{AMOVE_2TR}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2R, cstack, (basename + "{AMOVE_2R}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2BR, cstack, (basename + "{AMOVE_2BR}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2BL, cstack, (basename + "{AMOVE_2BL}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2L, cstack, (basename + "{AMOVE_2L}").c_str());
+		ensureMeleeability(ctx, bh, mask, HexAction::AMOVE_2TL, cstack, (basename + "{AMOVE_2TL}").c_str());
 	};
 
 }
@@ -416,6 +444,41 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 		ensureValueMatch(gmask.test(EI(GlobalAction::WAIT)), !astack->waitedThisTurn, "GA.ACTION_MASK[WAIT]");
 	}
 	auto alogs = state->supdata->getAttackLogs();
+
+	{
+		auto gatecorpse = false;
+		auto bridgecorpse = false;
+
+		if(battle->battleGetFortifications().wallsHealth > 0) {
+			for(const CStack * cstack : battle->battleGetAllStacks(false)) {
+				if(cstack->alive())
+					continue;
+
+				if(cstack->coversPos(BattleHex::GATE_INNER) || cstack->coversPos(BattleHex::GATE_OUTER))
+					gatecorpse = true;
+
+				if(cstack->coversPos(BattleHex::GATE_BRIDGE))
+					bridgecorpse = true;
+			}
+		}
+
+		auto corpsemask = CorpseFlags(gstats->getAttr(GA::SIEGE_CORPSES));
+		if(gatecorpse)
+			ensureValueMatch(corpsemask.test(0), 1, "GA.SIEGE_CORPSES<0>");
+		if(bridgecorpse)
+			ensureValueMatch(corpsemask.test(1), 1, "GA.SIEGE_CORPSES<1>");
+	}
+
+	{
+		auto f = battle->battleGetFortifications();
+		auto towermask = TowerFlags(gstats->getAttr(GA::SIEGE_TOWERS));
+		if(f.upperTowerHealth > 0 && battle->battleGetWallState(EWallPart::UPPER_TOWER) != EWallState::DESTROYED)
+			ensureValueMatch(towermask.test(0), 1, "GA.SIEGE_TOWERS<0>");
+		if(f.citadelHealth > 0 && battle->battleGetWallState(EWallPart::KEEP) != EWallState::DESTROYED)
+			ensureValueMatch(towermask.test(1), 1, "GA.SIEGE_TOWERS<1>");
+		if(f.lowerTowerHealth > 0 && battle->battleGetWallState(EWallPart::BOTTOM_TOWER) != EWallState::DESTROYED)
+			ensureValueMatch(towermask.test(2), 1, "GA.SIEGE_TOWERS<2>");
+	}
 
 	for(int ihex = 0; ihex < 165; ihex++)
 	{
@@ -577,6 +640,30 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 				case HA::IS_REAR:
 				{
 					ensureValueMatch(v, cstack ? cstack->occupiedHex() == hex->bhex : 0, "HEX.IS_REAR");
+				}
+				break;
+				case HA::IS_RUFR:
+				{
+					// at battle end, active stack is ill-defined and check fails
+					if(ended || !astack || !astack->doubleWide())
+						break;
+
+					auto frontoffset = astack->unitSide() == BattleSide::ATTACKER ? 1 : -1;
+					auto rinfo = ctx.rinfos.at(astack);
+					auto isRufr = !rinfo.isReachable(hex->bhex) && rinfo.isReachable(BattleHex(hex->bhex.toInt() + frontoffset));
+					ensureValueMatch(v, isRufr, "HEX.IS_RUFR bhex=" + std::to_string(hex->bhex.toInt()));
+				}
+				break;
+				case HA::WALL_HEALTH:
+				{
+					auto wp = battle->battleHexToWallPart(hex->bhex);
+					if(wp != EWallPart::BOTTOM_WALL && wp != EWallPart::BELOW_GATE && wp != EWallPart::GATE && wp != EWallPart::OVER_GATE && wp != EWallPart::UPPER_WALL)
+						return;
+					auto ws = battle->battleGetWallState(wp);
+					if(ws == EWallState::NONE)
+						ensureValueMatch(v, Schema::V14::NULL_VALUE_UNENCODED, "HEX.WALL_HEALTH");
+					else
+						ensureValueMatch(v, EI(ws), "HEX.WALL_HEALTH");
 				}
 				break;
 				case HA::STACK_SIDE:

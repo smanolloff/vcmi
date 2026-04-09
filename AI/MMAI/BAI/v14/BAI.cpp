@@ -528,6 +528,23 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, moveTo));
 			}
 			break;
+			case HexAction::AMOVE_2TR:
+			case HexAction::AMOVE_2R:
+			case HexAction::AMOVE_2BR:
+			case HexAction::AMOVE_2BL:
+			case HexAction::AMOVE_2L:
+			case HexAction::AMOVE_2TL:
+			{
+				ASSERT(acstack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
+				const auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
+				auto obh = acstack->occupiedHex(action->hex->bhex);
+				auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
+				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
+				const auto * estack = battle->battleGetStackByPos(nbh);
+				ASSERT(estack, "no enemy stack for melee attack");
+				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, action->hex->bhex));
+			}
+			break;
 			default:
 				THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
 		}
@@ -566,6 +583,12 @@ void BAI::handleUnexpectedAction(const CStack * acstack, const Hex * hex, Action
 		case HexAction::AMOVE_BL:
 		case HexAction::AMOVE_L:
 		case HexAction::AMOVE_TL:
+		case HexAction::AMOVE_2TR:
+		case HexAction::AMOVE_2R:
+		case HexAction::AMOVE_2BR:
+		case HexAction::AMOVE_2BL:
+		case HexAction::AMOVE_2L:
+		case HexAction::AMOVE_2TL:
 		case HexAction::MOVE:
 		{
 			auto a = ainfo.at(action->hex->bhex.toInt());
@@ -624,8 +647,24 @@ void BAI::handleUnexpectedAction(const CStack * acstack, const Hex * hex, Action
 			}
 
 			auto nbh = BattleHex{};
-			auto edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
-			nbh = bhex.cloneInDirection(edir, false);
+
+			if(action->hexaction < HexAction::AMOVE_2TR)
+			{
+				auto edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
+				nbh = bhex.cloneInDirection(edir, false);
+			}
+			else
+			{
+				if(!acstack->doubleWide())
+				{
+					state->supdata->errcode = ErrorCode::INVALID_DIR;
+					logger.error("Action error: %s (%d): INVALID_DIR", action->name(), EI(action->action));
+					break;
+				}
+
+				auto edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
+				nbh = acstack->occupiedHex().cloneInDirection(edir, false);
+			}
 
 			if(!nbh.isAvailable())
 			{

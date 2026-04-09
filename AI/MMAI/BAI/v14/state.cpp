@@ -162,6 +162,44 @@ namespace
 		return res;
 	}
 
+	TowerFlags GetSiegeTowers(const CPlayerBattleCallback * battle) {
+		TowerFlags res = 0; // {upper, middle, lower}
+
+		auto has = [&battle](EWallPart part) {
+			auto ws = battle->battleGetWallState(part);
+			return ws != EWallState::NONE && ws != EWallState::DESTROYED;
+		};
+
+		if (has(EWallPart::UPPER_TOWER))
+			res.set(0);
+		if (has(EWallPart::KEEP))
+			res.set(1);
+		if (has(EWallPart::BOTTOM_TOWER))
+			res.set(2);
+
+		return res;
+	}
+
+	CorpseFlags GetSiegeCorpses(const CPlayerBattleCallback * battle)
+	{
+		CorpseFlags res = 0; // {gate, bridge}
+
+		if(battle->battleGetFortifications().wallsHealth == 0)
+			return res;
+
+		for(const auto & cstack : battle->battleGetAllStacks(false))
+		{
+			if(cstack->alive())
+				continue;
+
+			if(cstack->coversPos(BattleHex::GATE_INNER) || cstack->coversPos(BattleHex::GATE_OUTER))
+				res.set(0);
+			if (cstack->coversPos(BattleHex::GATE_BRIDGE))
+				res.set(1);
+		};
+
+		return res;
+	}
 }
 
 State::State(
@@ -176,11 +214,12 @@ State::State(
 	, nullstack(InitNullStack())
 {
 	auto [lv, lh, rv, rh] = CalcGlobalStats(battle);
-	gstats = std::make_unique<GlobalStats>(battle->battleGetMySide(), lv + rv, lh + rh);
+
+	auto cache = std::make_shared<Cache>(battle);
+	gstats = std::make_unique<GlobalStats>(battle->battleGetMySide(), lv + rv, lh + rh, GetSiegeTowers(battle), GetSiegeCorpses(battle));
 	lpstats = std::make_unique<PlayerStats>(BattleSide::LEFT_SIDE, lv, lh);
 	rpstats = std::make_unique<PlayerStats>(BattleSide::RIGHT_SIDE, rv, rh);
 
-	auto cache = std::make_shared<Cache>(battle);
 	battlefield = Battlefield::Create(cache, battle, nullptr, gstats.get(), gstats.get(), sstats, false);
 	bfstate.reserve(S14::BATTLEFIELD_STATE_SIZE);
 	actmask.reserve(S14::N_ACTIONS);
@@ -198,8 +237,8 @@ void State::onActiveStack(
 	const auto & [ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl] = ProcessAttackLogs(attackLogs, sstats);
 	auto ogstats = *gstats; // a copy of the "old" gstats
 
-	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn, round)
-								   : gstats->update(battle->battleGetMySide(), result, lv + rv, lh + rh, false, round);
+	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn, GetSiegeTowers(battle), GetSiegeCorpses(battle), round)
+								   : gstats->update(battle->battleGetMySide(), result, lv + rv, lh + rh, false, GetSiegeTowers(battle), GetSiegeCorpses(battle), round);
 	lpstats->update(&ogstats, lv, lh, ldd, ldr, lvk, lvl);
 	rpstats->update(&ogstats, rv, rh, rdd, rdr, rvk, rvl);
 

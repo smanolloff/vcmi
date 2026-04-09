@@ -24,11 +24,14 @@ using HA = Schema::V14::HexAttribute;
 using HS = Schema::V14::HexState;
 using SA = Schema::V14::StackAttribute;
 
-constexpr HexStateMask S_PASSABLE = 1 << EI(HexState::PASSABLE);
-constexpr HexStateMask S_STOPPING = 1 << EI(HexState::STOPPING);
-constexpr HexStateMask S_DAMAGING_L = 1 << EI(HexState::DAMAGING_L);
-constexpr HexStateMask S_DAMAGING_R = 1 << EI(HexState::DAMAGING_R);
-constexpr HexStateMask S_DAMAGING_ALL = 1 << EI(HexState::DAMAGING_L) | 1 << EI(HexState::DAMAGING_R);
+constexpr HexStateMask S_PASSABLE = 1 << EI(HS::PASSABLE);
+constexpr HexStateMask S_STOPPING = 1 << EI(HS::STOPPING);
+constexpr HexStateMask S_DAMAGING_L = 1 << EI(HS::DAMAGING_L);
+constexpr HexStateMask S_DAMAGING_R = 1 << EI(HS::DAMAGING_R);
+constexpr HexStateMask S_DAMAGING_ALL = 1 << EI(HS::DAMAGING_L) | 1 << EI(HexState::DAMAGING_R);
+constexpr HexStateMask S_WALL = 1 << EI(HS::SIEGE_WALL);
+constexpr HexStateMask S_GATE = 1 << EI(HS::SIEGE_GATE);
+constexpr HexStateMask S_BRIDGE = 1 << EI(HS::SIEGE_BRIDGE);
 
 // static
 int Hex::CalcId(const BattleHex & bh)
@@ -67,14 +70,34 @@ HexActionHex Hex::NearbyBattleHexes(const BattleHex & bh)
 	static_assert(EI(HexAction::AMOVE_BL) == 3);
 	static_assert(EI(HexAction::AMOVE_L) == 4);
 	static_assert(EI(HexAction::AMOVE_TL) == 5);
+	static_assert(EI(HexAction::AMOVE_2TR) == 6);
+	static_assert(EI(HexAction::AMOVE_2R) == 7);
+	static_assert(EI(HexAction::AMOVE_2BR) == 8);
+	static_assert(EI(HexAction::AMOVE_2BL) == 9);
+	static_assert(EI(HexAction::AMOVE_2L) == 10);
+	static_assert(EI(HexAction::AMOVE_2TL) == 11);
+
+	auto nbhR = bh.cloneInDirection(BattleHex::EDir::RIGHT, false);
+	auto nbhL = bh.cloneInDirection(BattleHex::EDir::LEFT, false);
 
 	return HexActionHex{
+		// The 6 basic directions
 		bh.cloneInDirection(BattleHex::EDir::TOP_RIGHT, false),
-		bh.cloneInDirection(BattleHex::EDir::RIGHT, false),
+		nbhR,
 		bh.cloneInDirection(BattleHex::EDir::BOTTOM_RIGHT, false),
 		bh.cloneInDirection(BattleHex::EDir::BOTTOM_LEFT, false),
-		bh.cloneInDirection(BattleHex::EDir::LEFT, false),
+		nbhL,
 		bh.cloneInDirection(BattleHex::EDir::TOP_LEFT, false),
+
+		// Extended directions for R-side wide creatures
+		nbhR.cloneInDirection(BattleHex::EDir::TOP_RIGHT, false),
+		nbhR.cloneInDirection(BattleHex::EDir::RIGHT, false),
+		nbhR.cloneInDirection(BattleHex::EDir::BOTTOM_RIGHT, false),
+
+		// Extended directions for L-side wide creatures
+		nbhL.cloneInDirection(BattleHex::EDir::BOTTOM_LEFT, false),
+		nbhL.cloneInDirection(BattleHex::EDir::LEFT, false),
+		nbhL.cloneInDirection(BattleHex::EDir::TOP_LEFT, false)
 	};
 }
 
@@ -92,11 +115,11 @@ namespace {
 Hex::Hex(
 	const BattleHex & bhex_,
 	const EAccessibility accessibility,
-	const EGateState gatestate,
 	const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
 	const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks,
 	const std::shared_ptr<ActiveStackInfo> & astackinfo,
-	bool isRUFR_
+	bool isRUFR_,
+	int wallHP
 )
 	: bhex(bhex_)
 	, id(CalcId(bhex_))
@@ -114,6 +137,9 @@ Hex::Hex(
 
 	// This is never N/A => set separately (not within the if below)
 	setattr(HA::IS_REAR, stack && bhex == stack->cstack->occupiedHex());
+
+	setattr(HA::IS_RUFR, isRUFR);
+	setattr(HA::WALL_HEALTH, wallHP);
 
 	static_assert(EI(SA::_count) == 25, "whistleblower in case attributes change");
 
@@ -211,8 +237,6 @@ const Stack * Hex::getStack() const
 	return stack.get();
 }
 
-// private
-
 void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side)
 {
 	// First process obstacles
@@ -290,18 +314,6 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 		case EAccessibility::GATE:
 			// See BattleProcessor::updateGateState() for gate states
 			// See CBattleInfoCallback::getAccessibility() for accessibility on gate
-			//
-			// TL; DR:
-			// -> GATE means closed, non-blocked gate
-			// -> UNAVAILABLE means blocked
-			// -> ACCESSIBLE otherwise (open, destroyed)
-			//
-			// Regardless of the gate state, we always set the GATE flag
-			// purely based on the hex coordinates and not on the accessibility
-			// => not setting GATE flag here
-			//
-			// However, in case of GATE accessibility, we still need
-			// to set the PASSABLE flag accordingly.
 			side == BattleSide::DEFENDER ? statemask.set(EI(HS::PASSABLE)) : statemask.reset(EI(HS::PASSABLE));
 			break;
 		case EAccessibility::UNAVAILABLE:
@@ -310,6 +322,17 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 		default:
 			THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EI(accessibility));
 	}
+
+	// XXX: this should be only if townFortifications >0
+	if(bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)
+		statemask |= (S_GATE);
+	else if(bhex == BattleHex::GATE_BRIDGE)
+		statemask |= (S_BRIDGE);
+	else if(bhex == BattleHex::DESTRUCTIBLE_WALL_1
+		|| bhex == BattleHex::DESTRUCTIBLE_WALL_2
+		|| bhex == BattleHex::DESTRUCTIBLE_WALL_3
+		|| bhex == BattleHex::DESTRUCTIBLE_WALL_4)
+		statemask |= (S_WALL);
 }
 
 void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks)
@@ -346,6 +369,7 @@ void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, con
 			continue;
 
 		const auto & n_cstack = it->second->cstack;
+		auto hexaction = static_cast<HexAction>(i);
 
 		if(n_cstack->unitSide() == a_cstack->unitSide())
 			continue;
@@ -354,8 +378,42 @@ void Hex::setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, con
 		// where AMOVE should not be allowed.
 		// It cannot be handled here; see note FixMoatMasks() in battlefield.cpp
 
-		ASSERT(CStack::isMeleeAttackPossible(a_cstack, n_cstack, moveDestHex), "vcmi says melee attack is IMPOSSIBLE for i=" + std::to_string(i));
-		actmask.set(i);
+		if(hexaction <= HexAction::AMOVE_TL)
+		{
+			ASSERT(CStack::isMeleeAttackPossible(a_cstack, n_cstack, moveDestHex), "vcmi says melee attack is IMPOSSIBLE [1]");
+			actmask.set(i);
+		}
+		else if(isRUFR)
+		{
+			// For RUFR hexes, only regular (small stack) AMOVEs are allowed:
+			// . . . . . . . . . 5 0 6 . . .
+			//  2-hex (R):  . . 4 * # 7 . .
+			// . . . . . . . . . 3 2 8 . . .
+			//  . . . . . . . . . . . . . .
+			// Above, # is a RUFR hex that was artificially made reachable, but
+			// should not allow wide AMOVEs (the corresponding front hex "*" has
+			// them allowed though)
+
+			continue;
+		}
+		else if(hexaction <= HexAction::AMOVE_2BR)
+		{
+			// only wide R stacks can perform 2TR/2R/2BR attacks
+			if(a_cstack->unitSide() == BattleSide::DEFENDER && a_cstack->doubleWide())
+			{
+				ASSERT(CStack::isMeleeAttackPossible(a_cstack, n_cstack, moveDestHex), "vcmi says melee attack is IMPOSSIBLE [2]");
+				actmask.set(i);
+			}
+		}
+		else
+		{
+			// only wide L stacks can perform 2TL/2L/2BL attacks
+			if(a_cstack->unitSide() == BattleSide::ATTACKER && a_cstack->doubleWide())
+			{
+				ASSERT(CStack::isMeleeAttackPossible(a_cstack, n_cstack, moveDestHex), "vcmi says melee attack is IMPOSSIBLE");
+				actmask.set(i);
+			}
+		}
 	}
 }
 }

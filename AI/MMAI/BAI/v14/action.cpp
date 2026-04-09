@@ -149,6 +149,24 @@ std::string Action::name() const
 		case HexAction::AMOVE_L:
 			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /left/";
 			break;
+		case HexAction::AMOVE_2BL:
+			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /bottom-left-2/";
+			break;
+		case HexAction::AMOVE_2L:
+			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /left-2/";
+			break;
+		case HexAction::AMOVE_2TL:
+			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /top-left-2/";
+			break;
+		case HexAction::AMOVE_2TR:
+			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /top-right-2/";
+			break;
+		case HexAction::AMOVE_2R:
+			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /right-2/";
+			break;
+		case HexAction::AMOVE_2BR:
+			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /bottom-right-2/";
+			break;
 		case HexAction::SHOOT:
 			res = "Attack stack(" + stackstr + ") " + hex->name() + " (ranged)";
 			break;

@@ -191,6 +191,8 @@ constexpr GlobalEncoding GLOBAL_ENCODING{
 	E5(X::GA::BFIELD_HP_START_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
 	E5(X::GA::BFIELD_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
 	E5(X::GA::BFIELD_HP_NOW_REL0, X::LS, 1000), // bfield_hp_now / bfield_hp_at_start
+	E5(X::GA::SIEGE_TOWERS, X::BS, (1 << 3) - 1),
+	E5(X::GA::SIEGE_CORPSES, X::BS, (1 << 2) - 1),
 	E5(X::GA::ACTION_MASK, X::BS, (1 << EI(GlobalAction::_count)) - 1)
 };
 
@@ -247,12 +249,16 @@ constexpr auto STACK_VALUE_MAX = 200e3; // titan 55k, crystal dr. 113k, azure 18
 constexpr auto STACK_VALUE_NBINS = 20;
 constexpr auto STACK_VALUE_SLOPE = 6.5;
 
+constexpr auto MAX_WALL_HEALTH = 3;  // can be increased via mod tho
+
 constexpr HexEncoding HEX_ENCODING{
 	E5(X::HA::Y_COORD, X::CS, 10),
 	E5(X::HA::X_COORD, X::CS, 14),
 	E5(X::HA::STATE_MASK, X::BS, (1 << EI(HexState::_count)) - 1),
 	E5(X::HA::ACTION_MASK, X::BZ, (1 << EI(HexAction::_count)) - 1),
 	E5(X::HA::IS_REAR, X::CZ, 1), // 1=this is the rear hex of a stack
+	E5(X::HA::IS_RUFR, X::CS, 1), // 1=this is the rear part of a RUFR pair
+	E5(X::HA::WALL_HEALTH, X::LE, MAX_WALL_HEALTH),
 	E5(X::HA::STACK_SIDE, X::CE, 1), // 0=attacker, 1=defender
 	E5(X::HA::STACK_SLOT, X::CE, STACK_SLOT_MAX),
 	E5(X::HA::STACK_QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
@@ -292,6 +298,25 @@ static_assert(DisarrayedEncodingAttributeIndex(HEX_ENCODING) == -1, "Found wrong
 static_assert(MisconfiguredExpnormSlopeIndex(GLOBAL_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(PLAYER_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(HEX_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
+
+// initializer list will silently accept less arguments
+static_assert(EI(LinkType::ADJACENT) == 0);
+static_assert(EI(LinkType::REACH) == 1);
+static_assert(EI(LinkType::RANGED_MOD) == 2);
+static_assert(EI(LinkType::ACTS_BEFORE) == 3);
+static_assert(EI(LinkType::MELEE_DMG_REL) == 4);
+static_assert(EI(LinkType::RETAL_DMG_REL) == 5);
+static_assert(EI(LinkType::RANGED_DMG_REL) == 6);
+static_assert(EI(LinkType::_count) == 7);
+constexpr auto LINK_SIZES = std::array<int, EI(LinkType::_count)> {
+	6, // ADJACENT
+	1, // REACH
+	1, // RANGED_MOD
+	1, // ACTS_BEFORE
+	1, // MELEE_DMG_REL
+	1, // RETAL_DMG_REL
+	1, // RANGED_DMG_REL
+};
 
 constexpr int BATTLEFIELD_STATE_SIZE_GLOBAL = EncodedSize(GLOBAL_ENCODING);
 constexpr int BATTLEFIELD_STATE_SIZE_ONE_PLAYER = EncodedSize(PLAYER_ENCODING);

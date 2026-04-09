@@ -22,13 +22,13 @@ using GA = Schema::V14::GlobalAttribute;
 static_assert(EI(Side::LEFT) == EI(BattleSide::LEFT_SIDE));
 static_assert(EI(Side::RIGHT) == EI(BattleSide::RIGHT_SIDE));
 
-GlobalStats::GlobalStats(BattleSide side, int value, int hp)
+GlobalStats::GlobalStats(BattleSide side, int value, int hp, TowerFlags towers, CorpseFlags corpses)
 {
 	// Fill with NA to guard against "forgotten" attrs
 	// (all attrs are strict so encoder will throw if NAs are found)
 	attrs.fill(S14::NULL_VALUE_UNENCODED);
 
-	static_assert(EI(GA::_count) == 10, "whistleblower in case attributes change");
+	static_assert(EI(GA::_count) == 12, "whistleblower in case attributes change");
 
 	setattr(GA::BATTLE_WINNER, S14::NULL_VALUE_UNENCODED);
 	setattr(GA::BATTLE_ROUND, 0);
@@ -39,12 +39,14 @@ GlobalStats::GlobalStats(BattleSide side, int value, int hp)
 	setattr(GA::BFIELD_HP_START_ABS, hp);
 	setattr(GA::BFIELD_HP_NOW_ABS, hp);
 	setattr(GA::BFIELD_HP_NOW_REL0, 1000);
+	setattr(GA::SIEGE_TOWERS, towers.to_ulong());
+	setattr(GA::SIEGE_CORPSES, corpses.to_ulong());
 	setattr(GA::ACTION_MASK, 0);
 }
 
 static_assert(EI(GlobalAction::_count) == 2); // RETREAT, WAIT
 
-void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, bool canWait, int round)
+void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, bool canWait, TowerFlags towers, CorpseFlags corpses, int round)
 {
 	setattr(GA::BATTLE_ROUND, round);
 	(res == CombatResult::NONE) ? setattr(GA::BATTLE_WINNER, S14::NULL_VALUE_UNENCODED) : setattr(GA::BATTLE_WINNER, EI(res));
@@ -56,6 +58,9 @@ void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, b
 	setattr(GA::BFIELD_VALUE_NOW_REL0, 1000LL * value / attr(GA::BFIELD_VALUE_START_ABS));
 	setattr(GA::BFIELD_HP_NOW_ABS, hp);
 	setattr(GA::BFIELD_HP_NOW_REL0, 1000LL * hp / attr(GA::BFIELD_HP_START_ABS));
+
+	setattr(GA::SIEGE_TOWERS, towers.to_ulong());
+	setattr(GA::SIEGE_CORPSES, corpses.to_ulong());
 
 	canWait ? actmask.set(EI(GlobalAction::WAIT)) : actmask.reset(EI(GlobalAction::WAIT));
 
