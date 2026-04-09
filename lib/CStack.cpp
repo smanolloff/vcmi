@@ -79,6 +79,9 @@ void CStack::localInit(BattleInfo * battleInfo)
 	}
 	CUnitState::localInit(this); //it causes execution of the CStack::isOnNativeTerrain where nativeTerrain will be considered
 	position = initialPosition;
+#ifdef ML
+	desc = getDescription();
+#endif
 }
 
 ui32 CStack::level() const

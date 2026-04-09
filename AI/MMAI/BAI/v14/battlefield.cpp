@@ -13,11 +13,13 @@
 #include "battle/BattleHex.h"
 #include "battle/IBattleInfoCallback.h"
 #include "battle/ReachabilityInfo.h"
-#include "entities/building/TownFortifications.h"
 
-#include "BAI/v14/battlefield.h"
-#include "BAI/v14/hex.h"
 #include "common.h"
+#include "BAI/v14/battlefield.h"
+#include "BAI/v14/hexaction.h"
+#include "BAI/v14/hex.h"
+#include "BAI/v14/encoder.h"
+#include "schema/v14/constants.h"
 
 namespace MMAI::BAI::V14
 {
@@ -38,17 +40,17 @@ struct PairHash
 
 namespace
 {
-	std::unordered_map<std::pair<si16, si16>, bool, PairHash> InitAdjMap()
+	std::unordered_map<std::pair<si16, si16>, int, PairHash> InitAdjMap()
 	{
-		auto res = std::unordered_map<std::pair<si16, si16>, bool, PairHash>{};
+		auto res = std::unordered_map<std::pair<si16, si16>, int, PairHash>{};
 
 		for(int id1 = 0; id1 < GameConstants::BFIELD_SIZE; id1++)
 		{
 			auto hex1 = BattleHex(id1);
-			for(auto dir : BattleHex::hexagonalDirections())
+			for(int i=0; i<6; ++i)
 			{
-				auto hex2 = hex1.cloneInDirection(dir, false);
-				res[{hex1.toInt(), hex2.toInt()}] = true;
+				auto hex2 = hex1.cloneInDirection(AMOVE_TO_EDIR[i], false);
+				res[{hex1.toInt(), hex2.toInt()}] = i;
 			}
 		}
 
@@ -111,10 +113,10 @@ namespace
 			return;
 
 		// Mask out AMOVE actions (i.e. all actions except MOVE / SHOOT)
-		static_assert(EI(HexAction::MOVE) == 6);
-		static_assert(EI(HexAction::SHOOT) == 7);
-		static_assert(EI(HexAction::_count) == 8);
-		auto noAmove = HexActionMask(0b11000000); // leftmost bit = SHOOT
+		static_assert(EI(HexAction::MOVE) == 12);
+		static_assert(EI(HexAction::SHOOT) == 13);
+		static_assert(EI(HexAction::_count) == 14);
+		auto noAmove = HexActionMask(0b11000000000000); // leftmost bit = SHOOT
 		assert(noAmove.test(EI(HexAction::MOVE)));
 		assert(noAmove.test(EI(HexAction::SHOOT)));
 
@@ -242,6 +244,39 @@ Queue Battlefield::GetQueue(const CPlayerBattleCallback * battle, const CStack *
 	return res;
 }
 
+namespace
+{
+	int WallHP(const CPlayerBattleCallback * battle, const BattleHex & bhex) {
+		auto part = battle->battleHexToWallPart(bhex);
+		switch(part)
+		{
+			case EWallPart::BOTTOM_WALL:
+			case EWallPart::BELOW_GATE:
+			case EWallPart::OVER_GATE:
+			case EWallPart::UPPER_WALL:
+				switch(battle->battleGetWallState(part))
+				{
+					case EWallState::NONE:
+						return Schema::V14::NULL_VALUE_UNENCODED;
+					case EWallState::DESTROYED:
+						return 0;
+					case EWallState::DAMAGED:
+						return 1;
+					case EWallState::INTACT:
+						return 2;
+					case EWallState::REINFORCED:
+						return 3;
+					default:
+						logAi->warn("MMAI: unexpected wall state: %d", EI(battle->battleGetWallState(part)));
+						return Schema::V14::NULL_VALUE_UNENCODED;
+				}
+			default:
+				return Schema::V14::NULL_VALUE_UNENCODED;
+			break;
+		}
+	}
+}
+
 // static
 std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(
 	std::shared_ptr<Cache> & cache,
@@ -280,10 +315,6 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(
 		astackinfo = std::make_shared<ActiveStackInfo>(astack, battle->battleCanShoot(astack->cstack), std::make_shared<ReachabilityInfo>(astack->rinfo));
 	}
 
-	auto gatestate = battle->battleGetGateState();
-	auto debugreach = acstack ? battle->getReachability(acstack) : ReachabilityInfo{};
-	auto myreach = acstack ? cache->getReachability(acstack) : ReachabilityInfo{};
-
 	for(int y = 0; y < 11; ++y)
 	{
 		for(int x = 0; x < 15; ++x)
@@ -293,11 +324,11 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(
 			res->at(y).at(x) = std::make_unique<Hex>(
 				bh,
 				ainfo.at(bh.toInt()),
-				gatestate,
 				hexobstacles.at(i),
 				hexstacks,
 				astackinfo,
-				acstack ? cache->isRUFR(acstack, bh) : false
+				acstack ? cache->isRUFR(acstack, bh) : false,
+				WallHP(battle, bh)
 			);
 		}
 	}
@@ -529,7 +560,14 @@ void Battlefield::LinkTwoHexes(
 	//
 
 	if(neighbour)
-		allLinks[LT::ADJACENT]->add(src->id, dst->id, 1);
+	{
+		auto it = adjmap.find({src->bhex.toInt(), dst->bhex.toInt()});
+		assert(it != adjmap.end());
+		assert(it->second < 6);
+		auto attrs = std::vector<float>{};
+		Encoder::EncodeCategoricalStrictNull(it->second, 6, attrs);
+		allLinks[LT::ADJACENT]->add(src->id, dst->id, attrs);
+	}
 
 	if(reachable)
 		allLinks[LT::REACH]->add(src->id, dst->id, 1);

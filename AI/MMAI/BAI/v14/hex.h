@@ -55,11 +55,12 @@ public:
 
 	Hex(const BattleHex & bh,
 		EAccessibility accessibility,
-		EGateState gatestate,
 		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
 		const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks,
 		const std::shared_ptr<ActiveStackInfo> & astackinfo,
-		bool isRUFR);
+		bool isRUFR,
+		int wallHP
+	);
 
 	// IHex impl
 	const HexAttrs & getAttrs() const override;

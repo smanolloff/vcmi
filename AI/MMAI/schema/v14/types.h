@@ -301,7 +301,9 @@ enum class HexState : int
 	STOPPING, //      moat/quicksand
 	DAMAGING_L, //    moat/mine/firewall
 	DAMAGING_R, //    moat/mine/firewall
-	// GATE, //       XXX: redundant? Always set during siege (regardless of gate state)
+	SIEGE_WALL,
+	SIEGE_GATE,
+	SIEGE_BRIDGE,
 	_count
 };
 
@@ -312,7 +314,13 @@ enum class HexAction : int
 	AMOVE_BR, //  . 1-hex:  . . . . 4 * 1 . . .
 	AMOVE_BL, //   . . . . . . . . . 3 2 . . . .
 	AMOVE_L, //   . . . . . . . . . . . . . . .
-	AMOVE_TL, //   . . . . . . . . . . . . . . .
+	AMOVE_TL, //   . . . . . . . . . 5 0 6 . . .
+	AMOVE_2TR, // . 2-hex (R):  . . 4 * # 7 . .
+	AMOVE_2R, //   . . . . . . . . . 3 2 8 . . .
+	AMOVE_2BR, // . . . . . . . . . . . . . . .
+	AMOVE_2BL, //  . . . . . . . .11 5 0 . . . .
+	AMOVE_2L, //  . 2-hex (L):  .10 # * 1 . . .
+	AMOVE_2TL, //  . . . . . . . . 9 3 2 . . . .
 	MOVE, //      = Move to (defend if current hex)
 	SHOOT, //     = shoot at
 	_count
@@ -336,6 +344,8 @@ enum class GlobalAttribute : int
 	BFIELD_HP_START_ABS, //       global_hp_at_start
 	BFIELD_HP_NOW_ABS, //         global_hp_now
 	BFIELD_HP_NOW_REL0, //        global_hp_now / global_hp_at_start
+	SIEGE_TOWERS, //              {upper, keep, lower}
+	SIEGE_CORPSES, //             {gate, bridge}
 	ACTION_MASK, //               mask for global actions (retreat, wait)
 
 	_count
@@ -378,6 +388,8 @@ enum class HexAttribute : int
 	STATE_MASK,
 	ACTION_MASK,
 	IS_REAR, // is this hex the rear hex of a stack
+	IS_RUFR,
+	WALL_HEALTH,
 	STACK_SIDE,
 	// STACK_CREATURE_ID,
 	STACK_SLOT,
@@ -500,7 +512,7 @@ enum class LinkType : int
 	// XXX: types are sorted by frequency (desc)
 
 	// ACTION, //          need to link it with v=action (SRC=active stack)
-	ADJACENT,
+	ADJACENT, // 		   v=0..5 based on directions (see HexAction)
 	REACH, //              i.e. "can move to"
 	RANGED_MOD, //         v=0.25 / 0.5 / 1
 	ACTS_BEFORE, //        v=num of actions (e.g. 2 if waited)
@@ -592,6 +604,7 @@ public:
 	virtual std::vector<int64_t> getSrcIndex() const = 0;
 	virtual std::vector<int64_t> getDstIndex() const = 0;
 	virtual std::vector<float> getAttributes() const = 0;
+	virtual int getAttributeSize() const = 0;
 	virtual ~ILinks() = default;
 };
 

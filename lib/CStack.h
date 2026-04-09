@@ -112,6 +112,9 @@ public:
 
 private:
 	const BattleInfo * battle; //do not serialize
+#ifdef ML
+	std::string desc;
+#endif
 };
 
 VCMI_LIB_NAMESPACE_END
