@@ -28,8 +28,20 @@ static_assert(EI(HexAction::AMOVE_BR) == 2);
 static_assert(EI(HexAction::AMOVE_BL) == 3);
 static_assert(EI(HexAction::AMOVE_L) == 4);
 static_assert(EI(HexAction::AMOVE_TL) == 5);
+static_assert(EI(HexAction::AMOVE_2TR) == 6);
+static_assert(EI(HexAction::AMOVE_2R) == 7);
+static_assert(EI(HexAction::AMOVE_2BR) == 8);
+static_assert(EI(HexAction::AMOVE_2BL) == 9);
+static_assert(EI(HexAction::AMOVE_2L) == 10);
+static_assert(EI(HexAction::AMOVE_2TL) == 11);
 
-constexpr auto AMOVE_TO_EDIR = std::array<BattleHex::EDir, 6>{
+constexpr auto AMOVE_TO_EDIR = std::array<BattleHex::EDir, 12>{
+	BattleHex::TOP_RIGHT,
+	BattleHex::RIGHT,
+	BattleHex::BOTTOM_RIGHT,
+	BattleHex::BOTTOM_LEFT,
+	BattleHex::LEFT,
+	BattleHex::TOP_LEFT,
 	BattleHex::TOP_RIGHT,
 	BattleHex::RIGHT,
 	BattleHex::BOTTOM_RIGHT,

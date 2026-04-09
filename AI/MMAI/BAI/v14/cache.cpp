@@ -40,7 +40,6 @@ ReachabilityInfo Cache::getReachability(const CStack * cstack)
 			// RUFR logic (Rear-Unreachable-with-Front-Reachable)
 			// VCMI does not allow moving onto such hexes.
 			// MMAI explicitly allows it, treating it as a MOVE to the front hex.
-			// This is done to simplify AMOVE actions via the stack's "tail".
 			if(!rinfo.isReachable(rhex.toInt()) && rinfo.isReachable(fhex.toInt())) {
 				dists[rhex.toInt()] = dists[fhex.toInt()];
 				rufrHexes[cstack][rhex.toInt()] = true;
