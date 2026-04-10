@@ -19,6 +19,8 @@
 #include "BAI/v14/hexaction.h"
 #include "BAI/v14/hex.h"
 #include "BAI/v14/encoder.h"
+#include "constants/Enumerations.h"
+#include "entities/building/TownFortifications.h"
 #include "schema/v14/constants.h"
 
 namespace MMAI::BAI::V14
@@ -254,6 +256,7 @@ namespace
 			case EWallPart::BELOW_GATE:
 			case EWallPart::OVER_GATE:
 			case EWallPart::UPPER_WALL:
+			case EWallPart::GATE:
 				switch(battle->battleGetWallState(part))
 				{
 					case EWallState::NONE:
@@ -315,6 +318,10 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(
 		astackinfo = std::make_shared<ActiveStackInfo>(astack, battle->battleCanShoot(astack->cstack), std::make_shared<ReachabilityInfo>(astack->rinfo));
 	}
 
+	auto gatestate = battle->battleGetGateState();
+	bool isGateOpen = battle->battleGetFortifications().wallsHealth > 0
+		&& (gatestate == EGateState::OPENED || gatestate == EGateState::DESTROYED);
+
 	for(int y = 0; y < 11; ++y)
 	{
 		for(int x = 0; x < 15; ++x)
@@ -328,7 +335,8 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(
 				hexstacks,
 				astackinfo,
 				acstack ? cache->isRUFR(acstack, bh) : false,
-				WallHP(battle, bh)
+				WallHP(battle, bh),
+				isGateOpen
 			);
 		}
 	}

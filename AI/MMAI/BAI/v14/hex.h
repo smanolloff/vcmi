@@ -59,7 +59,8 @@ public:
 		const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks,
 		const std::shared_ptr<ActiveStackInfo> & astackinfo,
 		bool isRUFR,
-		int wallHP
+		int wallHP,
+		bool isBridgeDamaging
 	);
 
 	// IHex impl
@@ -84,7 +85,7 @@ public:
 private:
 	void setattr(HexAttribute a, int value);
 
-	void setStateMask(EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side);
+	void setStateMask(EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side, bool isGateOpen);
 
 	void setActionMask(const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks);
 };
