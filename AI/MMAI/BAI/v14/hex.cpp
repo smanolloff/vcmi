@@ -119,7 +119,8 @@ Hex::Hex(
 	const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks,
 	const std::shared_ptr<ActiveStackInfo> & astackinfo,
 	bool isRUFR_,
-	int wallHP
+	int wallHP,
+	bool isGateOpen
 )
 	: bhex(bhex_)
 	, id(CalcId(bhex_))
@@ -186,12 +187,12 @@ Hex::Hex(
 
 	if(astackinfo)
 	{
-		setStateMask(accessibility, obstacles, astackinfo->stack->cstack->unitSide());
+		setStateMask(accessibility, obstacles, astackinfo->stack->cstack->unitSide(), isGateOpen);
 		setActionMask(astackinfo, hexstacks);
 	}
 	else
 	{
-		setStateMask(accessibility, obstacles, BattleSide::ATTACKER);
+		setStateMask(accessibility, obstacles, BattleSide::ATTACKER, isGateOpen);
 	}
 
 	finalize();
@@ -237,7 +238,7 @@ const Stack * Hex::getStack() const
 	return stack.get();
 }
 
-void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side)
+void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side, bool isGateOpen)
 {
 	// First process obstacles
 	// XXX: set only non-PASSABLE flags
@@ -262,7 +263,10 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 				statemask &= ~S_PASSABLE;
 				break;
 			case CObstacleInstance::MOAT:
-				statemask |= (S_STOPPING | S_DAMAGING_ALL);
+				// MOAT on BRIDGE hex (e.g. wide moat) will NOT function
+				// as a moat when gate is opened
+				if(!(bhex == BattleHex::GATE_BRIDGE && isGateOpen))
+					statemask |= (S_STOPPING | S_DAMAGING_ALL);
 				break;
 			case CObstacleInstance::SPELL_CREATED:
 				// XXX: the public Obstacle / Spell API does not seem to expose
