@@ -11,6 +11,7 @@
 #include "StdInc.h"
 
 #include "battle/CPlayerBattleCallback.h"
+#include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
 
 #include "BAI/v14/encoder.h"
