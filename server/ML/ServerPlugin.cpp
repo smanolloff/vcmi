@@ -685,6 +685,18 @@ void ServerPlugin::handleSwapSides(const CGHeroInstance * hero1, const CGHeroIns
     const_cast<CGHeroInstance*>(hero2)->tempOwner = PlayerColor(!redside);
 }
 
+void ServerPlugin::handleRandomPrimarySkills(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
+    auto dist = std::uniform_int_distribution<>(0, 20);
+    gh->changePrimSkill(hero1, PrimarySkill::ATTACK, dist(rng), ChangeValueMode::ABSOLUTE);
+    gh->changePrimSkill(hero1, PrimarySkill::DEFENSE, dist(rng), ChangeValueMode::ABSOLUTE);
+}
+
+void ServerPlugin::handleRandomSecondarySkills(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
+    auto dist = std::uniform_int_distribution<>(MasteryLevel::NONE, MasteryLevel::EXPERT);
+    gh->changeSecSkill(hero1, SecondarySkill::BALLISTICS, dist(rng), ChangeValueMode::ABSOLUTE);
+    gh->changeSecSkill(hero2, SecondarySkill::BALLISTICS, dist(rng), ChangeValueMode::ABSOLUTE);
+}
+
 void ServerPlugin::startBattleHook(
     const CArmedInstance *&army1,
     const CArmedInstance *&army2,
@@ -705,6 +717,8 @@ void ServerPlugin::startBattleHook(
     handleTightFormation(hero1, hero2);
     handleMinMaxMana(hero1, hero2);
     handleSwapSides(hero1, hero2);
+    handleRandomPrimarySkills(hero1, hero2);
+    handleRandomSecondarySkills(hero1, hero2);
 }
 
 void ServerPlugin::endBattleHook(
