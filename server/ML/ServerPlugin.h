@@ -109,6 +109,8 @@ namespace ML {
         void handleTightFormation(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleMinMaxMana(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleSwapSides(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleRandomPrimarySkills(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleRandomSecondarySkills(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
 
 
     };
