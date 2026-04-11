@@ -171,12 +171,16 @@ void AAI::yourTurn(QueryID queryID)
 		{
 			std::shared_lock gsLock(CGameState::mutex);
 
-			info("Answering query " + std::to_string(queryID) + " to start turn");
-			cb->selectionMade(0, queryID);
+
+			if(queryID != -1)
+			{
+				info("Answering query " + std::to_string(queryID) + " to start turn");
+				cb->selectionMade(0, queryID);
+			}
 
 			auto heroes = cb->getHeroesInfo();
 			assert(!heroes.empty());
-			auto h = heroes.at(0);
+			const auto * h = heroes.at(0);
 
 			// Move 1 tile to the right
 			cb->moveHero(h, h->pos + int3{1, 0, 0}, false);
