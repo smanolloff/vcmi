@@ -686,7 +686,10 @@ void ServerPlugin::handleSwapSides(const CGHeroInstance * hero1, const CGHeroIns
 }
 
 void ServerPlugin::handleRandomPrimarySkills(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
-    auto dist = std::uniform_int_distribution<>(0, 20);
+    if(config.randomPrimarySkills == 0)
+        return;
+
+    auto dist = std::uniform_int_distribution<>(0, config.randomPrimarySkills);
     gh->changePrimSkill(hero1, PrimarySkill::ATTACK, dist(rng), ChangeValueMode::ABSOLUTE);
     gh->changePrimSkill(hero1, PrimarySkill::DEFENSE, dist(rng), ChangeValueMode::ABSOLUTE);
     gh->changePrimSkill(hero2, PrimarySkill::ATTACK, dist(rng), ChangeValueMode::ABSOLUTE);
