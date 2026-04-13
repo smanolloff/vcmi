@@ -128,7 +128,7 @@ namespace
 
 	bool checkReachable(const Context & ctx, BattleHex bh, bool v, const CStack * stack)
 	{
-		bh = RUFRFront(ctx, bh, stack);
+		// bh = RUFRFront(ctx, bh, stack);
 		auto distance = ctx.rinfos.at(stack).distances.at(bh.toInt());
 		auto canreach = (stack->getMovementRange() >= distance);
 
@@ -231,9 +231,9 @@ namespace
 			expect(estack, "%s: =1 (bhex %d, nbhex %d), but estack is nullptr", attrname, bh.toInt(), nbh.toInt());
 			// must not pass "nbh" for defender position, as it could be its rear hex
 
-			auto rufrFront = RUFRFront(ctx, bh, cstack);
+			// auto rufrFront = RUFRFront(ctx, bh, cstack);
 			expect(
-				cstack->isMeleeAttackPossible(cstack, estack, rufrFront),
+				cstack->isMeleeAttackPossible(cstack, estack, bh),
 				"%s: =1 (bhex %d, nbhex %d), but VCMI says isMeleeAttackPossible=0",
 				attrname,
 				bh.toInt(),
@@ -644,14 +644,16 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 				break;
 				case HA::IS_RUFR:
 				{
-					// at battle end, active stack is ill-defined and check fails
-					if(ended || !astack || !astack->doubleWide())
-						break;
+					expect(v == 0, "RUFR disabled, but found RUFR hex");
+					break;
+					// // at battle end, active stack is ill-defined and check fails
+					// if(ended || !astack || !astack->doubleWide())
+					// 	break;
 
-					auto frontoffset = astack->unitSide() == BattleSide::ATTACKER ? 1 : -1;
-					auto rinfo = ctx.rinfos.at(astack);
-					auto isRufr = !rinfo.isReachable(hex->bhex) && rinfo.isReachable(BattleHex(hex->bhex.toInt() + frontoffset));
-					ensureValueMatch(v, isRufr, "HEX.IS_RUFR bhex=" + std::to_string(hex->bhex.toInt()));
+					// auto frontoffset = astack->unitSide() == BattleSide::ATTACKER ? 1 : -1;
+					// auto rinfo = ctx.rinfos.at(astack);
+					// auto isRufr = !rinfo.isReachable(hex->bhex) && rinfo.isReachable(BattleHex(hex->bhex.toInt() + frontoffset));
+					// ensureValueMatch(v, isRufr, "HEX.IS_RUFR bhex=" + std::to_string(hex->bhex.toInt()));
 				}
 				break;
 				case HA::WALL_HEALTH:

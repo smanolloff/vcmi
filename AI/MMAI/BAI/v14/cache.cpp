@@ -24,28 +24,28 @@ ReachabilityInfo Cache::getReachability(const CStack * cstack)
 		return rcache[cstack];
 
 	auto rinfo = battle->getReachability(cstack);
-	auto dists = rinfo.distances;  // must not mutate rinfo => copy
-	auto attacker = cstack->unitSide() == BattleSide::ATTACKER;
+	// auto dists = rinfo.distances;  // must not mutate rinfo => copy
+	// auto attacker = cstack->unitSide() == BattleSide::ATTACKER;
 
-	if (cstack->doubleWide()) {
-		for (int i=0; i<dists.size(); ++i) {
-			const auto rhex = BattleHex(i);
-			if(!rhex.isAvailable())
-				continue;
+	// if (cstack->doubleWide()) {
+	// 	for (int i=0; i<dists.size(); ++i) {
+	// 		const auto rhex = BattleHex(i);
+	// 		if(!rhex.isAvailable())
+	// 			continue;
 
-			const auto fhex = rhex.cloneInDirection(attacker ? BattleHex::RIGHT : BattleHex::LEFT, false);
-			if(!fhex.isAvailable())
-				continue;
+	// 		const auto fhex = rhex.cloneInDirection(attacker ? BattleHex::RIGHT : BattleHex::LEFT, false);
+	// 		if(!fhex.isAvailable())
+	// 			continue;
 
-			// RUFR logic (Rear-Unreachable-with-Front-Reachable)
-			// VCMI does not allow moving onto such hexes.
-			// MMAI explicitly allows it, treating it as a MOVE to the front hex.
-			if(!rinfo.isReachable(rhex.toInt()) && rinfo.isReachable(fhex.toInt())) {
-				dists[rhex.toInt()] = dists[fhex.toInt()];
-				rufrHexes[cstack][rhex.toInt()] = true;
-			}
-		}
-	}
+	// 		// RUFR logic (Rear-Unreachable-with-Front-Reachable)
+	// 		// VCMI does not allow moving onto such hexes.
+	// 		// MMAI explicitly allows it, treating it as a MOVE to the front hex.
+	// 		if(!rinfo.isReachable(rhex.toInt()) && rinfo.isReachable(fhex.toInt())) {
+	// 			dists[rhex.toInt()] = dists[fhex.toInt()];
+	// 			rufrHexes[cstack][rhex.toInt()] = true;
+	// 		}
+	// 	}
+	// }
 
 	rcache.try_emplace(cstack, rinfo);
 	return rcache[cstack];

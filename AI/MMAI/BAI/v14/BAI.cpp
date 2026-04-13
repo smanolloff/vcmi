@@ -490,9 +490,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	// MMAI allows (A)MOVE to RUFR hexes, but VCMI does not
 	// => make sure to build the BattleAction using the *front* hex
 	const auto frontDir = battle->battleGetMySide() == BattleSide::ATTACKER ? BattleHex::RIGHT : BattleHex::LEFT;
-	const auto moveTo = action->hex->isRUFR
-		? action->hex->bhex.cloneInDirection(frontDir)
-		: action->hex->bhex;
+	const auto moveTo = action->hex->bhex;
 
 	const auto & stack = action->hex->stack; // may be null
 	const auto & mask = HexActMask(action->hex->attr(HexAttribute::ACTION_MASK));
@@ -625,18 +623,6 @@ void BAI::handleUnexpectedAction(const CStack * acstack, const Hex * hex, Action
 
 			// only remaining is ACCESSIBLE
 			ASSERT(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: " = std::to_string(EI(a)));
-
-			// Check if this is a RUFR hex
-			if(acstack->doubleWide() && rinfo.distances.at(bhex.toInt()) == ReachabilityInfo::INFINITE_DIST)
-			{
-				auto defender = acstack->unitSide() == BattleSide::DEFENDER;
-				auto primaryHex = bhex.cloneInDirection(defender ? BattleHex::LEFT : BattleHex::RIGHT).toInt();
-				ASSERT(rinfo.distances.at(primaryHex) > acstack->getMovementRange(), "mask prevented (A)MOVE to a fixed-reachability hex" + debugInfo(action, acstack, nullptr));
-				// means we try to move too far (with a wide creature)
-				state->supdata->errcode = ErrorCode::HEX_UNREACHABLE;
-				logger.error("Action error: %s (%d): HEX_UNREACHABLE", action->name(), EI(action->action));
-				break;
-			}
 
 			if(rinfo.distances[action->hex->bhex.toInt()] > acstack->getMovementRange())
 			{

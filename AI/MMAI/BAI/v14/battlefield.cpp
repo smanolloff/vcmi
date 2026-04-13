@@ -334,7 +334,7 @@ std::tuple<std::shared_ptr<Hexes>, Stack *> Battlefield::InitHexes(
 				hexobstacles.at(i),
 				hexstacks,
 				astackinfo,
-				acstack ? cache->isRUFR(acstack, bh) : false,
+				false,
 				WallHP(battle, bh),
 				isGateOpen
 			);
