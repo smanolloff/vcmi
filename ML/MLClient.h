@@ -72,6 +72,7 @@ namespace ML {
             std::string battlefieldPattern,
             int manaMin,
             int manaMax,
+            int randomPrimarySkills,
             int swapSides,
             std::string loglevelGlobal,
             std::string loglevelAI,
@@ -100,6 +101,7 @@ namespace ML {
           , battlefieldPattern(battlefieldPattern)
           , manaMin(manaMin)
           , manaMax(manaMax)
+          , randomPrimarySkills(randomPrimarySkills)
           , swapSides(swapSides)
           , loglevelGlobal(loglevelGlobal)
           , loglevelAI(loglevelAI)
@@ -132,6 +134,7 @@ namespace ML {
         const std::string battlefieldPattern;
         const int manaMin;
         const int manaMax;
+        const int randomPrimarySkills;
         const int swapSides;
         const std::string loglevelGlobal;
         const std::string loglevelAI;

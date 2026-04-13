@@ -225,6 +225,11 @@ namespace ML {
             exit(1);
         }
 
+        if (a.randomPrimarySkills < 0) {
+            std::cerr << "Bad value for randomPrimarySkills: expected a non-negative integer, got: " << a.randomPrimarySkills << "\n";
+            exit(1);
+        }
+
         if (a.warmachineChance < 0 || a.warmachineChance > 100) {
             std::cerr << "Bad value for warmachineChance: expected an integer between 0 and 100, got: " << a.warmachineChance << "\n";
             exit(1);
@@ -345,6 +350,7 @@ namespace ML {
         Settings(settings.write({"server", "ML", "battlefieldPattern"}))->String() = a.battlefieldPattern;
         Settings(settings.write({"server", "ML", "manaMin"}))->Integer() = a.manaMin;
         Settings(settings.write({"server", "ML", "manaMax"}))->Integer() = a.manaMax;
+        Settings(settings.write({"server", "ML", "randomPrimarySkills"}))->Integer() = a.randomPrimarySkills;
         Settings(settings.write({"server", "ML", "swapSides"}))->Integer() = a.swapSides;
         Settings(settings.write({"server", "ML", "statsMode"}))->String() = a.statsMode;
         Settings(settings.write({"server", "ML", "statsStorage"}))->String() = a.statsStorage;
