@@ -40,6 +40,7 @@ namespace ML {
             swapSides = settings["server"]["ML"]["swapSides"].Integer();
             manaMin = settings["server"]["ML"]["manaMin"].Integer();
             manaMax = settings["server"]["ML"]["manaMax"].Integer();
+            randomPrimarySkills = settings["server"]["ML"]["randomPrimarySkills"].Integer();
 
             statsPersistFreq = settings["server"]["ML"]["statsPersistFreq"].Integer();
             statsTimeout = settings["server"]["ML"]["statsTimeout"].Integer();
@@ -63,6 +64,7 @@ namespace ML {
         int swapSides = 0;
         int manaMin = 0;
         int manaMax = 0;
+        int randomPrimarySkills = 0;
 
         int statsPersistFreq = 0;
         int statsTimeout = 0;

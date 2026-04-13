@@ -65,6 +65,7 @@ namespace ML {
         int warmachineChance = 0;
         int manaMin = 0;
         int manaMax = 0;
+        int randomPrimarySkills = 0;
         int swapSides = 0;
         bool leftAllowMlBot = false;
         bool rightAllowMlBot = false;
@@ -131,6 +132,8 @@ namespace ML {
                 "Minimum mana to give to give each hero at the start of combat (default 0*)")
             ("mana-max", po::value<int>()->value_name("<N>"),
                 "Maximum mana to give to give each hero at the start of combat (default 100*)")
+            ("random-primary-skills", po::value<int>()->value_name("<N>"),
+                "Set a random values to each hero's attack and defense the start of combat (default 0*)")
             ("swap-sides", po::value<int>()->value_name("<N>"),
                 "Swap combat sides each Nth combat (disabled if 0*)")
             ("left-ai", po::value<std::string>()->value_name("<AI>"),
@@ -233,6 +236,9 @@ namespace ML {
         if (vm.count("mana-max"))
             manaMax = vm.at("mana-max").as<int>();
 
+        if (vm.count("random-primary-skills"))
+            randomPrimarySkills = vm.at("random-primary-skills").as<int>();
+
         if (vm.count("swap-sides"))
             swapSides = vm.at("swap-sides").as<int>();
 
@@ -328,6 +334,7 @@ namespace ML {
             battlefieldPattern,
             manaMin,
             manaMax,
+            randomPrimarySkills,
             swapSides,
             omap.at("loglevel-global"),
             omap.at("loglevel-ai"),
