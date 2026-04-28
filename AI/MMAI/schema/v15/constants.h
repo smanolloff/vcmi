@@ -10,12 +10,12 @@
 
 #pragma once
 
-#include <array>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 
 #include "schema/base.h"
+#include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 #include "schema/v15/util.h"
 
@@ -26,7 +26,6 @@ constexpr Action ACTION_RETREAT = 0;
 constexpr Action ACTION_WAIT = 1;
 constexpr int N_HEX_ACTIONS = EI(HexAction::_count);
 constexpr int N_ACTIONS = N_NONHEX_ACTIONS + (165 * N_HEX_ACTIONS);
-constexpr int STACK_ATTR_OFFSET = EI(HexAttribute::_count) - EI(StackAttribute::_count);
 
 // Control actions (not part of the regular action space)
 constexpr Action ACTION_UNSET = -666;
@@ -69,9 +68,15 @@ namespace X
 
 	inline constexpr auto RAW = Encoding::RAW;
 
-	using GA = GlobalAttribute;
-	using PA = PlayerAttribute;
-	using HA = HexAttribute;
+	using GA = Graph::NodeAttributes::Global;
+	using PA = Graph::NodeAttributes::Player;
+	using UA = Graph::NodeAttributes::Unit;
+	using HA = Graph::NodeAttributes::Hex;
+
+	using EA_Unit_MeleeDmg_Unit = Graph::EdgeAttributes::Unit_MeleeDmg_Unit;
+	using EA_Unit_RangedDmg_Unit = Graph::EdgeAttributes::Unit_RangedDmg_Unit;
+	using EA_Unit_ActsBefore_Unit = Graph::EdgeAttributes::Unit_ActsBefore_Unit;
+	using EA_Hex_Adjacent_Hex = Graph::EdgeAttributes::Hex_Adjacent_Hex;
 
 	/*
 	 * The encoding schema `{a, e, n, vmax, p}`, where:
@@ -81,14 +86,26 @@ namespace X
 	 * vmax=max_value
 	 * p=param (encoding-specific)
 	 */
-	using E5G = std::tuple<GlobalAttribute, Encoding, int, int, double>;
-	using E5P = std::tuple<PlayerAttribute, Encoding, int, int, double>;
-	using E5H = std::tuple<HexAttribute, Encoding, int, int, double>;
+	using E5G = std::tuple<GA, Encoding, int, int, double>;
+	using E5P = std::tuple<PA, Encoding, int, int, double>;
+	using E5U = std::tuple<UA, Encoding, int, int, double>;
+	using E5H = std::tuple<HA, Encoding, int, int, double>;
+
+	using E5E_Unit_MeleeDmg_Unit = std::tuple<EA_Unit_MeleeDmg_Unit, Encoding, int, int, double>;
+	using E5E_Unit_RangedDmg_Unit = std::tuple<EA_Unit_RangedDmg_Unit, Encoding, int, int, double>;
+	using E5E_Unit_ActsBefore_Unit = std::tuple<EA_Unit_ActsBefore_Unit, Encoding, int, int, double>;
+	using E5E_Hex_Adjacent_Hex = std::tuple<EA_Hex_Adjacent_Hex, Encoding, int, int, double>;
 }
 
-using GlobalEncoding = std::array<X::E5G, EI(GlobalAttribute::_count)>;
-using PlayerEncoding = std::array<X::E5P, EI(PlayerAttribute::_count)>;
-using HexEncoding = std::array<X::E5H, EI(HexAttribute::_count)>;
+using GlobalEncoding = std::array<X::E5G, EI(X::GA::_count)>;
+using PlayerEncoding = std::array<X::E5P, EI(X::PA::_count)>;
+using UnitEncoding = std::array<X::E5U, EI(X::UA::_count)>;
+using HexEncoding = std::array<X::E5H, EI(X::HA::_count)>;
+
+using EdgeEncoding_Unit_MeleeDmg_Unit = std::array<X::E5E_Unit_MeleeDmg_Unit, EI(Graph::EdgeAttributes::Unit_MeleeDmg_Unit::_count)>;
+using EdgeEncoding_Unit_RangedDmg_Unit = std::array<X::E5E_Unit_RangedDmg_Unit, EI(Graph::EdgeAttributes::Unit_RangedDmg_Unit::_count)>;
+using EdgeEncoding_Unit_ActsBefore_Unit = std::array<X::E5E_Unit_ActsBefore_Unit, EI(Graph::EdgeAttributes::Unit_ActsBefore_Unit::_count)>;
+using EdgeEncoding_Hex_Adjacent_Hex = std::array<X::E5E_Hex_Adjacent_Hex, EI(Graph::EdgeAttributes::Hex_Adjacent_Hex::_count)>;
 
 /*
  * Compile-time constructor for E5H and E5S tuples
@@ -249,6 +266,35 @@ constexpr auto STACK_VALUE_MAX = 200e3; // titan 55k, crystal dr. 113k, azure 18
 constexpr auto STACK_VALUE_NBINS = 20;
 constexpr auto STACK_VALUE_SLOPE = 6.5;
 
+constexpr UnitEncoding UNIT_ENCODING{
+	E5(X::UA::SIDE, X::CE, 1), // 0=attacker, 1=defender
+	E5(X::UA::SLOT, X::CE, STACK_SLOT_MAX),
+	E5(X::UA::QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
+	E5(X::UA::ATTACK, X::LZ, 80),
+	E5(X::UA::DEFENSE, X::LZ, 80), // azure dragon is 60 when defending
+	E5(X::UA::SHOTS, X::LZ, 32), // sharpshooter is 32
+	E5(X::UA::DMG_MIN, X::LZ, 100),
+	E5(X::UA::DMG_MAX, X::LZ, 100),
+	E5(X::UA::HP, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
+	E5(X::UA::HP_LEFT, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
+	E5(X::UA::SPEED, X::CE, 20),
+	E5(X::UA::QUEUE, X::BZ, (1 << STACK_QUEUE_SIZE) - 1), // 0..14, 0=active stack
+	E5(X::UA::VALUE_ONE, X::EZ, STACK_VALUE_MAX, STACK_VALUE_SLOPE),
+	E5(X::UA::FLAGS1, X::BZ, (1 << EI(StackFlag1::_count)) - 1),
+	E5(X::UA::FLAGS2, X::BZ, (1 << EI(StackFlag2::_count)) - 1),
+
+	E5(X::UA::VALUE_REL, X::LZ, 1000),
+	E5(X::UA::VALUE_REL0, X::LZ, 1000),
+	E5(X::UA::VALUE_KILLED_REL, X::LZ, 1000),
+	E5(X::UA::VALUE_KILLED_ACC_REL0, X::LZ, 1000),
+	E5(X::UA::VALUE_LOST_REL, X::LZ, 1000),
+	E5(X::UA::VALUE_LOST_ACC_REL0, X::LZ, 1000),
+	E5(X::UA::DMG_DEALT_REL, X::LZ, 1000),
+	E5(X::UA::DMG_DEALT_ACC_REL0, X::LZ, 1000),
+	E5(X::UA::DMG_RECEIVED_REL, X::LZ, 1000),
+	E5(X::UA::DMG_RECEIVED_ACC_REL0, X::LZ, 1000),
+};
+
 constexpr auto MAX_WALL_HEALTH = 3;  // can be increased via mod tho
 
 constexpr HexEncoding HEX_ENCODING{
@@ -259,69 +305,128 @@ constexpr HexEncoding HEX_ENCODING{
 	E5(X::HA::IS_REAR, X::CZ, 1), // 1=this is the rear hex of a stack
 	E5(X::HA::IS_RUFR, X::CS, 1), // 1=this is the rear part of a RUFR pair
 	E5(X::HA::WALL_HEALTH, X::LE, MAX_WALL_HEALTH),
-	E5(X::HA::STACK_SIDE, X::CE, 1), // 0=attacker, 1=defender
-	E5(X::HA::STACK_SLOT, X::CE, STACK_SLOT_MAX),
-	E5(X::HA::STACK_QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
-	E5(X::HA::STACK_ATTACK, X::LZ, 80),
-	E5(X::HA::STACK_DEFENSE, X::LZ, 80), // azure dragon is 60 when defending
-	E5(X::HA::STACK_SHOTS, X::LZ, 32), // sharpshooter is 32
-	E5(X::HA::STACK_DMG_MIN, X::LZ, 100),
-	E5(X::HA::STACK_DMG_MAX, X::LZ, 100),
-	E5(X::HA::STACK_HP, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
-	E5(X::HA::STACK_HP_LEFT, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
-	E5(X::HA::STACK_SPEED, X::CE, 20),
-	E5(X::HA::STACK_QUEUE, X::BZ, (1 << STACK_QUEUE_SIZE) - 1), // 0..14, 0=active stack
-	E5(X::HA::STACK_VALUE_ONE, X::EZ, STACK_VALUE_MAX, STACK_VALUE_SLOPE),
-	E5(X::HA::STACK_FLAGS1, X::BZ, (1 << EI(StackFlag1::_count)) - 1),
-	E5(X::HA::STACK_FLAGS2, X::BZ, (1 << EI(StackFlag2::_count)) - 1),
-
-	E5(X::HA::STACK_VALUE_REL, X::LZ, 1000),
-	E5(X::HA::STACK_VALUE_REL0, X::LZ, 1000),
-	E5(X::HA::STACK_VALUE_KILLED_REL, X::LZ, 1000),
-	E5(X::HA::STACK_VALUE_KILLED_ACC_REL0, X::LZ, 1000),
-	E5(X::HA::STACK_VALUE_LOST_REL, X::LZ, 1000),
-	E5(X::HA::STACK_VALUE_LOST_ACC_REL0, X::LZ, 1000),
-	E5(X::HA::STACK_DMG_DEALT_REL, X::LZ, 1000),
-	E5(X::HA::STACK_DMG_DEALT_ACC_REL0, X::LZ, 1000),
-	E5(X::HA::STACK_DMG_RECEIVED_REL, X::LZ, 1000),
-	E5(X::HA::STACK_DMG_RECEIVED_ACC_REL0, X::LZ, 1000),
 };
+
+
+constexpr EdgeEncoding_Unit_MeleeDmg_Unit EDGE_ENCODING_UNIT_MELEE_DMG_UNIT{
+	E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_REL, X::LZ, 1000),
+	E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_REL, X::LZ, 1000),
+};
+
+constexpr EdgeEncoding_Unit_RangedDmg_Unit EDGE_ENCODING_UNIT_RANGED_DMG_UNIT{
+	E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_REL, X::LZ, 1000),
+};
+
+constexpr EdgeEncoding_Unit_ActsBefore_Unit EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT{
+	E5(X::EA_Unit_ActsBefore_Unit::TIMES, X::LZ, 2),
+
+};
+
+constexpr EdgeEncoding_Hex_Adjacent_Hex EDGE_ENCODING_HEX_ADJACENT_HEX{
+	E5(X::EA_Hex_Adjacent_Hex::DIRECTION, X::CS, 5),
+};
+
 
 // Dedining encodings for each attribute by hand is error-prone
 // The below compile-time asserts are essential.
 static_assert(UninitializedEncodingAttributes(GLOBAL_ENCODING) == 0, "Found uninitialized elements");
 static_assert(UninitializedEncodingAttributes(PLAYER_ENCODING) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(UNIT_ENCODING) == 0, "Found uninitialized elements");
 static_assert(UninitializedEncodingAttributes(HEX_ENCODING) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EDGE_ENCODING_UNIT_MELEE_DMG_UNIT) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EDGE_ENCODING_UNIT_RANGED_DMG_UNIT) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EDGE_ENCODING_HEX_ADJACENT_HEX) == 0, "Found uninitialized elements");
 static_assert(DisarrayedEncodingAttributeIndex(GLOBAL_ENCODING) == -1, "Found wrong element at this index");
 static_assert(DisarrayedEncodingAttributeIndex(PLAYER_ENCODING) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(UNIT_ENCODING) == -1, "Found wrong element at this index");
 static_assert(DisarrayedEncodingAttributeIndex(HEX_ENCODING) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EDGE_ENCODING_UNIT_MELEE_DMG_UNIT) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EDGE_ENCODING_UNIT_RANGED_DMG_UNIT) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EDGE_ENCODING_HEX_ADJACENT_HEX) == -1, "Found wrong element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(GLOBAL_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(PLAYER_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(UNIT_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(HEX_ENCODING) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EDGE_ENCODING_UNIT_MELEE_DMG_UNIT) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EDGE_ENCODING_UNIT_RANGED_DMG_UNIT) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EDGE_ENCODING_HEX_ADJACENT_HEX) == -1, "Found miscalculated binary vmax element at this index");
 
-// initializer list will silently accept less arguments
-static_assert(EI(LinkType::ADJACENT) == 0);
-static_assert(EI(LinkType::REACH) == 1);
-static_assert(EI(LinkType::RANGED_MOD) == 2);
-static_assert(EI(LinkType::ACTS_BEFORE) == 3);
-static_assert(EI(LinkType::MELEE_DMG_REL) == 4);
-static_assert(EI(LinkType::RETAL_DMG_REL) == 5);
-static_assert(EI(LinkType::RANGED_DMG_REL) == 6);
-static_assert(EI(LinkType::_count) == 7);
-constexpr auto LINK_SIZES = std::array<int, EI(LinkType::_count)> {
-	6, // ADJACENT
-	1, // REACH
-	1, // RANGED_MOD
-	1, // ACTS_BEFORE
-	1, // MELEE_DMG_REL
-	1, // RETAL_DMG_REL
-	1, // RANGED_DMG_REL
-};
+constexpr int MAX_NUM_NODES_GLOBAL = 1;
+constexpr int MAX_NUM_NODES_PLAYER = 2;
+constexpr int MAX_NUM_NODES_UNIT = 30;
+constexpr int MAX_NUM_NODES_HEX = 165;
 
-constexpr int BATTLEFIELD_STATE_SIZE_GLOBAL = EncodedSize(GLOBAL_ENCODING);
-constexpr int BATTLEFIELD_STATE_SIZE_ONE_PLAYER = EncodedSize(PLAYER_ENCODING);
-constexpr int BATTLEFIELD_STATE_SIZE_ONE_HEX = EncodedSize(HEX_ENCODING);
-constexpr int BATTLEFIELD_STATE_SIZE_ALL_HEXES = 165 * BATTLEFIELD_STATE_SIZE_ONE_HEX;
-constexpr int BATTLEFIELD_STATE_SIZE =
-	BATTLEFIELD_STATE_SIZE_GLOBAL + BATTLEFIELD_STATE_SIZE_ONE_PLAYER + BATTLEFIELD_STATE_SIZE_ONE_PLAYER + BATTLEFIELD_STATE_SIZE_ALL_HEXES;
+constexpr int MAX_NUM_EDGES_ACTION_EXPOSES_TO_UNIT = MAX_NUM_NODES_UNIT * N_ACTIONS;
+constexpr int MAX_NUM_EDGES_ACTION_THREATENS_UNIT = MAX_NUM_NODES_UNIT * N_ACTIONS;
+constexpr int MAX_NUM_EDGES_ACTION_DAMAGES_UNIT = 2 * N_ACTIONS;
+constexpr int MAX_NUM_EDGES_ACTION_ENDS_AT_HEX = 165 * EI(HexAction::_count);
+constexpr int MAX_NUM_EDGES_ACTION_BY_UNIT = N_ACTIONS;  // actions are only by active unit
+constexpr int MAX_NUM_EDGES_UNIT_BLOCKS_UNIT = 100;  // blind guess
+constexpr int MAX_NUM_EDGES_UNIT_MELEE_DMG_UNIT = 420;  // 15 vs 15 units
+constexpr int MAX_NUM_EDGES_UNIT_RANGED_DMG_UNIT = 420;  // 15 vs 15 shooters
+constexpr int MAX_NUM_EDGES_UNIT_CAN_MELEE_UNIT = 420;
+constexpr int MAX_NUM_EDGES_UNIT_CAN_SHOOT_UNIT = 420;
+constexpr int MAX_NUM_EDGES_UNIT_ACTS_BEFORE_UNIT = 210;
+constexpr int MAX_NUM_EDGES_UNIT_THREATENS_HEX = 165 * MAX_NUM_NODES_UNIT;
+constexpr int MAX_NUM_EDGES_UNIT_OCCUPIES_HEX = 2 * MAX_NUM_NODES_UNIT;
+constexpr int MAX_NUM_EDGES_HEX_ADJACENT_HEX = 165 * 6;
+
+constexpr int ENCODED_NODE_SIZE_GLOBAL = EncodedSize(GLOBAL_ENCODING);
+constexpr int ENCODED_NODE_SIZE_PLAYER = EncodedSize(PLAYER_ENCODING);
+constexpr int ENCODED_NODE_SIZE_UNIT = EncodedSize(UNIT_ENCODING);
+constexpr int ENCODED_NODE_SIZE_HEX = EncodedSize(HEX_ENCODING);
+
+constexpr int ENCODED_EDGE_SIZE_ACTION_EXPOSES_TO_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_ACTION_THREATENS_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_ACTION_DAMAGES_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_ACTION_ENDS_AT_HEX = 0;
+constexpr int ENCODED_EDGE_SIZE_ACTION_BY_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_UNIT_BLOCKS_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_UNIT_MELEE_DMG_UNIT = EncodedSize(EDGE_ENCODING_UNIT_MELEE_DMG_UNIT);;
+constexpr int ENCODED_EDGE_SIZE_UNIT_RANGED_DMG_UNIT = EncodedSize(EDGE_ENCODING_UNIT_RANGED_DMG_UNIT);;
+constexpr int ENCODED_EDGE_SIZE_UNIT_CAN_MELEE_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_UNIT_CAN_SHOOT_UNIT = 0;
+constexpr int ENCODED_EDGE_SIZE_UNIT_ACTS_BEFORE_UNIT = EncodedSize(EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT);;
+constexpr int ENCODED_EDGE_SIZE_UNIT_THREATENS_HEX = 0;
+constexpr int ENCODED_EDGE_SIZE_UNIT_OCCUPIES_HEX = 0;
+constexpr int ENCODED_EDGE_SIZE_HEX_ADJACENT_HEX = EncodedSize(EDGE_ENCODING_HEX_ADJACENT_HEX);;
+
+// Not used anywhere, but gives good idea of the theoreticla maximum state size
+constexpr int BATTLEFIELD_STATE_SIZE_MAX =
+	(MAX_NUM_NODES_GLOBAL * ENCODED_NODE_SIZE_GLOBAL)
+	+ (MAX_NUM_NODES_PLAYER * ENCODED_NODE_SIZE_PLAYER)
+	+ (MAX_NUM_NODES_UNIT * ENCODED_NODE_SIZE_UNIT)
+	+ (MAX_NUM_NODES_HEX * ENCODED_NODE_SIZE_HEX)
+	+ (MAX_NUM_EDGES_ACTION_EXPOSES_TO_UNIT * ENCODED_EDGE_SIZE_ACTION_EXPOSES_TO_UNIT)
+	+ (MAX_NUM_EDGES_ACTION_THREATENS_UNIT * ENCODED_EDGE_SIZE_ACTION_THREATENS_UNIT)
+	+ (MAX_NUM_EDGES_ACTION_DAMAGES_UNIT * ENCODED_EDGE_SIZE_ACTION_DAMAGES_UNIT)
+	+ (MAX_NUM_EDGES_ACTION_ENDS_AT_HEX * ENCODED_EDGE_SIZE_ACTION_ENDS_AT_HEX)
+	+ (MAX_NUM_EDGES_ACTION_BY_UNIT * ENCODED_EDGE_SIZE_ACTION_BY_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_BLOCKS_UNIT * ENCODED_EDGE_SIZE_UNIT_BLOCKS_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_MELEE_DMG_UNIT * ENCODED_EDGE_SIZE_UNIT_MELEE_DMG_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_RANGED_DMG_UNIT * ENCODED_EDGE_SIZE_UNIT_RANGED_DMG_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_CAN_MELEE_UNIT * ENCODED_EDGE_SIZE_UNIT_CAN_MELEE_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_CAN_SHOOT_UNIT * ENCODED_EDGE_SIZE_UNIT_CAN_SHOOT_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_ACTS_BEFORE_UNIT * ENCODED_EDGE_SIZE_UNIT_ACTS_BEFORE_UNIT)
+	+ (MAX_NUM_EDGES_UNIT_THREATENS_HEX * ENCODED_EDGE_SIZE_UNIT_THREATENS_HEX)
+	+ (MAX_NUM_EDGES_UNIT_OCCUPIES_HEX * ENCODED_EDGE_SIZE_UNIT_OCCUPIES_HEX)
+	+ (MAX_NUM_EDGES_HEX_ADJACENT_HEX * ENCODED_EDGE_SIZE_HEX_ADJACENT_HEX)
+	// edge index
+	+ (2 * MAX_NUM_EDGES_ACTION_EXPOSES_TO_UNIT)
+	+ (2 * MAX_NUM_EDGES_ACTION_THREATENS_UNIT)
+	+ (2 * MAX_NUM_EDGES_ACTION_DAMAGES_UNIT)
+	+ (2 * MAX_NUM_EDGES_ACTION_ENDS_AT_HEX)
+	+ (2 * MAX_NUM_EDGES_ACTION_BY_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_BLOCKS_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_MELEE_DMG_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_RANGED_DMG_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_CAN_MELEE_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_CAN_SHOOT_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_ACTS_BEFORE_UNIT)
+	+ (2 * MAX_NUM_EDGES_UNIT_THREATENS_HEX)
+	+ (2 * MAX_NUM_EDGES_UNIT_OCCUPIES_HEX)
+	+ (2 * MAX_NUM_EDGES_HEX_ADJACENT_HEX);
 }

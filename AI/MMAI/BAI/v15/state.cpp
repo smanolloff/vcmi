@@ -29,36 +29,6 @@ using PA = Schema::V15::PlayerAttribute;
 using HA = Schema::V15::HexAttribute;
 using SA = Schema::V15::StackAttribute;
 
-//
-// Prevent human errors caused by the Stack / Hex attr overlap
-//
-static_assert(EI(HA::STACK_SIDE) == EI(SA::SIDE) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_SLOT) == EI(SA::SLOT) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_QUANTITY) == EI(SA::QUANTITY) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_ATTACK) == EI(SA::ATTACK) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DEFENSE) == EI(SA::DEFENSE) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_SHOTS) == EI(SA::SHOTS) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_MIN) == EI(SA::DMG_MIN) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_MAX) == EI(SA::DMG_MAX) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_HP) == EI(SA::HP) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_HP_LEFT) == EI(SA::HP_LEFT) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_SPEED) == EI(SA::SPEED) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_QUEUE) == EI(SA::QUEUE) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_ONE) == EI(SA::VALUE_ONE) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_FLAGS1) == EI(SA::FLAGS1) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_FLAGS2) == EI(SA::FLAGS2) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_REL) == EI(SA::VALUE_REL) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_REL0) == EI(SA::VALUE_REL0) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_KILLED_REL) == EI(SA::VALUE_KILLED_REL) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_KILLED_ACC_REL0) == EI(SA::VALUE_KILLED_ACC_REL0) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_LOST_REL) == EI(SA::VALUE_LOST_REL) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_VALUE_LOST_ACC_REL0) == EI(SA::VALUE_LOST_ACC_REL0) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_DEALT_REL) == EI(SA::DMG_DEALT_REL) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_DEALT_ACC_REL0) == EI(SA::DMG_DEALT_ACC_REL0) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_RECEIVED_REL) == EI(SA::DMG_RECEIVED_REL) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(HA::STACK_DMG_RECEIVED_ACC_REL0) == EI(SA::DMG_RECEIVED_ACC_REL0) + S15::STACK_ATTR_OFFSET);
-static_assert(EI(StackAttribute::_count) == 25, "whistleblower in case attributes change");
-
 // static
 std::vector<float> State::InitNullStack()
 {

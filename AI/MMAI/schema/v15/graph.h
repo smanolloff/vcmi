@@ -10,9 +10,23 @@
 
 #pragma once
 
+#include <cstdint>
+#include <vector>
+
 namespace MMAI::Schema::V15::Graph
 {
-    namespace Nodes
+
+    enum class NodeType : uint8_t
+    {
+        GLOBAL,
+        PLAYER,
+        ACTION,
+        UNIT,
+        HEX,
+        _count
+    };
+
+    namespace NodeAttributes
     {
         enum class Global : uint8_t
         {
@@ -61,11 +75,6 @@ namespace MMAI::Schema::V15::Graph
             _count
         };
 
-        enum class Action : uint8_t
-        {
-            ID // 0..2311
-        };
-
         enum class Unit : uint8_t
         {
             SIDE,
@@ -111,24 +120,108 @@ namespace MMAI::Schema::V15::Graph
 
             _count
         };
+
+        enum class Action : uint8_t
+        {
+            ID // 0..2311
+        };
     }
 
-    enum class Edges : uint8_t
-    {
-        Action_EXPOSES_TO_Unit,
-        Action_THREATENS_Unit,
-        Action_DAMAGES_Unit,
-        Action_ENDS_AT_Hex,
-        Action_BY_Unit,
-        Unit_BLOCKS_Unit,
-        Unit_CAN_MELEE_Unit,
-        Unit_CAN_SHOOT_Unit,
-        Unit_ACTS_BEFORE_Unit,
-        Unit_THREATENS_Unit,
-        Unit_THREATENS_Hex, //    unit could attack occupants of hex
-        Unit_OCCUPIES_Hex,
-        Hex_ADJACENT_Hex, //      direction: 0..5
 
+    enum class EdgeType : uint8_t
+    {
+        ACTION_EXPOSES_TO_UNIT,
+        ACTION_THREATENS_UNIT,
+        ACTION_DAMAGES_UNIT,
+        ACTION_ENDS_AT_HEX,
+        ACTION_BY_UNIT,
+        UNIT_BLOCKS_UNIT,
+        UNIT_MELEE_DMG_UNIT,
+        UNIT_RANGED_DMG_UNIT,
+        UNIT_CAN_MELEE_UNIT,
+        UNIT_CAN_SHOOT_UNIT,
+        UNIT_ACTS_BEFORE_UNIT,
+        UNIT_THREATENS_HEX,
+        UNIT_OCCUPIES_HEX,
+        HEX_ADJACENT_HEX,
         _count
     };
+
+namespace EdgeAttributes
+
+    #define BLANK_ENUM_DEF(name)    \
+    enum class name : uint8_t {     \
+        _count                      \
+    }
+
+    {
+        BLANK_ENUM_DEF(Action_ExposesTo_Unit);
+        BLANK_ENUM_DEF(Action_Threatens_Unit);
+        BLANK_ENUM_DEF(Action_Damages_Unit);
+        BLANK_ENUM_DEF(Action_EndsAt_Hex);
+        BLANK_ENUM_DEF(Action_By_Unit);
+        BLANK_ENUM_DEF(Unit_Blocks_Unit);
+
+        enum class Unit_MeleeDmg_Unit : uint8_t
+        {
+            ATTACK_DMG_REL,
+            RETAL_DMG_REL,
+            // NET_DMG_REL
+            // NET_VALUE_REL
+            _count
+        };
+
+        enum class Unit_RangedDmg_Unit : uint8_t
+        {
+            ATTACK_DMG_REL,
+            // NET_DMG_REL
+            // NET_VALUE_REL
+            _count
+        };
+
+        BLANK_ENUM_DEF(Unit_CanMelee_Unit);
+        BLANK_ENUM_DEF(Unit_CanShoot_Unit);
+
+        enum class Unit_ActsBefore_Unit : uint8_t
+        {
+            TIMES,
+            _count
+        };
+
+        BLANK_ENUM_DEF(Unit_Threatens_Hex);
+        BLANK_ENUM_DEF(Unit_Occupies_Hex);
+
+        enum class Hex_Adjacent_Hex : uint8_t
+        {
+            DIRECTION,
+            _count
+        };
+    };
+
+    class INode
+    {
+    public:
+        virtual NodeType getType() const = 0;
+        virtual std::vector<float> encodedAttributes() const = 0;
+        virtual ~INode() = default;
+    };
+
+    class IEdge
+    {
+    public:
+        virtual EdgeType getType() const = 0;
+        virtual std::vector<float> getAttributes() const = 0;
+        virtual std::pair<NodeType, NodeType> getNodeTypes() const = 0;
+        virtual std::pair<int, int> getNodeIndexes() const = 0;
+        virtual ~IEdge() = default;
+    };
+
+    class IGraph
+    {
+    public:
+        virtual std::vector<INode> getNodes() const = 0;
+        virtual std::vector<IEdge> getEdges() const = 0;
+        virtual ~IGraph() = default;
+    };
+
 } // namespace

@@ -11,6 +11,7 @@
 #pragma once
 
 #include "BAI/v15/stack.h"
+#include "common.h"
 #include "schema/v15/types.h"
 
 namespace MMAI::BAI::V15
@@ -36,15 +37,33 @@ public:
 
 	const AttackLogData data;
 
-	// IAttackLog impl
-	Stack * getAttacker() const override
+	std::string getAttackerColor() const override
 	{
-		return data.attacker.get();
+		if (!data.attacker)
+			return "?";
+
+		return data.attacker->cstack->unitSide() == BattleSide::ATTACKER ? "red" : "blue";
 	}
-	Stack * getDefender() const override
+
+	std::string getAttackerAlias() const override
 	{
-		return data.defender.get();
+		return data.attacker ? std::to_string(data.attacker->alias) : "?";
 	}
+
+	std::string getDefenderColor() const override
+	{
+		if (!data.defender)
+			return "?";
+
+		return data.defender->cstack->unitSide() == BattleSide::ATTACKER ? "red" : "blue";
+	}
+
+	std::string getDefenderAlias() const override
+	{
+		return data.defender ? std::to_string(data.defender->alias) : "?";
+	}
+
+
 	int getDamageDealt() const override
 	{
 		return data.dmg;
