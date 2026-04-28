@@ -25,6 +25,14 @@ namespace MMAI
 
 #define THROW_FORMAT(message, formatting_elems) throw std::runtime_error(boost::str(boost::format(message) % formatting_elems))
 
+// constexpr version of EI with proper underlying type conversion
+template <typename E>
+requires std::is_enum_v<E>
+constexpr std::underlying_type_t<E> EU(E value) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(value);
+}
+
 inline bool isMMAIVerbose()
 {
 	static const bool value = []

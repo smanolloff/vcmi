@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "BAI/v15/graph_store.h"
 #include "battle/CBattleInfoEssentials.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -96,5 +97,7 @@ public:
 
 	static std::vector<float> InitNullStack();
 	const std::vector<float> nullstack;
+
+	GraphStore graph;
 };
 }
