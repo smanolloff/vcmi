@@ -9,7 +9,6 @@
  */
 #pragma once
 
-#include "BAI/v15/graph_store.h"
 #include "battle/CBattleInfoEssentials.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -47,7 +46,7 @@ public:
 	}
 	std::any getSupplementaryData() const override
 	{
-		return static_cast<const MMAI::Schema::V15::ISupplementaryData *>(supdata.get());
+		return static_cast<const SupplementaryData *>(supdata.get());
 	}
 	int version() const override
 	{
@@ -70,8 +69,6 @@ public:
 	void onBattleTriggerEffect(const BattleTriggerEffect & bte);
 	void onBattleEnd(const BattleResult * br, int round);
 
-	// Subsequent versions may override this if they only change
-	// the data type of encoded values (i.e. have their own HEX_ENCODING)
 	void encodeGlobal(CombatResult result);
 	void encodePlayer(const PlayerStats * pstats);
 	void encodeHex(const Hex * hex);
@@ -94,10 +91,5 @@ public:
 	const BattleSide side;
 	std::shared_ptr<const Battlefield> battlefield;
 	bool isMorale = false;
-
-	static std::vector<float> InitNullStack();
-	const std::vector<float> nullstack;
-
-	GraphStore graph;
 };
 }

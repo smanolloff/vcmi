@@ -447,7 +447,7 @@ std::tuple<Stacks, Queue> Battlefield::InitStacks(
 			cstack,
 			queue,
 			// a blank stackStats entry is created if missing
-			Stack::StatsContainer{.oldgstats = oldgstats, .gstats = gstats, .stackStats = stacksStats[cstack]},
+			Stack::StatsContainer{.oldGlobal = oldgstats, .global = gstats, .stackStats = stacksStats[cstack]},
 			cache->getReachability(cstack),
 			blocked[cstack],
 			blocking[cstack],

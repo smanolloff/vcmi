@@ -18,7 +18,6 @@
 #include "bonuses/BonusEnum.h"
 #include "constants/EntityIdentifiers.h"
 
-#include "BAI/v15/graph/nodes/common.h"
 #include "BAI/v15/graph/nodes/global.h"
 #include "AI/MMAI/common.h"
 #include "schema/v15/constants.h"
@@ -41,7 +40,7 @@ using CreatureValues = std::map<CreatureID, int>;
 
 static_assert(1 << S15::STACK_QUEUE_SIZE < std::numeric_limits<int>::max(), "BitQueue must be convertible to int");
 
-class Unit : public S15::Graph::INode
+class Unit : public Element<S15::EncodingTraits<Schema::V15::UnitEncoding>, S15::Graph::INode>
 {
 public:
 	struct Stats
@@ -73,7 +72,7 @@ public:
 		const auto & it = CREATURE_VALUES.find(creature->getId());
 
 		if(it == CREATURE_VALUES.end())
-			throw std::runtime_error("GetValue: no value for creature with ID=" + std::to_string(creature->getId()));
+			throw std::runtime_error("GetValue: no value for creature with ID=" + std::to_string(creature->getIndex()));
 
 		return it->second;
 	}
@@ -99,6 +98,7 @@ public:
 	}
 
 	Unit(
+		int index,
 		const CStack * cstack_,
 		const Queue & q,
 		const StatsContainer & statsContainer,
@@ -107,7 +107,8 @@ public:
 		bool blocking,
 		const DamageEstimation & estdmg
 	)
-		: cstack(cstack_)
+		: index_(index)
+		, cstack(cstack_)
 		, rinfo(rinfo_)
 	{
 		(void)estdmg;
@@ -172,7 +173,7 @@ public:
 		auto bfHpStart = global->attr(GA::BFIELD_HP_START_ABS);
 		auto value = valueOne * cstack->getCount();
 
-		setattr(UA::SIDE, EI(cstack->unitSide()));
+		setattr(UA::SIDE, EU(cstack->unitSide()));
 		setattr(UA::SLOT, slot);
 		setattr(UA::QUANTITY, cstack->getCount());
 		setattr(UA::ATTACK, cstack->getAttack(shots > 0));
@@ -201,20 +202,9 @@ public:
 		finalize();
 	}
 
-	S15::Graph::NodeType getType() const override
-	{
-		return S15::Graph::NodeType::UNIT;
-	}
-
-	std::vector<float> encodedAttributes() const override
-	{
-		return encodeNodeAttributes(attrs, S15::UNIT_ENCODING);
-	}
-
-	int getAttr(UA a) const
-	{
-		return attr(a);
-	}
+    int nodeIndex() const override {
+        return index_;
+    }
 
 	int getFlag(StackFlag1 sf) const
 	{
@@ -231,19 +221,14 @@ public:
 		return alias;
 	}
 
-	int attr(UA a) const
-	{
-		return attrs.at(EI(a));
-	}
-
 	bool flag(StackFlag1 f) const
 	{
-		return flags1.test(EI(f));
+		return flags1.test(EU(f));
 	}
 
 	bool flag(StackFlag2 f) const
 	{
-		return flags2.test(EI(f));
+		return flags2.test(EU(f));
 	}
 
 	const CStack * const cstack;
@@ -256,6 +241,8 @@ public:
 	int qposFirst = -1;
 
 private:
+    const int index_;
+
 	static int calculateSlot(const CStack * cstack)
 	{
 		int slot = cstack->unitSlot();
@@ -398,17 +385,12 @@ private:
 
 	void setflag(StackFlag1 f)
 	{
-		flags1.set(EI(f));
+		flags1.set(EU(f));
 	}
 
 	void setflag(StackFlag2 f)
 	{
-		flags2.set(EI(f));
-	}
-
-	void setattr(UA a, int value)
-	{
-		attrs.at(EI(a)) = value;
+		flags2.set(EU(f));
 	}
 
 	void finalize()

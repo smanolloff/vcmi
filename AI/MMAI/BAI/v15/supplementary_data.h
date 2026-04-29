@@ -19,6 +19,9 @@ namespace MMAI::BAI::V15
 {
 using Side = Schema::Side;
 using ErrorCode = Schema::V15::ErrorCode;
+using StacksView = std::vector<const Stack *>;
+using HexesView = std::array<std::array<const Hex *, 15>, 11>;
+using AllLinksView = std::map<LinkType, const Links *>;
 
 // match sides for convenience when determining winner (see `victory`)
 static_assert(EI(CombatResult::LEFT_WINS) == EI(Side::LEFT));
@@ -55,41 +58,45 @@ public:
 	{
 		return type;
 	};
-	Side getSide() const override
-	{
-		return side;
-	};
-	std::string getColor() const override
-	{
-		return colorname;
-	};
 	ErrorCode getErrorCode() const override
 	{
 		return errcode;
 	};
+	const Schema::V15::Graph::IGraph * getGraph() const override
+	{
+		return nullptr;
+	}
+	Schema::V15::AttackLogs getAttackLogs() const override;
 
-	bool getIsBattleEnded() const override
+	Side getSide() const
+	{
+		return side;
+	}
+	std::string getColor() const
+	{
+		return colorname;
+	}
+	bool getIsBattleEnded() const
 	{
 		return ended;
-	};
-	bool getIsVictorious() const override
+	}
+	bool getIsVictorious() const
 	{
 		return victory;
-	};
+	}
 
-	Schema::V15::Stacks getStacks() const override;
-	Schema::V15::Hexes getHexes() const override;
-	Schema::V15::AllLinks getAllLinks() const override;
-	Schema::V15::AttackLogs getAttackLogs() const override;
-	const Schema::V15::IGlobalStats * getGlobalStats() const override
+	StacksView getStacks() const;
+	HexesView getHexes() const;
+	AllLinksView getAllLinks() const;
+	const GlobalStats * getGlobalStats() const
 	{
 		return gstats;
 	}
-	const Schema::V15::IPlayerStats * getLeftPlayerStats() const override
+	const PlayerStats * getLeftPlayerStats() const
 	{
 		return lpstats;
 	}
-	const Schema::V15::IPlayerStats * getRightPlayerStats() const override
+	const PlayerStats * getRightPlayerStats() const
 	{
 		return rpstats;
 	}

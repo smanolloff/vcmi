@@ -15,14 +15,29 @@
 
 namespace MMAI::Schema::V15::Graph
 {
-
-    enum class NodeType : uint8_t
+    enum class ElementType : uint8_t
     {
-        GLOBAL,
-        PLAYER,
-        ACTION,
-        UNIT,
-        HEX,
+        NODE_ACTION,
+        NODE_GLOBAL,
+        NODE_PLAYER,
+        NODE_UNIT,
+        NODE_HEX,
+
+        EDGE_ACTION_EXPOSES_TO_UNIT,
+        EDGE_ACTION_THREATENS_UNIT,
+        EDGE_ACTION_DAMAGES_UNIT,
+        EDGE_ACTION_ENDS_AT_HEX,
+        EDGE_ACTION_BY_UNIT,
+        EDGE_UNIT_BLOCKS_UNIT,
+        EDGE_UNIT_MELEE_DMG_UNIT,
+        EDGE_UNIT_RANGED_DMG_UNIT,
+        EDGE_UNIT_CAN_MELEE_UNIT,
+        EDGE_UNIT_CAN_SHOOT_UNIT,
+        EDGE_UNIT_ACTS_BEFORE_UNIT,
+        EDGE_UNIT_THREATENS_HEX,
+        EDGE_UNIT_OCCUPIES_HEX,
+        EDGE_HEX_ADJACENT_HEX,
+
         _count
     };
 
@@ -123,29 +138,11 @@ namespace MMAI::Schema::V15::Graph
 
         enum class Action : uint8_t
         {
-            ID // 0..2311
+            ID, // 0..N_ACTIONS
+
+            _count
         };
     }
-
-
-    enum class EdgeType : uint8_t
-    {
-        ACTION_EXPOSES_TO_UNIT,
-        ACTION_THREATENS_UNIT,
-        ACTION_DAMAGES_UNIT,
-        ACTION_ENDS_AT_HEX,
-        ACTION_BY_UNIT,
-        UNIT_BLOCKS_UNIT,
-        UNIT_MELEE_DMG_UNIT,
-        UNIT_RANGED_DMG_UNIT,
-        UNIT_CAN_MELEE_UNIT,
-        UNIT_CAN_SHOOT_UNIT,
-        UNIT_ACTS_BEFORE_UNIT,
-        UNIT_THREATENS_HEX,
-        UNIT_OCCUPIES_HEX,
-        HEX_ADJACENT_HEX,
-        _count
-    };
 
 namespace EdgeAttributes
 
@@ -201,18 +198,19 @@ namespace EdgeAttributes
     class INode
     {
     public:
-        virtual NodeType getType() const = 0;
+        virtual ElementType elementType() const = 0;
         virtual std::vector<float> encodedAttributes() const = 0;
+        virtual int nodeIndex() const = 0;
         virtual ~INode() = default;
     };
 
     class IEdge
     {
     public:
-        virtual EdgeType getType() const = 0;
-        virtual std::vector<float> getAttributes() const = 0;
-        virtual std::pair<NodeType, NodeType> getNodeTypes() const = 0;
-        virtual std::pair<int, int> getNodeIndexes() const = 0;
+        virtual ElementType elementType() const = 0;
+        virtual std::vector<float> encodedAttributes() const = 0;
+        virtual std::pair<ElementType, ElementType> nodeTypes() const = 0;
+        virtual std::pair<int, int> nodeIndexes() const = 0;
         virtual ~IEdge() = default;
     };
 

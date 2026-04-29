@@ -14,9 +14,9 @@
 
 namespace MMAI::BAI::V15
 {
-using GA = Schema::V15::GlobalAttribute;
-using HA = Schema::V15::HexAttribute;
-using PA = Schema::V15::PlayerAttribute;
+using GA = Schema::V15::Graph::NodeAttributes::Global;
+using HA = Schema::V15::Graph::NodeAttributes::Hex;
+using PA = Schema::V15::Graph::NodeAttributes::Player;
 using BS = Schema::BattlefieldState;
 
 struct EncoderInput
@@ -36,6 +36,9 @@ public:
 	static void Encode(HA a, int v, BS & out);
 	static void Encode(PA a, int v, BS & out);
 	static void Encode(GA a, int v, BS & out);
+
+	template <typename EncTraits>
+	static std::vector<float> Encode(const std::array<int, EncTraits::attr_count> & attrs);
 
 	static void Encode(const EncoderInput & in, BS & out);
 

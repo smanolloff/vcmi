@@ -15,7 +15,7 @@
 namespace MMAI::BAI::V15
 {
 
-GraphStore::GraphStore() {};
+GraphStore::GraphStore() = default;
 
 template <typename T>
 void GraphStore::addNode(T node)
