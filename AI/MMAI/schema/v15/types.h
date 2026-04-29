@@ -150,6 +150,18 @@ enum class ErrorCode : uint8_t
 	INVALID_DIR,
 };
 
+enum class LinkType : uint8_t
+{
+	ADJACENT,
+	REACH,
+	RANGED_MOD,
+	ACTS_BEFORE,
+	MELEE_DMG_REL,
+	RETAL_DMG_REL,
+	RANGED_DMG_REL,
+	_count
+};
+
 class IAttackLog
 {
 public:
@@ -168,6 +180,16 @@ public:
 };
 
 using AttackLogs = std::vector<IAttackLog *>;
+
+class ILinks
+{
+public:
+	virtual std::vector<int64_t> getSrcIndex() const = 0;
+	virtual std::vector<int64_t> getDstIndex() const = 0;
+	virtual std::vector<float> getAttributes() const = 0;
+	virtual int getAttributeSize() const = 0;
+	virtual ~ILinks() = default;
+};
 
 // This is returned as std::any by IState
 // => MMAI_DLL_LINKAGE is needed to ensure std::any_cast sees the same symbol

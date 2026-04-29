@@ -44,6 +44,30 @@ using clock = std::chrono::system_clock;
 	if((v) == S15::NULL_VALUE_UNENCODED) \
 	throw std::runtime_error("NULL values are not allowed for strict encoding")
 
+
+template <typename EncTraits>
+std::vector<float> Encoder::Encode(const std::array<int, EncTraits::attr_count> & attrs)
+{
+	auto out = std::vector<float>{};
+	out.reserve(EncTraits::encoded_size);
+
+	for(size_t i = 0; i < attrs.size(); ++i)
+	{
+		const auto & [_, e, n, vmax, p] = EncTraits::encoding.at(i);
+		Encoder::Encode(EncoderInput{
+			.attrname = EncTraits::name,
+			.a = static_cast<int>(i),
+			.e = e,
+			.n = n,
+			.vmax = vmax,
+			.p = p,
+			.v = attrs.at(i)
+		}, out);
+	}
+
+	return out;
+}
+
 void Encoder::Encode(const EncoderInput & in, BS & out)
 {
 	if(in.e == Encoding::RAW)
@@ -148,19 +172,19 @@ void Encoder::Encode(const EncoderInput & in, BS & out)
 	}
 }
 
-void Encoder::Encode(const S15::HexAttribute a, int v, BS & out)
+void Encoder::Encode(const HA a, int v, BS & out)
 {
 	const auto & [_, e, n, vmax, p] = S15::HEX_ENCODING.at(EI(a));
 	Encode(EncoderInput{.attrname = "HexAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
 }
 
-void Encoder::Encode(const S15::PlayerAttribute a, int v, BS & out)
+void Encoder::Encode(const PA a, int v, BS & out)
 {
 	const auto & [_, e, n, vmax, p] = S15::PLAYER_ENCODING.at(EI(a));
 	Encode(EncoderInput{.attrname = "PlayerAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
 }
 
-void Encoder::Encode(const S15::GlobalAttribute a, int v, BS & out)
+void Encoder::Encode(const GA a, int v, BS & out)
 {
 	const auto & [_, e, n, vmax, p] = S15::GLOBAL_ENCODING.at(EI(a));
 	Encode(EncoderInput{.attrname = "GlobalAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);

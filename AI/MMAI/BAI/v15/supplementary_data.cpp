@@ -15,10 +15,10 @@
 
 namespace MMAI::BAI::V15
 {
-Schema::V15::Hexes SupplementaryData::getHexes() const
+HexesView SupplementaryData::getHexes() const
 {
 	ASSERT(battlefield, "getHexes() called when battlefield is null");
-	auto res = Schema::V15::Hexes{};
+	auto res = HexesView{};
 
 	for(int y = 0; y < battlefield->hexes->size(); ++y)
 	{
@@ -33,10 +33,10 @@ Schema::V15::Hexes SupplementaryData::getHexes() const
 	return res;
 }
 
-Schema::V15::Stacks SupplementaryData::getStacks() const
+StacksView SupplementaryData::getStacks() const
 {
 	ASSERT(battlefield, "getStacks() called when battlefield is null");
-	auto res = Schema::V15::Stacks{};
+	auto res = StacksView{};
 
 	for(const auto & stack : battlefield->stacks)
 	{
@@ -46,10 +46,10 @@ Schema::V15::Stacks SupplementaryData::getStacks() const
 	return res;
 }
 
-Schema::V15::AllLinks SupplementaryData::getAllLinks() const
+AllLinksView SupplementaryData::getAllLinks() const
 {
 	ASSERT(battlefield, "getAllLinks() called when battlefield is null");
-	auto res = Schema::V15::AllLinks{};
+	auto res = AllLinksView{};
 
 	for(const auto & [lt, links] : battlefield->allLinks)
 	{

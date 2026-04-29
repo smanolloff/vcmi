@@ -10,6 +10,7 @@
 
 #include "StdInc.h"
 
+#include "BAI/v15/graph/nodes/global.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -24,19 +25,6 @@
 namespace MMAI::BAI::V15
 {
 namespace S15 = Schema::V15;
-using GA = Schema::V15::GlobalAttribute;
-using PA = Schema::V15::PlayerAttribute;
-using HA = Schema::V15::HexAttribute;
-using SA = Schema::V15::StackAttribute;
-
-// static
-std::vector<float> State::InitNullStack()
-{
-	auto res = std::vector<float>{};
-	for(int i = 0; i < EI(StackAttribute::_count); ++i)
-		Encoder::Encode(static_cast<HA>(S15::STACK_ATTR_OFFSET + i), S15::NULL_VALUE_UNENCODED, res);
-	return res;
-};
 
 namespace
 {
@@ -182,12 +170,12 @@ State::State(
 	, battle(battle)
 	, colorname(colorname)
 	, side(battle->battleGetMySide())
-	, nullstack(InitNullStack())
 {
 	auto [lv, lh, rv, rh] = CalcGlobalStats(battle);
 
 	auto cache = std::make_shared<Cache>(battle);
-	gstats = std::make_unique<GlobalStats>(battle->battleGetMySide(), lv + rv, lh + rh, GetSiegeTowers(battle), GetSiegeCorpses(battle));
+	auto x = Graph::Nodes::Global(battle->battleGetMySide(), lv + rv, lh + rh, GetSiegeTowers(battle), GetSiegeCorpses(battle));
+	gstats = std::make_unique<Graph::Nodes::Global>(battle->battleGetMySide(), lv + rv, lh + rh, GetSiegeTowers(battle), GetSiegeCorpses(battle));
 	lpstats = std::make_unique<PlayerStats>(BattleSide::LEFT_SIDE, lv, lh);
 	rpstats = std::make_unique<PlayerStats>(BattleSide::RIGHT_SIDE, rv, rh);
 
@@ -265,25 +253,21 @@ void State::onActiveStack(
 
 void State::encodeGlobal(CombatResult result)
 {
-	for(int i = 0; i < EI(GA::_count); ++i)
-	{
-		Encoder::Encode(static_cast<GA>(i), gstats->attrs.at(i), bfstate);
-	}
+	(void)result;
+	const auto attrs = gstats->encodedAttributes();
+	bfstate.insert(bfstate.end(), attrs.begin(), attrs.end());
 }
 
 void State::encodePlayer(const PlayerStats * pstats)
 {
-	for(int i = 0; i < EI(PA::_count); ++i)
-	{
-		Encoder::Encode(static_cast<PA>(i), pstats->attrs.at(i), bfstate);
-	}
+	const auto attrs = pstats->encodedAttributes();
+	bfstate.insert(bfstate.end(), attrs.begin(), attrs.end());
 }
 
 void State::encodeHex(const Hex * hex)
 {
-	// Battlefield state
-	for(int i = 0; i < EI(HA::_count); ++i)
-		Encoder::Encode(static_cast<HA>(i), hex->attrs.at(i), bfstate);
+	const auto attrs = hex->encodedAttributes();
+	bfstate.insert(bfstate.end(), attrs.begin(), attrs.end());
 
 	// Action mask
 	for(int m = 0; m < hex->actmask.size(); ++m)

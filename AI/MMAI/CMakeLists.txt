@@ -74,6 +74,38 @@ set(MMAI_FILES
   BAI/v14/supplementary_data.cpp
   BAI/v14/supplementary_data.h
 
+  BAI/v15/render.cpp
+  BAI/v15/player_stats.h
+  BAI/v15/global_stats.h
+  BAI/v15/graph_store.h
+  BAI/v15/battlefield.cpp
+  BAI/v15/hexactmask.h
+  BAI/v15/graph_store.cpp
+  BAI/v15/BAI.h
+  BAI/v15/links.h
+  BAI/v15/supplementary_data.h
+  BAI/v15/graph/nodes/global.h
+  BAI/v15/graph/nodes/unit.h
+  BAI/v15/graph/nodes/player.h
+  BAI/v15/graph/nodes/common.h
+  BAI/v15/graph/nodes/hex.h
+  BAI/v15/cache.h
+  BAI/v15/state.cpp
+  BAI/v15/hexaction.h
+  BAI/v15/action.h
+  BAI/v15/cache.cpp
+  BAI/v15/hex.h
+  BAI/v15/encoder.h
+  BAI/v15/supplementary_data.cpp
+  BAI/v15/stack.h
+  BAI/v15/attack_log.h
+  BAI/v15/BAI.cpp
+  BAI/v15/battlefield.h
+  BAI/v15/state.h
+  BAI/v15/action.cpp
+  BAI/v15/encoder.cpp
+  BAI/v15/render.h
+
   schema/schema.h
   schema/v13/constants.h
   schema/v13/schema.h
@@ -81,6 +113,12 @@ set(MMAI_FILES
   schema/v14/constants.h
   schema/v14/schema.h
   schema/v14/types.h
+  schema/v15/types.h
+  schema/v15/encoding.h
+  schema/v15/schema.h
+  schema/v15/graph.h
+  schema/v15/constants.h
+  schema/v15/util.h
 
   MMAI.h
   StdInc.h
