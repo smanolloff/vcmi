@@ -16,18 +16,75 @@
 
 #pragma once
 
-#include "BAI/v15/graph/graph_store.h"
-#include "battle/AccessibilityInfo.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/ReachabilityInfo.h"
+#include "battle/AccessibilityInfo.h"
+
+#include "BAI/v15/graph/element_store.h"
+#include "BAI/v15/graph/edges/generic.h"
+#include "BAI/v15/graph/edges/hex_adjacent_hex.h"
+#include "BAI/v15/graph/edges/unit_acts_before_unit.h"
+#include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
+#include "BAI/v15/graph/edges/unit_ranged_dmg_unit.h"
+#include "BAI/v15/graph/nodes/action.h"
+#include "BAI/v15/graph/nodes/global.h"
+#include "BAI/v15/graph/nodes/hex.h"
+#include "BAI/v15/graph/nodes/player.h"
+#include "BAI/v15/graph/nodes/unit.h"
+
+#include "schema/v15/graph.h"
 
 namespace MMAI::BAI::V15::Graph
 {
 
+namespace S15 = Schema::V15;
+
+using TStores = std::tuple<
+    ElementStore<Nodes::Action>,
+    ElementStore<Nodes::Global>,
+    ElementStore<Nodes::Player>,
+    ElementStore<Nodes::Unit>,
+    ElementStore<Nodes::Hex>,
+    ElementStore<Edges::Action_ExposesTo_Unit>,
+    ElementStore<Edges::Action_Threatens_Unit>,
+    ElementStore<Edges::Action_Damages_Unit>,
+    ElementStore<Edges::Action_EndsAt_Hex>,
+    ElementStore<Edges::Action_By_Unit>,
+    ElementStore<Edges::Unit_Blocks_Unit>,
+    ElementStore<Edges::Unit_MeleeDmg_Unit>,
+    ElementStore<Edges::Unit_RangedDmg_Unit>,
+    ElementStore<Edges::Unit_CanMelee_Unit>,
+    ElementStore<Edges::Unit_CanShoot_Unit>,
+    ElementStore<Edges::Unit_ActsBefore_Unit>,
+    ElementStore<Edges::Unit_Threatens_Hex>,
+    ElementStore<Edges::Unit_Occupies_Hex>,
+    ElementStore<Edges::Hex_Adjacent_Hex>
+>;
+
+namespace detail
+{
+    template <typename T, typename Tuple>
+    struct tuple_contains;
+
+    template <typename T, typename... Ts>
+    struct tuple_contains<T, std::tuple<Ts...>>
+        : std::bool_constant<(std::same_as<T, Ts> || ...)>
+    {};
+
+    template <typename T>
+    constexpr bool is_stored_element_v =
+        tuple_contains<
+            ElementStore<std::remove_cvref_t<T>>,
+            TStores
+        >::value;
+}
+
+
 class Graph : public S15::Graph::IGraph
 {
+
 public:
-    explicit Graph(
+    Graph(
         const CPlayerBattleCallback & battle,
         const CStack * acstack
     ) : battle(battle), acstack(acstack) {};
@@ -38,27 +95,45 @@ public:
     Graph & operator=(Graph &&) = delete;
 
     template <typename T>
-    const ElementStore<T> & getElementStore() const
+        requires detail::is_stored_element_v<T>
+    const ElementStore<std::remove_cvref_t<T>> & getElementStore() const
     {
-        std::get<ElementStore<T>>(store.stores);
+        using U = std::remove_cvref_t<T>;
+        return std::get<ElementStore<U>>(stores);
+    }
+
+    // "Perfect" forwarding function which preserves lvalue/rvalue category:
+    // lvalues are copied, rvalues are moved.
+    template <typename T>
+        requires detail::is_stored_element_v<T>
+    void add(T&& elem)
+    {
+        using U = std::remove_cvref_t<T>;
+        std::get<ElementStore<U>>(stores).add(std::forward<T>(elem));
     }
 
     template <typename T>
-    void add(T elem)
+        requires detail::is_stored_element_v<T>
+    const std::remove_cvref_t<T> & get(std::size_t ind) const
     {
-        std::get<ElementStore<T>>(store.stores).add(std::move(elem));
+        using U = std::remove_cvref_t<T>;
+        return std::get<ElementStore<U>>(stores).get(ind);
     }
 
     template <typename T>
+        requires detail::is_stored_element_v<T>
     auto getAll() const
     {
-        return std::get<ElementStore<T>>(store.stores).entries();
+        using U = std::remove_cvref_t<T>;
+        return std::get<ElementStore<U>>(stores).entries();
     }
 
     template <typename T>
-    const T& get(std::size_t ind) const
+        requires detail::is_stored_element_v<T>
+    auto size() const
     {
-        return std::get<ElementStore<T>>(store.stores).get(ind);
+        using U = std::remove_cvref_t<T>;
+        return std::get<ElementStore<U>>(stores).size();
     }
 
     std::vector<const S15::Graph::INode*>
@@ -67,55 +142,36 @@ public:
     std::vector<const S15::Graph::IEdge*>
     getEdges(S15::Graph::ElementType t) const override;
 
-    // Convenience wrappers for std::make_shared<...>
-    // (for more meaningful compuler hints/errors)
-    void addGlobalNode(
-        S15::CombatResult result,
-        int round,
-        int valueStart,
-        int hpStart,
-        int value,
-        int hp
-    );
-
-    void addPlayerNode(
-        BattleSide side,
-        int globalValueStart,
-        int globalHpStart,
-        int globalValuePrevRound,
-        int globalHpPrevRound,
-        int value,
-        int hp,
-        int dmgDealt,
-        int dmgReceived,
-        int valueKilled,
-        int valueLost
-    );
-
     const AccessibilityInfo & getAccessibility() const;
     const Nodes::Unit::Queue & getQueue() const;
-    const Nodes::Unit * findUnitByHex(const BattleHex & bh) const;
+    const Nodes::Unit * findUnitByBHex(const BattleHex & bh) const;
 
     const ReachabilityInfo & getReachability(const CStack & cstack) const;
     bool isRUFR(const CStack & cstack, const BattleHex & bh) const;
-private:
-    // Explicitly building caches allows to define getters as const.
-    void cacheAccessibility();
-    void cacheQueue(bool isMorale);
-    void cacheUnitsByHex();
-    void cacheReachability();
 
-    bool haveUnitsByHex = false;
-    bool haveReachability = false;
+    // Explicitly building caches allows to define getters as const.
+    void buildAccessibilityCache();
+    void buildQueueCache(bool isMorale);
+    void buildUnitsByBHexCache();
+    void buildReachabilityCache();
+
+private:
+    bool haveAccessibilityCache = false;
+    bool haveQueueCache = false;
+    bool haveUnitsByBHexCache = false;
+    bool haveReachabilityCache = false;
 
     const CPlayerBattleCallback & battle;
     const CStack * acstack;  // can be nullptr
 
-    GraphStore store;
+    TStores stores;
+    static_assert(EU(S15::Graph::ElementType::_count) == 19);
+
     std::unordered_map<uint32_t, ReachabilityInfo> rcache;
     std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
     std::unique_ptr<AccessibilityInfo> acache;
     std::unique_ptr<Nodes::Unit::Queue> queue;
-    std::unordered_map<const BattleHex, const Nodes::Unit &> unitsByHex;
+    std::unordered_map<const BattleHex, const Nodes::Unit &> unitsByBHex;
+    std::unordered_map<const Nodes::Unit &> unitsByBHex;
 };
 }

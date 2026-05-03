@@ -53,19 +53,14 @@ std::pair<Unit::BitQueue, int> Unit::QBits(const CStack & cstack, const Queue & 
 
 Unit::Unit(
     const CStack & cstack,
-    const Queue& q,
-    const StatsContainer& statsContainer,
-    const ReachabilityInfo& rinfo,
-    bool blocked,
-    bool blocking
-)
-    : cstack(cstack)
-    , rinfo(rinfo)
+    const Queue & q,
+    const StatsContainer & statsContainer
+) : cstack(cstack)
 {
-    const auto& stackStats = statsContainer.stackStats;
+    const auto & stackStats = statsContainer.stackStats;
 
-    int slot = calculateSlot(cstack);
-    alias = calculateAlias(slot);
+    int slot = CalculateSlot(cstack);
+    alias = CalculateAlias(slot);
 
     auto [qbits, pos] = QBits(cstack, q);
     qposFirst = pos;
@@ -87,12 +82,6 @@ Unit::Unit(
     if(cstack.ableToRetaliate())
         setflag(StackFlag1::CAN_RETALIATE);
 
-    if(blocked)
-        setflag(StackFlag1::BLOCKED);
-
-    if(blocking)
-        setflag(StackFlag1::BLOCKING);
-
     if(cstack.occupiedHex().isAvailable())
         setflag(StackFlag1::IS_WIDE);
 
@@ -113,14 +102,6 @@ Unit::Unit(
         return static_cast<int>((1000LL * v1) / v2);
     };
 
-    const auto& global = statsContainer.global;
-    const auto& oldGlobal = statsContainer.oldGlobal;
-
-    auto bfValueNow = global.attr(GA::BFIELD_VALUE_NOW_ABS);
-    auto bfValuePrev = oldGlobal.attr(GA::BFIELD_VALUE_NOW_ABS);
-    auto bfValueStart = global.attr(GA::BFIELD_VALUE_START_ABS);
-    auto bfHpPrev = oldGlobal.attr(GA::BFIELD_HP_NOW_ABS);
-    auto bfHpStart = global.attr(GA::BFIELD_HP_START_ABS);
     auto value = valueOne * cstack.getCount();
 
     setattr(UA::SIDE, EU(cstack.unitSide()));
@@ -136,16 +117,16 @@ Unit::Unit(
     setattr(UA::SPEED, cstack.getMovementRange());
     setattr(UA::QUEUE, static_cast<int>(qbits.to_ulong()));
     setattr(UA::VALUE_ONE, valueOne);
-    setattr(UA::VALUE_REL, permille(value, bfValueNow));
-    setattr(UA::VALUE_REL0, permille(value, bfValueStart));
-    setattr(UA::VALUE_KILLED_REL, permille(stackStats.valueKilledNow, bfValuePrev));
-    setattr(UA::VALUE_KILLED_ACC_REL0, permille(stackStats.valueKilledTotal, bfValueStart));
-    setattr(UA::VALUE_LOST_REL, permille(stackStats.valueLostNow, bfValuePrev));
-    setattr(UA::VALUE_LOST_ACC_REL0, permille(stackStats.valueLostTotal, bfValueStart));
-    setattr(UA::DMG_DEALT_REL, permille(stackStats.dmgDealtNow, bfHpPrev));
-    setattr(UA::DMG_DEALT_ACC_REL0, permille(stackStats.dmgDealtTotal, bfHpStart));
-    setattr(UA::DMG_RECEIVED_REL, permille(stackStats.dmgReceivedNow, bfHpPrev));
-    setattr(UA::DMG_RECEIVED_ACC_REL0, permille(stackStats.dmgReceivedTotal, bfHpStart));
+    setattr(UA::VALUE_REL, permille(value, statsContainer.bfieldValueNow));
+    setattr(UA::VALUE_REL0, permille(value, statsContainer.bfieldValueStart));
+    setattr(UA::VALUE_KILLED_REL, permille(stackStats.valueKilledNow, statsContainer.bfieldValuePrev));
+    setattr(UA::VALUE_KILLED_ACC_REL0, permille(stackStats.valueKilledTotal, statsContainer.bfieldValueStart));
+    setattr(UA::VALUE_LOST_REL, permille(stackStats.valueLostNow, statsContainer.bfieldValuePrev));
+    setattr(UA::VALUE_LOST_ACC_REL0, permille(stackStats.valueLostTotal, statsContainer.bfieldValueStart));
+    setattr(UA::DMG_DEALT_REL, permille(stackStats.dmgDealtNow, statsContainer.bfieldHpPrev));
+    setattr(UA::DMG_DEALT_ACC_REL0, permille(stackStats.dmgDealtTotal, statsContainer.bfieldHpStart));
+    setattr(UA::DMG_RECEIVED_REL, permille(stackStats.dmgReceivedNow, statsContainer.bfieldHpPrev));
+    setattr(UA::DMG_RECEIVED_ACC_REL0, permille(stackStats.dmgReceivedTotal, statsContainer.bfieldHpStart));
 
     static_assert(EU(UA::_count) == 25, "whistleblower in case attributes change");
 
@@ -177,7 +158,7 @@ bool Unit::flag(StackFlag2 f) const
     return flags2.test(EU(f));
 }
 
-int Unit::calculateSlot(const CStack & cstack)
+int Unit::CalculateSlot(const CStack & cstack)
 {
     int slot = cstack.unitSlot();
 
@@ -190,7 +171,8 @@ int Unit::calculateSlot(const CStack & cstack)
     return S15::STACK_SLOT_SPECIAL;
 }
 
-char Unit::calculateAlias(int slot)
+// static
+char Unit::CalculateAlias(int slot)
 {
     switch(slot)
     {
@@ -203,7 +185,7 @@ char Unit::calculateAlias(int slot)
     }
 }
 
-int Unit::calculateValue(const CCreature* cr)
+int Unit::CalculateValue(const CCreature* cr)
 {
     auto att = cr->getBaseAttack();
     auto def = cr->getBaseDefense();
@@ -329,7 +311,7 @@ Unit::CreatureValues Unit::initCreatureValues()
     for(const auto& creature : LIBRARY->creh->objects)
     {
         if(creature)
-            values.try_emplace(creature->getId(), calculateValue(creature.get()));
+            values.try_emplace(creature->getId(), CalculateValue(creature.get()));
     }
 
     return values;

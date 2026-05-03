@@ -24,8 +24,8 @@ class Hex_Adjacent_Hex : public Hex_Adjacent_Hex_Base
 {
 public:
 	Hex_Adjacent_Hex(
-		const std::shared_ptr<Nodes::Hex> & srcNode,
-		const std::shared_ptr<Nodes::Hex> & dstNode,
+		const Nodes::Hex & srcNode,
+		const Nodes::Hex & dstNode,
 		int direction
 	) : Hex_Adjacent_Hex_Base(srcNode, dstNode)
 	{

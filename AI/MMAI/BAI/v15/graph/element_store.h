@@ -28,24 +28,18 @@ public:
     ElementStore(ElementStore &&) = delete;
     ElementStore & operator=(ElementStore &&) = delete;
 
-    void add(ElemType elem)
+    // "Perfect" forwarding function which reserves lvalue/rvalue category:
+    // lvalues are copied, rvalues are moved.
+    template <typename T>
+        requires std::same_as<std::remove_cvref_t<T>, ElemType>
+    void add(T&& elem)
     {
-        container.push_back(std::move(elem));
+        container.push_back(std::forward<T>(elem));
     }
 
-    const ElemType& get(std::size_t ind) const
+    const ElemType & get(std::size_t ind) const
     {
-        auto ptr = container.template get<0>().at(ind);
-
-        if (!ptr)
-        {
-            throw std::runtime_error(
-                "Null element in store for element type: " +
-                std::to_string(EU(ElemType::encoding_traits::element_type))
-            );
-        }
-
-        return *ptr;
+        return container.template get<0>().at(ind);
     }
 
     std::ranges::subrange<
@@ -53,8 +47,13 @@ public:
     >
     entries() const
     {
-        const auto& idx = container.template get<0>();
+        const auto & idx = container.template get<0>();
         return {idx.begin(), idx.end()};
+    }
+
+    ssize_t size() const
+    {
+        return entries().size();
     }
 
 private:

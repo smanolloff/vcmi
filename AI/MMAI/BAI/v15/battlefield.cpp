@@ -9,7 +9,6 @@
  */
 
 #include "StdInc.h"
-#include "BAI/v15/cache.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
 #include "battle/IBattleInfoCallback.h"
@@ -180,149 +179,8 @@ std::unordered_map<std::pair<si16, si16>, int, PairHash> InitAdjMap()
 // 	}
 // }
 
-int WallHP(const CPlayerBattleCallback * battle, const BattleHex & bhex) {
-	auto part = battle->battleHexToWallPart(bhex);
-	switch(part)
-	{
-		case EWallPart::BOTTOM_WALL:
-		case EWallPart::BELOW_GATE:
-		case EWallPart::OVER_GATE:
-		case EWallPart::UPPER_WALL:
-		case EWallPart::GATE:
-			switch(battle->battleGetWallState(part))
-			{
-				case EWallState::NONE:
-					return Schema::V15::NULL_VALUE_UNENCODED;
-				case EWallState::DESTROYED:
-					return 0;
-				case EWallState::DAMAGED:
-					return 1;
-				case EWallState::INTACT:
-					return 2;
-				case EWallState::REINFORCED:
-					return 3;
-				default:
-					logAi->warn("MMAI: unexpected wall state: %d", EI(battle->battleGetWallState(part)));
-					return Schema::V15::NULL_VALUE_UNENCODED;
-			}
-		default:
-			return Schema::V15::NULL_VALUE_UNENCODED;
-		break;
-	}
-}
-
-void InitStacks(
-	Cache & cache,
-	const CPlayerBattleCallback * battle,
-	const CStack * astack,
-	const Graph::Graph & oldG,
-	Graph::Graph & G,
-	std::map<const CStack *, Graph::Nodes::Unit::Stats> & stacksStats,
-	bool isMorale
-)
-{
-	auto cstacks = battle->battleGetStacks();
-
-	// Sorting needed to ensure ordered insertion of summons/machines
-	std::ranges::sort(
-		cstacks,
-		[](const CStack * a, const CStack * b)
-		{
-			return a->unitId() < b->unitId();
-		}
-	);
-
-	/*
-	 * Units for each side are indexed as follows:
-	 *
-	 *  1. The 7 "regular" army stacks use indexes 0..6 (index=slot)
-	 *  2. Up to N* summoned units will use indexes 7+ (ordered by unit ID)
-	 *  3. Up to N* war machines will use FREE indexes 7+, if any (ordered by unit ID).
-	 *  4. Remaining units from 2. and 3. will use FREE indexes from 1, if any (ordered by unit ID).
-	 *  5. Remaining units from 4. will be ignored.
-	 */
-	auto queue = cache.getQueue(isMorale);
-	auto summons = std::array<std::deque<const CStack *>, 2>{};
-	auto machines = std::array<std::deque<const CStack *>, 2>{};
-
-	auto blocking = std::map<const CStack *, bool>{};
-	auto blocked = std::map<const CStack *, bool>{};
-
-	auto setBlockedBlocking = [&battle, &blocked, &blocking](const CStack * cstack)
-	{
-		blocked.emplace(cstack, false);
-		blocking.emplace(cstack, false);
-
-		for(const auto * adjacent : battle->battleAdjacentUnits(cstack))
-		{
-			if(adjacent->unitOwner() == cstack->unitOwner())
-				continue;
-
-			// XXX: battleIsUnitBlocked can return true for ballista => don't use
-			// 	    (though properly detects blocked by frenzied ally)
-			if(!blocked[cstack] && cstack->canShoot() && !cstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !cstack->hasBonusOfType(BonusType::SIEGE_WEAPON))
-			{
-				blocked[cstack] = true;
-			}
-			if(!blocking[cstack] && adjacent->canShoot() && !adjacent->hasBonusOfType(BonusType::FREE_SHOOTING)
-			   && !adjacent->hasBonusOfType(BonusType::SIEGE_WEAPON))
-			{
-				blocking[cstack] = true;
-			}
-		}
-	};
-
-	// estimated dmg by active stack
-	// values are for ranged attack if unit is an unblocked shooter
-	// otherwise for melee attack
-	auto estdmg = std::map<const CStack *, DamageEstimation>{};
-
-	auto estimateDamage = [&battle, &astack, &estdmg, &blocked](const CStack * cstack)
-	{
-		if(!astack)
-		{
-			// no active stack (e.g. called during battleStart or battleEnd)
-			estdmg.try_emplace(cstack);
-		}
-		else if(astack->unitSide() == cstack->unitSide())
-		{
-			// no damage to friendly units
-			estdmg.try_emplace(cstack);
-		}
-		else
-		{
-			const auto attinfo = BattleAttackInfo(astack, cstack, 0, astack->canShoot() && !blocked[astack]);
-			estdmg.try_emplace(cstack, battle->calculateDmgRange(attinfo));
-		}
-	};
-
-	// This must be pre-set as dmg estimation depends on it
-	if(astack)
-		setBlockedBlocking(astack);
-
-	for(auto & cstack : cstacks)
-	{
-		if(cstack != astack)
-			setBlockedBlocking(cstack);
-
-		estimateDamage(cstack);
-
-		G.add(std::make_shared<Graph::Nodes::Unit>(
-			cstack,
-			queue,
-			// a blank stackStats entry is created if missing
-			Graph::Nodes::Unit::StatsContainer{.oldGlobal = oldG.get<Graph::Nodes::Global>(0), .global = G.get<Graph::Nodes::Global>(0), .stackStats = stacksStats[cstack]},
-			cache.getReachability(cstack),
-			blocked[cstack],
-			blocking[cstack],
-			estdmg[cstack]
-		));
-	}
-}
-
 void InitHexes(
-	Cache & cache,
-	const CPlayerBattleCallback * battle,
+	const CPlayerBattleCallback & battle,
 	const CStack * acstack,
 	Graph::Graph & G
 )
@@ -506,17 +364,16 @@ namespace
 }
 
 void Init(
-	Cache & cache,
-	const CPlayerBattleCallback * battle,
+	const CPlayerBattleCallback & battle,
 	const CStack * acstack,
 	const Graph::Graph & oldG,
 	Graph::Graph & G,
-	std::map<const CStack *, Graph::Nodes::Unit::Stats> & stacksStats,
+	std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> & stacksStats,
 	bool isMorale
 )
 {
-	InitStacks(cache, battle, acstack, oldG, G, stacksStats, isMorale);
-	InitHexes(cache, battle, acstack, G);
+	InitStacks(battle, acstack, oldG, G, stacksStats, isMorale);
+	InitHexes(battle, acstack, G);
 
 	// FixMoatMasks(battle, hexes.get(), astack);
 

@@ -10,19 +10,17 @@
 
 #pragma once
 
-#include "BAI/v15/cache.h"
 #include "BAI/v15/graph/graph.h"
 #include "battle/CPlayerBattleCallback.h"
 
 namespace MMAI::BAI::V15::Battlefield
 {
 	void Init(
-		Cache & cache,
-		const CPlayerBattleCallback * battle,
+		const CPlayerBattleCallback & battle,
 		const CStack * acstack,
 		const Graph::Graph & oldG,
 		Graph::Graph & G,
-		std::map<const CStack *, Graph::Nodes::Unit::Stats> & stacksStats,
+		std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> & stacksStats,
 		bool isMorale
 	);
 }

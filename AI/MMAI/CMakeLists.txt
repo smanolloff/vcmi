@@ -84,7 +84,6 @@ set(MMAI_FILES
   BAI/v15/encoder.cpp
   BAI/v15/encoder.h
   BAI/v15/graph/builder.cpp
-  BAI/v15/graph/builder.h
   BAI/v15/graph/edges/base.h
   BAI/v15/graph/edges/generic.h
   BAI/v15/graph/edges/hex_adjacent_hex.h
@@ -95,7 +94,6 @@ set(MMAI_FILES
   BAI/v15/graph/element_store.h
   BAI/v15/graph/graph.cpp
   BAI/v15/graph/graph.h
-  BAI/v15/graph/graph_store.h
   BAI/v15/graph/nodes/action.h
   BAI/v15/graph/nodes/global.cpp
   BAI/v15/graph/nodes/global.h
@@ -105,7 +103,6 @@ set(MMAI_FILES
   BAI/v15/graph/nodes/player.h
   BAI/v15/graph/nodes/unit.cpp
   BAI/v15/graph/nodes/unit.h
-  BAI/v15/graph/nodes/util.h
   BAI/v15/graph/util.h
   BAI/v15/hexaction.h
   BAI/v15/hexactmask.h

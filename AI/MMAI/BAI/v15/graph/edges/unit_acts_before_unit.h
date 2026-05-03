@@ -24,8 +24,8 @@ class Unit_ActsBefore_Unit : public Unit_ActsBefore_Unit_Base
 {
 public:
 	Unit_ActsBefore_Unit(
-		const std::shared_ptr<Nodes::Unit> & srcNode,
-		const std::shared_ptr<Nodes::Unit> & dstNode,
+		const Nodes::Unit & srcNode,
+		const Nodes::Unit & dstNode,
 		int times
 	) : Unit_ActsBefore_Unit_Base(srcNode, dstNode)
 	{

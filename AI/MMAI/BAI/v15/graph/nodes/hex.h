@@ -11,7 +11,6 @@
 #pragma once
 
 #include "BAI/v15/graph/element.h"
-#include "CStack.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
 #include "battle/CObstacleInstance.h"
@@ -45,11 +44,10 @@ public:
 	static HexActionHex NearbyBattleHexes(const BattleHex& bh);
 
 	Hex(
-		const BattleHex& bhex_,
+		const BattleHex & bhex,
 		EAccessibility accessibility,
-		const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,
-		const CStack* cstack_,
-		bool isRUFR_,
+		BattleSide side,
+		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
 		int wallHP,
 		bool isGateOpen
 	);
@@ -63,13 +61,9 @@ public:
 	std::array<int, EU(HA::_count)> attrs = {};
 	HexStateMask statemask = 0;
 
-	const CStack* cstack;
-	bool isRUFR = false;
 	const BattleHex moveDestHex;
 
 private:
-	static BattleHex frontOf(const BattleHex& bhex, const CStack* cstack);
-
 	void setattr(HA a, int value);
 
 	void setStateMask(

@@ -12,6 +12,7 @@
 
 #include "BAI/v15/graph/graph.h"
 #include "battle/CPlayerBattleCallback.h"
+#include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
 
 #include "BAI/v15/state.h"
@@ -27,7 +28,47 @@ namespace
 	using Player = Graph::Nodes::Player;
 	using TowerFlags = Global::TowerFlags;
 	using CorpseFlags = Global::CorpseFlags;
+	using ET = S15::Graph::ElementType;
+	using GraphBits = std::bitset<EU(ET::_count)>;
 
+    TowerFlags GetSiegeTowers(const CPlayerBattleCallback & battle) {
+        TowerFlags res = 0; // {upper, middle, lower}
+
+        auto has = [&battle](EWallPart part) {
+            auto ws = battle.battleGetWallState(part);
+            return ws != EWallState::NONE && ws != EWallState::DESTROYED;
+        };
+
+        if (has(EWallPart::UPPER_TOWER))
+            res.set(0);
+        if (has(EWallPart::KEEP))
+            res.set(1);
+        if (has(EWallPart::BOTTOM_TOWER))
+            res.set(2);
+
+        return res;
+    }
+
+    CorpseFlags GetSiegeCorpses(const CPlayerBattleCallback & battle)
+    {
+        CorpseFlags res = 0; // {gate, bridge}
+
+        if(battle.battleGetFortifications().wallsHealth == 0)
+            return res;
+
+        for(const auto & cstack : battle.battleGetAllStacks(false))
+        {
+            if(cstack->alive())
+                continue;
+
+            if(cstack->coversPos(BattleHex::GATE_INNER) || cstack->coversPos(BattleHex::GATE_OUTER))
+                res.set(0);
+            if (cstack->coversPos(BattleHex::GATE_BRIDGE))
+                res.set(1);
+        };
+
+        return res;
+    }
 
 	State::GlobalStats CalcGlobalStats(const CPlayerBattleCallback & battle)
 	{
@@ -57,7 +98,9 @@ namespace
 			.leftValue = lv,
 			.leftHp = lh,
 			.rightValue = rv,
-			.rightHp = rh
+			.rightHp = rh,
+			.totalValue = lv + rv,
+			.totalHp = lh + rh
 		};
 	}
 
@@ -73,7 +116,10 @@ namespace
 		int rvl = 0; // right value lost
 	};
 
-	AttackLogAggregateData ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Graph::Nodes::Unit::Stats> sstats)
+	AttackLogAggregateData ProcessAttackLogs(
+		const std::vector<AttackLog> & attackLogs,
+		std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> sstats
+	)
 	{
 		auto res = AttackLogAggregateData{};
 		for(auto & [cstack, ss] : sstats)
@@ -86,47 +132,310 @@ namespace
 
 		for(const auto & al : attackLogs)
 		{
-			const auto & ald = al->data;
-			if(ald.cattacker)
+			if(al.attacker)
 			{
-				sstats[ald.cattacker].dmgDealtNow += ald.dmg;
-				sstats[ald.cattacker].dmgDealtTotal += ald.dmg;
-				sstats[ald.cattacker].valueKilledNow += ald.value;
-				sstats[ald.cattacker].valueKilledTotal += ald.value;
+				sstats.at(al.attacker).dmgDealtNow += al.dmg;
+				sstats.at(al.attacker).dmgDealtTotal += al.dmg;
+				sstats.at(al.attacker).valueKilledNow += al.value;
+				sstats.at(al.attacker).valueKilledTotal += al.value;
 
-				if(ald.cattacker->unitSide() == BattleSide::LEFT_SIDE)
+				if(al.attacker->unitSide() == BattleSide::LEFT_SIDE)
 				{
-					res.ldd += ald.dmg;
-					res.lvk += ald.value;
+					res.ldd += al.dmg;
+					res.lvk += al.value;
 				}
 				else
 				{
-					res.rdd += ald.dmg;
-					res.rvk += ald.value;
+					res.rdd += al.dmg;
+					res.rvk += al.value;
 				}
 			}
 
-			ASSERT(ald.cdefender, "AttackLog cdefender is nullptr!");
-			sstats[ald.cdefender].dmgReceivedNow += ald.dmg;
-			sstats[ald.cdefender].dmgReceivedTotal += ald.dmg;
-			sstats[ald.cdefender].valueLostNow += ald.value;
-			sstats[ald.cdefender].valueLostTotal += ald.value;
+			sstats[&al.defender].dmgReceivedNow += al.dmg;
+			sstats[&al.defender].dmgReceivedTotal += al.dmg;
+			sstats[&al.defender].valueLostNow += al.value;
+			sstats[&al.defender].valueLostTotal += al.value;
 
-			if(ald.cdefender->unitSide() == BattleSide::LEFT_SIDE)
+			if(al.defender.unitSide() == BattleSide::LEFT_SIDE)
 			{
-				res.ldr += ald.dmg;
-				res.lvl += ald.value;
+				res.ldr += al.dmg;
+				res.lvl += al.value;
 			}
 			else
 			{
-				res.rdr += ald.dmg;
-				res.rvl += ald.value;
+				res.rdr += al.dmg;
+				res.rvl += al.value;
 			}
 		}
 
 		return res;
 	}
 
+	int WallHP(const CPlayerBattleCallback & battle, const BattleHex & bhex) {
+		auto part = battle.battleHexToWallPart(bhex);
+		switch(part)
+		{
+			case EWallPart::BOTTOM_WALL:
+			case EWallPart::BELOW_GATE:
+			case EWallPart::OVER_GATE:
+			case EWallPart::UPPER_WALL:
+			case EWallPart::GATE:
+				switch(battle.battleGetWallState(part))
+				{
+					case EWallState::NONE:
+						return Schema::V15::NULL_VALUE_UNENCODED;
+					case EWallState::DESTROYED:
+						return 0;
+					case EWallState::DAMAGED:
+						return 1;
+					case EWallState::INTACT:
+						return 2;
+					case EWallState::REINFORCED:
+						return 3;
+					default:
+						logAi->warn("MMAI: unexpected wall state: %d", EI(battle.battleGetWallState(part)));
+						return Schema::V15::NULL_VALUE_UNENCODED;
+				}
+			default:
+				return Schema::V15::NULL_VALUE_UNENCODED;
+			break;
+		}
+	}
+
+	// A custom hash function must be provided for the adjmap
+	struct PairHash
+	{
+		std::size_t operator()(const std::pair<si16, si16> & t) const
+		{
+			auto h0 = std::hash<int>{}(std::get<0>(t));
+			auto h1 = std::hash<int>{}(std::get<1>(t));
+			return h0 ^ (h1 << 1);
+		}
+	};
+
+	std::unordered_map<std::pair<si16, si16>, int, PairHash> InitAdjMap()
+	{
+		auto res = std::unordered_map<std::pair<si16, si16>, int, PairHash>{};
+
+		for(int id1 = 0; id1 < GameConstants::BFIELD_SIZE; id1++)
+		{
+			auto hex1 = BattleHex(id1);
+			for(int i=0; i<6; ++i)
+			{
+				auto hex2 = hex1.cloneInDirection(AMOVE_TO_EDIR[i], false);
+				res[{hex1.toInt(), hex2.toInt()}] = i;
+			}
+		}
+
+		return res;
+	}
+
+	void AddGlobalNode(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added,
+		const CPlayerBattleCallback & battle,
+		const CStack * acstack,
+		const S15::CombatResult result,
+		const int round,
+		const State::GlobalStats & startStats,
+		const State::GlobalStats & stats
+	)
+	{
+		ASSERT(!added.test(EU(ET::NODE_GLOBAL)), "Elements of type NODE_GLOBAL already added");
+		added.set(EU(ET::NODE_GLOBAL));
+
+		G->add(Graph::Nodes::Global(
+			acstack ? acstack->unitSide() : battle.battleGetMySide(),
+	        result,
+	        round,
+	        startStats.totalValue,
+	        startStats.totalHp,
+	        stats.totalValue,
+	        stats.totalHp,
+	        GetSiegeTowers(battle),
+	        GetSiegeCorpses(battle)
+		));
+	}
+
+	void AddPlayerNodes(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added,
+		const State::GlobalStats & startStats,
+		const State::GlobalStats & lastStats,
+		const State::GlobalStats & stats,
+		const AttackLogAggregateData & logdata
+	)
+	{
+		ASSERT(!added.test(EU(ET::NODE_PLAYER)), "Elements of type NODE_PLAYER already added");
+		added.set(EU(ET::NODE_PLAYER));
+
+        static_assert(EU(BattleSide::LEFT_SIDE) == 0);
+        static_assert(EU(BattleSide::RIGHT_SIDE) == 1);
+
+		G->add(Graph::Nodes::Player(
+			BattleSide::LEFT_SIDE,
+			startStats.totalValue,
+			startStats.totalHp,
+			lastStats.totalValue,
+			lastStats.totalHp,
+			stats.leftValue,
+			stats.leftHp,
+			logdata.ldd,
+			logdata.ldr,
+			logdata.lvk,
+			logdata.lvl
+		));
+
+		G->add(Graph::Nodes::Player(
+			BattleSide::LEFT_SIDE,
+			startStats.totalValue,
+			startStats.totalHp,
+			lastStats.totalValue,
+			lastStats.totalHp,
+			stats.rightValue,
+			stats.rightHp,
+			logdata.rdd,
+			logdata.rdr,
+			logdata.rvk,
+			logdata.rvl
+		));
+	}
+
+	void AddUnitNodes(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added,
+		const CPlayerBattleCallback & battle,
+		const State::GlobalStats & startStats,
+		const State::GlobalStats & lastStats,
+		const State::GlobalStats & stats,
+		const std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> & sstats
+	)
+	{
+		ASSERT(!added.test(EU(ET::NODE_UNIT)), "Elements of type NODE_UNIT already added");
+		added.set(EU(ET::NODE_UNIT));
+
+		for(auto & cstack : battle.battleGetStacks())
+		{
+			auto sc = Graph::Nodes::Unit::StatsContainer{
+				.bfieldValueNow = stats.totalValue,
+				.bfieldValuePrev = lastStats.totalValue,
+				.bfieldValueStart = startStats.totalValue,
+				.bfieldHpNow = stats.totalHp,
+				.bfieldHpPrev = lastStats.totalHp,
+				.bfieldHpStart = startStats.totalHp,
+				.stackStats = sstats.at(cstack)
+			};
+
+			G->add(Graph::Nodes::Unit(*cstack, G->getQueue(), sc));
+		}
+	}
+
+	void AddHexNodes(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added,
+		const CPlayerBattleCallback & battle,
+		const CStack * acstack
+	)
+	{
+		ASSERT(!added.test(EU(ET::NODE_HEX)), "Elements of type NODE_HEX already added");
+		added.set(EU(ET::NODE_HEX));
+
+		auto hexobstacles = std::array<std::vector<std::shared_ptr<const CObstacleInstance>>, 165>{};
+
+		for(const auto & obstacle : battle.battleGetAllObstacles())
+			for(const auto & bh : obstacle->getAffectedTiles())
+				if(bh.isAvailable())
+					hexobstacles.at(Graph::Nodes::Hex::CalcId(bh)).push_back(obstacle);
+
+		auto gatestate = battle.battleGetGateState();
+		bool isGateOpen = battle.battleGetFortifications().wallsHealth > 0
+			&& (gatestate == EGateState::OPENED || gatestate == EGateState::DESTROYED);
+
+		for(int y = 0; y < 11; ++y)
+		{
+			for(int x = 0; x < 15; ++x)
+			{
+				auto i = (y * 15) + x;
+				auto bh = BattleHex(x + 1, y);
+
+				G->add(Graph::Nodes::Hex(
+					bh,
+					G->getAccessibility().at(bh.toInt()),
+					acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
+					hexobstacles.at(i),
+					WallHP(battle, bh),
+					isGateOpen
+				));
+			}
+		}
+	}
+
+	void AddEdges_Hex_Adjacent_Hex(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added
+	)
+	{
+		ASSERT(!added.test(EU(ET::EDGE_HEX_ADJACENT_HEX)), "Elements of type EDGE_HEX_ADJACENT_HEX already added");
+		added.set(EU(ET::EDGE_HEX_ADJACENT_HEX));
+
+		static const auto adjmap = InitAdjMap();
+
+		ASSERT(added.test(EU(ET::NODE_HEX)), "Elements of type NODE_HEX should be added first");
+		const auto hexes = G->getAll<Graph::Nodes::Hex>();
+
+		for(const auto & src : hexes)
+		{
+			for(const auto & dst : hexes)
+			{
+				auto it = adjmap.find({src.bhex.toInt(), dst.bhex.toInt()});
+				if(it == adjmap.end())
+					continue;
+				G->add(Graph::Edges::Hex_Adjacent_Hex(src, dst, it->second));
+			}
+		}
+	}
+
+	void AddEdges_Unit_Blocks_Unit(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added
+	)
+	{
+		ASSERT(!added.test(EU(ET::EDGE_UNIT_BLOCKS_UNIT)), "Elements of type EDGE_HEX_ADJACENT_HEX already added");
+		added.set(EU(ET::EDGE_UNIT_BLOCKS_UNIT));
+
+		// auto pairs = std::unordered_set<std::pair<int, int>>{};
+		auto pairs = std::unordered_set<std::pair<int, int>>{};
+
+		ASSERT(added.test(EU(ET::NODE_UNIT)), "Elements of type NODE_UNIT should be added first");
+
+		for(const auto & unit : G->getAll<Graph::Nodes::Unit>())
+		{
+			for(const auto & bh : unit.cstack.getSurroundingHexes())
+			{
+				const auto * other = G->findUnitByBHex(bh);
+
+				if(!other)
+					continue;
+
+				if(other->cstack.unitOwner() == unit.cstack.unitOwner())
+					continue;
+
+				auto [_, inserted] = pairs.emplace<std::pair<int, int>>({unit.cstack.unitId(), other->cstack.unitId()});
+				if(!inserted)
+					continue;
+
+				if(!blocked[cstack] && cstack->canShoot() && !cstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !cstack->hasBonusOfType(BonusType::SIEGE_WEAPON))
+				{
+					blocked[cstack] = true;
+				}
+				if(!blocking[cstack] && adjacent->canShoot() && !adjacent->hasBonusOfType(BonusType::FREE_SHOOTING)
+				   && !adjacent->hasBonusOfType(BonusType::SIEGE_WEAPON))
+				{
+					blocking[cstack] = true;
+				}
+			}
+		};
+	}
 }
 
 State::State(
@@ -144,7 +453,7 @@ State::State(
 }
 
 void State::onActiveStack(
-	const CStack * astack,
+	const CStack * acstack,
 	int round,
 	S15::CombatResult result
 )
@@ -153,66 +462,36 @@ void State::onActiveStack(
 	auto G = std::make_shared<Graph::Graph>(battle, nullptr);
 
 	const auto stats = CalcGlobalStats(battle);
-	const auto & [ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl] = ProcessAttackLogs(attackLogs, sstats);
-	const auto lstats = Graph::Nodes::Player::Stats{
-		.v = stats.leftValue,
-		.hp = stats.leftHp,
-		.dd = ldd,
-		.dr = ldr,
-		.vk = lvk,
-		.vl = lvl,
-	};
+	const auto logdata = ProcessAttackLogs(attackLogs, sstats);
+	auto added = std::bitset<EU(S15::Graph::ElementType::_count)>{};
 
-	const auto rstats = Graph::Nodes::Player::Stats{
-		.v = stats.rightValue,
-		.hp = stats.rightHp,
-		.dd = rdd,
-		.dr = rdr,
-		.vk = rvk,
-		.vl = rvl,
-	};
+	AddGlobalNode(G, added, battle, acstack, result, round, startStats, stats);
+	AddPlayerNodes(G, added, startStats, lastStats, stats, logdata);
 
-	G->addGlobalNode(
-		result,
-		round,
-		startStats.leftValue + startStats.rightValue,
-		startStats.leftHp + startStats.rightHp,
-		stats.leftValue + stats.rightValue,
-		stats.leftHp + stats.rightHp
-	);
+	AddUnitNodes(G, added, battle, startStats, lastStats, stats, sstats);
+	G->buildAccessibilityCache();
+	AddHexNodes(G, added, battle, acstack);
+	G->buildQueueCache(isMorale);
+	G->buildUnitsByHexCache();
+	G->buildReachabilityCache();
 
-	static_assert(EU(BattleSide::LEFT_SIDE) == 0, "Nodes::Player index");
+	AddEdges_Hex_Adjacent_Hex(G, added);
+	AddEdges_Unit_Blocks_Unit(G, added);
+	// AddEdges_Unit_MeleeDmg_Unit()
+	// AddEdges_Unit_RangedDmg_Unit()
+	// AddEdges_Unit_CanMelee_Unit()
+	// AddEdges_Unit_CanShoot_Unit()
+	// AddEdges_Unit_ActsBefore_Unit()
+	// AddEdges_Unit_Threatens_Hex()
+	// AddEdges_Unit_Occupies_Hex()
 
-	G->addPlayerNode(
-		BattleSide::LEFT_SIDE,
-		startStats.leftValue + startStats.rightValue,
-		startStats.leftHp + startStats.rightHp,
-		lastStats.leftValue + lastStats.rightValue,
-		lastStats.leftHp + lastStats.rightHp,
-		lstats.v,
-		lstats.hp,
-		lstats.dd,
-		lstats.dr,
-		lstats.vk,
-		lstats.vl
-	);
-
-	G->addPlayerNode(
-		BattleSide::RIGHT_SIDE,
-		startStats.leftValue + startStats.rightValue,
-		startStats.leftHp + startStats.rightHp,
-		lastStats.leftValue + lastStats.rightValue,
-		lastStats.leftHp + lastStats.rightHp,
-		rstats.v,
-		rstats.hp,
-		rstats.dd,
-		rstats.dr,
-		rstats.vk,
-		rstats.vl
-	);
-
-	// // Add Unit and Hex nodes
-	// Battlefield::Init(cache, battle, astack, *oldG, *G, sstats, false);
+	// Added last
+	// AddActionNodes()
+	// AddEdges_ActionExposesTo_Unit()
+	// AddEdges_ActionThreatens_Unit()
+	// AddEdges_ActionDamages_Unit()
+	// AddEdges_ActionEndsAt_Hex()
+	// AddEdges_ActionBy_Unit()
 
 	supdata = std::make_unique<SupplementaryData>(
 		colorname,
@@ -233,10 +512,10 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 
 	for(const auto & elem : bsa)
 	{
-		const auto * cdefender = battle.battleGetStackByID(elem.stackAttacked, false);
-		const auto * cattacker = battle.battleGetStackByID(elem.attackerID, false);
+		const auto * defender = battle.battleGetStackByID(elem.stackAttacked, false);
+		const auto * attacker = battle.battleGetStackByID(elem.attackerID, false);
 
-		if(!cdefender)
+		if(!defender)
 		{
 			logAi->error("MMAI: received BattleStackAttacked with invalid stackAttacked: " + std::to_string(elem.stackAttacked));
 			continue;
@@ -244,19 +523,17 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 
 		auto bf_valueNow = lastStats.leftValue + lastStats.rightValue;
 		auto bf_hpNow = lastStats.leftHp + lastStats.rightHp;
-		auto value = elem.killedAmount * Graph::Nodes::Unit::GetValue(cdefender->unitType());
+		auto value = elem.killedAmount * Graph::Nodes::Unit::GetValue(defender->unitType());
 
-		auto ald = AttackLogData{
-			.cattacker = cattacker,
-			.cdefender = cdefender,
-			.dmg = static_cast<int>(elem.damageAmount),
-			.dmgPermille = static_cast<int>(1000 * elem.damageAmount / bf_hpNow),
-			.units = static_cast<int>(elem.killedAmount),
-			.value = static_cast<int>(value),
-			.valuePermille = static_cast<int>(1000 * value / bf_valueNow)
-		};
-
-		attackLogs.push_back(std::make_shared<AttackLog>(std::move(ald)));
+		attackLogs.emplace_back(AttackLog(
+			attacker,
+			*defender,
+			static_cast<int>(elem.damageAmount),
+			static_cast<int>(1000 * elem.damageAmount / bf_hpNow),
+			static_cast<int>(elem.killedAmount),
+			static_cast<int>(value),
+			static_cast<int>(1000 * value / bf_valueNow)
+		));
 	}
 }
 
@@ -268,9 +545,9 @@ void State::onBattleTriggerEffect(const BattleTriggerEffect & bte)
 	isMorale = true;
 }
 
-void State::onBattleEnd(const BattleResult * br, int round)
+void State::onBattleEnd(const BattleResult & br, int round)
 {
-	switch(br->winner)
+	switch(br.winner)
 	{
 		case BattleSide::LEFT_SIDE:
 			onActiveStack(nullptr, round, S15::CombatResult::LEFT_WINS);
