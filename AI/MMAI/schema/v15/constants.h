@@ -264,7 +264,6 @@ struct EncodingTraits<GlobalEncoding>
 		E5(X::GA::BFIELD_HP_NOW_REL0, X::LS, 1000), // bfield_hp_now / bfield_hp_at_start
 		E5(X::GA::SIEGE_TOWERS, X::BS, (1 << 3) - 1),
 		E5(X::GA::SIEGE_CORPSES, X::BS, (1 << 2) - 1),
-		E5(X::GA::ACTION_MASK, X::BS, (1 << EI(GlobalAction::_count)) - 1)
 	};
 };
 
@@ -367,24 +366,25 @@ struct EncodingTraits<HexEncoding>
 };
 
 /*
- * The macro call GENERIC_EDGE_ENCODING_TRAITS(Foo, BAR) expands to:
- * It is useful for generic edges which have no attributes.
+ * The macro is useful for generic edges which have no attributes.
  *
- * 	using E5E_Foo = std::tuple<Graph::EdgeAttributes::Foo, Encoding, int, int, double>;
- *  namespace X {
- *  	using E5E_Foo = std::tuple<Graph::EdgeAttributes::Foo, Encoding, int, int, double>;
- *  }
- *  using EdgeEncoding_Foo = std::array<X::E5E_Foo, EI(Graph::EdgeAttributes::Foo::_count)>;
- *  template <>
- *  struct EncodingTraits<EdgeEncoding_Foo>
- *  {
- *      using attr_type = Graph::EdgeAttributes::Foo;
- *      static constexpr auto element_type = Graph::ElementType::BAR;
- *      static constexpr std::string_view name = "BAR";
- *      static constexpr std::size_t attr_count = 0;
- *      static constexpr EdgeEncoding_##edge_type encoding = {};
- *      static constexpr std::size_t encoded_size = 0;
- *  };
+ * GENERIC_EDGE_ENCODING_TRAITS(Foo, BAR) expands to:
+ *
+ *     using E5E_Foo = std::tuple<Graph::EdgeAttributes::Foo, Encoding, int, int, double>;
+ *     namespace X {
+ *         using E5E_Foo = std::tuple<Graph::EdgeAttributes::Foo, Encoding, int, int, double>;
+ *     }
+ *     using EdgeEncoding_Foo = std::array<X::E5E_Foo, EI(Graph::EdgeAttributes::Foo::_count)>;
+ *     template <>
+ *     struct EncodingTraits<EdgeEncoding_Foo>
+ *     {
+ *         using attr_type = Graph::EdgeAttributes::Foo;
+ *         static constexpr auto element_type = Graph::ElementType::BAR;
+ *         static constexpr std::string_view name = "BAR";
+ *         static constexpr std::size_t attr_count = 0;
+ *         static constexpr EdgeEncoding_##edge_type encoding = {};
+ *         static constexpr std::size_t encoded_size = 0;
+ *     };
  */
 
 #define GENERIC_EDGE_ENCODING_TRAITS(edge_type, elem_type) 					\
@@ -401,7 +401,7 @@ struct EncodingTraits<EdgeEncoding_##edge_type> 											\
     static constexpr std::size_t attr_count = 0; \
     static constexpr EdgeEncoding_##edge_type encoding = {}; \
     static constexpr std::size_t encoded_size = 0; \
-};
+}
 
 GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesTo_Unit, EDGE_ACTION_EXPOSES_TO_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Unit, EDGE_ACTION_THREATENS_UNIT);

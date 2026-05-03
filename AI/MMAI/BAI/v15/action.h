@@ -10,8 +10,7 @@
 
 #pragma once
 
-#include "BAI/v15/battlefield.h"
-#include "BAI/v15/hex.h"
+#include "BAI/v15/graph/graph.h"
 #include "BAI/v15/hexaction.h"
 
 namespace MMAI::BAI::V15
@@ -21,18 +20,18 @@ namespace MMAI::BAI::V15
  */
 struct Action
 {
-	static std::unique_ptr<Hex> initHex(const Schema::Action & a, const Battlefield * bf);
-	static std::unique_ptr<Hex> initAMoveTargetHex(const Schema::Action & a, const Battlefield * bf);
-	static HexAction initHexAction(const Schema::Action & a, const Battlefield * bf);
-
-	Action(Schema::Action action_, const Battlefield * bf, const std::string & color);
+	// Action(Schema::Action action_, const Graph::Graph & G, Cache & cache, const std::string & color_);
+	Action(Schema::Action action_, const Graph::Graph & G, const std::string & color_);
 
 	const Schema::Action action;
-	const std::unique_ptr<Hex> hex;
-	const std::unique_ptr<Hex> aMoveTargetHex;
-	const HexAction hexaction; // XXX: must come after action
+	const Graph::Nodes::Hex * hex;
+	const Graph::Nodes::Hex * aMoveTargetHex;
+	const HexAction hexaction;
 	const std::string color;
 
-	std::string name() const;
+	std::string name;
+
+private:
+	std::string buildName(const Graph::Graph & G);
 };
 }

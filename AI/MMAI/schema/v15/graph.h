@@ -22,7 +22,6 @@ namespace MMAI::Schema::V15::Graph
         NODE_PLAYER,
         NODE_UNIT,
         NODE_HEX,
-
         EDGE_ACTION_EXPOSES_TO_UNIT,
         EDGE_ACTION_THREATENS_UNIT,
         EDGE_ACTION_DAMAGES_UNIT,
@@ -56,7 +55,6 @@ namespace MMAI::Schema::V15::Graph
             BFIELD_HP_NOW_REL0, //        global_hp_now / global_hp_at_start
             SIEGE_TOWERS, //              {upper, keep, lower}
             SIEGE_CORPSES, //             {gate, bridge}
-            ACTION_MASK, //               mask for global actions (retreat, wait)
 
             _count
         };
@@ -145,13 +143,12 @@ namespace MMAI::Schema::V15::Graph
     }
 
 namespace EdgeAttributes
-
-    #define BLANK_ENUM_DEF(name)    \
-    enum class name : uint8_t {     \
-        _count                      \
-    }
-
     {
+        #define BLANK_ENUM_DEF(name)    \
+        enum class name : uint8_t {     \
+            _count                      \
+        }
+
         BLANK_ENUM_DEF(Action_ExposesTo_Unit);
         BLANK_ENUM_DEF(Action_Threatens_Unit);
         BLANK_ENUM_DEF(Action_Damages_Unit);
@@ -200,25 +197,25 @@ namespace EdgeAttributes
     public:
         virtual ElementType elementType() const = 0;
         virtual std::vector<float> encodedAttributes() const = 0;
-        virtual int nodeIndex() const = 0;
         virtual ~INode() = default;
     };
+
+    using Endpoints = std::pair<const INode*, const INode*>;
 
     class IEdge
     {
     public:
         virtual ElementType elementType() const = 0;
         virtual std::vector<float> encodedAttributes() const = 0;
-        virtual std::pair<ElementType, ElementType> nodeTypes() const = 0;
-        virtual std::pair<int, int> nodeIndexes() const = 0;
+        virtual Endpoints endpoints() const = 0;
         virtual ~IEdge() = default;
     };
 
     class IGraph
     {
     public:
-        virtual std::vector<INode> getNodes() const = 0;
-        virtual std::vector<IEdge> getEdges() const = 0;
+        virtual std::vector<const INode*> getNodes(ElementType t) const = 0;
+        virtual std::vector<const IEdge*> getEdges(ElementType t) const = 0;
         virtual ~IGraph() = default;
     };
 

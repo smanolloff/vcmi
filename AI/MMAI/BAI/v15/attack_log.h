@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "BAI/v15/stack.h"
+#include "BAI/v15/graph/nodes/unit.h"
 #include "common.h"
 #include "schema/v15/types.h"
 
@@ -19,8 +19,8 @@ namespace MMAI::BAI::V15
 
 struct AttackLogData
 {
-	const std::shared_ptr<Stack> attacker; // XXX: can be nullptr if dmg is not from creature
-	const std::shared_ptr<Stack> defender;
+	const std::shared_ptr<Graph::Nodes::Unit> attacker; // XXX: can be nullptr if dmg is not from creature
+	const std::shared_ptr<Graph::Nodes::Unit> defender;
 	const CStack * cattacker;
 	const CStack * cdefender;
 	const int dmg;

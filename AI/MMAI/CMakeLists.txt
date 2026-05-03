@@ -74,37 +74,48 @@ set(MMAI_FILES
   BAI/v14/supplementary_data.cpp
   BAI/v14/supplementary_data.h
 
-  BAI/v15/render.cpp
-  BAI/v15/player_stats.h
-  BAI/v15/global_stats.h
-  BAI/v15/graph_store.h
-  BAI/v15/battlefield.cpp
-  BAI/v15/hexactmask.h
-  BAI/v15/graph_store.cpp
-  BAI/v15/BAI.h
-  BAI/v15/links.h
-  BAI/v15/supplementary_data.h
-  BAI/v15/graph/nodes/global.h
-  BAI/v15/graph/nodes/unit.h
-  BAI/v15/graph/nodes/player.h
-  BAI/v15/graph/nodes/common.h
-  BAI/v15/graph/nodes/hex.h
-  BAI/v15/cache.h
-  BAI/v15/state.cpp
-  BAI/v15/hexaction.h
-  BAI/v15/action.h
-  BAI/v15/cache.cpp
-  BAI/v15/hex.h
-  BAI/v15/encoder.h
-  BAI/v15/supplementary_data.cpp
-  BAI/v15/stack.h
-  BAI/v15/attack_log.h
   BAI/v15/BAI.cpp
-  BAI/v15/battlefield.h
-  BAI/v15/state.h
+  BAI/v15/BAI.h
   BAI/v15/action.cpp
+  BAI/v15/action.h
+  BAI/v15/attack_log.h
+  BAI/v15/battlefield.cpp
+  BAI/v15/battlefield.h
   BAI/v15/encoder.cpp
+  BAI/v15/encoder.h
+  BAI/v15/graph/builder.cpp
+  BAI/v15/graph/builder.h
+  BAI/v15/graph/edges/base.h
+  BAI/v15/graph/edges/generic.h
+  BAI/v15/graph/edges/hex_adjacent_hex.h
+  BAI/v15/graph/edges/unit_acts_before_unit.h
+  BAI/v15/graph/edges/unit_melee_dmg_unit.h
+  BAI/v15/graph/edges/unit_ranged_dmg_unit.h
+  BAI/v15/graph/element.h
+  BAI/v15/graph/element_store.h
+  BAI/v15/graph/graph.cpp
+  BAI/v15/graph/graph.h
+  BAI/v15/graph/graph_store.h
+  BAI/v15/graph/nodes/action.h
+  BAI/v15/graph/nodes/global.cpp
+  BAI/v15/graph/nodes/global.h
+  BAI/v15/graph/nodes/hex.cpp
+  BAI/v15/graph/nodes/hex.h
+  BAI/v15/graph/nodes/player.cpp
+  BAI/v15/graph/nodes/player.h
+  BAI/v15/graph/nodes/unit.cpp
+  BAI/v15/graph/nodes/unit.h
+  BAI/v15/graph/nodes/util.h
+  BAI/v15/graph/util.h
+  BAI/v15/hexaction.h
+  BAI/v15/hexactmask.h
+  BAI/v15/links.h
+  BAI/v15/render.cpp
   BAI/v15/render.h
+  BAI/v15/state.cpp
+  BAI/v15/state.h
+  BAI/v15/supplementary_data.cpp
+  BAI/v15/supplementary_data.h
 
   schema/schema.h
   schema/v13/constants.h
@@ -113,11 +124,11 @@ set(MMAI_FILES
   schema/v14/constants.h
   schema/v14/schema.h
   schema/v14/types.h
-  schema/v15/types.h
-  schema/v15/encoding.h
-  schema/v15/schema.h
-  schema/v15/graph.h
   schema/v15/constants.h
+  schema/v15/encoding.h
+  schema/v15/graph.h
+  schema/v15/schema.h
+  schema/v15/types.h
   schema/v15/util.h
 
   MMAI.h

@@ -500,7 +500,23 @@ set(BOOST_COMPONENTS date_time filesystem locale program_options)
 if(ENABLE_INNOEXTRACT)
 	list(APPEND BOOST_COMPONENTS iostreams)
 endif()
+
+if(ENABLE_ML)
+	list(APPEND BOOST_COMPONENTS headers)
+endif()
+
 find_package(Boost 1.74.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+
+if(ENABLE_ML)
+	foreach(c IN LISTS BOOST_COMPONENTS)
+		if(TARGET Boost::${c})
+			message(STATUS "Boost::${c} exists")
+		else()
+			message(FATAL_ERROR "Missing Boost component target: Boost::${c}")
+		endif()
+	endforeach()
+endif()
+
 if(Boost_MAJOR_VERSION EQUAL 1 AND Boost_MINOR_VERSION LESS 69)
 	list(APPEND BOOST_COMPONENTS system)
 	find_package(Boost 1.74.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS})

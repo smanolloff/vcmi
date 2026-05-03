@@ -10,24 +10,20 @@
 #pragma once
 
 #include "BAI/v15/attack_log.h"
-#include "BAI/v15/battlefield.h"
-#include "BAI/v15/global_stats.h"
-#include "BAI/v15/player_stats.h"
+#include "BAI/v15/graph/graph.h"
 #include "schema/v15/types.h"
 
 namespace MMAI::BAI::V15
 {
+namespace S15 = Schema::V15;
 using Side = Schema::Side;
-using ErrorCode = Schema::V15::ErrorCode;
-using StacksView = std::vector<const Stack *>;
-using HexesView = std::array<std::array<const Hex *, 15>, 11>;
-using AllLinksView = std::map<LinkType, const Links *>;
+using ErrorCode = S15::ErrorCode;
 
 // match sides for convenience when determining winner (see `victory`)
-static_assert(EI(CombatResult::LEFT_WINS) == EI(Side::LEFT));
-static_assert(EI(CombatResult::RIGHT_WINS) == EI(Side::RIGHT));
+static_assert(EI(S15::CombatResult::LEFT_WINS) == EI(Side::LEFT));
+static_assert(EI(S15::CombatResult::RIGHT_WINS) == EI(Side::RIGHT));
 
-class SupplementaryData : public Schema::V15::ISupplementaryData
+class SupplementaryData : public S15::ISupplementaryData
 {
 public:
 	SupplementaryData() = delete;
@@ -36,21 +32,15 @@ public:
 	SupplementaryData(
 		const std::string & colorname_,
 		Side side_,
-		const GlobalStats * gstats_,
-		const PlayerStats * lpstats_,
-		const PlayerStats * rpstats_,
-		const Battlefield * battlefield_,
+		const std::shared_ptr<Graph::Graph> & G,
 		const std::vector<std::shared_ptr<AttackLog>> & attackLogs_,
-		CombatResult result
+		S15::CombatResult result
 	)
 		: colorname(colorname_)
 		, side(side_)
-		, battlefield(battlefield_)
-		, gstats(gstats_)
-		, lpstats(lpstats_)
-		, rpstats(rpstats_)
+		, G(G)
 		, attackLogs(attackLogs_)
-		, ended(result != CombatResult::NONE)
+		, ended(result != S15::CombatResult::NONE)
 		, victory(EI(result) == EI(side)) {};
 
 	// impl ISupplementaryData
@@ -62,11 +52,13 @@ public:
 	{
 		return errcode;
 	};
-	const Schema::V15::Graph::IGraph * getGraph() const override
+
+	const S15::Graph::IGraph * getGraph() const override
 	{
-		return nullptr;
+		return G.get();
 	}
-	Schema::V15::AttackLogs getAttackLogs() const override;
+
+	S15::AttackLogs getAttackLogs() const override;
 
 	Side getSide() const
 	{
@@ -85,21 +77,6 @@ public:
 		return victory;
 	}
 
-	StacksView getStacks() const;
-	HexesView getHexes() const;
-	AllLinksView getAllLinks() const;
-	const GlobalStats * getGlobalStats() const
-	{
-		return gstats;
-	}
-	const PlayerStats * getLeftPlayerStats() const
-	{
-		return lpstats;
-	}
-	const PlayerStats * getRightPlayerStats() const
-	{
-		return rpstats;
-	}
 	std::string getAnsiRender() const override
 	{
 		return ansiRender;
@@ -107,10 +84,7 @@ public:
 
 	const std::string colorname;
 	const Side side;
-	const Battlefield * const battlefield;
-	const GlobalStats * const gstats;
-	const PlayerStats * const lpstats;
-	const PlayerStats * const rpstats;
+	const std::shared_ptr<Graph::Graph> G;
 	const std::vector<std::shared_ptr<AttackLog>> attackLogs;
 	const bool ended = false;
 	const bool victory = false;

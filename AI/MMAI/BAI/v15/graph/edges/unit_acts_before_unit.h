@@ -10,38 +10,29 @@
 
 #pragma once
 
-#include "BAI/v15/graph/element.h"
+#include "BAI/v15/graph/edges/base.h"
+#include "BAI/v15/graph/nodes/unit.h"
 #include "schema/v15/constants.h"
-#include "schema/v15/graph.h"
 
 namespace MMAI::BAI::V15::Graph::Edges
 {
 namespace S15 = Schema::V15;
-using EA = S15::Graph::EdgeAttributes::Unit_ActsBefore_Unit;
+using Unit_ActsBefore_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_ActsBefore_Unit>;
+using Unit_ActsBefore_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_ActsBefore_Unit_Traits>;
 
-class Unit_ActsBefore_Unit : public Element<S15::EncodingTraits<Schema::V15::EdgeEncoding_Unit_ActsBefore_Unit>, S15::Graph::IEdge>
+class Unit_ActsBefore_Unit : public Unit_ActsBefore_Unit_Base
 {
 public:
-	Unit_ActsBefore_Unit(int srcIndex, int dstIndex, int times)
-		: srcIndex(srcIndex), dstIndex(dstIndex)
+	Unit_ActsBefore_Unit(
+		const std::shared_ptr<Nodes::Unit> & srcNode,
+		const std::shared_ptr<Nodes::Unit> & dstNode,
+		int times
+	) : Unit_ActsBefore_Unit_Base(srcNode, dstNode)
 	{
 		attrs.fill(S15::NULL_VALUE_UNENCODED);
 
-		setattr(EA::TIMES, times);
-		static_assert(static_cast<size_t>(EA::_count) == 1, "whistleblower in case attributes change");
+		setattr(A::TIMES, times);
+		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
 	}
-
-	std::pair<S15::Graph::ElementType, S15::Graph::ElementType> nodeTypes() const override
-	{
-		return {S15::Graph::ElementType::NODE_UNIT, S15::Graph::ElementType::NODE_UNIT};
-	}
-
-	std::pair<int, int> nodeIndexes() const override
-	{
-		return {srcIndex, dstIndex};
-	}
-
-	const int srcIndex;
-	const int dstIndex;
 };
 }

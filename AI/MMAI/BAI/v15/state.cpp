@@ -10,49 +10,55 @@
 
 #include "StdInc.h"
 
-#include "BAI/v15/graph/nodes/global.h"
+#include "BAI/v15/graph/graph.h"
 #include "battle/CPlayerBattleCallback.h"
-#include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
 
-#include "BAI/v15/encoder.h"
-#include "BAI/v15/hexaction.h"
 #include "BAI/v15/state.h"
 #include "BAI/v15/supplementary_data.h"
 #include "common.h"
-#include "schema/v15/constants.h"
 
 namespace MMAI::BAI::V15
 {
-namespace S15 = Schema::V15;
 
 namespace
 {
-	std::tuple<int, int, int, int> CalcGlobalStats(const CPlayerBattleCallback * battle)
+	using Global = Graph::Nodes::Global;
+	using Player = Graph::Nodes::Player;
+	using TowerFlags = Global::TowerFlags;
+	using CorpseFlags = Global::CorpseFlags;
+
+
+	State::GlobalStats CalcGlobalStats(const CPlayerBattleCallback & battle)
 	{
 		int lv = 0;
 		int lh = 0;
 		int rv = 0;
 		int rh = 0;
 
-		for(auto & stack : battle->battleGetStacks())
+		for(auto & stack : battle.battleGetStacks())
 		{
-			auto v = stack->getCount() * Stack::GetValue(stack->unitType());
+			auto v = stack->getCount() * Graph::Nodes::Unit::GetValue(stack->unitType());
 			auto h = stack->getAvailableHealth();
 
 			if(stack->unitSide() == BattleSide::ATTACKER)
 			{
 				lv += v;
-				lh += h;
+				lh += static_cast<int>(h);
 			}
 			else
 			{
 				rv += v;
-				rh += h;
+				rh += static_cast<int>(h);
 			}
 		}
 
-		return {lv, lh, rv, rh};
+		return State::GlobalStats{
+			.leftValue = lv,
+			.leftHp = lh,
+			.rightValue = rv,
+			.rightHp = rh
+		};
 	}
 
 	struct AttackLogAggregateData
@@ -67,7 +73,7 @@ namespace
 		int rvl = 0; // right value lost
 	};
 
-	AttackLogAggregateData ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Stack::Stats> sstats)
+	AttackLogAggregateData ProcessAttackLogs(const std::vector<std::shared_ptr<AttackLog>> & attackLogs, std::map<const CStack *, Graph::Nodes::Unit::Stats> sstats)
 	{
 		auto res = AttackLogAggregateData{};
 		for(auto & [cstack, ss] : sstats)
@@ -121,173 +127,114 @@ namespace
 		return res;
 	}
 
-	TowerFlags GetSiegeTowers(const CPlayerBattleCallback * battle) {
-		TowerFlags res = 0; // {upper, middle, lower}
-
-		auto has = [&battle](EWallPart part) {
-			auto ws = battle->battleGetWallState(part);
-			return ws != EWallState::NONE && ws != EWallState::DESTROYED;
-		};
-
-		if (has(EWallPart::UPPER_TOWER))
-			res.set(0);
-		if (has(EWallPart::KEEP))
-			res.set(1);
-		if (has(EWallPart::BOTTOM_TOWER))
-			res.set(2);
-
-		return res;
-	}
-
-	CorpseFlags GetSiegeCorpses(const CPlayerBattleCallback * battle)
-	{
-		CorpseFlags res = 0; // {gate, bridge}
-
-		if(battle->battleGetFortifications().wallsHealth == 0)
-			return res;
-
-		for(const auto & cstack : battle->battleGetAllStacks(false))
-		{
-			if(cstack->alive())
-				continue;
-
-			if(cstack->coversPos(BattleHex::GATE_INNER) || cstack->coversPos(BattleHex::GATE_OUTER))
-				res.set(0);
-			if (cstack->coversPos(BattleHex::GATE_BRIDGE))
-				res.set(1);
-		};
-
-		return res;
-	}
 }
 
 State::State(
 	int version_,
 	const std::string & colorname,
-	const CPlayerBattleCallback * battle
+	const CPlayerBattleCallback & battle
 )
 	: version_(version_)
 	, battle(battle)
 	, colorname(colorname)
-	, side(battle->battleGetMySide())
+	, side(battle.battleGetMySide())
+	, startStats(CalcGlobalStats(battle))
+	, lastStats(startStats)
 {
-	auto [lv, lh, rv, rh] = CalcGlobalStats(battle);
-
-	auto cache = std::make_shared<Cache>(battle);
-	auto x = Graph::Nodes::Global(battle->battleGetMySide(), lv + rv, lh + rh, GetSiegeTowers(battle), GetSiegeCorpses(battle));
-	gstats = std::make_unique<Graph::Nodes::Global>(battle->battleGetMySide(), lv + rv, lh + rh, GetSiegeTowers(battle), GetSiegeCorpses(battle));
-	lpstats = std::make_unique<PlayerStats>(BattleSide::LEFT_SIDE, lv, lh);
-	rpstats = std::make_unique<PlayerStats>(BattleSide::RIGHT_SIDE, rv, rh);
-
-	battlefield = Battlefield::Create(cache, battle, nullptr, gstats.get(), gstats.get(), sstats, false);
-	bfstate.reserve(S15::BATTLEFIELD_STATE_SIZE);
-	actmask.reserve(S15::N_ACTIONS);
 }
 
 void State::onActiveStack(
 	const CStack * astack,
 	int round,
-	CombatResult result
+	S15::CombatResult result
 )
 {
 	logAi->debug("onActiveStack: round=%d, result=%d", round, EI(result));
-	auto cache = std::make_shared<Cache>(battle);
-	const auto & [lv, lh, rv, rh] = CalcGlobalStats(battle);
+	auto G = std::make_shared<Graph::Graph>(battle, nullptr);
+
+	const auto stats = CalcGlobalStats(battle);
 	const auto & [ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl] = ProcessAttackLogs(attackLogs, sstats);
-	auto ogstats = *gstats; // a copy of the "old" gstats
+	const auto lstats = Graph::Nodes::Player::Stats{
+		.v = stats.leftValue,
+		.hp = stats.leftHp,
+		.dd = ldd,
+		.dr = ldr,
+		.vk = lvk,
+		.vl = lvl,
+	};
 
-	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn, GetSiegeTowers(battle), GetSiegeCorpses(battle), round)
-								   : gstats->update(battle->battleGetMySide(), result, lv + rv, lh + rh, false, GetSiegeTowers(battle), GetSiegeCorpses(battle), round);
-	lpstats->update(&ogstats, lv, lh, ldd, ldr, lvk, lvl);
-	rpstats->update(&ogstats, rv, rh, rdd, rdr, rvk, rvl);
+	const auto rstats = Graph::Nodes::Player::Stats{
+		.v = stats.rightValue,
+		.hp = stats.rightHp,
+		.dd = rdd,
+		.dr = rdr,
+		.vk = rvk,
+		.vl = rvl,
+	};
 
-	battlefield = Battlefield::Create(cache, battle, astack, &ogstats, gstats.get(), sstats, isMorale);
-	bfstate.clear();
-	actmask.clear();
+	G->addGlobalNode(
+		result,
+		round,
+		startStats.leftValue + startStats.rightValue,
+		startStats.leftHp + startStats.rightHp,
+		stats.leftValue + stats.rightValue,
+		stats.leftHp + stats.rightHp
+	);
 
-	for(int i = 0; i < EI(GlobalAction::_count); i++)
-	{
-		switch(static_cast<GlobalAction>(i))
-		{
-			case GlobalAction::RETREAT:
-				actmask.push_back(battle->battleCanFlee());
-				break;
-			case GlobalAction::WAIT:
-				actmask.push_back(battlefield->astack && !battlefield->astack->cstack->waitedThisTurn);
-				break;
-			default:
-				THROW_FORMAT("Unexpected GlobalAction: %d", i);
-		}
-	}
+	static_assert(EU(BattleSide::LEFT_SIDE) == 0, "Nodes::Player index");
 
-	encodeGlobal(result);
-	encodePlayer(lpstats.get());
-	encodePlayer(rpstats.get());
+	G->addPlayerNode(
+		BattleSide::LEFT_SIDE,
+		startStats.leftValue + startStats.rightValue,
+		startStats.leftHp + startStats.rightHp,
+		lastStats.leftValue + lastStats.rightValue,
+		lastStats.leftHp + lastStats.rightHp,
+		lstats.v,
+		lstats.hp,
+		lstats.dd,
+		lstats.dr,
+		lstats.vk,
+		lstats.vl
+	);
 
-	for(const auto & hexrow : *battlefield->hexes)
-		for(const auto & hex : hexrow)
-			encodeHex(hex.get());
+	G->addPlayerNode(
+		BattleSide::RIGHT_SIDE,
+		startStats.leftValue + startStats.rightValue,
+		startStats.leftHp + startStats.rightHp,
+		lastStats.leftValue + lastStats.rightValue,
+		lastStats.leftHp + lastStats.rightHp,
+		rstats.v,
+		rstats.hp,
+		rstats.dd,
+		rstats.dr,
+		rstats.vk,
+		rstats.vl
+	);
 
-	// Links are not part of the state
-	// They are handled separately by the connector
-	// for (auto &link : battlefield->links)
-	//     encodeLink(link);
-
-	verify();
-
-	isMorale = false;
+	// // Add Unit and Hex nodes
+	// Battlefield::Init(cache, battle, astack, *oldG, *G, sstats, false);
 
 	supdata = std::make_unique<SupplementaryData>(
 		colorname,
 		static_cast<Side>(side),
-		gstats.get(),
-		lpstats.get(),
-		rpstats.get(),
-		battlefield.get(),
+		G,
 		attackLogs, // store the logs since OUR last turn
 		result
 	);
 
 	attackLogs.clear(); // accumulate new logs until next turn
-}
-
-void State::encodeGlobal(CombatResult result)
-{
-	(void)result;
-	const auto attrs = gstats->encodedAttributes();
-	bfstate.insert(bfstate.end(), attrs.begin(), attrs.end());
-}
-
-void State::encodePlayer(const PlayerStats * pstats)
-{
-	const auto attrs = pstats->encodedAttributes();
-	bfstate.insert(bfstate.end(), attrs.begin(), attrs.end());
-}
-
-void State::encodeHex(const Hex * hex)
-{
-	const auto attrs = hex->encodedAttributes();
-	bfstate.insert(bfstate.end(), attrs.begin(), attrs.end());
-
-	// Action mask
-	for(int m = 0; m < hex->actmask.size(); ++m)
-		actmask.push_back(hex->actmask.test(m));
-}
-
-void State::verify() const
-{
-	ASSERT(bfstate.size() == S15::BATTLEFIELD_STATE_SIZE, "unexpected bfstate.size(): " + std::to_string(bfstate.size()));
-	ASSERT(actmask.size() == N_ACTIONS, "unexpected actmask.size(): " + std::to_string(actmask.size()));
+	isMorale = false;
+	lastStats = stats;
 }
 
 void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 {
-	auto stacks = battlefield->stacks;
+	auto cstacks = battle.battleGetStacks();
 
 	for(const auto & elem : bsa)
 	{
-		const auto * cdefender = battle->battleGetStackByID(elem.stackAttacked, false);
-		const auto * cattacker = battle->battleGetStackByID(elem.attackerID, false);
+		const auto * cdefender = battle.battleGetStackByID(elem.stackAttacked, false);
+		const auto * cattacker = battle.battleGetStackByID(elem.attackerID, false);
 
 		if(!cdefender)
 		{
@@ -295,38 +242,11 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 			continue;
 		}
 
-		const auto defender = std::ranges::find_if(
-			stacks,
-			[&cdefender](const std::shared_ptr<Stack> & stack)
-			{
-				return cdefender == stack->cstack;
-			}
-		);
+		auto bf_valueNow = lastStats.leftValue + lastStats.rightValue;
+		auto bf_hpNow = lastStats.leftHp + lastStats.rightHp;
+		auto value = elem.killedAmount * Graph::Nodes::Unit::GetValue(cdefender->unitType());
 
-		if(defender == stacks.end())
-		{
-			logAi->info("defender cstack '%s' not found in stacks. Maybe it was just summoned/resurrected?", cdefender->getDescription());
-		}
-
-		const auto attacker = std::ranges::find_if(
-			stacks,
-			[&cattacker](const std::shared_ptr<Stack> & stack)
-			{
-				return cattacker == stack->cstack;
-			}
-		);
-
-		auto bf_valueNow = gstats->attr(GA::BFIELD_VALUE_NOW_ABS);
-		auto bf_hpNow = gstats->attr(GA::BFIELD_HP_NOW_ABS);
-		auto value = elem.killedAmount * Stack::GetValue(cdefender->unitType());
-
-		// XXX: attacker can be NULL when an effect does dmg (eg. Acid)
-		// XXX: attacker or defender can be NULL if it did not exist
-		//      when `stacks` was built (e.g. during our last turn),
-		//      Can happen if the enemy has now summonned/resurrected it.
 		auto ald = AttackLogData{
-			.attacker = (attacker != stacks.end() ? *attacker : nullptr),
-			.defender = (defender != stacks.end() ? *defender : nullptr),
 			.cattacker = cattacker,
 			.cdefender = cdefender,
 			.dmg = static_cast<int>(elem.damageAmount),
@@ -353,13 +273,13 @@ void State::onBattleEnd(const BattleResult * br, int round)
 	switch(br->winner)
 	{
 		case BattleSide::LEFT_SIDE:
-			onActiveStack(nullptr, round, CombatResult::LEFT_WINS);
+			onActiveStack(nullptr, round, S15::CombatResult::LEFT_WINS);
 			break;
 		case BattleSide::RIGHT_SIDE:
-			onActiveStack(nullptr, round, CombatResult::RIGHT_WINS);
+			onActiveStack(nullptr, round, S15::CombatResult::RIGHT_WINS);
 			break;
 		default:
-			onActiveStack(nullptr, round, CombatResult::DRAW);
+			onActiveStack(nullptr, round, S15::CombatResult::DRAW);
 	}
 }
 };
