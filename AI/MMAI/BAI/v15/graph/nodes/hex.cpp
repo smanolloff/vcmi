@@ -52,19 +52,15 @@ Hex::HexActionHex Hex::NearbyBattleHexes(const BattleHex& bh)
 }
 
 Hex::Hex(
-    const BattleHex& bhex_,
-    EAccessibility accessibility,
-    const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,
-    const CStack* cstack_,
-    bool isRUFR_,
+    const BattleHex & bhex,
+    const EAccessibility accessibility,
+    const BattleSide side,
+    const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
     int wallHP,
     bool isGateOpen
 )
-    : bhex(bhex_)
-    , id(CalcId(bhex_))
-    , cstack(cstack_)
-    , isRUFR(isRUFR_)
-    , moveDestHex(isRUFR_ ? frontOf(bhex_, cstack_) : bhex_)
+    : bhex(bhex)
+    , id(CalcId(bhex))
 {
     attrs.fill(S15::NULL_VALUE_UNENCODED);
 
@@ -72,15 +68,8 @@ Hex::Hex(
 
     setattr(HA::Y_COORD, y);
     setattr(HA::X_COORD, x);
-    setattr(HA::IS_REAR, cstack && bhex == cstack->occupiedHex());
-    setattr(HA::IS_RUFR, isRUFR);
     setattr(HA::WALL_HEALTH, wallHP);
-
-    if(cstack)
-        setStateMask(accessibility, obstacles, cstack->unitSide(), isGateOpen);
-    else
-        setStateMask(accessibility, obstacles, BattleSide::ATTACKER, isGateOpen);
-
+    setStateMask(accessibility, obstacles, side, isGateOpen);
     finalize();
 }
 
@@ -92,15 +81,6 @@ std::string Hex::name() const
 void Hex::finalize()
 {
     attrs.at(EU(HA::STATE_MASK)) = static_cast<int>(statemask.to_ulong());
-}
-
-BattleHex Hex::frontOf(const BattleHex& bhex, const CStack* cstack)
-{
-    if(!cstack)
-        return bhex;
-
-    const auto attacker = cstack->unitSide() == BattleSide::ATTACKER;
-    return bhex.cloneInDirection(attacker ? BattleHex::RIGHT : BattleHex::LEFT, true);
 }
 
 void Hex::setattr(HA a, int value)
@@ -166,7 +146,6 @@ void Hex::setStateMask(
     switch(accessibility)
     {
         case EAccessibility::ACCESSIBLE:
-            ASSERT(!cstack, "accessibility is ACCESSIBLE, but a stack was found on hex");
             statemask.set(EU(HS::PASSABLE));
             break;
 
@@ -184,11 +163,7 @@ void Hex::setStateMask(
             break;
 
         default:
-            THROW_FORMAT(
-                "Unexpected hex accessibility for bhex %d: %d",
-                bhex.toInt(),
-                EU(accessibility)
-            );
+            THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EU(accessibility));
     }
 
     if(bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)

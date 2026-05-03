@@ -7,48 +7,6 @@ namespace MMAI::BAI::V15::Graph
 
 using ET = S15::Graph::ElementType;
 
-namespace
-{
-    Nodes::Global::TowerFlags GetSiegeTowers(const CPlayerBattleCallback & battle) {
-        Nodes::Global::TowerFlags res = 0; // {upper, middle, lower}
-
-        auto has = [&battle](EWallPart part) {
-            auto ws = battle.battleGetWallState(part);
-            return ws != EWallState::NONE && ws != EWallState::DESTROYED;
-        };
-
-        if (has(EWallPart::UPPER_TOWER))
-            res.set(0);
-        if (has(EWallPart::KEEP))
-            res.set(1);
-        if (has(EWallPart::BOTTOM_TOWER))
-            res.set(2);
-
-        return res;
-    }
-
-    Nodes::Global::CorpseFlags GetSiegeCorpses(const CPlayerBattleCallback & battle)
-    {
-        Nodes::Global::CorpseFlags res = 0; // {gate, bridge}
-
-        if(battle.battleGetFortifications().wallsHealth == 0)
-            return res;
-
-        for(const auto & cstack : battle.battleGetAllStacks(false))
-        {
-            if(cstack->alive())
-                continue;
-
-            if(cstack->coversPos(BattleHex::GATE_INNER) || cstack->coversPos(BattleHex::GATE_OUTER))
-                res.set(0);
-            if (cstack->coversPos(BattleHex::GATE_BRIDGE))
-                res.set(1);
-        };
-
-        return res;
-    }
-}
-
 std::vector<const S15::Graph::INode*>
 Graph::getNodes(Schema::V15::Graph::ElementType t) const
 {
@@ -140,18 +98,17 @@ const AccessibilityInfo & Graph::getAccessibility() const
     return *acache;
 }
 
-void Graph::cacheAccessibility()
+void Graph::buildAccessibilityCache()
 {
-    if (acache)
-        throw std::runtime_error("getAccessibility: cache already built");
+    ASSERT(!haveAccessibilityCache, "getAccessibility: cache already built");
+    haveAccessibilityCache = true;
     acache = std::make_unique<AccessibilityInfo>(battle.getAccessibility());
 }
 
 
 const ReachabilityInfo & Graph::getReachability(const CStack & cstack) const
 {
-    if(!haveReachability)
-        throw std::runtime_error("getReachability: cache not built");
+    ASSERT(haveAccessibilityCache, "getReachability: cache not built");
 
     const auto & it = rcache.find(cstack.unitId());
     if(it == rcache.end())
@@ -160,12 +117,10 @@ const ReachabilityInfo & Graph::getReachability(const CStack & cstack) const
     return it->second;
 }
 
-void Graph::cacheReachability()
+void Graph::buildReachabilityCache()
 {
-    if(haveReachability)
-        throw std::runtime_error("cacheReachability: cache already built");
-
-    haveReachability = true;
+    ASSERT(!haveReachabilityCache, "cacheReachability: cache already built");
+    haveReachabilityCache = true;
 
     for (const auto & unit : getAll<Nodes::Unit>()) {
         const auto & cstack = unit.cstack;
@@ -209,8 +164,7 @@ void Graph::cacheReachability()
 bool Graph::isRUFR(const CStack & cstack, const BattleHex & bh) const
 {
     // rufrHexes is built as part of reachability
-    if(!haveReachability)
-        throw std::runtime_error("isRUFR: reachability cache not built");
+    ASSERT(haveReachabilityCache, "isRUFR: reachability cache not built");
 
     if(!(cstack.doubleWide() && bh.isAvailable()))
         return false;
@@ -232,16 +186,15 @@ bool Graph::isRUFR(const CStack & cstack, const BattleHex & bh) const
 // acting because of high morale and queue is "shifted" accordingly.
 const Nodes::Unit::Queue & Graph::getQueue() const
 {
-    if (!queue)
-        throw std::runtime_error("getQueue: cache not built");
+    ASSERT(haveQueueCache, "getQueue: cache not built");
 
     return *queue;
 }
 
-void Graph::cacheQueue(bool isMorale)
+void Graph::buildQueueCache(bool isMorale)
 {
-    if (queue)
-        throw std::runtime_error("getQueue: cache already built");
+    ASSERT(!haveQueueCache, "buildQueueCache: cache already built");
+    haveQueueCache = true;
 
     queue = std::make_unique<Nodes::Unit::Queue>();
 
@@ -279,91 +232,34 @@ void Graph::cacheQueue(bool isMorale)
     }
 }
 
-const Nodes::Unit * Graph::findUnitByHex(const BattleHex & bh) const
+const Nodes::Unit * Graph::findUnitByBHex(const BattleHex & bh) const
 {
-    if (!haveUnitsByHex)
-        throw std::runtime_error("findUnitByHex: cache not built");
+    ASSERT(haveUnitsByBHexCache, "findUnitByBHex: cache not built");
 
-    const auto & it = unitsByHex.find(bh);
-    if(it == unitsByHex.end())
+    const auto & it = unitsByBHex.find(bh);
+    if(it == unitsByBHex.end())
         return nullptr;
 
     return &it->second;
 }
 
-void Graph::cacheUnitsByHex()
+void Graph::buildUnitsByBHexCache()
 {
-    if(haveUnitsByHex)
-        throw std::runtime_error("cacheUnitsByHex: cache already built");
-
-    haveUnitsByHex = true;
+    ASSERT(!haveUnitsByBHexCache, "cacheUnitsByBHex: cache already built");
+    haveUnitsByBHexCache = true;
 
     for (const auto & unit : getAll<Nodes::Unit>())
         for(const auto & hex : unit.cstack.getHexes())
-            unitsByHex.try_emplace(hex, unit);
+            unitsByBHex.try_emplace(hex, unit);
 
-    if (unitsByHex.empty())
+    if (unitsByBHex.empty())
     {
         // This should only happen on an empty battlefield (draw?)
         // => throw only if there are units still alive
         for (const auto * cstack : battle.battleGetAllStacks(false))
             if (cstack->alive())
-                throw std::runtime_error("cacheUnitsByHex: graph contains no units");
+                throw std::runtime_error("cacheUnitsByBHex: graph contains no units");
     }
-
-    haveUnitsByHex = true;
-}
-
-void Graph::addGlobalNode(
-    S15::CombatResult result,
-    int round,
-    int valueStart,
-    int hpStart,
-    int value,
-    int hp
-)
-{
-    const auto side = acstack ? acstack->unitSide() : battle.battleGetMySide();
-    add(std::make_shared<Nodes::Global>(
-        side,
-        result,
-        round,
-        valueStart,
-        value,
-        hpStart,
-        hp,
-        GetSiegeTowers(battle),
-        GetSiegeCorpses(battle)
-    ));
-}
-
-void Graph::addPlayerNode(
-    BattleSide side,
-    int globalValueStart,
-    int globalHpStart,
-    int globalValuePrevRound,
-    int globalHpPrevRound,
-    int value,
-    int hp,
-    int dmgDealt,
-    int dmgReceived,
-    int valueKilled,
-    int valueLost
-)
-{
-    add(std::make_shared<Nodes::Player>(
-        side,
-        globalValueStart,
-        globalHpStart,
-        globalValuePrevRound,
-        globalHpPrevRound,
-        value,
-        hp,
-        dmgDealt,
-        dmgReceived,
-        valueKilled,
-        valueLost
-    ));
 }
 
 } // namespace

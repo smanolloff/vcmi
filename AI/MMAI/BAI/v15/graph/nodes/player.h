@@ -11,11 +11,10 @@
 #pragma once
 
 #include "battle/BattleSide.h"
-#include "schema/v15/graph.h"
+#include "BAI/v15/graph/element.h"
+#include "common.h"
 #include "schema/v15/constants.h"
-#include "global.h"
-
-#include <array>
+#include "schema/v15/graph.h"
 
 namespace MMAI::BAI::V15::Graph::Nodes
 {

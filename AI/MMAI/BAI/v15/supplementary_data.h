@@ -30,16 +30,16 @@ public:
 
 	// Called on activeStack (complete battlefield info)
 	SupplementaryData(
-		const std::string & colorname_,
-		Side side_,
+		const std::string & colorname,
+		Side side,
 		const std::shared_ptr<Graph::Graph> & G,
-		const std::vector<std::shared_ptr<AttackLog>> & attackLogs_,
+		const std::vector<AttackLog> & attackLogs,
 		S15::CombatResult result
 	)
-		: colorname(colorname_)
-		, side(side_)
+		: colorname(colorname)
+		, side(side)
 		, G(G)
-		, attackLogs(attackLogs_)
+		, attackLogs(attackLogs)
 		, ended(result != S15::CombatResult::NONE)
 		, victory(EI(result) == EI(side)) {};
 
@@ -85,7 +85,7 @@ public:
 	const std::string colorname;
 	const Side side;
 	const std::shared_ptr<Graph::Graph> G;
-	const std::vector<std::shared_ptr<AttackLog>> attackLogs;
+	const std::vector<AttackLog> & attackLogs;
 	const bool ended = false;
 	const bool victory = false;
 

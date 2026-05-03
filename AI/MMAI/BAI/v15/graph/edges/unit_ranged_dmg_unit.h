@@ -24,8 +24,8 @@ class Unit_RangedDmg_Unit : public Unit_RangedDmg_Unit_Base
 {
 public:
 	Unit_RangedDmg_Unit(
-		const std::shared_ptr<Nodes::Unit> & srcNode,
-		const std::shared_ptr<Nodes::Unit> & dstNode,
+		const Nodes::Unit & srcNode,
+		const Nodes::Unit & dstNode,
 		int attackDmgRel
 	) : Unit_RangedDmg_Unit_Base(srcNode, dstNode)
 	{

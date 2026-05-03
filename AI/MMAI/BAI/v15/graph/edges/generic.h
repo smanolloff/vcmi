@@ -52,3 +52,81 @@ GENERIC_EDGE_ELEMENT(Unit, Threatens, Hex);
 GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
 
 }
+
+/*
+    auto cstacks = battle.battleGetStacks();
+
+    // Sorting needed to ensure ordered insertion of summons/machines
+    std::ranges::sort(
+        cstacks,
+        [](const CStack * a, const CStack * b)
+        {
+            return a->unitId() < b->unitId();
+        }
+    );
+
+    auto blocking = std::map<const CStack *, bool>{};
+    auto blocked = std::map<const CStack *, bool>{};
+
+    auto setBlockedBlocking = [&battle, &blocked, &blocking](const CStack * cstack)
+    {
+        blocked.emplace(cstack, false);
+        blocking.emplace(cstack, false);
+
+        for(const auto * adjacent : battle.battleAdjacentUnits(cstack))
+        {
+            if(adjacent->unitOwner() == cstack->unitOwner())
+                continue;
+
+            // XXX: battleIsUnitBlocked can return true for ballista => don't use
+            //      (though properly detects blocked by frenzied ally)
+            if(!blocked[cstack] && cstack->canShoot() && !cstack->hasBonusOfType(BonusType::FREE_SHOOTING) && !cstack->hasBonusOfType(BonusType::SIEGE_WEAPON))
+            {
+                blocked[cstack] = true;
+            }
+            if(!blocking[cstack] && adjacent->canShoot() && !adjacent->hasBonusOfType(BonusType::FREE_SHOOTING)
+               && !adjacent->hasBonusOfType(BonusType::SIEGE_WEAPON))
+            {
+                blocking[cstack] = true;
+            }
+        }
+    };
+
+    // estimated dmg by active stack
+    // values are for ranged attack if unit is an unblocked shooter
+    // otherwise for melee attack
+    auto estdmg = std::map<const CStack *, DamageEstimation>{};
+
+    auto estimateDamage = [&battle, &astack, &estdmg, &blocked](const CStack * cstack)
+    {
+        if(!astack)
+        {
+            // no active stack (e.g. called during battleStart or battleEnd)
+            estdmg.try_emplace(cstack);
+        }
+        else if(astack->unitSide() == cstack->unitSide())
+        {
+            // no damage to friendly units
+            estdmg.try_emplace(cstack);
+        }
+        else
+        {
+            const auto attinfo = BattleAttackInfo(astack, cstack, 0, astack->canShoot() && !blocked[astack]);
+            estdmg.try_emplace(cstack, battle.calculateDmgRange(attinfo));
+        }
+    };
+
+    // This must be pre-set as dmg estimation depends on it
+    if(astack)
+        setBlockedBlocking(astack);
+
+    for(auto & cstack : battle.battleGetStacks())
+    {
+        if(cstack != astack)
+            setBlockedBlocking(cstack);
+
+        estimateDamage(cstack);
+        G.add(Graph::Nodes::Unit(...)
+
+*/
+

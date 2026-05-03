@@ -19,8 +19,8 @@ public:
     using A = typename EncTraits::attr_type;
 
     Base(
-        const std::shared_ptr<SrcNode> & srcNode,
-        const std::shared_ptr<DstNode> & dstNode
+        const SrcNode & srcNode,
+        const DstNode & dstNode
     ) : srcNode(srcNode), dstNode(dstNode)
     {
         attrs.fill(S15::NULL_VALUE_UNENCODED);
@@ -31,7 +31,7 @@ public:
         return {srcNode.get(), dstNode.get()};
     }
 
-    const std::shared_ptr<SrcNode> srcNode;
-    const std::shared_ptr<DstNode> dstNode;
+    const SrcNode & srcNode;
+    const DstNode & dstNode;
 };
 }

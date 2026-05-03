@@ -63,8 +63,13 @@ public:
 
 	struct StatsContainer
 	{
-		const Global& oldGlobal;
-		const Global& global;
+		const int bfieldValueNow;
+		const int bfieldValuePrev;
+		const int bfieldValueStart;
+		const int bfieldHpNow;
+		const int bfieldHpPrev;
+		const int bfieldHpStart;
+
 		const Stats stackStats;
 	};
 
@@ -73,11 +78,8 @@ public:
 
 	Unit(
 		const CStack & cstack,
-		const Queue& q,
-		const StatsContainer& statsContainer,
-		const ReachabilityInfo& rinfo,
-		bool blocked,
-		bool blocking
+		const Queue & q,
+		const StatsContainer & statsContainer
 	);
 
 	int getFlag(StackFlag1 sf) const;
@@ -89,7 +91,6 @@ public:
 	bool flag(StackFlag2 f) const;
 
 	const CStack & cstack;
-	const ReachabilityInfo rinfo;
 
 	std::array<int, EU(UA::_count)> attrs = {};
 	StackFlags1 flags1 = 0;
@@ -98,10 +99,10 @@ public:
 	int shots = 0;
 	int qposFirst = -1;
 
+	static int CalculateSlot(const CStack & cstack);
+	static char CalculateAlias(int slot);
 private:
-	static int calculateSlot(const CStack & cstack);
-	static char calculateAlias(int slot);
-	static int calculateValue(const CCreature* cr);
+	static int CalculateValue(const CCreature* cr);
 	static CreatureValues initCreatureValues();
 
 	void setflag(StackFlag1 f);

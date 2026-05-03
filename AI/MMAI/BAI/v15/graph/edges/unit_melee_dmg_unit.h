@@ -24,8 +24,8 @@ class Unit_MeleeDmg_Unit : public Unit_MeleeDmg_Unit_Base
 {
 public:
 	Unit_MeleeDmg_Unit(
-		const std::shared_ptr<Nodes::Unit> & srcNode,
-		const std::shared_ptr<Nodes::Unit> & dstNode,
+		const Nodes::Unit & srcNode,
+		const Nodes::Unit & dstNode,
 		int attackDmgRel,
 		int retalDmgRel
 	) : Unit_MeleeDmg_Unit_Base(srcNode, dstNode)

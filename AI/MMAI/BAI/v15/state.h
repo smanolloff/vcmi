@@ -17,6 +17,7 @@
 #include "BAI/v15/attack_log.h"
 #include "BAI/v15/supplementary_data.h"
 #include "schema/base.h"
+#include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 #include <stdexcept>
 
@@ -36,6 +37,9 @@ public:
 		int leftHp;
 		int rightValue;
 		int rightHp;
+		// used in many places => precalculate
+		int totalValue;
+		int totalHp;
 	};
 
 	const Schema::ActionMask * getActionMask() const override
@@ -68,13 +72,13 @@ public:
     State & operator=(State &&) = delete;
 
 	void onActiveStack(
-		const CStack * astack,
+		const CStack * acstack,
 		int round,
 		S15::CombatResult result = S15::CombatResult::NONE
 	);
 	void onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa);
 	void onBattleTriggerEffect(const BattleTriggerEffect & bte);
-	void onBattleEnd(const BattleResult * br, int round);
+	void onBattleEnd(const BattleResult & br, int round);
 
 	const int version_;
 	const CPlayerBattleCallback & battle;
@@ -82,9 +86,9 @@ public:
 	GlobalStats startStats;
 	GlobalStats lastStats;
 	std::unique_ptr<SupplementaryData> supdata = nullptr;
-	std::vector<std::shared_ptr<AttackLog>> attackLogs;
+	std::vector<AttackLog> attackLogs;
 	std::unique_ptr<Action> action = nullptr;
-	std::map<const CStack *, Graph::Nodes::Unit::Stats> sstats;
+	std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> sstats;
 	const std::string colorname;
 	const BattleSide side;
 	bool isMorale = false;
