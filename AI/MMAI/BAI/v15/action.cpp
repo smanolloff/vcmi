@@ -9,77 +9,76 @@
  */
 
 #include "StdInc.h"
-#include "battle/CBattleInfoEssentials.h"
 
 #include "BAI/v15/action.h"
-#include "BAI/v15/hex.h"
-#include "BAI/v15/hexaction.h"
 #include "common.h"
 
 namespace MMAI::BAI::V15
 {
 
-// static
-std::unique_ptr<Hex> Action::initHex(const Schema::Action & a, const Battlefield * bf)
+namespace
 {
-	// Control actions (<0) should never reach here
-	ASSERT(a >= 0 && a < N_ACTIONS, "Invalid action: " + std::to_string(a));
+	const Graph::Nodes::Hex * initHex(const Schema::Action & a, const Graph::Graph & G)
+	{
+		// Control actions (<0) should never reach here
+		ASSERT(a >= 0 && a < N_ACTIONS, "Invalid action: " + std::to_string(a));
 
-	auto i = a - EI(GlobalAction::_count);
+		auto i = a - EI(GlobalAction::_count);
 
-	if(i < 0)
-		return nullptr;
+		if(i < 0)
+			return nullptr;
 
-	i = i / EI(HexAction::_count);
-	auto y = i / 15;
-	auto x = i % 15;
+		i = i / EI(HexAction::_count);
 
-	// create a new unique_ptr with a copy of Hex
-	return std::make_unique<Hex>(*bf->hexes->at(y).at(x));
+		// convert the const ref to a pointer-to-const
+		return &G.get<Graph::Nodes::Hex>(i);
+	}
+
+	HexAction initHexAction(const Schema::Action & a)
+	{
+		if(a < EI(GlobalAction::_count))
+			return static_cast<HexAction>(-1); // a is not about a hex
+		return static_cast<HexAction>((a - EI(GlobalAction::_count)) % EI(HexAction::_count));
+	}
+
+	const Graph::Nodes::Hex * initAMoveTargetHex(const Schema::Action & a, const Graph::Graph & G)
+	{
+		const auto * hex = initHex(a, G);
+		if(!hex)
+			return nullptr;
+
+		auto ha = initHexAction(a);
+		if(EI(ha) == -1)
+			return nullptr;
+
+		if(ha == HexAction::MOVE || ha == HexAction::SHOOT)
+			return nullptr;
+		// throw std::runtime_error("MOVE and SHOOT are not AMOVE actions");
+
+		const auto & bh = hex->bhex;
+
+		auto edir = AMOVE_TO_EDIR.at(EI(ha));
+		auto nbh = bh.cloneInDirection(edir);
+
+		ASSERT(nbh.isAvailable(), "unavailable AMOVE target hex #" + std::to_string(nbh.toInt()));
+
+		int i = Graph::Nodes::Hex::CalcId(nbh);
+		// convert the const ref to a pointer-to-const
+		return &G.get<Graph::Nodes::Hex>(i);
+	}
 }
 
-// static
-std::unique_ptr<Hex> Action::initAMoveTargetHex(const Schema::Action & a, const Battlefield * bf)
+Action::Action(const Schema::Action action_, const Graph::Graph & G, const std::string & color_)
+	: action(action_)
+	, hex(initHex(action_, G))
+	, aMoveTargetHex(initAMoveTargetHex(action_, G))
+	, hexaction(initHexAction(action_))
+	, color(color_)
 {
-	auto hex = initHex(a, bf);
-	if(!hex)
-		return nullptr;
-
-	auto ha = initHexAction(a, bf);
-	if(EI(ha) == -1)
-		return nullptr;
-
-	if(ha == HexAction::MOVE || ha == HexAction::SHOOT)
-		return nullptr;
-	// throw std::runtime_error("MOVE and SHOOT are not AMOVE actions");
-
-	const auto & bh = hex->bhex;
-
-	auto edir = AMOVE_TO_EDIR.at(EI(ha));
-	auto nbh = bh.cloneInDirection(edir);
-
-	ASSERT(nbh.isAvailable(), "unavailable AMOVE target hex #" + std::to_string(nbh.toInt()));
-
-	auto [x, y] = Hex::CalcXY(nbh);
-
-	// create a new unique_ptr with a copy of Hex
-	return std::make_unique<Hex>(*bf->hexes->at(y).at(x));
+	name = buildName(G);
 }
 
-// static
-HexAction Action::initHexAction(const Schema::Action & a, const Battlefield * bf)
-{
-	if(a < EI(GlobalAction::_count))
-		return static_cast<HexAction>(-1); // a is not about a hex
-	return static_cast<HexAction>((a - EI(GlobalAction::_count)) % EI(HexAction::_count));
-}
-
-Action::Action(const Schema::Action action_, const Battlefield * bf, const std::string & color_)
-	: action(action_), hex(initHex(action_, bf)), aMoveTargetHex(initAMoveTargetHex(action_, bf)), hexaction(initHexAction(action_, bf)), color(color_)
-{
-}
-
-std::string Action::name() const
+std::string Action::buildName(const Graph::Graph & G)
 {
 	if(action == Schema::ACTION_ERROR)
 		return "Error";
@@ -92,16 +91,17 @@ std::string Action::name() const
 
 	auto ha = static_cast<HexAction>((action - EI(GlobalAction::_count)) % EI(HexAction::_count));
 	auto res = std::string{};
-	std::shared_ptr<const Stack> stack = nullptr;
+	const Graph::Nodes::Unit * stack = nullptr;
 	std::string stackstr;
+
 
 	if(ha == HexAction::SHOOT || ha == HexAction::MOVE)
 	{
-		stack = hex->stack;
+		stack = G.findUnitByHex(hex->bhex);
 	}
 	else if(aMoveTargetHex)
 	{
-		stack = aMoveTargetHex->stack;
+		stack = G.findUnitByHex(aMoveTargetHex->bhex);
 	}
 
 	// colored output does not look good (scrambles default VCMI log coloring)
@@ -129,7 +129,7 @@ std::string Action::name() const
 	switch(ha)
 	{
 		case HexAction::MOVE:
-			res = (stack && hex->bhex == stack->cstack->getPosition() ? "Defend on hex(" : "Move to (") + hex->name() + ")";
+			res = (stack && hex->bhex == stack->cstack.getPosition() ? "Defend on hex(" : "Move to (") + hex->name() + ")";
 			break;
 		case HexAction::AMOVE_TL:
 			res = "Attack stack(" + stackstr + ") from hex(" + hex->name() + ") /top-left/";

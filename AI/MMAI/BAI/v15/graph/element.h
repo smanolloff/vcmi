@@ -17,35 +17,15 @@ namespace MMAI::BAI::V15::Graph
 {
 namespace S15 = Schema::V15;
 
-template <typename EncTraits, typename Interface>
+template <typename Interface, typename EncTraits>
 class Element : public Interface
 {
 public:
+    using encoding_traits = EncTraits;
     using Attribute = typename EncTraits::attr_type;
 
-    // XXX: or the default constructor could set attrs to NULL_UNENCODED
-    // XXX: can't delete the default constructor (subclasses cant define any consturctors then)
-    // Element() = delete;
-
-    S15::Graph::ElementType elementType() const override
-    {
-        return EncTraits::element_type;
-    }
-
-    std::vector<float> encodedAttributes() const override
-    {
-        return Encoder::Encode<EncTraits>(attrs);
-    }
-
-    // std::pair<S15::Graph::NodeType, S15::Graph::NodeType> getNodeTypes() const override
-    // {
-    //     return {S15::Graph::NodeType::HEX, S15::Graph::NodeType::HEX};
-    // }
-
-    // std::pair<int, int> getNodeIndexes() const override
-    // {
-    //     return nodeIndexes;
-    // }
+    S15::Graph::ElementType elementType() const override { return EncTraits::element_type; }
+    std::vector<float> encodedAttributes() const override { return Encoder::Encode<EncTraits>(attrs); }
 
     int attr(Attribute a) const
     {
@@ -58,6 +38,5 @@ public:
     }
 
     std::array<int, EncTraits::attr_count> attrs = {};
-    // std::pair<int, int> nodeIndexes;
 };
 }

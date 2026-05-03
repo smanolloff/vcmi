@@ -15,34 +15,40 @@
 
 #include "BAI/v15/action.h"
 #include "BAI/v15/attack_log.h"
-#include "BAI/v15/battlefield.h"
-#include "BAI/v15/global_stats.h"
-#include "BAI/v15/player_stats.h"
 #include "BAI/v15/supplementary_data.h"
 #include "schema/base.h"
 #include "schema/v15/types.h"
+#include <stdexcept>
 
 namespace MMAI::BAI::V15
 {
 using BS = Schema::BattlefieldState;
+namespace S15 = Schema::V15;
 
 static const auto DUMMY_ATTNMASK = Schema::AttentionMask();
 
 class State : public Schema::IState
 {
 public:
-	// IState impl
+	struct GlobalStats
+	{
+		int leftValue;
+		int leftHp;
+		int rightValue;
+		int rightHp;
+	};
+
 	const Schema::ActionMask * getActionMask() const override
 	{
-		return &actmask;
+		throw std::runtime_error("getActionMask() not yet implemented in v15");
 	};
 	const Schema::AttentionMask * getAttentionMask() const override
 	{
-		return &DUMMY_ATTNMASK;
+		throw std::runtime_error("getAttentionMask() should not be called in v15");
 	}
 	const Schema::BattlefieldState * getBattlefieldState() const override
 	{
-		return &bfstate;
+		throw std::runtime_error("getBattlefieldState() should not be called in v15");
 	}
 	std::any getSupplementaryData() const override
 	{
@@ -54,42 +60,33 @@ public:
 	}
 
 	State() = delete;
-	State(
-		int version_,
-		const std::string & colorname,
-		const CPlayerBattleCallback * battle
-	);
+	State(int version_, const std::string & colorname, const CPlayerBattleCallback & battle);
+
+    State(const State &) = delete;
+    State & operator=(const State &) = delete;
+    State(State &&) = delete;
+    State & operator=(State &&) = delete;
 
 	void onActiveStack(
 		const CStack * astack,
 		int round,
-		CombatResult result = CombatResult::NONE
+		S15::CombatResult result = S15::CombatResult::NONE
 	);
 	void onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa);
 	void onBattleTriggerEffect(const BattleTriggerEffect & bte);
 	void onBattleEnd(const BattleResult * br, int round);
 
-	void encodeGlobal(CombatResult result);
-	void encodePlayer(const PlayerStats * pstats);
-	void encodeHex(const Hex * hex);
-	void verify() const;
-
 	const int version_;
-	const CPlayerBattleCallback * const battle;
+	const CPlayerBattleCallback & battle;
 
-	Schema::BattlefieldState bfstate;
-	Schema::ActionMask actmask;
+	GlobalStats startStats;
+	GlobalStats lastStats;
 	std::unique_ptr<SupplementaryData> supdata = nullptr;
 	std::vector<std::shared_ptr<AttackLog>> attackLogs;
 	std::unique_ptr<Action> action = nullptr;
-	std::unique_ptr<GlobalStats> gstats = nullptr;
-	std::unique_ptr<PlayerStats> lpstats = nullptr;
-	std::unique_ptr<PlayerStats> rpstats = nullptr;
-	std::map<const CStack *, Stack::Stats> sstats;
-	const std::pair<int, int> initialArmyValues;
+	std::map<const CStack *, Graph::Nodes::Unit::Stats> sstats;
 	const std::string colorname;
 	const BattleSide side;
-	std::shared_ptr<const Battlefield> battlefield;
 	bool isMorale = false;
 };
 }
