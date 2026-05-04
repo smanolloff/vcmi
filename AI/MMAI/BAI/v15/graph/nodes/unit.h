@@ -12,15 +12,12 @@
 
 #include "CCreatureHandler.h"
 #include "CStack.h"
-#include "battle/ReachabilityInfo.h"
 
-#include "BAI/v15/graph/nodes/global.h"
-#include "BAI/v15/graph/element.h"
+#include "BAI/v15/graph/nodes/base.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 
-#include <array>
 #include <bitset>
 #include <map>
 #include <vector>
@@ -29,7 +26,13 @@ namespace MMAI::BAI::V15::Graph::Nodes
 {
 namespace S15 = Schema::V15;
 
-class Unit : public Element<S15::Graph::INode, S15::EncodingTraits<S15::UnitEncoding>>
+namespace detail
+{
+	using Unit_Traits = S15::EncodingTraits<S15::NodeEncoding_Unit>;
+	using Unit_Base = Base<Unit_Traits>;
+}
+
+class Unit : public detail::Unit_Base
 {
 	using GA = S15::Graph::NodeAttributes::Global;
 	using UA = S15::Graph::NodeAttributes::Unit;
@@ -92,7 +95,6 @@ public:
 
 	const CStack & cstack;
 
-	std::array<int, EU(UA::_count)> attrs = {};
 	StackFlags1 flags1 = 0;
 	StackFlags2 flags2 = 0;
 	char alias = '\0';

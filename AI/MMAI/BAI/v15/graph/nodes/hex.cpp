@@ -62,8 +62,6 @@ Hex::Hex(
     : bhex(bhex)
     , id(CalcId(bhex))
 {
-    attrs.fill(S15::NULL_VALUE_UNENCODED);
-
     auto [x, y] = CalcXY(bhex);
 
     setattr(HA::Y_COORD, y);
@@ -81,11 +79,6 @@ std::string Hex::name() const
 void Hex::finalize()
 {
     attrs.at(EU(HA::STATE_MASK)) = static_cast<int>(statemask.to_ulong());
-}
-
-void Hex::setattr(HA a, int value)
-{
-    attrs.at(EU(a)) = value;
 }
 
 void Hex::setStateMask(

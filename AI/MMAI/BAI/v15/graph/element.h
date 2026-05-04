@@ -33,7 +33,6 @@ public:
         attrs.fill(S15::NULL_VALUE_UNENCODED);
     }
 
-
     int attr(Attribute a) const
     {
         ASSERT(guardflags.test(EU(a)), EncTraits::name + ": attribute not set: " + std::to_string(EU(a)));
@@ -45,6 +44,12 @@ public:
         ASSERT(!guardflags.test(EU(a)), EncTraits::name + ": attribute already set: " + std::to_string(EU(a)));
         guardflags.set(EU(a));
         attrs.at(EU(a)) = value;
+    }
+
+    void addattr(Attribute a, int value)
+    {
+        ASSERT(guardflags.test(EU(a)), EncTraits::name + ": attribute not set: " + std::to_string(EU(a)));
+        attrs.at(EU(a)) += value;
     }
 
     std::array<int, EncTraits::attr_count> attrs = {};

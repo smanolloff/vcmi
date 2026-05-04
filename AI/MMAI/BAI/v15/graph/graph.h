@@ -20,7 +20,8 @@
 #include "battle/ReachabilityInfo.h"
 #include "battle/AccessibilityInfo.h"
 
-#include "BAI/v15/graph/element_store.h"
+#include "BAI/v15/graph/node_store.h"
+#include "BAI/v15/graph/edge_store.h"
 #include "BAI/v15/graph/edges/generic.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
@@ -33,52 +34,64 @@
 #include "BAI/v15/graph/nodes/unit.h"
 
 #include "schema/v15/graph.h"
+#include <tuple>
+#include <unordered_map>
 
 namespace MMAI::BAI::V15::Graph
 {
 
-namespace S15 = Schema::V15;
-
-using TStores = std::tuple<
-    ElementStore<Nodes::Action>,
-    ElementStore<Nodes::Global>,
-    ElementStore<Nodes::Player>,
-    ElementStore<Nodes::Unit>,
-    ElementStore<Nodes::Hex>,
-    ElementStore<Edges::Action_ExposesTo_Unit>,
-    ElementStore<Edges::Action_Threatens_Unit>,
-    ElementStore<Edges::Action_Damages_Unit>,
-    ElementStore<Edges::Action_EndsAt_Hex>,
-    ElementStore<Edges::Action_By_Unit>,
-    ElementStore<Edges::Unit_Blocks_Unit>,
-    ElementStore<Edges::Unit_MeleeDmg_Unit>,
-    ElementStore<Edges::Unit_RangedDmg_Unit>,
-    ElementStore<Edges::Unit_CanMelee_Unit>,
-    ElementStore<Edges::Unit_CanShoot_Unit>,
-    ElementStore<Edges::Unit_ActsBefore_Unit>,
-    ElementStore<Edges::Unit_Threatens_Hex>,
-    ElementStore<Edges::Unit_Occupies_Hex>,
-    ElementStore<Edges::Hex_Adjacent_Hex>
->;
-
 namespace detail
 {
+    using TNodeStores = std::tuple<
+        NodeStore<Nodes::Action>,
+        NodeStore<Nodes::Global>,
+        NodeStore<Nodes::Player>,
+        NodeStore<Nodes::Unit>,
+        NodeStore<Nodes::Hex>
+    >;
+
+    using TEdgeStores = std::tuple<
+        EdgeStore<Edges::Action_ExposesTo_Unit>,
+        EdgeStore<Edges::Action_Threatens_Unit>,
+        EdgeStore<Edges::Action_Damages_Unit>,
+        EdgeStore<Edges::Action_EndsAt_Hex>,
+        EdgeStore<Edges::Action_By_Unit>,
+        EdgeStore<Edges::Unit_Blocks_Unit>,
+        EdgeStore<Edges::Unit_MeleeDmg_Unit>,
+        EdgeStore<Edges::Unit_RangedDmg_Unit>,
+        EdgeStore<Edges::Unit_CanMelee_Unit>,
+        EdgeStore<Edges::Unit_CanShoot_Unit>,
+        EdgeStore<Edges::Unit_ActsBefore_Unit>,
+        EdgeStore<Edges::Unit_Threatens_Hex>,
+        EdgeStore<Edges::Unit_Occupies_Hex>,
+        EdgeStore<Edges::Hex_Adjacent_Hex>
+    >;
+
+    static_assert(
+        EU(S15::Graph::ElementType::_count) ==
+            std::tuple_size<TNodeStores>() + std::tuple_size<TEdgeStores>()
+    );
+
     template <typename T, typename Tuple>
     struct tuple_contains;
 
     template <typename T, typename... Ts>
     struct tuple_contains<T, std::tuple<Ts...>>
-        : std::bool_constant<(std::same_as<T, Ts> || ...)>
-    {};
+        : std::bool_constant<(std::same_as<T, Ts> || ...)> {};
 
     template <typename T>
-    constexpr bool is_stored_element_v =
-        tuple_contains<
-            ElementStore<std::remove_cvref_t<T>>,
-            TStores
-        >::value;
+    constexpr bool is_stored_node_v =
+        tuple_contains<NodeStore<std::remove_cvref_t<T>>, TNodeStores>::value;
+
+    template <typename T>
+    constexpr bool is_stored_edge_v =
+        tuple_contains<EdgeStore<std::remove_cvref_t<T>>, TEdgeStores>::value;
+
+    template <typename>
+    inline constexpr bool always_false_v = false;
 }
 
+namespace S15 = Schema::V15;
 
 class Graph : public S15::Graph::IGraph
 {
@@ -94,53 +107,43 @@ public:
     Graph(Graph &&) = delete;
     Graph & operator=(Graph &&) = delete;
 
-    template <typename T>
-        requires detail::is_stored_element_v<T>
-    const ElementStore<std::remove_cvref_t<T>> & getElementStore() const
-    {
-        using U = std::remove_cvref_t<T>;
-        return std::get<ElementStore<U>>(stores);
-    }
-
     // "Perfect" forwarding function which preserves lvalue/rvalue category:
     // lvalues are copied, rvalues are moved.
     template <typename T>
-        requires detail::is_stored_element_v<T>
     void add(T&& elem)
     {
-        using U = std::remove_cvref_t<T>;
-        std::get<ElementStore<U>>(stores).add(std::forward<T>(elem));
+        getMutableStore<T>().add(std::forward<T>(elem));
     }
 
     template <typename T>
-    void add(std::shared_ptr<T> elem)
+    auto get(std::size_t ind) const
     {
-        using U = std::remove_cvref_t<T>;
-        std::get<ElementStore<U>>(stores).add(std::forward<T>(elem));
+        return getStore<T>().get(ind);
     }
 
     template <typename T>
-        requires detail::is_stored_element_v<T>
-    const std::shared_ptr<std::remove_cvref_t<T>> & get(std::size_t ind) const
-    {
-        using U = std::remove_cvref_t<T>;
-        return std::get<ElementStore<U>>(stores).get(ind);
-    }
-
-    template <typename T>
-        requires detail::is_stored_element_v<T>
     auto getAll() const
     {
-        using U = std::remove_cvref_t<T>;
-        return std::get<ElementStore<U>>(stores).entries();
+        return getStore<T>().entries();
+    }
+
+    template <typename EdgeT, typename NodeT>
+    auto getAllEdgesBySrc(const NodeT & src) const
+    {
+        return getStore<EdgeT>().bySrc(src);
+    }
+
+
+    template <typename T>
+    auto size() const
+    {
+        return getStore<T>().size();
     }
 
     template <typename T>
-        requires detail::is_stored_element_v<T>
-    auto size() const
+    const auto& getStore() const
     {
-        using U = std::remove_cvref_t<T>;
-        return std::get<ElementStore<U>>(stores).size();
+        return getMutableStore<T>();
     }
 
     std::vector<const S15::Graph::INode*>
@@ -171,13 +174,26 @@ private:
     const CPlayerBattleCallback & battle;
     const CStack * acstack;  // can be nullptr
 
-    TStores stores;
-    static_assert(EU(S15::Graph::ElementType::_count) == 19);
+    detail::TNodeStores nodeStores;
+    detail::TEdgeStores edgeStores;
 
     std::unordered_map<uint32_t, ReachabilityInfo> rcache;
     std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
     std::unique_ptr<AccessibilityInfo> acache;
     std::unique_ptr<Nodes::Unit::Queue> queue;
     std::unordered_map<const BattleHex, const std::shared_ptr<Nodes::Unit>> unitsByBHex;
+    // std::unordered_map<const TNode*, std::vector<std::shared_ptr<TEdge>>>
+
+    template <typename T>
+    auto& getMutableStore() const
+    {
+        using U = std::remove_cvref_t<T>;
+        if constexpr (detail::is_stored_node_v<U>)
+            return std::get<NodeStore<U>>(nodeStores);
+        else if constexpr (detail::is_stored_edge_v<U>)
+            return std::get<EdgeStore<U>>(edgeStores);
+        else
+            static_assert(detail::always_false_v<U>, "type is not a stored node/edge");
+    }
 };
 }

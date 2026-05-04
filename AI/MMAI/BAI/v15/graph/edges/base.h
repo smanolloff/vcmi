@@ -11,6 +11,9 @@ template <typename SrcNode, typename DstNode, typename EncTraits>
 class Base : public Element<S15::Graph::IEdge, EncTraits>
 {
 public:
+    using src_node_type = SrcNode;
+    using dst_node_type = DstNode;
+
     // bring names into scope
     // (needed due to dependent name lookup rules in C++ templates)
     using Element<S15::Graph::IEdge, EncTraits>::attrs;
@@ -23,9 +26,14 @@ public:
     ) : srcNode(srcNode), dstNode(dstNode), Element<S15::Graph::IEdge, EncTraits>()
     {}
 
+    Base(const Base &) = delete;
+    Base & operator=(const Base &) = delete;
+    Base(Base &&) = delete;
+    Base & operator=(Base &&) = delete;
+
     Schema::V15::Graph::Endpoints endpoints() const override
     {
-        return {srcNode.get(), dstNode.get()};
+        return {&srcNode, &dstNode};
     }
 
     const SrcNode & srcNode;

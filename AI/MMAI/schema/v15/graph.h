@@ -174,9 +174,12 @@ namespace EdgeAttributes
 
         enum class Unit_RangedDmg_Unit : uint8_t
         {
-            ATTACK_DMG_REL,
-            // NET_DMG_REL
-            // NET_VALUE_REL
+            ATTACK_DMG_MEAN_REL_OTHER,
+            ATTACK_DMG_MEAN_REL_BF,
+            ATTACK_DMG_STD_REL_OTHER,
+            ATTACK_DMG_STD_REL_BF,
+            ATTACK_VALUE_REL_BF,
+            ATTACK_ALLKILL_CHANCE,
             _count
         };
 

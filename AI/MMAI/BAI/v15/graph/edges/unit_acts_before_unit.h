@@ -17,17 +17,21 @@
 namespace MMAI::BAI::V15::Graph::Edges
 {
 namespace S15 = Schema::V15;
-using Unit_ActsBefore_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_ActsBefore_Unit>;
-using Unit_ActsBefore_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_ActsBefore_Unit_Traits>;
 
-class Unit_ActsBefore_Unit : public Unit_ActsBefore_Unit_Base
+namespace detail
+{
+	using Unit_ActsBefore_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_ActsBefore_Unit>;
+	using Unit_ActsBefore_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_ActsBefore_Unit_Traits>;
+}
+
+class Unit_ActsBefore_Unit : public detail::Unit_ActsBefore_Unit_Base
 {
 public:
 	Unit_ActsBefore_Unit(
 		const Nodes::Unit & srcNode,
 		const Nodes::Unit & dstNode,
 		int times
-	) : Unit_ActsBefore_Unit_Base(srcNode, dstNode)
+	) : detail::Unit_ActsBefore_Unit_Base(srcNode, dstNode)
 	{
 		setattr(A::TIMES, times);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");

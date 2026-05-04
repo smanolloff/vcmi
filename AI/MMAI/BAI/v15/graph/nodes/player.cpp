@@ -20,8 +20,6 @@ Player::Player(
     int valueLost
 )
 {
-    attrs.fill(S15::NULL_VALUE_UNENCODED);
-
     setattr(A::BATTLE_SIDE, EU(side));
 
     setattr(A::ARMY_VALUE_NOW_ABS, value);
@@ -48,11 +46,6 @@ Player::Player(
     setattr(A::DMG_RECEIVED_ACC_REL0, permille(attr(A::DMG_RECEIVED_ACC_ABS), globalHpStart));
 
     static_assert(EU(A::_count) == 23, "whistleblower in case attributes change");
-}
-
-void Player::addattr(PA a, int value)
-{
-    attrs.at(EU(a)) += value;
 }
 
 }

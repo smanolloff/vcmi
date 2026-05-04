@@ -10,6 +10,7 @@
 
 #include "StdInc.h"
 
+#include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
 #include "BAI/v15/graph/graph.h"
 #include "BAI/v15/graph/edges/generic.h"
@@ -398,43 +399,6 @@ namespace
 		}
 	}
 
-	void AddEdges_Unit_Blocks_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		GraphBits & added
-	)
-	{
-		ASSERT(added.test(EU(ET::NODE_UNIT)), "Elements of type NODE_UNIT must be added first");
-		ASSERT(!added.test(EU(ET::EDGE_UNIT_BLOCKS_UNIT)), "Elements of type EDGE_HEX_ADJACENT_HEX already added");
-		added.set(EU(ET::EDGE_UNIT_BLOCKS_UNIT));
-
-		auto pairs = std::unordered_set<std::pair<int, int>>{};
-
-		for(const auto & unit : G->getAll<Graph::Nodes::Unit>())
-		{
-			const auto & cstack = unit.cstack;
-			for(const auto & bh : unit.cstack.getSurroundingHexes())
-			{
-				const auto * other = G->findUnitByBHex(bh);
-
-				if(!other)
-					continue;
-
-				const auto & ostack = other->cstack;
-				auto [_, inserted] = pairs.emplace<std::pair<int, int>>({cstack.unitId(), ostack.unitId()});
-
-				// inserted == false when this pair was already processed
-				if(inserted &&
-					ostack.unitSide() != cstack.unitSide() &&
-					ostack.canShoot() &&
-					!ostack.hasBonusOfType(BonusType::FREE_SHOOTING) &&
-					!ostack.hasBonusOfType(BonusType::SIEGE_WEAPON)
-				) {
-					G->add(Graph::Edges::Unit_Blocks_Unit(unit, *other));
-				}
-			}
-		};
-	}
-
 	void AddEdges_Unit_MeleeDmg_Unit(
 		std::shared_ptr<Graph::Graph> & G,
 		GraphBits & added,
@@ -476,7 +440,6 @@ namespace
 		};
 	}
 
-
 	void AddEdges_Unit_RangedDmg_Unit(
 		std::shared_ptr<Graph::Graph> & G,
 		GraphBits & added,
@@ -484,38 +447,100 @@ namespace
 		const State::GlobalStats & stats
 	)
 	{
-		ASSERT(added.test(EU(ET::NODE_UNIT)), "Elements of type NODE_UNIT must be added first");
-		ASSERT(added.test(EU(ET::EDGE_UNIT_BLOCKS_UNIT)), "Elements of type EDGE_UNIT_BLOCKS_UNIT must be added first");
+		ASSERT(added.test(EU(ET::EDGE_UNIT_MELEE_DMG_UNIT)), "Elements of type EDGE_UNIT_MELEE_DMG_UNIT must be added first");
 		ASSERT(added.test(EU(ET::EDGE_UNIT_RANGED_DMG_UNIT)), "Elements of type EDGE_UNIT_RANGED_DMG_UNIT already added");
 		added.set(EU(ET::EDGE_UNIT_RANGED_DMG_UNIT));
 
-		for(const auto & unit : G->getAll<Graph::Nodes::Unit>())
+		// RANGED_DMG edges use a subset of the MELEE_DMG edge nodes
+		// (all ranged units can also melee)
+		for(const auto & edge : G->getAll<Graph::Edges::Unit_MeleeDmg_Unit>())
 		{
+			const auto & unit = edge.srcNode;
 			const auto & cstack = unit.cstack;
 			if(!cstack.canShoot() || cstack.shots.available() <= 0)
 				continue;
 
-			for(const auto & bh : unit.cstack.getSurroundingHexes())
-			{
-				const auto * other = G->findUnitByBHex(bh);
-
-				if(!other)
-					continue;
-
-				const auto & ostack = other->cstack;
-				auto [_, inserted] = pairs.emplace<std::pair<int, int>>({cstack.unitId(), ostack.unitId()});
-
-				// inserted == false when this pair was already processed
-				if(inserted &&
-					ostack.unitSide() != cstack.unitSide() &&
-					ostack.canShoot() &&
-					!ostack.hasBonusOfType(BonusType::FREE_SHOOTING) &&
-					!ostack.hasBonusOfType(BonusType::SIEGE_WEAPON)
-				) {
-					G->add(Graph::Edges::Unit_Blocks_Unit(unit, *other));
-				}
-			}
+			const auto & other = edge.dstNode;
+			const auto & ostack = other.cstack;
+			const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, true);
+			const auto estimate = battle.battleEstimateDamage(attinfo);
+			G->add(Graph::Edges::Unit_RangedDmg_Unit(
+				unit,
+				other,
+				estimate,
+				stats.totalValue,
+				stats.totalHp
+			));
 		};
+	}
+
+	void AddEdges_Unit_Blocks_Unit(
+		std::shared_ptr<Graph::Graph> & G,
+		GraphBits & added
+	)
+	{
+		ASSERT(added.test(EU(ET::EDGE_UNIT_RANGED_DMG_UNIT)), "Elements of type EDGE_UNIT_RANGED_DMG_UNIT must be added first");
+		ASSERT(!added.test(EU(ET::EDGE_UNIT_BLOCKS_UNIT)), "Elements of type EDGE_HEX_ADJACENT_HEX already added");
+		added.set(EU(ET::EDGE_UNIT_BLOCKS_UNIT));
+
+		// BLOCKS edges use a subset of the RANGED_DMG edge nodes
+		// (all blocked units must be ranged units)
+		for(const auto & edge : G->getAll<Graph::Edges::Unit_RangedDmg_Unit>())
+		{
+			const auto & unit = edge.srcNode;
+			const auto & other = edge.dstNode;
+
+			// XXX: better to go through occupy -> adjacent -> occupy
+			// XXX: add base Node class with deleted copy constructor
+			// (too much depends on nodes/edges being singleton)
+
+			// for(const auto & edge2 : G->getAllEdgesBySrc<Graph::Edges::Unit_Occupies_Hex>(other))
+			// {
+			// 	const auto & otherhex = edge2.dstNode;
+			// 	for(const auto & edge3 : G->getAllEdgesBySrc<Graph::Edges::Hex_Adjacent_Hex>(otherhex))
+			// 	{
+			// 	}
+			// }
+
+
+			// const auto & cstack = unit.cstack;
+			// const auto & ostack = other.cstack;
+
+
+			// G->getAllEdgesBySrc<Graph::Edges::Hex_Adjacent_Hex>(const NodeT &src)
+			// TODO: use G->getAll hexes?
+
+
+
+			// for(const auto & bh : unit.cstack.getSurroundingHexes())
+			// {
+			// 	const auto * other = G->findUnitByBHex(bh);
+
+			// 	if(!other)
+			// 		continue;
+
+			// 	const auto & ostack = other->cstack;
+			// 	auto [_, inserted] = pairs.emplace<std::pair<int, int>>({cstack.unitId(), ostack.unitId()});
+
+			// 	// inserted == false when this pair was already processed
+			// 	if(inserted &&
+			// 		ostack.unitSide() != cstack.unitSide() &&
+			// 		ostack.canShoot() &&
+			// 		!ostack.hasBonusOfType(BonusType::FREE_SHOOTING) &&
+			// 		!ostack.hasBonusOfType(BonusType::SIEGE_WEAPON)
+			// 	) {
+			// 		G->add(Graph::Edges::Unit_Blocks_Unit(unit, *other));
+			// 	}
+			// }
+		};
+	}
+
+	// void AddEdges_Unit_CanMelee_Unit(
+	// 	std::shared_ptr<Graph::Graph> & G,
+	// 	GraphBits & added,
+	// )
+	// {
+
 	}
 
 }
@@ -558,10 +583,10 @@ void State::onActiveStack(
 	G->buildReachabilityCache();
 
 	AddEdges_Hex_Adjacent_Hex(G, added);
-	AddEdges_Unit_Blocks_Unit(G, added);
 	AddEdges_Unit_MeleeDmg_Unit(G, added, battle, stats);
-	AddEdges_Unit_RangedDmg_Unit(G, added);
-	// AddEdges_Unit_CanMelee_Unit()
+	AddEdges_Unit_RangedDmg_Unit(G, added, battle, stats);
+	AddEdges_Unit_Blocks_Unit(G, added);
+	AddEdges_Unit_CanMelee_Unit()
 	// AddEdges_Unit_CanShoot_Unit()
 	// AddEdges_Unit_ActsBefore_Unit()
 	// AddEdges_Unit_Threatens_Hex()

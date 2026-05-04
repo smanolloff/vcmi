@@ -18,17 +18,17 @@ using MultiIndexContainer = boost::multi_index::multi_index_container<
 >;
 
 template <typename ElemType>
-class ElementStore
+class NodeStore
 {
 public:
     using ElemPtr = std::shared_ptr<ElemType>;
 
-    ElementStore() = default;
+    NodeStore() = default;
 
-    ElementStore(const ElementStore &) = delete;
-    ElementStore & operator=(const ElementStore &) = delete;
-    ElementStore(ElementStore &&) = delete;
-    ElementStore & operator=(ElementStore &&) = delete;
+    NodeStore(const NodeStore &) = delete;
+    NodeStore & operator=(const NodeStore &) = delete;
+    NodeStore(NodeStore &&) = delete;
+    NodeStore & operator=(NodeStore &&) = delete;
 
     // "Perfect" forwarding function which reserves lvalue/rvalue category:
     // lvalues are copied, rvalues are moved.
@@ -41,36 +41,21 @@ public:
         container.push_back(std::make_shared<ElemType>(std::forward<T>(elem)));
     }
 
-    void add(std::shared_ptr<ElemType> elemptr)
+    std::shared_ptr<const ElemType> get(std::size_t ind) const
     {
-        if (!elemptr)
-            throw std::invalid_argument("nullptr");
-
-        container.push_back(std::move(elemptr));
-    }
-
-    template <typename... Args>
-    ElemPtr emplace(Args&&... args)
-    {
-        auto ptr = std::make_shared<ElemType>(std::forward<Args>(args)...);
-        container.push_back(ptr);
-        return ptr;
-    }
-
-    const ElemPtr & get(std::size_t ind) const
-    {
-        container.template get<0>().at(ind);
+        const auto& idx = container.template get<0>();
+        if (ind >= idx.size())
+            return nullptr;
+        return idx[ind];
     }
 
     auto entries() const
     {
         const auto & idx = container.template get<0>();
 
-        // Return ElemType& instead of std::shared_ptr<ElemType>
-
         // return std::ranges::subrange(idx.begin(), idx.end());
         return idx | std::views::transform(
-            [](const std::shared_ptr<ElemType>& ptr) -> const ElemType& {
+            [](const ElemPtr & ptr) -> const ElemType & {
                 return *ptr;
             }
         );
