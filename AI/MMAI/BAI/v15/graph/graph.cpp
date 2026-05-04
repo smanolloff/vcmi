@@ -1,6 +1,4 @@
 #include "BAI/v15/graph/graph.h"
-#include "entities/building/TownFortifications.h"
-#include <stdexcept>
 
 namespace MMAI::BAI::V15::Graph
 {
@@ -10,10 +8,9 @@ using ET = S15::Graph::ElementType;
 std::vector<const S15::Graph::INode*>
 Graph::getNodes(Schema::V15::Graph::ElementType t) const
 {
-    auto convert = [](const auto & elementStore)
+    auto convert = [](const auto & entries)
     {
         std::vector<const S15::Graph::INode*> res;
-        const auto entries = elementStore.entries();
         res.reserve(entries.size());
         for (const auto & e : entries)
             res.push_back(&e);
@@ -23,15 +20,16 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
     switch (t)
     {
         case ET::NODE_ACTION:
-            return convert(getStore<Nodes::Action>());
+            return convert(getAll<Nodes::Action>());
+            // return convert(getStore<Nodes::Action>());
         case ET::NODE_GLOBAL:
-            return convert(getStore<Nodes::Global>());
+            return convert(getAll<Nodes::Global>());
         case ET::NODE_PLAYER:
-            return convert(getStore<Nodes::Player>());
+            return convert(getAll<Nodes::Player>());
         case ET::NODE_UNIT:
-            return convert(getStore<Nodes::Unit>());
+            return convert(getAll<Nodes::Unit>());
         case ET::NODE_HEX:
-            return convert(getStore<Nodes::Hex>());
+            return convert(getAll<Nodes::Hex>());
         default:
             throw std::runtime_error(
                 "Unexpected node element type: " + std::to_string(EU(t))
@@ -42,10 +40,9 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
 std::vector<const S15::Graph::IEdge*>
 Graph::getEdges(Schema::V15::Graph::ElementType t) const
 {
-    auto convert = [](const auto & store)
+    auto convert = [](const auto & entries)
     {
         std::vector<const S15::Graph::IEdge*> res;
-        auto entries = store.entries();
         res.reserve(entries.size());
         for (const auto & elem : entries)
             res.push_back(&elem);
@@ -55,33 +52,33 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
     switch (t)
     {
         case ET::EDGE_HEX_ADJACENT_HEX:
-            return convert(getStore<Edges::Hex_Adjacent_Hex>());
+            return convert(getAll<Edges::Hex_Adjacent_Hex>());
         case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
-            return convert(getStore<Edges::Unit_ActsBefore_Unit>());
+            return convert(getAll<Edges::Unit_ActsBefore_Unit>());
         case ET::EDGE_UNIT_MELEE_DMG_UNIT:
-            return convert(getStore<Edges::Unit_MeleeDmg_Unit>());
+            return convert(getAll<Edges::Unit_MeleeDmg_Unit>());
         case ET::EDGE_UNIT_RANGED_DMG_UNIT:
-            return convert(getStore<Edges::Unit_RangedDmg_Unit>());
+            return convert(getAll<Edges::Unit_RangedDmg_Unit>());
         case ET::EDGE_ACTION_EXPOSES_TO_UNIT:
-            return convert(getStore<Edges::Action_ExposesTo_Unit>());
+            return convert(getAll<Edges::Action_ExposesTo_Unit>());
         case ET::EDGE_ACTION_THREATENS_UNIT:
-            return convert(getStore<Edges::Action_Threatens_Unit>());
+            return convert(getAll<Edges::Action_Threatens_Unit>());
         case ET::EDGE_ACTION_DAMAGES_UNIT:
-            return convert(getStore<Edges::Action_Damages_Unit>());
+            return convert(getAll<Edges::Action_Damages_Unit>());
         case ET::EDGE_ACTION_ENDS_AT_HEX:
-            return convert(getStore<Edges::Action_EndsAt_Hex>());
+            return convert(getAll<Edges::Action_EndsAt_Hex>());
         case ET::EDGE_ACTION_BY_UNIT:
-            return convert(getStore<Edges::Action_By_Unit>());
+            return convert(getAll<Edges::Action_By_Unit>());
         case ET::EDGE_UNIT_BLOCKS_UNIT:
-            return convert(getStore<Edges::Unit_Blocks_Unit>());
+            return convert(getAll<Edges::Unit_Blocks_Unit>());
         case ET::EDGE_UNIT_CAN_MELEE_UNIT:
-            return convert(getStore<Edges::Unit_CanMelee_Unit>());
+            return convert(getAll<Edges::Unit_CanMelee_Unit>());
         case ET::EDGE_UNIT_CAN_SHOOT_UNIT:
-            return convert(getStore<Edges::Unit_CanShoot_Unit>());
+            return convert(getAll<Edges::Unit_CanShoot_Unit>());
         case ET::EDGE_UNIT_THREATENS_HEX:
-            return convert(getStore<Edges::Unit_Threatens_Hex>());
+            return convert(getAll<Edges::Unit_Threatens_Hex>());
         case ET::EDGE_UNIT_OCCUPIES_HEX:
-            return convert(getStore<Edges::Unit_Occupies_Hex>());
+            return convert(getAll<Edges::Unit_Occupies_Hex>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
     }
@@ -123,7 +120,7 @@ void Graph::buildReachabilityCache()
     haveReachabilityCache = true;
 
     for (const auto & unit : getAll<Nodes::Unit>()) {
-        const auto & cstack = unit->cstack;
+        const auto & cstack = unit.cstack;
         auto rinfo = battle.getReachability(&cstack);
         auto dists = rinfo.distances;  // must not mutate rinfo => copy
         auto attacker = cstack.unitSide() == BattleSide::ATTACKER;
@@ -231,50 +228,4 @@ void Graph::buildQueueCache(bool isMorale)
         ASSERT(astack == nullptr || queue->at(0) == astack->unitId(), "queue[0] is not the currently active stack!");
     }
 }
-
-const Nodes::Unit * Graph::findUnitByBHex(const BattleHex & bh) const
-{
-    ASSERT(haveUnitsByBHexCache, "findUnitByBHex: cache not built");
-
-    const auto & it = unitsByBHex.find(bh);
-    if(it == unitsByBHex.end())
-        return nullptr;
-
-    return it->second.get();
-}
-
-void Graph::buildUnitsByBHexCache()
-{
-    ASSERT(!haveUnitsByBHexCache, "buildUnitsByBHexCache: cache already built");
-    haveUnitsByBHexCache = true;
-
-    for (const auto & unit : getAll<Nodes::Unit>())
-        for(const auto & hex : unit->cstack.getHexes())
-            unitsByBHex.try_emplace(hex, unit);
-
-    if (unitsByBHex.empty())
-    {
-        // This should only happen on an empty battlefield (draw?)
-        // => throw only if there are units still alive
-        for (const auto * cstack : battle.battleGetAllStacks(false))
-            if (cstack->alive())
-                throw std::runtime_error("buildUnitsByBHexCache: graph contains no units");
-    }
-}
-
-void Graph::buildNeighbouringStacksCache()
-{
-    ASSERT(!haveNeighbouringStacksCache, "cacheUnitsByBHex: cache already built");
-    haveNeighbouringStacksCache = true;
-
-
-
-    // TODO
-
-
-
-
-
-}
-
 } // namespace

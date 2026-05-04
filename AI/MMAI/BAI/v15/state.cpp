@@ -490,6 +490,7 @@ namespace
 			const auto & unit = edge.srcNode;
 			const auto & other = edge.dstNode;
 
+
 			// XXX: better to go through occupy -> adjacent -> occupy
 			// XXX: add base Node class with deleted copy constructor
 			// (too much depends on nodes/edges being singleton)

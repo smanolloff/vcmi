@@ -18,7 +18,7 @@ Player::Player(
     int dmgReceived,
     int valueKilled,
     int valueLost
-)
+) : side(side)
 {
     setattr(A::BATTLE_SIDE, EU(side));
 

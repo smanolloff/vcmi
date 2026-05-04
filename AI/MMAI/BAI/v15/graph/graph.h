@@ -116,9 +116,24 @@ public:
     }
 
     template <typename T>
-    auto get(std::size_t ind) const
+    auto getById(std::size_t ind) const
     {
-        return getStore<T>().get(ind);
+        return getStore<T>().getById(ind);
+    }
+
+    // For lookup, you usually do not want forwarding, because lookup should
+    // not consume or mutate the argument. Prefer a const reference.
+    template <typename T>
+    auto getByIdentity(const T & elem) const
+    {
+        return getStore<T>().getByIdentity(elem);
+    }
+
+    template <typename T, typename Key>
+        requires (!std::is_same_v<typename T::extra_index_type, void>)
+    auto getByExtraIndex(const Key & key) const
+    {
+        return getStore<T>().getByExtraIndex(key);
     }
 
     template <typename T>
@@ -133,6 +148,11 @@ public:
         return getStore<EdgeT>().bySrc(src);
     }
 
+    template <typename EdgeT, typename NodeT>
+    auto getAllEdgesByDst(const NodeT & src) const
+    {
+        return getStore<EdgeT>().byDst(src);
+    }
 
     template <typename T>
     auto size() const
@@ -154,7 +174,6 @@ public:
 
     const AccessibilityInfo & getAccessibility() const;
     const Nodes::Unit::Queue & getQueue() const;
-    const Nodes::Unit * findUnitByBHex(const BattleHex & bh) const;
 
     const ReachabilityInfo & getReachability(const CStack & cstack) const;
     bool isRUFR(const CStack & cstack, const BattleHex & bh) const;
@@ -162,13 +181,11 @@ public:
     // Explicitly building caches allows to define getters as const.
     void buildAccessibilityCache();
     void buildQueueCache(bool isMorale);
-    void buildUnitsByBHexCache();
     void buildReachabilityCache();
     void buildNeighbouringStacksCache();
 private:
     bool haveAccessibilityCache = false;
     bool haveQueueCache = false;
-    bool haveUnitsByBHexCache = false;
     bool haveReachabilityCache = false;
 
     const CPlayerBattleCallback & battle;
@@ -181,8 +198,6 @@ private:
     std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
     std::unique_ptr<AccessibilityInfo> acache;
     std::unique_ptr<Nodes::Unit::Queue> queue;
-    std::unordered_map<const BattleHex, const std::shared_ptr<Nodes::Unit>> unitsByBHex;
-    // std::unordered_map<const TNode*, std::vector<std::shared_ptr<TEdge>>>
 
     template <typename T>
     auto& getMutableStore() const
