@@ -85,6 +85,13 @@ public:
 		const StatsContainer & statsContainer
 	);
 
+	struct extra_index_type {
+		using result_type = const CStack &;
+		result_type operator()(const std::shared_ptr<Unit> & unit) const {
+			return unit->cstack;
+		}
+	};
+
 	int getFlag(StackFlag1 sf) const;
 	int getFlag(StackFlag2 sf) const;
 

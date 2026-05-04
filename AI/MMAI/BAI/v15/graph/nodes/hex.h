@@ -40,7 +40,6 @@ class Hex : public detail::Hex_Base
 	using HA = S15::Graph::NodeAttributes::Hex;
 	using HS = S15::HexState;
 	using HexAction = S15::HexAction;
-
 public:
 	using HexStateMask = std::bitset<EU(HS::_count)>;
 	using HexActionHex = std::array<BattleHex, 12>;
@@ -64,6 +63,13 @@ public:
 	const BattleHex bhex;
 	const int id;
 	HexStateMask statemask = 0;
+
+	struct extra_index_type {
+		using result_type = int16_t;
+		result_type operator()(const std::shared_ptr<Hex> & hex) const {
+			return hex->bhex.toInt();
+		}
+	};
 private:
 	void setStateMask(
 		EAccessibility accessibility,

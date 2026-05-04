@@ -34,7 +34,7 @@ namespace detail
     };
 
     template <typename T>
-    using MultiIndexContainer = boost::multi_index::multi_index_container<
+    using MultiIndexEdgeContainer = boost::multi_index::multi_index_container<
         std::shared_ptr<T>,
         boost::multi_index::indexed_by<
             boost::multi_index::random_access<>,
@@ -78,7 +78,7 @@ public:
         container.push_back(std::make_shared<ElemType>(std::forward<T>(elem)));
     }
 
-    std::shared_ptr<const ElemType> get(std::size_t ind) const
+    std::shared_ptr<const ElemType> getById(std::size_t ind) const
     {
         const auto& idx = container.template get<0>();
         if (ind >= idx.size())
@@ -89,13 +89,7 @@ public:
     auto entries() const
     {
         const auto & idx = container.template get<0>();
-
-        // return std::ranges::subrange(idx.begin(), idx.end());
-        return idx | std::views::transform(
-            [](const ElemPtr & ptr) -> const ElemType & {
-                return *ptr;
-            }
-        );
+        return entriesFrom(idx.begin(), idx.end());
     }
 
     std::size_t size() const
@@ -118,7 +112,7 @@ public:
     }
 
 private:
-    detail::MultiIndexContainer<ElemType> container;
+    detail::MultiIndexEdgeContainer<ElemType> container;
 
     auto entriesFrom(auto first, auto last) const
     {

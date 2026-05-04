@@ -52,6 +52,16 @@ public:
 		int valueKilled,
 		int valueLost
 	);
+
+	struct extra_index_type {
+		using result_type = BattleSide;
+		result_type operator()(const std::shared_ptr<Player> & player) const {
+			return player->side;
+		}
+	};
+
+private:
+	BattleSide side;
 };
 
 }

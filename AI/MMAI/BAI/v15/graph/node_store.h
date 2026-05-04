@@ -6,22 +6,87 @@
 
 #include <ranges>
 
-template <typename T>
-using MultiIndexContainer = boost::multi_index::multi_index_container<
-    std::shared_ptr<T>,
-    boost::multi_index::indexed_by<
-        boost::multi_index::random_access<>,
-        boost::multi_index::hashed_unique<
-            boost::multi_index::identity<std::shared_ptr<T>>
-        >
-    >
->;
+namespace detail
+{
+    // Tags for boost multi_index
+    // This allows to access them by name
+    // (only random_access index is accessed by index: 0)
+    struct by_ordinal_id;
+    struct by_ptr_identity;
+    struct by_extra_index;
 
-template <typename ElemType>
+    template <typename NodeType>
+    struct node_ptr_index {
+        using result_type = const NodeType*;
+        const NodeType* operator()(const std::shared_ptr<NodeType>& ptr) const {
+            return ptr.get();
+        }
+    };
+
+    // Helper template with partial specialization
+    template <typename T>
+    struct MultiIndexContainerHelper;
+
+    // Specialization without extra index (e.g. Global nodes)
+    template <typename T>
+        requires std::is_same_v<typename T::extra_index_type, void>
+    struct MultiIndexContainerHelper<T> {
+        using type = boost::multi_index::multi_index_container<
+            std::shared_ptr<T>,
+            boost::multi_index::indexed_by<
+                boost::multi_index::random_access<
+                    boost::multi_index::tag<by_ordinal_id>
+                >,
+                boost::multi_index::hashed_unique<
+                    boost::multi_index::tag<by_ptr_identity>,
+                    node_ptr_index<T>
+                >
+            >
+        >;
+    };
+
+    // Specialization with extra index
+    // To define an extra index, declare a block in the class's public section:
+    //
+    //     struct extra_index_type {
+    //         using result_type = int16_t;
+    //         result_type operator()(const std::shared_ptr<Hex> & hex) const {
+    //             return hex->bhex.toInt();
+    //         }
+    //     };
+    template <typename T>
+        requires (!std::is_same_v<typename T::extra_index_type, void>)
+    struct MultiIndexContainerHelper<T> {
+        using type = boost::multi_index::multi_index_container<
+            std::shared_ptr<T>,
+            boost::multi_index::indexed_by<
+                boost::multi_index::random_access<
+                    boost::multi_index::tag<by_ordinal_id>
+                >,
+
+                boost::multi_index::hashed_unique<
+                    boost::multi_index::tag<by_ptr_identity>,
+                    node_ptr_index<T>
+                >,
+
+                boost::multi_index::hashed_unique<
+                    boost::multi_index::tag<by_extra_index>,
+                    typename T::extra_index_type
+                >
+            >
+        >;
+    };
+
+    // Then expose the alias
+    template <typename T>
+    using MultiIndexNodeContainer = typename MultiIndexContainerHelper<T>::type;
+}
+
+template <typename NodeType>
 class NodeStore
 {
 public:
-    using ElemPtr = std::shared_ptr<ElemType>;
+    using ElemPtr = std::shared_ptr<NodeType>;
 
     NodeStore() = default;
 
@@ -35,13 +100,13 @@ public:
     // Convenient for using .add() with plain rvalue objects because they
     // have better compile-time support and type hints.
     template <typename T>
-        requires std::same_as<std::remove_cvref_t<T>, ElemType>
+        requires std::same_as<std::remove_cvref_t<T>, NodeType>
     void add(T&& elem)
     {
-        container.push_back(std::make_shared<ElemType>(std::forward<T>(elem)));
+        container.push_back(std::make_shared<NodeType>(std::forward<T>(elem)));
     }
 
-    std::shared_ptr<const ElemType> get(std::size_t ind) const
+    std::shared_ptr<const NodeType> getById(std::size_t ind) const
     {
         const auto& idx = container.template get<0>();
         if (ind >= idx.size())
@@ -49,13 +114,37 @@ public:
         return idx[ind];
     }
 
+    std::shared_ptr<const NodeType> getByIdentity(NodeType & node) const
+    {
+        const auto& idx = container.template get<detail::by_ptr_identity>();
+        auto it = idx.find(&node);
+        if (it == idx.end())
+            return nullptr;
+        return *it;
+    }
+
+    // This notation (with explicit typename Key) is preferrable as it allows
+    // to pass "convertible" (or "compatible") types.
+    // E.g. if the index type is std::string, then passing "foo" here is OK.
+    // Without it, the argument would have to be exactly std::string("foo").
+    template <typename Key>
+        requires (!std::is_same_v<typename NodeType::extra_index_type, void>)
+    std::shared_ptr<const NodeType> getByExtraIndex(const Key& key) const
+    {
+        const auto& idx = container.template get<detail::by_extra_index>();
+        auto it = idx.find(key);
+        if (it == idx.end())
+            return nullptr;
+        return *it;
+    }
+
     auto entries() const
     {
-        const auto & idx = container.template get<0>();
+        const auto & idx = container.template get<detail::by_ordinal_id>();
 
         // return std::ranges::subrange(idx.begin(), idx.end());
         return idx | std::views::transform(
-            [](const ElemPtr & ptr) -> const ElemType & {
+            [](const ElemPtr & ptr) -> const NodeType & {
                 return *ptr;
             }
         );
@@ -67,5 +156,5 @@ public:
     }
 
 private:
-    MultiIndexContainer<ElemType> container;
+    detail::MultiIndexNodeContainer<NodeType> container;
 };
