@@ -8,11 +8,11 @@
 
 template <typename T>
 using MultiIndexContainer = boost::multi_index::multi_index_container<
-    T,
+    std::shared_ptr<T>,
     boost::multi_index::indexed_by<
         boost::multi_index::random_access<>,
         boost::multi_index::hashed_unique<
-            boost::multi_index::identity<T>
+            boost::multi_index::identity<std::shared_ptr<T>>
         >
     >
 >;
@@ -21,6 +21,8 @@ template <typename ElemType>
 class ElementStore
 {
 public:
+    using ElemPtr = std::shared_ptr<ElemType>;
+
     ElementStore() = default;
 
     ElementStore(const ElementStore &) = delete;
@@ -30,30 +32,53 @@ public:
 
     // "Perfect" forwarding function which reserves lvalue/rvalue category:
     // lvalues are copied, rvalues are moved.
+    // Convenient for using .add() with plain rvalue objects because they
+    // have better compile-time support and type hints.
     template <typename T>
         requires std::same_as<std::remove_cvref_t<T>, ElemType>
     void add(T&& elem)
     {
-        container.push_back(std::forward<T>(elem));
+        container.push_back(std::make_shared<ElemType>(std::forward<T>(elem)));
     }
 
-    const ElemType & get(std::size_t ind) const
+    void add(std::shared_ptr<ElemType> elemptr)
     {
-        return container.template get<0>().at(ind);
+        if (!elemptr)
+            throw std::invalid_argument("nullptr");
+
+        container.push_back(std::move(elemptr));
     }
 
-    std::ranges::subrange<
-        typename MultiIndexContainer<ElemType>::template nth_index<0>::type::const_iterator
-    >
-    entries() const
+    template <typename... Args>
+    ElemPtr emplace(Args&&... args)
+    {
+        auto ptr = std::make_shared<ElemType>(std::forward<Args>(args)...);
+        container.push_back(ptr);
+        return ptr;
+    }
+
+    const ElemPtr & get(std::size_t ind) const
+    {
+        container.template get<0>().at(ind);
+    }
+
+    auto entries() const
     {
         const auto & idx = container.template get<0>();
-        return {idx.begin(), idx.end()};
+
+        // Return ElemType& instead of std::shared_ptr<ElemType>
+
+        // return std::ranges::subrange(idx.begin(), idx.end());
+        return idx | std::views::transform(
+            [](const std::shared_ptr<ElemType>& ptr) -> const ElemType& {
+                return *ptr;
+            }
+        );
     }
 
-    ssize_t size() const
+    std::size_t size() const
     {
-        return entries().size();
+        return container.size();
     }
 
 private:

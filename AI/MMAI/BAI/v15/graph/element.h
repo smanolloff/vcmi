@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "BAI/v15/encoder.h"
 
@@ -27,16 +28,26 @@ public:
     S15::Graph::ElementType elementType() const override { return EncTraits::element_type; }
     std::vector<float> encodedAttributes() const override { return Encoder::Encode<EncTraits>(attrs); }
 
+    Element()
+    {
+        attrs.fill(S15::NULL_VALUE_UNENCODED);
+    }
+
+
     int attr(Attribute a) const
     {
-        return attrs.at(static_cast<size_t>(a));
+        ASSERT(guardflags.test(EU(a)), EncTraits::name + ": attribute not set: " + std::to_string(EU(a)));
+        return attrs.at(EU(a));
     }
 
     void setattr(Attribute a, int value)
     {
-        attrs.at(static_cast<size_t>(a)) = value;
+        ASSERT(!guardflags.test(EU(a)), EncTraits::name + ": attribute already set: " + std::to_string(EU(a)));
+        guardflags.set(EU(a));
+        attrs.at(EU(a)) = value;
     }
 
     std::array<int, EncTraits::attr_count> attrs = {};
+    std::bitset<EncTraits::attr_count> guardflags;
 };
 }

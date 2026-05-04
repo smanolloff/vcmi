@@ -24,17 +24,12 @@ class Unit_MeleeDmg_Unit : public Unit_MeleeDmg_Unit_Base
 {
 public:
 	Unit_MeleeDmg_Unit(
-		const Nodes::Unit & srcNode,
-		const Nodes::Unit & dstNode,
-		int attackDmgRel,
-		int retalDmgRel
-	) : Unit_MeleeDmg_Unit_Base(srcNode, dstNode)
-	{
-		attrs.fill(S15::NULL_VALUE_UNENCODED);
-
-		setattr(A::ATTACK_DMG_REL, attackDmgRel);
-		setattr(A::RETAL_DMG_REL, retalDmgRel);
-		static_assert(static_cast<size_t>(A::_count) == 2, "whistleblower in case attributes change");
-	}
+	    const Nodes::Unit & srcNode,
+	    const Nodes::Unit & dstNode,
+	    const DamageEstimation & attackEstimate,
+	    const DamageEstimation & retalEstimate,
+	    int battlefieldValue,
+	    int battlefieldHp
+	);
 };
 }

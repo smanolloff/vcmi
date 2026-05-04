@@ -113,8 +113,15 @@ public:
     }
 
     template <typename T>
+    void add(std::shared_ptr<T> elem)
+    {
+        using U = std::remove_cvref_t<T>;
+        std::get<ElementStore<U>>(stores).add(std::forward<T>(elem));
+    }
+
+    template <typename T>
         requires detail::is_stored_element_v<T>
-    const std::remove_cvref_t<T> & get(std::size_t ind) const
+    const std::shared_ptr<std::remove_cvref_t<T>> & get(std::size_t ind) const
     {
         using U = std::remove_cvref_t<T>;
         return std::get<ElementStore<U>>(stores).get(ind);
@@ -154,7 +161,7 @@ public:
     void buildQueueCache(bool isMorale);
     void buildUnitsByBHexCache();
     void buildReachabilityCache();
-
+    void buildNeighbouringStacksCache();
 private:
     bool haveAccessibilityCache = false;
     bool haveQueueCache = false;
@@ -171,7 +178,6 @@ private:
     std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
     std::unique_ptr<AccessibilityInfo> acache;
     std::unique_ptr<Nodes::Unit::Queue> queue;
-    std::unordered_map<const BattleHex, const Nodes::Unit &> unitsByBHex;
-    std::unordered_map<const Nodes::Unit &> unitsByBHex;
+    std::unordered_map<const BattleHex, const std::shared_ptr<Nodes::Unit>> unitsByBHex;
 };
 }

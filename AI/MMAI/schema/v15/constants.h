@@ -423,8 +423,17 @@ struct EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>
     static constexpr std::size_t attr_count = EI(X::EA_Unit_MeleeDmg_Unit::_count);
 
 	static constexpr EdgeEncoding_Unit_MeleeDmg_Unit encoding = {
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_REL, X::LZ, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_REL, X::LZ, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_VALUE_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_MEAN_REL_OTHER, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_MEAN_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_STD_REL_OTHER, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_STD_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_VALUE_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
 	};
 
     static constexpr std::size_t encoded_size = EncodedSize(encoding);

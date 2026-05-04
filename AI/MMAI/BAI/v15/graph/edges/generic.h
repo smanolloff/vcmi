@@ -38,7 +38,10 @@ class NodeA##_##Edge##_##NodeB : public Base<\
     Nodes::NodeA, \
     Nodes::NodeB, \
     S15::EncodingTraits<S15::EdgeEncoding_##NodeA##_##Edge##_##NodeB> \
-> {}
+> { \
+public: \
+    NodeA##_##Edge##_##NodeB(const Nodes::NodeA & a, const Nodes::NodeB & b) : Base(a, b) {} \
+}
 
 GENERIC_EDGE_ELEMENT(Action, ExposesTo, Unit);
 GENERIC_EDGE_ELEMENT(Action, Threatens, Unit);

@@ -29,8 +29,6 @@ public:
 		int direction
 	) : Hex_Adjacent_Hex_Base(srcNode, dstNode)
 	{
-		attrs.fill(S15::NULL_VALUE_UNENCODED);
-
 		setattr(A::DIRECTION, direction);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
 	}

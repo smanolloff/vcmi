@@ -1,7 +1,6 @@
 #pragma once
 
 #include "BAI/v15/graph/element.h"
-#include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 
 namespace MMAI::BAI::V15::Graph::Edges
@@ -21,10 +20,8 @@ public:
     Base(
         const SrcNode & srcNode,
         const DstNode & dstNode
-    ) : srcNode(srcNode), dstNode(dstNode)
-    {
-        attrs.fill(S15::NULL_VALUE_UNENCODED);
-    }
+    ) : srcNode(srcNode), dstNode(dstNode), Element<S15::Graph::IEdge, EncTraits>()
+    {}
 
     Schema::V15::Graph::Endpoints endpoints() const override
     {

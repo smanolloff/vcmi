@@ -6,4 +6,9 @@ namespace MMAI::BAI::V15::Graph
         // => use temp l
         return static_cast<int>((1000LL * a) / b);
     }
+
+    inline int permille(double a, int b)
+    {
+        return permille(static_cast<int>(std::round(a)), b);
+    }
 }

@@ -29,8 +29,6 @@ public:
 		int times
 	) : Unit_ActsBefore_Unit_Base(srcNode, dstNode)
 	{
-		attrs.fill(S15::NULL_VALUE_UNENCODED);
-
 		setattr(A::TIMES, times);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
 	}
