@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "battle/IBattleInfoCallback.h"
 #include "BAI/v15/graph/edges/base.h"
 #include "BAI/v15/graph/nodes/unit.h"
 #include "schema/v15/constants.h"
@@ -17,19 +18,23 @@
 namespace MMAI::BAI::V15::Graph::Edges
 {
 namespace S15 = Schema::V15;
-using Unit_MeleeDmg_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_MeleeDmg_Unit>;
-using Unit_MeleeDmg_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_MeleeDmg_Unit_Traits>;
 
-class Unit_MeleeDmg_Unit : public Unit_MeleeDmg_Unit_Base
+namespace detail
+{
+	using Unit_MeleeDmg_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_MeleeDmg_Unit>;
+	using Unit_MeleeDmg_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_MeleeDmg_Unit_Traits>;
+}
+
+class Unit_MeleeDmg_Unit : public detail::Unit_MeleeDmg_Unit_Base
 {
 public:
 	Unit_MeleeDmg_Unit(
-	    const Nodes::Unit & srcNode,
-	    const Nodes::Unit & dstNode,
-	    const DamageEstimation & attackEstimate,
-	    const DamageEstimation & retalEstimate,
-	    int battlefieldValue,
-	    int battlefieldHp
+		const Nodes::Unit & srcNode,
+		const Nodes::Unit & dstNode,
+		const DamageEstimation & attackEstimate,
+		const DamageEstimation & retalEstimate,
+		int battlefieldValue,
+		int battlefieldHp
 	);
 };
 }

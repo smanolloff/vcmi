@@ -11,7 +11,7 @@
 #pragma once
 
 #include "AI/MMAI/common.h"
-#include "BAI/v15/graph/element.h"
+#include "BAI/v15/graph/nodes/base.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/constants.h"
 
@@ -19,7 +19,13 @@ namespace MMAI::BAI::V15::Graph::Nodes
 {
 namespace S15 = Schema::V15;
 
-class Action : public Element<S15::Graph::INode, S15::EncodingTraits<Schema::V15::ActionEncoding>>
+namespace detail
+{
+    using Action_Traits = S15::EncodingTraits<S15::NodeEncoding_Action>;
+    using Action_Base = Base<Action_Traits>;
+}
+
+class Action : public detail::Action_Base
 {
     using A = S15::Graph::NodeAttributes::Action;
     using CombatResult = Schema::V15::CombatResult;
@@ -29,8 +35,6 @@ class Action : public Element<S15::Graph::INode, S15::EncodingTraits<Schema::V15
 public:
     explicit Action(int action)
     {
-        attrs.fill(S15::NULL_VALUE_UNENCODED);
-
         setattr(A::ID, action);
         static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
     }
@@ -39,7 +43,5 @@ public:
     {
         attrs.at(EU(a)) += value;
     }
-private:
-    std::array<int, EU(PA::_count)> attrs = {};
 };
 }

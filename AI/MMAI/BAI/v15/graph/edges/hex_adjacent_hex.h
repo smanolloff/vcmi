@@ -17,17 +17,21 @@
 namespace MMAI::BAI::V15::Graph::Edges
 {
 namespace S15 = Schema::V15;
-using Hex_Adjacent_Hex_Traits = S15::EncodingTraits<S15::EdgeEncoding_Hex_Adjacent_Hex>;
-using Hex_Adjacent_Hex_Base = Base<Nodes::Hex, Nodes::Hex, Hex_Adjacent_Hex_Traits>;
 
-class Hex_Adjacent_Hex : public Hex_Adjacent_Hex_Base
+namespace detail
+{
+	using Hex_Adjacent_Hex_Traits = S15::EncodingTraits<S15::EdgeEncoding_Hex_Adjacent_Hex>;
+	using Hex_Adjacent_Hex_Base = Base<Nodes::Hex, Nodes::Hex, Hex_Adjacent_Hex_Traits>;
+}
+
+class Hex_Adjacent_Hex : public detail::Hex_Adjacent_Hex_Base
 {
 public:
 	Hex_Adjacent_Hex(
 		const Nodes::Hex & srcNode,
 		const Nodes::Hex & dstNode,
 		int direction
-	) : Hex_Adjacent_Hex_Base(srcNode, dstNode)
+	) : detail::Hex_Adjacent_Hex_Base(srcNode, dstNode)
 	{
 		setattr(A::DIRECTION, direction);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");

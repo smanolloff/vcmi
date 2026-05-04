@@ -23,15 +23,15 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
     switch (t)
     {
         case ET::NODE_ACTION:
-            return convert(getElementStore<Nodes::Action>());
+            return convert(getStore<Nodes::Action>());
         case ET::NODE_GLOBAL:
-            return convert(getElementStore<Nodes::Global>());
+            return convert(getStore<Nodes::Global>());
         case ET::NODE_PLAYER:
-            return convert(getElementStore<Nodes::Player>());
+            return convert(getStore<Nodes::Player>());
         case ET::NODE_UNIT:
-            return convert(getElementStore<Nodes::Unit>());
+            return convert(getStore<Nodes::Unit>());
         case ET::NODE_HEX:
-            return convert(getElementStore<Nodes::Hex>());
+            return convert(getStore<Nodes::Hex>());
         default:
             throw std::runtime_error(
                 "Unexpected node element type: " + std::to_string(EU(t))
@@ -42,46 +42,46 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
 std::vector<const S15::Graph::IEdge*>
 Graph::getEdges(Schema::V15::Graph::ElementType t) const
 {
-    auto convert = [](const auto& store)
+    auto convert = [](const auto & store)
     {
         std::vector<const S15::Graph::IEdge*> res;
         auto entries = store.entries();
         res.reserve(entries.size());
-        for (const auto& elem : entries)
-            res.push_back(elem.get());
+        for (const auto & elem : entries)
+            res.push_back(&elem);
         return res;
     };
 
     switch (t)
     {
         case ET::EDGE_HEX_ADJACENT_HEX:
-            return convert(getElementStore<Edges::Hex_Adjacent_Hex>());
+            return convert(getStore<Edges::Hex_Adjacent_Hex>());
         case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
-            return convert(getElementStore<Edges::Unit_ActsBefore_Unit>());
+            return convert(getStore<Edges::Unit_ActsBefore_Unit>());
         case ET::EDGE_UNIT_MELEE_DMG_UNIT:
-            return convert(getElementStore<Edges::Unit_MeleeDmg_Unit>());
+            return convert(getStore<Edges::Unit_MeleeDmg_Unit>());
         case ET::EDGE_UNIT_RANGED_DMG_UNIT:
-            return convert(getElementStore<Edges::Unit_RangedDmg_Unit>());
+            return convert(getStore<Edges::Unit_RangedDmg_Unit>());
         case ET::EDGE_ACTION_EXPOSES_TO_UNIT:
-            return convert(getElementStore<Edges::Action_ExposesTo_Unit>());
+            return convert(getStore<Edges::Action_ExposesTo_Unit>());
         case ET::EDGE_ACTION_THREATENS_UNIT:
-            return convert(getElementStore<Edges::Action_Threatens_Unit>());
+            return convert(getStore<Edges::Action_Threatens_Unit>());
         case ET::EDGE_ACTION_DAMAGES_UNIT:
-            return convert(getElementStore<Edges::Action_Damages_Unit>());
+            return convert(getStore<Edges::Action_Damages_Unit>());
         case ET::EDGE_ACTION_ENDS_AT_HEX:
-            return convert(getElementStore<Edges::Action_EndsAt_Hex>());
+            return convert(getStore<Edges::Action_EndsAt_Hex>());
         case ET::EDGE_ACTION_BY_UNIT:
-            return convert(getElementStore<Edges::Action_By_Unit>());
+            return convert(getStore<Edges::Action_By_Unit>());
         case ET::EDGE_UNIT_BLOCKS_UNIT:
-            return convert(getElementStore<Edges::Unit_Blocks_Unit>());
+            return convert(getStore<Edges::Unit_Blocks_Unit>());
         case ET::EDGE_UNIT_CAN_MELEE_UNIT:
-            return convert(getElementStore<Edges::Unit_CanMelee_Unit>());
+            return convert(getStore<Edges::Unit_CanMelee_Unit>());
         case ET::EDGE_UNIT_CAN_SHOOT_UNIT:
-            return convert(getElementStore<Edges::Unit_CanShoot_Unit>());
+            return convert(getStore<Edges::Unit_CanShoot_Unit>());
         case ET::EDGE_UNIT_THREATENS_HEX:
-            return convert(getElementStore<Edges::Unit_Threatens_Hex>());
+            return convert(getStore<Edges::Unit_Threatens_Hex>());
         case ET::EDGE_UNIT_OCCUPIES_HEX:
-            return convert(getElementStore<Edges::Unit_Occupies_Hex>());
+            return convert(getStore<Edges::Unit_Occupies_Hex>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
     }

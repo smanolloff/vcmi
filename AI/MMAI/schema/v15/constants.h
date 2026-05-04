@@ -99,11 +99,11 @@ namespace X
 	using E5E_Hex_Adjacent_Hex = std::tuple<EA_Hex_Adjacent_Hex, Encoding, int, int, double>;
 }
 
-using ActionEncoding = std::array<X::E5A, EI(X::AA::_count)>;
-using GlobalEncoding = std::array<X::E5G, EI(X::GA::_count)>;
-using PlayerEncoding = std::array<X::E5P, EI(X::PA::_count)>;
-using UnitEncoding = std::array<X::E5U, EI(X::UA::_count)>;
-using HexEncoding = std::array<X::E5H, EI(X::HA::_count)>;
+using NodeEncoding_Action = std::array<X::E5A, EI(X::AA::_count)>;
+using NodeEncoding_Global = std::array<X::E5G, EI(X::GA::_count)>;
+using NodeEncoding_Player = std::array<X::E5P, EI(X::PA::_count)>;
+using NodeEncoding_Unit = std::array<X::E5U, EI(X::UA::_count)>;
+using NodeEncoding_Hex = std::array<X::E5H, EI(X::HA::_count)>;
 
 using EdgeEncoding_Unit_MeleeDmg_Unit = std::array<X::E5E_Unit_MeleeDmg_Unit, EI(Graph::EdgeAttributes::Unit_MeleeDmg_Unit::_count)>;
 using EdgeEncoding_Unit_RangedDmg_Unit = std::array<X::E5E_Unit_RangedDmg_Unit, EI(Graph::EdgeAttributes::Unit_RangedDmg_Unit::_count)>;
@@ -230,27 +230,27 @@ template <typename EncDef>
 struct EncodingTraits;
 
 template <>
-struct EncodingTraits<ActionEncoding>
+struct EncodingTraits<NodeEncoding_Action>
 {
 	using attr_type = X::AA;
     static constexpr auto element_type = Graph::ElementType::NODE_ACTION;
     static constexpr std::string_view name = "ACTION_ENCODING";
     static constexpr std::size_t attr_count = EI(X::AA::_count);
 
-    static constexpr ActionEncoding encoding = {
+    static constexpr NodeEncoding_Action encoding = {
 		E5(X::AA::ID, X::RAW, N_ACTIONS),
 	};
 };
 
 template <>
-struct EncodingTraits<GlobalEncoding>
+struct EncodingTraits<NodeEncoding_Global>
 {
 	using attr_type = X::GA;
     static constexpr auto element_type = Graph::ElementType::NODE_GLOBAL;
     static constexpr std::string_view name = "GLOBAL_ENCODING";
     static constexpr std::size_t attr_count = EI(X::GA::_count);
 
-    static constexpr GlobalEncoding encoding = {
+    static constexpr NodeEncoding_Global encoding = {
 		// LS is the correct encoding for BATTLE_ROUND, but since it replaces BATTLE_SIDE
 		// which had n=2 => use LE to keep the dimensions unchanged.
 		E5(X::GA::BATTLE_ROUND, X::LE, MAX_ROUNDS + 1),
@@ -268,14 +268,14 @@ struct EncodingTraits<GlobalEncoding>
 };
 
 template <>
-struct EncodingTraits<PlayerEncoding>
+struct EncodingTraits<NodeEncoding_Player>
 {
 	using attr_type = X::PA;
     static constexpr auto element_type = Graph::ElementType::NODE_PLAYER;
     static constexpr std::string_view name = "PLAYER_ENCODING";
     static constexpr std::size_t attr_count = EI(X::PA::_count);
 
-    static constexpr PlayerEncoding encoding = {
+    static constexpr NodeEncoding_Player encoding = {
 		E5(X::PA::BATTLE_SIDE, X::CS, 1),
 		E5(X::PA::ARMY_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
 		E5(X::PA::ARMY_VALUE_NOW_REL, X::LS, 1000), //     (army_value_now / global_value_now)
@@ -305,14 +305,14 @@ struct EncodingTraits<PlayerEncoding>
 };
 
 template <>
-struct EncodingTraits<UnitEncoding>
+struct EncodingTraits<NodeEncoding_Unit>
 {
 	using attr_type = X::UA;
     static constexpr Graph::ElementType element_type = Graph::ElementType::NODE_UNIT;
     static constexpr std::string_view name = "UNIT_ENCODING";
     static constexpr std::size_t attr_count = EI(X::UA::_count);
 
-    static constexpr UnitEncoding encoding = {
+    static constexpr NodeEncoding_Unit encoding = {
 		E5(X::UA::SIDE, X::CE, 1), // 0=attacker, 1=defender
 		E5(X::UA::SLOT, X::CE, STACK_SLOT_MAX),
 		E5(X::UA::QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
@@ -345,14 +345,14 @@ struct EncodingTraits<UnitEncoding>
 };
 
 template <>
-struct EncodingTraits<HexEncoding>
+struct EncodingTraits<NodeEncoding_Hex>
 {
 	using attr_type = X::HA;
     static constexpr auto element_type = Graph::ElementType::NODE_HEX;
     static constexpr std::string_view name = "HEX_ENCODING";
     static constexpr std::size_t attr_count = EI(X::HA::_count);
 
-	static constexpr HexEncoding encoding = {
+	static constexpr NodeEncoding_Hex encoding = {
 		E5(X::HA::Y_COORD, X::CS, 10),
 		E5(X::HA::X_COORD, X::CS, 14),
 		E5(X::HA::STATE_MASK, X::BS, (1 << EI(HexState::_count)) - 1),
@@ -447,7 +447,12 @@ struct EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>
 	static constexpr std::string_view name = "EDGE_ENCODING_UNIT_RANGED_DMG_UNIT";
 	static constexpr std::size_t attr_count = EI(X::EA_Unit_RangedDmg_Unit::_count);
 	static constexpr EdgeEncoding_Unit_RangedDmg_Unit encoding = {
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_REL, X::LZ, 1000),
+		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
+		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
+		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_VALUE_REL_BF, X::LS, 1000),
+		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
 	};
 
     static constexpr std::size_t encoded_size = EncodedSize(encoding);
@@ -484,26 +489,26 @@ struct EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>
 
 // Dedining encodings for each attribute by hand is error-prone
 // The below compile-time asserts are essential.
-static_assert(UninitializedEncodingAttributes(EncodingTraits<GlobalEncoding>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<PlayerEncoding>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<UnitEncoding>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<HexEncoding>::encoding) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Global>::encoding) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Player>::encoding) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Unit>::encoding) == 0, "Found uninitialized elements");
+static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Hex>::encoding) == 0, "Found uninitialized elements");
 static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding) == 0, "Found uninitialized elements");
 static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding) == 0, "Found uninitialized elements");
 static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding) == 0, "Found uninitialized elements");
 static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>::encoding) == 0, "Found uninitialized elements");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<GlobalEncoding>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<PlayerEncoding>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<UnitEncoding>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<HexEncoding>::encoding) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Global>::encoding) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Player>::encoding) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Unit>::encoding) == -1, "Found wrong element at this index");
+static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Hex>::encoding) == -1, "Found wrong element at this index");
 static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding) == -1, "Found wrong element at this index");
 static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding) == -1, "Found wrong element at this index");
 static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding) == -1, "Found wrong element at this index");
 static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>::encoding) == -1, "Found wrong element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<GlobalEncoding>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<PlayerEncoding>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<UnitEncoding>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<HexEncoding>::encoding) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Global>::encoding) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Player>::encoding) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
+static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Hex>::encoding) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
 static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
@@ -529,10 +534,10 @@ constexpr int MAX_NUM_EDGES_UNIT_THREATENS_HEX = 165 * MAX_NUM_NODES_UNIT;
 constexpr int MAX_NUM_EDGES_UNIT_OCCUPIES_HEX = 2 * MAX_NUM_NODES_UNIT;
 constexpr int MAX_NUM_EDGES_HEX_ADJACENT_HEX = 165 * 6;
 
-constexpr int ENCODED_NODE_SIZE_GLOBAL = EncodedSize(EncodingTraits<GlobalEncoding>::encoding);
-constexpr int ENCODED_NODE_SIZE_PLAYER = EncodedSize(EncodingTraits<PlayerEncoding>::encoding);
-constexpr int ENCODED_NODE_SIZE_UNIT = EncodedSize(EncodingTraits<UnitEncoding>::encoding);
-constexpr int ENCODED_NODE_SIZE_HEX = EncodedSize(EncodingTraits<HexEncoding>::encoding);
+constexpr int ENCODED_NODE_SIZE_GLOBAL = EncodedSize(EncodingTraits<NodeEncoding_Global>::encoding);
+constexpr int ENCODED_NODE_SIZE_PLAYER = EncodedSize(EncodingTraits<NodeEncoding_Player>::encoding);
+constexpr int ENCODED_NODE_SIZE_UNIT = EncodedSize(EncodingTraits<NodeEncoding_Unit>::encoding);
+constexpr int ENCODED_NODE_SIZE_HEX = EncodedSize(EncodingTraits<NodeEncoding_Hex>::encoding);
 
 constexpr int BATTLEFIELD_STATE_SIZE =
 	ENCODED_NODE_SIZE_GLOBAL

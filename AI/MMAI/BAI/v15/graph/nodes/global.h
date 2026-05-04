@@ -10,21 +10,26 @@
 
 #pragma once
 
-#include "BAI/v15/graph/element.h"
+#include "BAI/v15/graph/nodes/base.h"
 #include "battle/BattleSide.h"
 #include "common.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 
-#include <array>
 #include <bitset>
 
 namespace MMAI::BAI::V15::Graph::Nodes
 {
 namespace S15 = Schema::V15;
 
-class Global : public Element<S15::Graph::INode, S15::EncodingTraits<S15::GlobalEncoding>>
+namespace detail
+{
+	using Global_Traits = S15::EncodingTraits<S15::NodeEncoding_Global>;
+	using Global_Base = Base<Global_Traits>;
+}
+
+class Global : public detail::Global_Base
 {
 	using A = S15::Graph::NodeAttributes::Global;
 	using CombatResult = S15::CombatResult;
@@ -46,9 +51,6 @@ public:
 		TowerFlags towers,
 		CorpseFlags corpses
     );
-
-	std::array<int, EU(A::_count)> attrs = {};
-	GlobalActionMask actmask = 0;
 };
 
 }

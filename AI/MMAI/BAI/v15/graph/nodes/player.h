@@ -11,8 +11,7 @@
 #pragma once
 
 #include "battle/BattleSide.h"
-#include "BAI/v15/graph/element.h"
-#include "common.h"
+#include "BAI/v15/graph/nodes/base.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 
@@ -20,7 +19,13 @@ namespace MMAI::BAI::V15::Graph::Nodes
 {
 namespace S15 = Schema::V15;
 
-class Player : public Element<S15::Graph::INode, S15::EncodingTraits<S15::PlayerEncoding>>
+namespace detail
+{
+	using Player_Traits = S15::EncodingTraits<S15::NodeEncoding_Player>;
+	using Player_Base = Base<Player_Traits>;
+}
+
+class Player : public detail::Player_Base
 {
 	using A = S15::Graph::NodeAttributes::Player;
 public:
@@ -47,10 +52,6 @@ public:
 		int valueKilled,
 		int valueLost
 	);
-
-private:
-	std::array<int, EU(A::_count)> attrs = {};
-	void addattr(A a, int value);
 };
 
 }

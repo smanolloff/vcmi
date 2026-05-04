@@ -17,22 +17,22 @@
 namespace MMAI::BAI::V15::Graph::Edges
 {
 namespace S15 = Schema::V15;
-using Unit_RangedDmg_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_RangedDmg_Unit>;
-using Unit_RangedDmg_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_RangedDmg_Unit_Traits>;
 
-class Unit_RangedDmg_Unit : public Unit_RangedDmg_Unit_Base
+namespace detail
+{
+	using Unit_RangedDmg_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_RangedDmg_Unit>;
+	using Unit_RangedDmg_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_RangedDmg_Unit_Traits>;
+}
+
+class Unit_RangedDmg_Unit : public detail::Unit_RangedDmg_Unit_Base
 {
 public:
 	Unit_RangedDmg_Unit(
 		const Nodes::Unit & srcNode,
 		const Nodes::Unit & dstNode,
-		int attackDmgRel
-	) : Unit_RangedDmg_Unit_Base(srcNode, dstNode)
-	{
-		attrs.fill(S15::NULL_VALUE_UNENCODED);
-
-		setattr(A::ATTACK_DMG_REL, attackDmgRel);
-		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
-	}
+		const DamageEstimation & attackEstimate,
+		int battlefieldValue,
+		int battlefieldHp
+	);
 };
 }

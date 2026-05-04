@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "BAI/v15/graph/element.h"
+#include "BAI/v15/graph/nodes/base.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
 #include "battle/CObstacleInstance.h"
@@ -29,7 +29,13 @@ namespace MMAI::BAI::V15::Graph::Nodes
 {
 namespace S15 = Schema::V15;
 
-class Hex : public Element<S15::Graph::INode, S15::EncodingTraits<S15::HexEncoding>>
+namespace detail
+{
+	using Hex_Traits = S15::EncodingTraits<S15::NodeEncoding_Hex>;
+	using Hex_Base = Base<Hex_Traits>;
+}
+
+class Hex : public detail::Hex_Base
 {
 	using HA = S15::Graph::NodeAttributes::Hex;
 	using HS = S15::HexState;
@@ -57,15 +63,8 @@ public:
 
 	const BattleHex bhex;
 	const int id;
-
-	std::array<int, EU(HA::_count)> attrs = {};
 	HexStateMask statemask = 0;
-
-	const BattleHex moveDestHex;
-
 private:
-	void setattr(HA a, int value);
-
 	void setStateMask(
 		EAccessibility accessibility,
 		const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,

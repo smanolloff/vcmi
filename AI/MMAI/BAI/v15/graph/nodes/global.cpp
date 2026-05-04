@@ -17,8 +17,6 @@ Global::Global(
     CorpseFlags corpses
 )
 {
-    attrs.fill(S15::NULL_VALUE_UNENCODED);
-
     setattr(A::BATTLE_ROUND, round);
 
     (res == CombatResult::NONE)
