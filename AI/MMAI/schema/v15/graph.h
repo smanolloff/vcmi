@@ -28,10 +28,10 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTION_ENDS_AT_HEX,
         EDGE_ACTION_BY_UNIT,
         EDGE_UNIT_BLOCKS_UNIT,
-        EDGE_UNIT_MELEE_DMG_UNIT,
-        EDGE_UNIT_RANGED_DMG_UNIT,
-        EDGE_UNIT_CAN_MELEE_UNIT,
-        EDGE_UNIT_CAN_SHOOT_UNIT,
+        EDGE_UNIT_MELEE_DMG_UNIT,       // regardless if reachable
+        EDGE_UNIT_RANGED_DMG_UNIT,      // regardless if blocked
+        EDGE_UNIT_CAN_MELEE_UNIT,       // only if reachable
+        EDGE_UNIT_CAN_SHOOT_UNIT,       // only if blocked
         EDGE_UNIT_ACTS_BEFORE_UNIT,
         EDGE_UNIT_THREATENS_HEX,
         EDGE_UNIT_OCCUPIES_HEX,
@@ -158,10 +158,17 @@ namespace EdgeAttributes
 
         enum class Unit_MeleeDmg_Unit : uint8_t
         {
-            ATTACK_DMG_REL,
-            RETAL_DMG_REL,
-            // NET_DMG_REL
-            // NET_VALUE_REL
+            ATTACK_DMG_MEAN_REL_OTHER,
+            ATTACK_DMG_MEAN_REL_BF,
+            ATTACK_DMG_STD_REL_OTHER,
+            ATTACK_DMG_STD_REL_BF,
+            ATTACK_VALUE_REL_BF,
+            RETAL_DMG_MEAN_REL_OTHER,
+            RETAL_DMG_MEAN_REL_BF,
+            RETAL_DMG_STD_REL_OTHER,
+            RETAL_DMG_STD_REL_BF,
+            RETAL_VALUE_REL_BF,
+            ATTACK_ALLKILL_CHANCE,
             _count
         };
 

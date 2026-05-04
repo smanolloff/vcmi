@@ -1,0 +1,94 @@
+/*
+ * unit_melee_dmg_unit.h, part of VCMI engine
+ *
+ * Authors: listed in file AUTHORS in main folder
+ *
+ * License: GNU General Public License v2.0 or later
+ * Full text of license available in license.txt file, in main folder
+ *
+ */
+
+#pragma once
+
+#include "BAI/v15/graph/util.h"
+#include "schema/v15/graph.h"
+#include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
+#include <numbers>
+
+namespace MMAI::BAI::V15::Graph::Edges
+{
+
+namespace {
+    // chance to deal at least `target` dmg
+    double dmgChance(int target, int mindmg, int maxdmg, int k)
+    {
+        if (maxdmg < target || k <= 0)
+            return 0.0;
+        if (mindmg >= target)
+            return 1.0;
+
+        double mean = 0.5 * (mindmg + maxdmg);
+        double variance = ((maxdmg - mindmg) * (maxdmg - mindmg)) / (12.0 * k);
+        double stddev = std::sqrt(variance);
+        double z = (target - mean) / stddev;
+        double normalCdf = 0.5 * (1.0 + std::erf(z / std::numbers::sqrt2));
+        return 1.0 - normalCdf;
+    }
+}
+
+Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
+    const Nodes::Unit & srcNode,
+    const Nodes::Unit & dstNode,
+    const DamageEstimation & attackEstimate,
+    const DamageEstimation & retalEstimate,
+    int battlefieldValue,
+    int battlefieldHp
+) : Unit_MeleeDmg_Unit_Base(srcNode, dstNode)
+{
+    const auto & A_cstack = srcNode.cstack;
+    const auto & B_cstack = dstNode.cstack;
+
+    auto A_dmg_min = static_cast<int>(attackEstimate.damage.min);
+    auto A_dmg_max = static_cast<int>(attackEstimate.damage.max);
+    auto A_dmg_range = A_dmg_max - A_dmg_min;
+    auto A_n = A_cstack.getCount();
+    auto A_k = std::min(A_n, 10); // see BattleInfo::getActualDamage()
+    auto A_dmg_mean = 0.5 * (A_dmg_min + A_dmg_max);
+    auto A_dmg_std = std::sqrt((A_dmg_range * A_dmg_range) / (12.0 * A_k));
+    // auto A_value = Nodes::Unit::GetValue(A_cstack)
+
+    auto A_hp = static_cast<int>(A_cstack.getAvailableHealth());
+    auto B_hp = static_cast<int>(B_cstack.getAvailableHealth());
+
+    // XXX: Calculating kills from mean dmg is more accurate
+    // than averaging `attack.kills`
+    auto A_kills_mean = A_dmg_mean / B_hp;
+    auto A_allkill_chance = dmgChance(B_hp, A_dmg_min, A_dmg_max, A_k);
+
+    // For B_n, use A_kills_mean to simplify calculations.
+    // (otherwise we must calculate a mixture distribution)
+    auto B_min = static_cast<int>(retalEstimate.damage.min);
+    auto B_max = static_cast<int>(retalEstimate.damage.max);
+    auto B_dmg_range = B_max - B_min;
+    auto B_n = std::min(B_cstack.getCount() - A_kills_mean, 0.0);
+    auto B_k = std::min(static_cast<int>(std::round(B_n)), 10); // see BattleInfo::getActualDamage()
+    auto B_dmg_mean = 0.5 * (B_min + B_max);
+    auto B_dmg_std = std::sqrt((B_dmg_range * B_dmg_range) / (12.0 * B_k));
+    auto B_kills_mean = B_dmg_mean / A_hp;
+
+    setattr(A::ATTACK_DMG_MEAN_REL_OTHER, permille(A_dmg_mean, B_hp));
+    setattr(A::ATTACK_DMG_MEAN_REL_BF, permille(A_dmg_mean, battlefieldHp));
+    setattr(A::ATTACK_DMG_STD_REL_OTHER, permille(A_dmg_std, B_hp));
+    setattr(A::ATTACK_DMG_STD_REL_BF, permille(A_dmg_std, battlefieldHp));
+    setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(A_cstack.unitType()), battlefieldValue));
+    setattr(A::RETAL_DMG_MEAN_REL_OTHER, permille(B_dmg_mean, A_hp));
+    setattr(A::RETAL_DMG_MEAN_REL_BF, permille(B_dmg_mean, battlefieldHp));
+    setattr(A::RETAL_DMG_STD_REL_OTHER, permille(B_dmg_std, A_hp));
+    setattr(A::RETAL_DMG_STD_REL_BF, permille(B_dmg_std, battlefieldHp));
+    setattr(A::RETAL_VALUE_REL_BF, permille(B_kills_mean * Nodes::Unit::GetValue(B_cstack.unitType()), battlefieldValue));
+    setattr(A::ATTACK_ALLKILL_CHANCE, permille(A_allkill_chance, 1));
+
+    static_assert(static_cast<size_t>(A::_count) == 11, "whistleblower in case attributes change");
+}
+
+}

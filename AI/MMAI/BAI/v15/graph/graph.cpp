@@ -48,7 +48,7 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
         auto entries = store.entries();
         res.reserve(entries.size());
         for (const auto& elem : entries)
-            res.push_back(&elem);
+            res.push_back(elem.get());
         return res;
     };
 
@@ -123,7 +123,7 @@ void Graph::buildReachabilityCache()
     haveReachabilityCache = true;
 
     for (const auto & unit : getAll<Nodes::Unit>()) {
-        const auto & cstack = unit.cstack;
+        const auto & cstack = unit->cstack;
         auto rinfo = battle.getReachability(&cstack);
         auto dists = rinfo.distances;  // must not mutate rinfo => copy
         auto attacker = cstack.unitSide() == BattleSide::ATTACKER;
@@ -240,16 +240,16 @@ const Nodes::Unit * Graph::findUnitByBHex(const BattleHex & bh) const
     if(it == unitsByBHex.end())
         return nullptr;
 
-    return &it->second;
+    return it->second.get();
 }
 
 void Graph::buildUnitsByBHexCache()
 {
-    ASSERT(!haveUnitsByBHexCache, "cacheUnitsByBHex: cache already built");
+    ASSERT(!haveUnitsByBHexCache, "buildUnitsByBHexCache: cache already built");
     haveUnitsByBHexCache = true;
 
     for (const auto & unit : getAll<Nodes::Unit>())
-        for(const auto & hex : unit.cstack.getHexes())
+        for(const auto & hex : unit->cstack.getHexes())
             unitsByBHex.try_emplace(hex, unit);
 
     if (unitsByBHex.empty())
@@ -258,8 +258,23 @@ void Graph::buildUnitsByBHexCache()
         // => throw only if there are units still alive
         for (const auto * cstack : battle.battleGetAllStacks(false))
             if (cstack->alive())
-                throw std::runtime_error("cacheUnitsByBHex: graph contains no units");
+                throw std::runtime_error("buildUnitsByBHexCache: graph contains no units");
     }
+}
+
+void Graph::buildNeighbouringStacksCache()
+{
+    ASSERT(!haveNeighbouringStacksCache, "cacheUnitsByBHex: cache already built");
+    haveNeighbouringStacksCache = true;
+
+
+
+    // TODO
+
+
+
+
+
 }
 
 } // namespace
