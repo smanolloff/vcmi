@@ -59,8 +59,7 @@ namespace detail
         EdgeStore<Edges::Unit_Blocks_Unit>,
         EdgeStore<Edges::Unit_MeleeDmg_Unit>,
         EdgeStore<Edges::Unit_RangedDmg_Unit>,
-        EdgeStore<Edges::Unit_CanMelee_Unit>,
-        EdgeStore<Edges::Unit_CanShoot_Unit>,
+        EdgeStore<Edges::Unit_Threatens_Unit>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,
         EdgeStore<Edges::Unit_Threatens_Hex>,
         EdgeStore<Edges::Unit_Occupies_Hex>,
@@ -145,19 +144,25 @@ public:
     template <typename EdgeT, typename NodeT>
     auto getAllEdgesBySrc(const NodeT & src) const
     {
-        return getStore<EdgeT>().bySrc(src);
+        return getStore<EdgeT>().getAllBySrc(src);
     }
 
     template <typename EdgeT, typename NodeT>
     auto getAllEdgesByDst(const NodeT & src) const
     {
-        return getStore<EdgeT>().byDst(src);
+        return getStore<EdgeT>().getAllByDst(src);
     }
 
     template <typename T>
     auto size() const
     {
         return getStore<T>().size();
+    }
+
+    template <typename T>
+    std::ptrdiff_t getId(const T & elem) const
+    {
+        return getStore<T>().getId(elem);
     }
 
     template <typename T>
@@ -173,19 +178,15 @@ public:
     getEdges(S15::Graph::ElementType t) const override;
 
     const AccessibilityInfo & getAccessibility() const;
-    const Nodes::Unit::Queue & getQueue() const;
 
     const ReachabilityInfo & getReachability(const CStack & cstack) const;
     bool isRUFR(const CStack & cstack, const BattleHex & bh) const;
 
     // Explicitly building caches allows to define getters as const.
     void buildAccessibilityCache();
-    void buildQueueCache(bool isMorale);
     void buildReachabilityCache();
-    void buildNeighbouringStacksCache();
 private:
     bool haveAccessibilityCache = false;
-    bool haveQueueCache = false;
     bool haveReachabilityCache = false;
 
     const CPlayerBattleCallback & battle;
@@ -194,10 +195,9 @@ private:
     detail::TNodeStores nodeStores;
     detail::TEdgeStores edgeStores;
 
+    std::unique_ptr<AccessibilityInfo> acache;
     std::unordered_map<uint32_t, ReachabilityInfo> rcache;
     std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
-    std::unique_ptr<AccessibilityInfo> acache;
-    std::unique_ptr<Nodes::Unit::Queue> queue;
 
     template <typename T>
     auto& getMutableStore() const

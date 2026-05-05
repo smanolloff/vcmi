@@ -18,10 +18,6 @@
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 
-#include <bitset>
-#include <map>
-#include <vector>
-
 namespace MMAI::BAI::V15::Graph::Nodes
 {
 namespace S15 = Schema::V15;
@@ -40,18 +36,8 @@ class Unit : public detail::Unit_Base
 	using StackFlag2 = S15::StackFlag2;
 	using StackFlags1 = S15::StackFlags1;
 	using StackFlags2 = S15::StackFlags2;
-
-	using BitQueue = std::bitset<S15::STACK_QUEUE_SIZE>;
-	using CreatureValues = std::map<CreatureID, int>;
-
-	static_assert(
-		S15::STACK_QUEUE_SIZE < std::numeric_limits<int>::digits,
-		"BitQueue must be convertible to int"
-	);
-
+	using CreatureValues = std::unordered_map<CreatureID, int>;
 public:
-	using Queue = std::vector<uint32_t>;
-
 	struct Stats
 	{
 		int dmgDealtNow = 0;
@@ -77,18 +63,17 @@ public:
 	};
 
 	static int GetValue(const CCreature* creature);
-	static std::pair<BitQueue, int> QBits(const CStack & cstack, const Queue& vec);
 
 	Unit(
 		const CStack & cstack,
-		const Queue & q,
-		const StatsContainer & statsContainer
+		const StatsContainer & statsContainer,
+		bool isActive
 	);
 
 	struct extra_index_type {
-		using result_type = const CStack &;
+		using result_type = uint32_t;
 		result_type operator()(const std::shared_ptr<Unit> & unit) const {
-			return unit->cstack;
+			return unit->cstack.unitId();
 		}
 	};
 

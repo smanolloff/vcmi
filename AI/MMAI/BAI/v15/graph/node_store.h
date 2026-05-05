@@ -5,6 +5,7 @@
 #include <boost/multi_index_container.hpp>
 
 #include <ranges>
+#include <stdexcept>
 
 namespace detail
 {
@@ -86,7 +87,7 @@ template <typename NodeType>
 class NodeStore
 {
 public:
-    using ElemPtr = std::shared_ptr<NodeType>;
+    using NodePtr = std::shared_ptr<NodeType>;
 
     NodeStore() = default;
 
@@ -101,9 +102,12 @@ public:
     // have better compile-time support and type hints.
     template <typename T>
         requires std::same_as<std::remove_cvref_t<T>, NodeType>
-    void add(T&& elem)
+    void add(T&& node)
     {
-        container.push_back(std::make_shared<NodeType>(std::forward<T>(elem)));
+        // Insertion fails when there is a duplicate in *any* unique index
+        auto [_, inserted] = container.push_back(std::make_shared<NodeType>(std::forward<T>(node)));
+        if(!inserted)
+            throw std::runtime_error(std::string(T::encoding_traits::name) + ": insertion failed. Duplicate index?");
     }
 
     std::shared_ptr<const NodeType> getById(std::size_t ind) const
@@ -144,7 +148,7 @@ public:
 
         // return std::ranges::subrange(idx.begin(), idx.end());
         return idx | std::views::transform(
-            [](const ElemPtr & ptr) -> const NodeType & {
+            [](const NodePtr & ptr) -> const NodeType & {
                 return *ptr;
             }
         );
@@ -155,6 +159,18 @@ public:
         return container.size();
     }
 
+    std::ptrdiff_t getId(const NodeType & node) const
+    {
+        const auto& identity_idx = container.template get<detail::by_ptr_identity>();
+
+        auto identity_it = identity_idx.find(&node);
+        if (identity_it == identity_idx.end())
+            throw std::runtime_error("getId: node not found");
+
+        const auto& ordinal_idx = container.template get<detail::by_ordinal_id>();
+        auto ordinal_it = container.template project<detail::by_ordinal_id>(identity_it);
+        return std::distance(ordinal_idx.begin(), ordinal_it);
+    }
 private:
     detail::MultiIndexNodeContainer<NodeType> container;
 };

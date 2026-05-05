@@ -30,8 +30,7 @@ namespace MMAI::Schema::V15::Graph
         EDGE_UNIT_BLOCKS_UNIT,
         EDGE_UNIT_MELEE_DMG_UNIT,       // regardless if reachable
         EDGE_UNIT_RANGED_DMG_UNIT,      // regardless if blocked
-        EDGE_UNIT_CAN_MELEE_UNIT,       // only if reachable
-        EDGE_UNIT_CAN_SHOOT_UNIT,       // only if blocked
+        EDGE_UNIT_THREATENS_UNIT,       // only if reachable
         EDGE_UNIT_ACTS_BEFORE_UNIT,
         EDGE_UNIT_THREATENS_HEX,
         EDGE_UNIT_OCCUPIES_HEX,
@@ -101,7 +100,6 @@ namespace MMAI::Schema::V15::Graph
             HP,
             HP_LEFT,
             SPEED,
-            QUEUE,
             VALUE_ONE,
             FLAGS1,
             FLAGS2,
@@ -183,8 +181,7 @@ namespace EdgeAttributes
             _count
         };
 
-        BLANK_ENUM_DEF(Unit_CanMelee_Unit);
-        BLANK_ENUM_DEF(Unit_CanShoot_Unit);
+        BLANK_ENUM_DEF(Unit_Threatens_Unit);
 
         enum class Unit_ActsBefore_Unit : uint8_t
         {
