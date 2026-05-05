@@ -63,8 +63,6 @@ template <typename EdgeType>
 class EdgeStore
 {
 public:
-    using EdgePtr = std::shared_ptr<EdgeType>;
-
     EdgeStore() = default;
 
     EdgeStore(const EdgeStore &) = delete;
@@ -72,18 +70,13 @@ public:
     EdgeStore(EdgeStore &&) = delete;
     EdgeStore & operator=(EdgeStore &&) = delete;
 
-    // "Perfect" forwarding function which reserves lvalue/rvalue category:
-    // lvalues are copied, rvalues are moved.
-    // Convenient for using .add() with plain rvalue objects because they
-    // have better compile-time support and type hints.
-    template <typename T>
-        requires std::same_as<std::remove_cvref_t<T>, EdgeType>
-    void add(T&& edge)
+    const EdgeType & add(const std::shared_ptr<EdgeType> edge)
     {
         // Insertion fails when there is a duplicate in *any* unique index
-        auto [_, inserted] = container.push_back(std::make_shared<EdgeType>(std::forward<T>(edge)));
+        auto [it, inserted] = container.push_back(edge);
         if(!inserted)
-            throw std::runtime_error(std::string(T::encoding_traits::name) + ": insertion failed. Duplicate index?");
+            throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": insertion failed. Duplicate index?");
+        return **it;
     }
 
     std::shared_ptr<const EdgeType> getById(std::size_t ind) const
@@ -109,7 +102,7 @@ public:
         // XXX: can't use entriesFrom here as the resulting range
         // is not detected as const for some reason
         return idx | std::views::transform(
-            [](const EdgePtr & ptr) -> const EdgeType & {
+            [](const std::shared_ptr<EdgeType> & ptr) -> const EdgeType & {
                 return *ptr;
             }
         );
@@ -154,7 +147,7 @@ private:
     {
         return std::ranges::subrange(first, last)
             | std::views::transform(
-                [](const EdgePtr& ptr) -> const EdgeType& {
+                [](const std::shared_ptr<EdgeType>& ptr) -> const EdgeType& {
                     return *ptr;
                 }
             );

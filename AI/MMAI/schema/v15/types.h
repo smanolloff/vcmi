@@ -42,7 +42,6 @@ enum class StackActState : uint8_t
 
 enum class HexState : uint8_t
 {
-	// IMPASSABLE, // obstacle/stack/gate(closed,attacker)
 	PASSABLE, //      empty/mine/firewall/gate(open)/gate(closed,defender), ...
 	STOPPING, //      moat/quicksand
 	DAMAGING_L, //    moat/mine/firewall
@@ -50,6 +49,7 @@ enum class HexState : uint8_t
 	SIEGE_WALL,
 	SIEGE_GATE,
 	SIEGE_BRIDGE,
+	OBSTACLE, //      permanent obstacles/indestructible walls/space between boats, ...
 	_count
 };
 
