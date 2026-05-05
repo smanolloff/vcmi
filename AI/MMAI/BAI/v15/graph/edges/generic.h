@@ -34,13 +34,16 @@ namespace S15 = Schema::V15;
  *     > {};
  */
 #define GENERIC_EDGE_ELEMENT(NodeA, Edge, NodeB) \
-class NodeA##_##Edge##_##NodeB : public Base<\
-    Nodes::NodeA, \
-    Nodes::NodeB, \
-    S15::EncodingTraits<S15::EdgeEncoding_##NodeA##_##Edge##_##NodeB> \
-> { \
+namespace detail \
+{ \
+    using NodeA##_##Edge##_##NodeB##_Traits = S15::EncodingTraits<S15::EdgeEncoding_##NodeA##_##Edge##_##NodeB>; \
+    using NodeA##_##Edge##_##NodeB##_Base = Base<Nodes::NodeA, Nodes::NodeB, NodeA##_##Edge##_##NodeB##_Traits>; \
+} \
+class NodeA##_##Edge##_##NodeB : public detail::NodeA##_##Edge##_##NodeB##_Base \
+{ \
 public: \
-    NodeA##_##Edge##_##NodeB(const Nodes::NodeA & a, const Nodes::NodeB & b) : Base(a, b) {} \
+    NodeA##_##Edge##_##NodeB(const Nodes::NodeA & a, const Nodes::NodeB & b) \
+    : detail::NodeA##_##Edge##_##NodeB##_Base(a, b) {} \
 }
 
 GENERIC_EDGE_ELEMENT(Action, ExposesTo, Unit);
@@ -49,8 +52,7 @@ GENERIC_EDGE_ELEMENT(Action, Damages, Unit);
 GENERIC_EDGE_ELEMENT(Action, EndsAt, Hex);
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Unit, Blocks, Unit);
-GENERIC_EDGE_ELEMENT(Unit, CanMelee, Unit);
-GENERIC_EDGE_ELEMENT(Unit, CanShoot, Unit);
+GENERIC_EDGE_ELEMENT(Unit, Threatens, Unit);
 GENERIC_EDGE_ELEMENT(Unit, Threatens, Hex);
 GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
 

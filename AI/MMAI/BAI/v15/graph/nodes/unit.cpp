@@ -30,40 +30,16 @@ int Unit::GetValue(const CCreature* creature)
     return it->second;
 }
 
-std::pair<Unit::BitQueue, int> Unit::QBits(const CStack & cstack, const Queue & vec)
-{
-    BitQueue q;
-    int pos = -1;
-
-    if(vec.size() != S15::STACK_QUEUE_SIZE)
-        throw std::runtime_error("Unexpected queue size: " + std::to_string(vec.size()));
-
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
-        if(vec[i] == cstack.unitId())
-        {
-            q.set(i);
-            if(pos < 0)
-                pos = static_cast<int>(i);
-        }
-    }
-
-    return {q, pos};
-}
-
 Unit::Unit(
     const CStack & cstack,
-    const Queue & q,
-    const StatsContainer & statsContainer
+    const StatsContainer & statsContainer,
+    bool isActive
 ) : cstack(cstack)
 {
     const auto & stackStats = statsContainer.stackStats;
 
     int slot = CalculateSlot(cstack);
     alias = CalculateAlias(slot);
-
-    auto [qbits, pos] = QBits(cstack, q);
-    qposFirst = pos;
 
     processBonuses();
 
@@ -85,7 +61,7 @@ Unit::Unit(
     if(cstack.occupiedHex().isAvailable())
         setflag(StackFlag1::IS_WIDE);
 
-    if(qbits.test(0))
+    if(isActive)
         setflag(StackFlag1::IS_ACTIVE);
 
     shots = cstack.shots.available();
@@ -115,7 +91,6 @@ Unit::Unit(
     setattr(UA::HP, cstack.getMaxHealth());
     setattr(UA::HP_LEFT, cstack.getFirstHPleft());
     setattr(UA::SPEED, cstack.getMovementRange());
-    setattr(UA::QUEUE, static_cast<int>(qbits.to_ulong()));
     setattr(UA::VALUE_ONE, valueOne);
     setattr(UA::VALUE_REL, permille(value, statsContainer.bfieldValueNow));
     setattr(UA::VALUE_REL0, permille(value, statsContainer.bfieldValueStart));

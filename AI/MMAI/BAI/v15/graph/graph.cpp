@@ -71,10 +71,8 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Edges::Action_By_Unit>());
         case ET::EDGE_UNIT_BLOCKS_UNIT:
             return convert(getAll<Edges::Unit_Blocks_Unit>());
-        case ET::EDGE_UNIT_CAN_MELEE_UNIT:
-            return convert(getAll<Edges::Unit_CanMelee_Unit>());
-        case ET::EDGE_UNIT_CAN_SHOOT_UNIT:
-            return convert(getAll<Edges::Unit_CanShoot_Unit>());
+        case ET::EDGE_UNIT_THREATENS_UNIT:
+            return convert(getAll<Edges::Unit_Threatens_Unit>());
         case ET::EDGE_UNIT_THREATENS_HEX:
             return convert(getAll<Edges::Unit_Threatens_Hex>());
         case ET::EDGE_UNIT_OCCUPIES_HEX:
@@ -173,59 +171,4 @@ bool Graph::isRUFR(const CStack & cstack, const BattleHex & bh) const
     return it->second.at(bh.toInt());
 }
 
-// result is a vector<UnitID>
-// XXX: there is a bug in VCMI when high morale occurs:
-//      - the stack acts as if it's already the next unit's turn
-//      - as a result, QueuePos for the ACTIVE stack is non-0
-//        while the QueuePos for the next (non-active) stack is 0
-// (this applies only to good morale; bad morale simply skips turn)
-// As a workaround, a "isMorale" flag is passed whenever the astack is
-// acting because of high morale and queue is "shifted" accordingly.
-const Nodes::Unit::Queue & Graph::getQueue() const
-{
-    ASSERT(haveQueueCache, "getQueue: cache not built");
-
-    return *queue;
-}
-
-void Graph::buildQueueCache(bool isMorale)
-{
-    ASSERT(!haveQueueCache, "buildQueueCache: cache already built");
-    haveQueueCache = true;
-
-    queue = std::make_unique<Nodes::Unit::Queue>();
-
-    auto tmp = std::vector<battle::Units>{};
-    battle.battleGetTurnOrder(tmp, S15::STACK_QUEUE_SIZE, 0);
-    for(const auto & units : tmp)
-    {
-        for(const auto & unit : units)
-        {
-            if(queue->size() < S15::STACK_QUEUE_SIZE)
-                queue->push_back(unit->unitId());
-            else
-                break;
-        }
-    }
-
-    // XXX: TODO: FIXME: this must be set to NULLPTR on battle start/end
-    const auto * astack = battle.battleActiveUnit();
-
-    // XXX: after morale, battleGetTurnOrder() returns wrong order
-    //      (where a non-active stack is first)
-    //      The active stack *must* be first-in-queue
-    if(isMorale && astack && queue->at(0) != astack->unitId())
-    {
-        // logAi->debug("Morale triggered -- will rearrange stack queue");
-        std::rotate(queue->rbegin(), queue->rbegin() + 1, queue->rend());
-        queue->at(0) = astack->unitId();
-    }
-    else
-    {
-        // the only scenario where the active stack is not first in queue
-        // is at battle end (i.e. no active stack)
-        // assert(astack == nullptr || res.at(0) == astack->unitId());
-        ASSERT(astack == nullptr || queue->at(0) == astack->unitId(), "queue[0] is not the currently active stack!");
-    }
-}
 } // namespace
