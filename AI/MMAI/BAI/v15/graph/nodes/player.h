@@ -21,7 +21,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Player_Traits = S15::EncodingTraits<S15::NodeEncoding_Player>;
+	using Player_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Player>;
 	using Player_Base = Base<Player_Traits>;
 }
 

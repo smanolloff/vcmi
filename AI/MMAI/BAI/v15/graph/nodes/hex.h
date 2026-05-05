@@ -31,7 +31,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Hex_Traits = S15::EncodingTraits<S15::NodeEncoding_Hex>;
+	using Hex_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Hex>;
 	using Hex_Base = Base<Hex_Traits>;
 }
 

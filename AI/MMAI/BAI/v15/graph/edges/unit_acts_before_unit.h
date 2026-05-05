@@ -20,7 +20,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Unit_ActsBefore_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_ActsBefore_Unit>;
+	using Unit_ActsBefore_Unit_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Unit_ActsBefore_Unit>;
 	using Unit_ActsBefore_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_ActsBefore_Unit_Traits>;
 }
 

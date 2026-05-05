@@ -21,7 +21,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-    using Action_Traits = S15::EncodingTraits<S15::NodeEncoding_Action>;
+    using Action_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Action>;
     using Action_Base = Base<Action_Traits>;
 }
 
@@ -35,13 +35,7 @@ class Action : public detail::Action_Base
 public:
     explicit Action(int action)
     {
-        setattr(A::ID, action);
-        static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
-    }
-
-    void addattr(PA a, int value)
-    {
-        attrs.at(EU(a)) += value;
+        static_assert(EU(A::_count) == 0);
     }
 };
 }

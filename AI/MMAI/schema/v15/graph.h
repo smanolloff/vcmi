@@ -17,27 +17,54 @@ namespace MMAI::Schema::V15::Graph
 {
     enum class ElementType : uint8_t
     {
-        NODE_ACTION,
         NODE_GLOBAL,
         NODE_PLAYER,
         NODE_UNIT,
         NODE_HEX,
-        EDGE_ACTION_EXPOSES_TO_UNIT,
-        EDGE_ACTION_THREATENS_UNIT,
-        EDGE_ACTION_DAMAGES_UNIT,
-        EDGE_ACTION_ENDS_AT_HEX,
-        EDGE_ACTION_BY_UNIT,
-        EDGE_UNIT_BLOCKS_UNIT,
-        EDGE_UNIT_MELEE_DMG_UNIT,       // regardless if reachable
-        EDGE_UNIT_RANGED_DMG_UNIT,      // regardless if blocked
-        EDGE_UNIT_THREATENS_UNIT,       // only if reachable
-        EDGE_UNIT_ACTS_BEFORE_UNIT,
-        EDGE_UNIT_THREATENS_HEX,
-        EDGE_UNIT_OCCUPIES_HEX,
+        NODE_ACTION,
+        NODE_ACTACTION,
+
         EDGE_HEX_ADJACENT_HEX,
+        EDGE_UNIT_ACTS_BEFORE_UNIT,
+        EDGE_UNIT_MELEE_DMG_UNIT,      // regardless if reachable
+        EDGE_UNIT_SHOOT_DMG_UNIT,      // regardless if blocked
+        EDGE_UNIT_BLOCKS_UNIT,
+        EDGE_UNIT_OCCUPIES_HEX,
+
+        EDGE_ACTION_BY_UNIT,
+        EDGE_ACTION_BLOCKS_UNIT,
+        EDGE_ACTION_ENDS_AT_HEX,
+        EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
+        EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
+        EDGE_ACTION_MELEES_UNIT,
+        EDGE_ACTION_SHOOTS_UNIT,
+        EDGE_ACTION_THREATENS_UNIT,
+
+        // EDGE_UNIT_THREATENS_HEX,        // 99% overlap with EDGE_ACTION_ENDS_AT
+        // EDGE_UNIT_THREATENS_UNIT,       // 100% overlap with EDGE_ACTION_DAMAGES_UNIT
+
+#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+        // can explode to 350K for 14 archangels
+        EDGE_ACTION_THREATENS_HEX,
+#endif
+
+        EDGE_ACTACTION_BY_UNIT,
+        EDGE_ACTACTION_BLOCKS_UNIT,
+        EDGE_ACTACTION_ENDS_AT_HEX,
+        EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT,
+        EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
+        EDGE_ACTACTION_MELEES_UNIT,
+        EDGE_ACTACTION_SHOOTS_UNIT,
+        EDGE_ACTACTION_THREATENS_UNIT,
+        EDGE_ACTACTION_THREATENS_HEX,
 
         _count
     };
+
+    #define BLANK_ENUM_DEF(name)    \
+    enum class name : uint8_t {     \
+        _count                      \
+    }
 
     namespace NodeAttributes
     {
@@ -132,7 +159,11 @@ namespace MMAI::Schema::V15::Graph
             _count
         };
 
-        enum class Action : uint8_t
+        // Action = action by ANY unit
+        BLANK_ENUM_DEF(Action);
+
+        // Actaction = action by ACTIVE unit
+        enum class Actaction : uint8_t
         {
             ID, // 0..N_ACTIONS
 
@@ -142,17 +173,20 @@ namespace MMAI::Schema::V15::Graph
 
 namespace EdgeAttributes
     {
-        #define BLANK_ENUM_DEF(name)    \
-        enum class name : uint8_t {     \
-            _count                      \
-        }
+        enum class Hex_Adjacent_Hex : uint8_t
+        {
+            DIRECTION,
+            _count
+        };
 
-        BLANK_ENUM_DEF(Action_ExposesTo_Unit);
-        BLANK_ENUM_DEF(Action_Threatens_Unit);
-        BLANK_ENUM_DEF(Action_Damages_Unit);
-        BLANK_ENUM_DEF(Action_EndsAt_Hex);
-        BLANK_ENUM_DEF(Action_By_Unit);
         BLANK_ENUM_DEF(Unit_Blocks_Unit);
+        BLANK_ENUM_DEF(Unit_Occupies_Hex);
+
+        enum class Unit_ActsBefore_Unit : uint8_t
+        {
+            TIMES,
+            _count
+        };
 
         enum class Unit_MeleeDmg_Unit : uint8_t
         {
@@ -170,7 +204,7 @@ namespace EdgeAttributes
             _count
         };
 
-        enum class Unit_RangedDmg_Unit : uint8_t
+        enum class Unit_ShootDmg_Unit : uint8_t
         {
             ATTACK_DMG_MEAN_REL_OTHER,
             ATTACK_DMG_MEAN_REL_BF,
@@ -181,22 +215,31 @@ namespace EdgeAttributes
             _count
         };
 
-        BLANK_ENUM_DEF(Unit_Threatens_Unit);
+        BLANK_ENUM_DEF(Action_By_Unit);
+        BLANK_ENUM_DEF(Action_Blocks_Unit);
+        BLANK_ENUM_DEF(Action_EndsAt_Hex);
+        BLANK_ENUM_DEF(Action_ExposesToMeleeFrom_Unit);
+        BLANK_ENUM_DEF(Action_ExposesToShootFrom_Unit);
+        BLANK_ENUM_DEF(Action_Melees_Unit);
+        BLANK_ENUM_DEF(Action_Shoots_Unit);
+        BLANK_ENUM_DEF(Action_Threatens_Unit);
 
-        enum class Unit_ActsBefore_Unit : uint8_t
-        {
-            TIMES,
-            _count
-        };
+#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+        BLANK_ENUM_DEF(Action_Threatens_Hex);
+#endif
 
-        BLANK_ENUM_DEF(Unit_Threatens_Hex);
-        BLANK_ENUM_DEF(Unit_Occupies_Hex);
+        BLANK_ENUM_DEF(Actaction_By_Unit);
+        BLANK_ENUM_DEF(Actaction_Blocks_Unit);
+        BLANK_ENUM_DEF(Actaction_EndsAt_Hex);
+        BLANK_ENUM_DEF(Actaction_ExposesToMeleeFrom_Unit);
+        BLANK_ENUM_DEF(Actaction_ExposesToShootFrom_Unit);
+        BLANK_ENUM_DEF(Actaction_Melees_Unit);
+        BLANK_ENUM_DEF(Actaction_Shoots_Unit);
+        BLANK_ENUM_DEF(Actaction_Threatens_Unit);
+        BLANK_ENUM_DEF(Actaction_Threatens_Hex);
 
-        enum class Hex_Adjacent_Hex : uint8_t
-        {
-            DIRECTION,
-            _count
-        };
+        // 6 nodes, 21 edges
+        static_assert(static_cast<int>(ElementType::_count) == 6 + 23);
     };
 
     class INode

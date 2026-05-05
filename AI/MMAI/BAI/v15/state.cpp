@@ -560,15 +560,15 @@ namespace
 		}
 	}
 
-	void AddEdges_Unit_RangedDmg_Unit(
+	void AddEdges_Unit_ShootDmg_Unit(
 		std::shared_ptr<Graph::Graph> & G,
 		GraphBits & added,
 		const CPlayerBattleCallback & battle,
 		const State::GlobalStats & stats)
 	{
 		ASSERT(added.test(EU(ET::EDGE_UNIT_MELEE_DMG_UNIT)), "Elements of type EDGE_UNIT_MELEE_DMG_UNIT must be added first");
-		ASSERT(!added.test(EU(ET::EDGE_UNIT_RANGED_DMG_UNIT)), "Elements of type EDGE_UNIT_RANGED_DMG_UNIT already added");
-		added.set(EU(ET::EDGE_UNIT_RANGED_DMG_UNIT));
+		ASSERT(!added.test(EU(ET::EDGE_UNIT_SHOOT_DMG_UNIT)), "Elements of type EDGE_UNIT_SHOOT_DMG_UNIT already added");
+		added.set(EU(ET::EDGE_UNIT_SHOOT_DMG_UNIT));
 
 		// RANGED_DMG edges use a subset of the MELEE_DMG edge nodes
 		// (all ranged units can also melee)
@@ -583,7 +583,7 @@ namespace
 			const auto & ostack = other.cstack;
 			const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, true);
 			const auto estimate = battle.battleEstimateDamage(attinfo);
-			G->add(Graph::Edges::Unit_RangedDmg_Unit(
+			G->add(Graph::Edges::Unit_ShootDmg_Unit(
 				unit,
 				other,
 				estimate,
@@ -597,13 +597,13 @@ namespace
 		std::shared_ptr<Graph::Graph> & G,
 		GraphBits & added)
 	{
-		ASSERT(added.test(EU(ET::EDGE_UNIT_RANGED_DMG_UNIT)), "Elements of type EDGE_UNIT_RANGED_DMG_UNIT must be added first");
+		ASSERT(added.test(EU(ET::EDGE_UNIT_SHOOT_DMG_UNIT)), "Elements of type EDGE_UNIT_SHOOT_DMG_UNIT must be added first");
 		ASSERT(!added.test(EU(ET::EDGE_UNIT_BLOCKS_UNIT)), "Elements of type EDGE_UNIT_BLOCKS_UNIT already added");
 		added.set(EU(ET::EDGE_UNIT_BLOCKS_UNIT));
 
 		// BLOCKS edges use a subset of the RANGED_DMG edge nodes
 		// (all blocked units must be ranged units)
-		for(const auto & edge : G->getAll<Graph::Edges::Unit_RangedDmg_Unit>())
+		for(const auto & edge : G->getAll<Graph::Edges::Unit_ShootDmg_Unit>())
 		{
 			const auto & unit = edge.srcNode;
 			const auto & cstack = unit.cstack;
@@ -626,6 +626,8 @@ namespace
 		}
 	}
 
+	/* REDUNDANT because it is just saves 1 message passing layer compared
+		to UNIT_THREATENS_HEX.
 	void AddEdges_Unit_Threatens_Unit(
 		std::shared_ptr<Graph::Graph> & G,
 		GraphBits & added)
@@ -655,7 +657,13 @@ namespace
 			}
 		}
 	}
+	*/
 
+	/* REDUNDANT because Action_ExposesToMeleeFrom_Unit gives better version
+		of the same info. Difference is
+		1/ the direction
+		2/ stone golems at opposite sides - it is irrelevant that each can
+			"threaten" 3 hexes when they are so far
 	void AddEdges_Unit_Threatens_Hex(
 		std::shared_ptr<Graph::Graph> & G,
 		GraphBits & added)
@@ -684,8 +692,8 @@ namespace
 				}
 			}
 		}
-
 	}
+	*/
 
 }
 
@@ -727,13 +735,13 @@ void State::onActiveStack(
 	AddEdges_Unit_Occupies_Hex(G, added);
 	AddEdges_Unit_ActsBefore_Unit(G, added, battle);
 	AddEdges_Unit_MeleeDmg_Unit(G, added, battle, stats);
-	AddEdges_Unit_RangedDmg_Unit(G, added, battle, stats);
+	AddEdges_Unit_ShootDmg_Unit(G, added, battle, stats);
 	AddEdges_Unit_Blocks_Unit(G, added);
-	AddEdges_Unit_Threatens_Unit(G, added);
-	AddEdges_Unit_Threatens_Hex(G, added);
+	// AddEdges_Unit_Threatens_Unit(G, added);
+	// AddEdges_Unit_Threatens_Hex(G, added);
 
 	// Added last
-	// AddActionNodes()
+	// AddActionNodes() // also adds Actaction nodes
 	// AddEdges_ActionExposesTo_Unit()
 	// AddEdges_ActionThreatens_Unit()
 	// AddEdges_ActionDamages_Unit()
@@ -772,7 +780,7 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		auto bf_hpNow = lastStats.leftHp + lastStats.rightHp;
 		auto value = elem.killedAmount * Graph::Nodes::Unit::GetValue(defender->unitType());
 
-		attackLogs.emplace_back(AttackLog(
+		attackLogs.emplace_back(
 			attacker,
 			*defender,
 			static_cast<int>(elem.damageAmount),
@@ -780,7 +788,7 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 			static_cast<int>(elem.killedAmount),
 			static_cast<int>(value),
 			static_cast<int>(1000 * value / bf_valueNow)
-		));
+		);
 	}
 }
 

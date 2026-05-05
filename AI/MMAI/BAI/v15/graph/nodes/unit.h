@@ -24,7 +24,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Unit_Traits = S15::EncodingTraits<S15::NodeEncoding_Unit>;
+	using Unit_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Unit>;
 	using Unit_Base = Base<Unit_Traits>;
 }
 

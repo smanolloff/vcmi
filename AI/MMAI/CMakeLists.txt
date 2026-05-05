@@ -89,7 +89,7 @@ set(MMAI_FILES
   BAI/v15/graph/edges/hex_adjacent_hex.h
   BAI/v15/graph/edges/unit_acts_before_unit.h
   BAI/v15/graph/edges/unit_melee_dmg_unit.h
-  BAI/v15/graph/edges/unit_ranged_dmg_unit.h
+  BAI/v15/graph/edges/unit_shoot_dmg_unit.h
   BAI/v15/graph/element.h
   BAI/v15/graph/element_store.h
   BAI/v15/graph/graph.cpp
