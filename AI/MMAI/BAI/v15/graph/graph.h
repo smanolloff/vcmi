@@ -117,12 +117,10 @@ public:
     Graph(Graph &&) = delete;
     Graph & operator=(Graph &&) = delete;
 
-    // "Perfect" forwarding function which preserves lvalue/rvalue category:
-    // lvalues are copied, rvalues are moved.
     template <typename T>
-    void add(T&& elem)
+    auto & add(const std::shared_ptr<T> & elem)
     {
-        getMutableStore<T>().add(std::forward<T>(elem));
+        return getMutableStore<T>().add(elem);
     }
 
     template <typename T>
@@ -179,7 +177,13 @@ public:
     template <typename T>
     const auto& getStore() const
     {
-        return getMutableStore<T>();
+        using U = std::remove_cvref_t<T>;
+        if constexpr (detail::is_stored_node_v<U>)
+            return std::get<NodeStore<U>>(nodeStores);
+        else if constexpr (detail::is_stored_edge_v<U>)
+            return std::get<EdgeStore<U>>(edgeStores);
+        else
+            static_assert(detail::always_false_v<U>, "type is not a stored node/edge");
     }
 
     std::vector<const S15::Graph::INode*>
@@ -210,8 +214,9 @@ private:
     std::unordered_map<uint32_t, ReachabilityInfo> rcache;
     std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
 
+    // identical to getStore(), but returned type is non-const
     template <typename T>
-    auto& getMutableStore() const
+    auto& getMutableStore()
     {
         using U = std::remove_cvref_t<T>;
         if constexpr (detail::is_stored_node_v<U>)

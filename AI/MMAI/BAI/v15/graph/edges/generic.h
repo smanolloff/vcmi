@@ -43,8 +43,7 @@ namespace detail \
 class NodeA##_##Edge##_##NodeB : public detail::NodeA##_##Edge##_##NodeB##_Base \
 { \
 public: \
-    NodeA##_##Edge##_##NodeB(const Nodes::NodeA & a, const Nodes::NodeB & b) \
-    : detail::NodeA##_##Edge##_##NodeB##_Base(a, b) {} \
+    using detail::NodeA##_##Edge##_##NodeB##_Base::NodeA##_##Edge##_##NodeB##_Base; \
     static_assert(EU(A::_count) == 0, "generic edges cannot have attributes"); \
 }
 

@@ -94,6 +94,7 @@ void Hex::setStateMask(
         {
             case CObstacleInstance::USUAL:
             case CObstacleInstance::ABSOLUTE_OBSTACLE:
+                statemask.set(EU(HS::OBSTACLE));
                 statemask.reset(EU(HS::PASSABLE));
                 break;
 
@@ -143,9 +144,11 @@ void Hex::setStateMask(
             break;
 
         case EAccessibility::OBSTACLE:
+        case EAccessibility::UNAVAILABLE:
+            statemask.set(EU(HS::OBSTACLE));
+            // no break
         case EAccessibility::ALIVE_STACK:
         case EAccessibility::DESTRUCTIBLE_WALL:
-        case EAccessibility::UNAVAILABLE:
             statemask.reset(EU(HS::PASSABLE));
             break;
 

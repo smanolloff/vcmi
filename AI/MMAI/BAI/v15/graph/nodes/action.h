@@ -31,11 +31,6 @@ class Action : public detail::Action_Base
     using CombatResult = Schema::V15::CombatResult;
     using TowerFlags = std::bitset<3>;
     using CorpseFlags = std::bitset<2>;
-
-public:
-    explicit Action(int action)
-    {
-        static_assert(EU(A::_count) == 0);
-    }
+    static_assert(EU(A::_count) == 0);
 };
 }

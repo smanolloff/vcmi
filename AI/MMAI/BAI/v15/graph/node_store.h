@@ -4,6 +4,7 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index_container.hpp>
 
+#include <memory>
 #include <ranges>
 #include <stdexcept>
 
@@ -87,8 +88,6 @@ template <typename NodeType>
 class NodeStore
 {
 public:
-    using NodePtr = std::shared_ptr<NodeType>;
-
     NodeStore() = default;
 
     NodeStore(const NodeStore &) = delete;
@@ -96,18 +95,13 @@ public:
     NodeStore(NodeStore &&) = delete;
     NodeStore & operator=(NodeStore &&) = delete;
 
-    // "Perfect" forwarding function which reserves lvalue/rvalue category:
-    // lvalues are copied, rvalues are moved.
-    // Convenient for using .add() with plain rvalue objects because they
-    // have better compile-time support and type hints.
-    template <typename T>
-        requires std::same_as<std::remove_cvref_t<T>, NodeType>
-    void add(T&& node)
+    const NodeType & add(const std::shared_ptr<NodeType> & node)
     {
         // Insertion fails when there is a duplicate in *any* unique index
-        auto [_, inserted] = container.push_back(std::make_shared<NodeType>(std::forward<T>(node)));
+        auto [it, inserted] = container.push_back(node);
         if(!inserted)
-            throw std::runtime_error(std::string(T::encoding_traits::name) + ": insertion failed. Duplicate index?");
+            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": insertion failed. Duplicate index?");
+        return **it;
     }
 
     std::shared_ptr<const NodeType> getById(std::size_t ind) const
@@ -148,7 +142,7 @@ public:
 
         // return std::ranges::subrange(idx.begin(), idx.end());
         return idx | std::views::transform(
-            [](const NodePtr & ptr) -> const NodeType & {
+            [](const std::shared_ptr<NodeType> & ptr) -> const NodeType & {
                 return *ptr;
             }
         );
