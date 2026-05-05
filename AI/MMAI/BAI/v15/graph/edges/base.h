@@ -18,7 +18,7 @@ public:
     // (needed due to dependent name lookup rules in C++ templates)
     using Element<S15::Graph::IEdge, EncTraits>::attrs;
     using Element<S15::Graph::IEdge, EncTraits>::setattr;
-    using A = typename EncTraits::attr_type;
+    using A = typename EncTraits::A;
 
     Base(
         const SrcNode & srcNode,

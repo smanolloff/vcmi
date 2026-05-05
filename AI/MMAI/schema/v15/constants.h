@@ -67,48 +67,7 @@ namespace X
 	inline constexpr auto LZ = Encoding::LINNORM_ZERO_NULL;
 
 	inline constexpr auto RAW = Encoding::RAW;
-
-	using AA = Graph::NodeAttributes::Action;
-	using GA = Graph::NodeAttributes::Global;
-	using PA = Graph::NodeAttributes::Player;
-	using UA = Graph::NodeAttributes::Unit;
-	using HA = Graph::NodeAttributes::Hex;
-
-	using EA_Unit_MeleeDmg_Unit = Graph::EdgeAttributes::Unit_MeleeDmg_Unit;
-	using EA_Unit_RangedDmg_Unit = Graph::EdgeAttributes::Unit_RangedDmg_Unit;
-	using EA_Unit_ActsBefore_Unit = Graph::EdgeAttributes::Unit_ActsBefore_Unit;
-	using EA_Hex_Adjacent_Hex = Graph::EdgeAttributes::Hex_Adjacent_Hex;
-
-	/*
-	 * The encoding schema `{a, e, n, vmax, p}`, where:
-	 * a=attribute
-	 * e=encoding
-	 * n=size
-	 * vmax=max_value
-	 * p=param (encoding-specific)
-	 */
-	using E5A = std::tuple<AA, Encoding, int, int, double>;
-	using E5G = std::tuple<GA, Encoding, int, int, double>;
-	using E5P = std::tuple<PA, Encoding, int, int, double>;
-	using E5U = std::tuple<UA, Encoding, int, int, double>;
-	using E5H = std::tuple<HA, Encoding, int, int, double>;
-
-	using E5E_Unit_MeleeDmg_Unit = std::tuple<EA_Unit_MeleeDmg_Unit, Encoding, int, int, double>;
-	using E5E_Unit_RangedDmg_Unit = std::tuple<EA_Unit_RangedDmg_Unit, Encoding, int, int, double>;
-	using E5E_Unit_ActsBefore_Unit = std::tuple<EA_Unit_ActsBefore_Unit, Encoding, int, int, double>;
-	using E5E_Hex_Adjacent_Hex = std::tuple<EA_Hex_Adjacent_Hex, Encoding, int, int, double>;
 }
-
-using NodeEncoding_Action = std::array<X::E5A, EI(X::AA::_count)>;
-using NodeEncoding_Global = std::array<X::E5G, EI(X::GA::_count)>;
-using NodeEncoding_Player = std::array<X::E5P, EI(X::PA::_count)>;
-using NodeEncoding_Unit = std::array<X::E5U, EI(X::UA::_count)>;
-using NodeEncoding_Hex = std::array<X::E5H, EI(X::HA::_count)>;
-
-using EdgeEncoding_Unit_MeleeDmg_Unit = std::array<X::E5E_Unit_MeleeDmg_Unit, EI(Graph::EdgeAttributes::Unit_MeleeDmg_Unit::_count)>;
-using EdgeEncoding_Unit_RangedDmg_Unit = std::array<X::E5E_Unit_RangedDmg_Unit, EI(Graph::EdgeAttributes::Unit_RangedDmg_Unit::_count)>;
-using EdgeEncoding_Unit_ActsBefore_Unit = std::array<X::E5E_Unit_ActsBefore_Unit, EI(Graph::EdgeAttributes::Unit_ActsBefore_Unit::_count)>;
-using EdgeEncoding_Hex_Adjacent_Hex = std::array<X::E5E_Hex_Adjacent_Hex, EI(Graph::EdgeAttributes::Hex_Adjacent_Hex::_count)>;
 
 /*
  * Compile-time constructor for E5H and E5S tuples
@@ -226,143 +185,157 @@ constexpr auto STACK_VALUE_SLOPE = 6.5;
 
 constexpr auto MAX_WALL_HEALTH = 3;  // can be increased via mod tho
 
-template <typename EncDef>
+namespace detail
+{
+	template <typename AttrType>
+	struct EncodingTraitsBase
+	{
+		/*
+		 * attr_enc_schema_type is the `{a, e, n, vmax, p}` tuple, where:
+		 *   a=attribute
+		 *   e=encoding
+		 *   n=size
+		 *   vmax=max_value
+		 *   p=param (encoding-specific)
+		 */
+		using A = AttrType;
+		using attr_enc_schema_type = std::tuple<AttrType, Encoding, int, int, double>;
+		using encoding_type = std::array<attr_enc_schema_type, EI(AttrType::_count)>;
+	    static constexpr std::size_t attr_count = EI(AttrType::_count);
+	};
+}
+
+template <typename AttrType>
 struct EncodingTraits;
 
 template <>
-struct EncodingTraits<NodeEncoding_Action>
+struct EncodingTraits<Graph::NodeAttributes::Global>
+: detail::EncodingTraitsBase<Graph::NodeAttributes::Global>
 {
-	using attr_type = X::AA;
-    static constexpr auto element_type = Graph::ElementType::NODE_ACTION;
-    static constexpr std::string_view name = "ACTION_ENCODING";
-    static constexpr std::size_t attr_count = EI(X::AA::_count);
-
-    static constexpr NodeEncoding_Action encoding = {
-		E5(X::AA::ID, X::RAW, N_ACTIONS),
-	};
-};
-
-template <>
-struct EncodingTraits<NodeEncoding_Global>
-{
-	using attr_type = X::GA;
     static constexpr auto element_type = Graph::ElementType::NODE_GLOBAL;
     static constexpr std::string_view name = "GLOBAL_ENCODING";
-    static constexpr std::size_t attr_count = EI(X::GA::_count);
-
-    static constexpr NodeEncoding_Global encoding = {
+    static constexpr encoding_type encoding = {
 		// LS is the correct encoding for BATTLE_ROUND, but since it replaces BATTLE_SIDE
 		// which had n=2 => use LE to keep the dimensions unchanged.
-		E5(X::GA::BATTLE_ROUND, X::LE, MAX_ROUNDS + 1),
-		E5(X::GA::BATTLE_SIDE_ACTIVE_PLAYER, X::CE, 1), // NULL means no battle
-		E5(X::GA::BATTLE_WINNER, X::CE, 1), // NULL means ongoing battle
-		E5(X::GA::BFIELD_VALUE_START_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(X::GA::BFIELD_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(X::GA::BFIELD_VALUE_NOW_REL0, X::LS, 1000), // bfield_value_now / bfield_value_at_start
-		E5(X::GA::BFIELD_HP_START_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(X::GA::BFIELD_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(X::GA::BFIELD_HP_NOW_REL0, X::LS, 1000), // bfield_hp_now / bfield_hp_at_start
-		E5(X::GA::SIEGE_TOWERS, X::BS, (1 << 3) - 1),
-		E5(X::GA::SIEGE_CORPSES, X::BS, (1 << 2) - 1),
+		E5(A::BATTLE_ROUND, X::LE, MAX_ROUNDS + 1),
+		E5(A::BATTLE_SIDE_ACTIVE_PLAYER, X::CE, 1), // NULL means no battle
+		E5(A::BATTLE_WINNER, X::CE, 1), // NULL means ongoing battle
+		E5(A::BFIELD_VALUE_START_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
+		E5(A::BFIELD_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
+		E5(A::BFIELD_VALUE_NOW_REL0, X::LS, 1000), // bfield_value_now / bfield_value_at_start
+		E5(A::BFIELD_HP_START_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
+		E5(A::BFIELD_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
+		E5(A::BFIELD_HP_NOW_REL0, X::LS, 1000), // bfield_hp_now / bfield_hp_at_start
+		E5(A::SIEGE_TOWERS, X::BS, (1 << 3) - 1),
+		E5(A::SIEGE_CORPSES, X::BS, (1 << 2) - 1),
 	};
 };
 
 template <>
-struct EncodingTraits<NodeEncoding_Player>
+struct EncodingTraits<Graph::NodeAttributes::Player>
+: detail::EncodingTraitsBase<Graph::NodeAttributes::Player>
 {
-	using attr_type = X::PA;
     static constexpr auto element_type = Graph::ElementType::NODE_PLAYER;
     static constexpr std::string_view name = "PLAYER_ENCODING";
-    static constexpr std::size_t attr_count = EI(X::PA::_count);
-
-    static constexpr NodeEncoding_Player encoding = {
-		E5(X::PA::BATTLE_SIDE, X::CS, 1),
-		E5(X::PA::ARMY_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(X::PA::ARMY_VALUE_NOW_REL, X::LS, 1000), //     (army_value_now / global_value_now)
-		E5(X::PA::ARMY_VALUE_NOW_REL0, X::LS, 1000), //    (army_value_now / global_value_at_start)
-		E5(X::PA::ARMY_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(X::PA::ARMY_HP_NOW_REL, X::LS, 1000), //        (army_hp_now / global_hp_now)
-		E5(X::PA::ARMY_HP_NOW_REL0, X::LS, 1000), //       (army_hp_now / global_hp_at_start)
-		E5(X::PA::VALUE_KILLED_NOW_ABS, X::ES, VALUE_KILLED_NOW_MAX, VALUE_KILLED_NOW_SLOPE),
-		E5(X::PA::VALUE_KILLED_NOW_REL, X::LS, 1000), //   (value_killed_this_turn / global_value_last_turn)
-		E5(X::PA::VALUE_KILLED_ACC_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(X::PA::VALUE_KILLED_ACC_REL0, X::LS, 1000), //  (value_killed_lifetime / global_value_at_start)
-		E5(X::PA::VALUE_LOST_NOW_ABS, X::ES, VALUE_KILLED_NOW_MAX, VALUE_KILLED_NOW_SLOPE),
-		E5(X::PA::VALUE_LOST_NOW_REL, X::LS, 1000), //     (value_lost_this_turn / global_value_last_turn)
-		E5(X::PA::VALUE_LOST_ACC_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(X::PA::VALUE_LOST_ACC_REL0, X::LS, 1000), //    (value_lost_lifetime / global_value_at_start)
-		E5(X::PA::DMG_DEALT_NOW_ABS, X::ES, DMG_DEALT_NOW_MAX, DMG_DEALT_NOW_SLOPE),
-		E5(X::PA::DMG_DEALT_NOW_REL, X::LS, 1000), //      (dmg_dealt_this_turn / global_hp_last_turn)
-		E5(X::PA::DMG_DEALT_ACC_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(X::PA::DMG_DEALT_ACC_REL0, X::LS, 1000), //     (dmg_dealt_lifetime / global_hp_at_start)
-		E5(X::PA::DMG_RECEIVED_NOW_ABS, X::ES, DMG_DEALT_NOW_MAX, DMG_DEALT_NOW_SLOPE),
-		E5(X::PA::DMG_RECEIVED_NOW_REL, X::LS, 1000), //   (dmg_received_this_turn / global_hp_last_turn)
-		E5(X::PA::DMG_RECEIVED_ACC_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(X::PA::DMG_RECEIVED_ACC_REL0, X::LS, 1000), //  (dmg_received_lifetime / global_hp_at_start)
+    static constexpr encoding_type encoding = {
+		E5(A::BATTLE_SIDE, X::CS, 1),
+		E5(A::ARMY_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
+		E5(A::ARMY_VALUE_NOW_REL, X::LS, 1000), //     (army_value_now / global_value_now)
+		E5(A::ARMY_VALUE_NOW_REL0, X::LS, 1000), //    (army_value_now / global_value_at_start)
+		E5(A::ARMY_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
+		E5(A::ARMY_HP_NOW_REL, X::LS, 1000), //        (army_hp_now / global_hp_now)
+		E5(A::ARMY_HP_NOW_REL0, X::LS, 1000), //       (army_hp_now / global_hp_at_start)
+		E5(A::VALUE_KILLED_NOW_ABS, X::ES, VALUE_KILLED_NOW_MAX, VALUE_KILLED_NOW_SLOPE),
+		E5(A::VALUE_KILLED_NOW_REL, X::LS, 1000), //   (value_killed_this_turn / global_value_last_turn)
+		E5(A::VALUE_KILLED_ACC_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
+		E5(A::VALUE_KILLED_ACC_REL0, X::LS, 1000), //  (value_killed_lifetime / global_value_at_start)
+		E5(A::VALUE_LOST_NOW_ABS, X::ES, VALUE_KILLED_NOW_MAX, VALUE_KILLED_NOW_SLOPE),
+		E5(A::VALUE_LOST_NOW_REL, X::LS, 1000), //     (value_lost_this_turn / global_value_last_turn)
+		E5(A::VALUE_LOST_ACC_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
+		E5(A::VALUE_LOST_ACC_REL0, X::LS, 1000), //    (value_lost_lifetime / global_value_at_start)
+		E5(A::DMG_DEALT_NOW_ABS, X::ES, DMG_DEALT_NOW_MAX, DMG_DEALT_NOW_SLOPE),
+		E5(A::DMG_DEALT_NOW_REL, X::LS, 1000), //      (dmg_dealt_this_turn / global_hp_last_turn)
+		E5(A::DMG_DEALT_ACC_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
+		E5(A::DMG_DEALT_ACC_REL0, X::LS, 1000), //     (dmg_dealt_lifetime / global_hp_at_start)
+		E5(A::DMG_RECEIVED_NOW_ABS, X::ES, DMG_DEALT_NOW_MAX, DMG_DEALT_NOW_SLOPE),
+		E5(A::DMG_RECEIVED_NOW_REL, X::LS, 1000), //   (dmg_received_this_turn / global_hp_last_turn)
+		E5(A::DMG_RECEIVED_ACC_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
+		E5(A::DMG_RECEIVED_ACC_REL0, X::LS, 1000), //  (dmg_received_lifetime / global_hp_at_start)
 	};
-
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
 };
 
 template <>
-struct EncodingTraits<NodeEncoding_Unit>
+struct EncodingTraits<Graph::NodeAttributes::Unit>
+: detail::EncodingTraitsBase<Graph::NodeAttributes::Unit>
 {
-	using attr_type = X::UA;
     static constexpr Graph::ElementType element_type = Graph::ElementType::NODE_UNIT;
     static constexpr std::string_view name = "UNIT_ENCODING";
-    static constexpr std::size_t attr_count = EI(X::UA::_count);
+    static constexpr encoding_type encoding = {
+		E5(A::SIDE, X::CE, 1), // 0=attacker, 1=defender
+		E5(A::SLOT, X::CE, STACK_SLOT_MAX),
+		E5(A::QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
+		E5(A::ATTACK, X::LZ, 80),
+		E5(A::DEFENSE, X::LZ, 80), // azure dragon is 60 when defending
+		E5(A::SHOTS, X::LZ, 32), // sharpshooter is 32
+		E5(A::DMG_MIN, X::LZ, 100),
+		E5(A::DMG_MAX, X::LZ, 100),
+		E5(A::HP, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
+		E5(A::HP_LEFT, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
+		E5(A::SPEED, X::CE, 20),
+		E5(A::VALUE_ONE, X::EZ, STACK_VALUE_MAX, STACK_VALUE_SLOPE),
+		E5(A::FLAGS1, X::BZ, (1 << EI(StackFlag1::_count)) - 1),
+		E5(A::FLAGS2, X::BZ, (1 << EI(StackFlag2::_count)) - 1),
 
-    static constexpr NodeEncoding_Unit encoding = {
-		E5(X::UA::SIDE, X::CE, 1), // 0=attacker, 1=defender
-		E5(X::UA::SLOT, X::CE, STACK_SLOT_MAX),
-		E5(X::UA::QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
-		E5(X::UA::ATTACK, X::LZ, 80),
-		E5(X::UA::DEFENSE, X::LZ, 80), // azure dragon is 60 when defending
-		E5(X::UA::SHOTS, X::LZ, 32), // sharpshooter is 32
-		E5(X::UA::DMG_MIN, X::LZ, 100),
-		E5(X::UA::DMG_MAX, X::LZ, 100),
-		E5(X::UA::HP, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
-		E5(X::UA::HP_LEFT, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
-		E5(X::UA::SPEED, X::CE, 20),
-		E5(X::UA::VALUE_ONE, X::EZ, STACK_VALUE_MAX, STACK_VALUE_SLOPE),
-		E5(X::UA::FLAGS1, X::BZ, (1 << EI(StackFlag1::_count)) - 1),
-		E5(X::UA::FLAGS2, X::BZ, (1 << EI(StackFlag2::_count)) - 1),
-
-		E5(X::UA::VALUE_REL, X::LZ, 1000),
-		E5(X::UA::VALUE_REL0, X::LZ, 1000),
-		E5(X::UA::VALUE_KILLED_REL, X::LZ, 1000),
-		E5(X::UA::VALUE_KILLED_ACC_REL0, X::LZ, 1000),
-		E5(X::UA::VALUE_LOST_REL, X::LZ, 1000),
-		E5(X::UA::VALUE_LOST_ACC_REL0, X::LZ, 1000),
-		E5(X::UA::DMG_DEALT_REL, X::LZ, 1000),
-		E5(X::UA::DMG_DEALT_ACC_REL0, X::LZ, 1000),
-		E5(X::UA::DMG_RECEIVED_REL, X::LZ, 1000),
-		E5(X::UA::DMG_RECEIVED_ACC_REL0, X::LZ, 1000),
+		E5(A::VALUE_REL, X::LZ, 1000),
+		E5(A::VALUE_REL0, X::LZ, 1000),
+		E5(A::VALUE_KILLED_REL, X::LZ, 1000),
+		E5(A::VALUE_KILLED_ACC_REL0, X::LZ, 1000),
+		E5(A::VALUE_LOST_REL, X::LZ, 1000),
+		E5(A::VALUE_LOST_ACC_REL0, X::LZ, 1000),
+		E5(A::DMG_DEALT_REL, X::LZ, 1000),
+		E5(A::DMG_DEALT_ACC_REL0, X::LZ, 1000),
+		E5(A::DMG_RECEIVED_REL, X::LZ, 1000),
+		E5(A::DMG_RECEIVED_ACC_REL0, X::LZ, 1000),
 	};
-
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
 };
 
 template <>
-struct EncodingTraits<NodeEncoding_Hex>
+struct EncodingTraits<Graph::NodeAttributes::Hex>
+: detail::EncodingTraitsBase<Graph::NodeAttributes::Hex>
 {
-	using attr_type = X::HA;
     static constexpr auto element_type = Graph::ElementType::NODE_HEX;
     static constexpr std::string_view name = "HEX_ENCODING";
-    static constexpr std::size_t attr_count = EI(X::HA::_count);
-
-	static constexpr NodeEncoding_Hex encoding = {
-		E5(X::HA::Y_COORD, X::CS, 10),
-		E5(X::HA::X_COORD, X::CS, 14),
-		E5(X::HA::STATE_MASK, X::BS, (1 << EI(HexState::_count)) - 1),
-		E5(X::HA::ACTION_MASK, X::BZ, (1 << EI(HexAction::_count)) - 1),
-		E5(X::HA::IS_REAR, X::CZ, 1), // 1=this is the rear hex of a stack
-		E5(X::HA::IS_RUFR, X::CS, 1), // 1=this is the rear part of a RUFR pair
-		E5(X::HA::WALL_HEALTH, X::LE, MAX_WALL_HEALTH),
+	static constexpr encoding_type encoding = {
+		E5(A::Y_COORD, X::CS, 10),
+		E5(A::X_COORD, X::CS, 14),
+		E5(A::STATE_MASK, X::BS, (1 << EI(HexState::_count)) - 1),
+		E5(A::ACTION_MASK, X::BZ, (1 << EI(HexAction::_count)) - 1),
+		E5(A::IS_REAR, X::CZ, 1), // 1=this is the rear hex of a stack
+		E5(A::IS_RUFR, X::CS, 1), // 1=this is the rear part of a RUFR pair
+		E5(A::WALL_HEALTH, X::LE, MAX_WALL_HEALTH),
 	};
-
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
 };
+
+template <>
+struct EncodingTraits<Graph::NodeAttributes::Action>
+: detail::EncodingTraitsBase<Graph::NodeAttributes::Action>
+{
+    static constexpr auto element_type = Graph::ElementType::NODE_ACTION;
+    static constexpr std::string_view name = "ACTION_ENCODING";
+    static constexpr encoding_type encoding = {};
+};
+
+template <>
+struct EncodingTraits<Graph::NodeAttributes::Actaction>
+: detail::EncodingTraitsBase<Graph::NodeAttributes::Actaction>
+{
+    static constexpr auto element_type = Graph::ElementType::NODE_ACTACTION;
+    static constexpr std::string_view name = "ACTACTION_ENCODING";
+    static constexpr encoding_type encoding = {
+		E5(A::ID, X::RAW, N_ACTIONS),
+	};
+};
+
 
 /*
  * The macro is useful for generic edges which have no attributes.
@@ -386,132 +359,168 @@ struct EncodingTraits<NodeEncoding_Hex>
  *     };
  */
 
-#define GENERIC_EDGE_ENCODING_TRAITS(edge_type, elem_type) 					\
-namespace X { \
-	using E5E_##edge_type = std::tuple<Graph::EdgeAttributes::edge_type, Encoding, int, int, double>; \
-} \
-using EdgeEncoding_##edge_type = std::array<X::E5E_##edge_type, EI(Graph::EdgeAttributes::edge_type::_count)>; \
+#define GENERIC_EDGE_ENCODING_TRAITS(attr_type, elem_type) \
 template <> \
-struct EncodingTraits<EdgeEncoding_##edge_type> 											\
+struct EncodingTraits<Graph::EdgeAttributes::attr_type> \
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::attr_type> \
 { \
-	using attr_type = Graph::EdgeAttributes::edge_type; \
     static constexpr auto element_type = Graph::ElementType::elem_type; \
     static constexpr std::string_view name = #elem_type; \
-    static constexpr std::size_t attr_count = 0; \
-    static constexpr EdgeEncoding_##edge_type encoding = {}; \
-    static constexpr std::size_t encoded_size = 0; \
+    static constexpr encoding_type encoding = {}; \
 }
 
-GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesTo_Unit, EDGE_ACTION_EXPOSES_TO_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Unit, EDGE_ACTION_THREATENS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_Damages_Unit, EDGE_ACTION_DAMAGES_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EndsAt_Hex, EDGE_ACTION_ENDS_AT_HEX);
-GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Hex_Adjacent_Hex>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Hex_Adjacent_Hex>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_HEX_ADJACENT_HEX;
+	static constexpr std::string_view name = "EDGE_ENCODING_HEX_ADJACENT_HEX";
+	static constexpr encoding_type encoding = {
+		E5(A::DIRECTION, X::CS, 5),
+	};
+};
+
 GENERIC_EDGE_ENCODING_TRAITS(Unit_Blocks_Unit, EDGE_UNIT_BLOCKS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Unit_Threatens_Unit, EDGE_UNIT_THREATENS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Unit_Threatens_Hex, EDGE_UNIT_THREATENS_HEX);
 GENERIC_EDGE_ENCODING_TRAITS(Unit_Occupies_Hex, EDGE_UNIT_OCCUPIES_HEX);
 
 template <>
-struct EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
 {
-	using attr_type = X::EA_Unit_MeleeDmg_Unit;
-	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_MELEE_DMG_UNIT;
-    static constexpr std::string_view name = "EDGE_ENCODING_UNIT_MELEE_DMG_UNIT";
-    static constexpr std::size_t attr_count = EI(X::EA_Unit_MeleeDmg_Unit::_count);
-
-	static constexpr EdgeEncoding_Unit_MeleeDmg_Unit encoding = {
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_VALUE_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_MEAN_REL_OTHER, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_MEAN_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_STD_REL_OTHER, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_DMG_STD_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::RETAL_VALUE_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_MeleeDmg_Unit::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
-	};
-
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
-};
-
-template <>
-struct EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>
-{
-	using attr_type = X::EA_Unit_RangedDmg_Unit;
-	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_RANGED_DMG_UNIT;
-	static constexpr std::string_view name = "EDGE_ENCODING_UNIT_RANGED_DMG_UNIT";
-	static constexpr std::size_t attr_count = EI(X::EA_Unit_RangedDmg_Unit::_count);
-	static constexpr EdgeEncoding_Unit_RangedDmg_Unit encoding = {
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_VALUE_REL_BF, X::LS, 1000),
-		E5(X::EA_Unit_RangedDmg_Unit::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
-	};
-
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
-};
-
-template <>
-struct EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>
-{
-	using attr_type = X::EA_Unit_ActsBefore_Unit;
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_ACTS_BEFORE_UNIT;
 	static constexpr std::string_view name = "EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT";
-	static constexpr std::size_t attr_count = EI(X::EA_Unit_ActsBefore_Unit::_count);
-	static constexpr EdgeEncoding_Unit_ActsBefore_Unit encoding = {
-		E5(X::EA_Unit_ActsBefore_Unit::TIMES, X::LZ, 2),
+	static constexpr encoding_type encoding = {
+		E5(A::TIMES, X::LZ, 2),
 	};
-
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
 };
 
 template <>
-struct EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>
 {
-	using attr_type = X::EA_Hex_Adjacent_Hex;
-	static constexpr auto element_type = Graph::ElementType::EDGE_HEX_ADJACENT_HEX;
-	static constexpr std::string_view name = "EDGE_ENCODING_HEX_ADJACENT_HEX";
-	static constexpr std::size_t attr_count = EI(X::EA_Hex_Adjacent_Hex::_count);
-	static constexpr EdgeEncoding_Hex_Adjacent_Hex encoding = {
-		E5(X::EA_Hex_Adjacent_Hex::DIRECTION, X::CS, 5),
-	};
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_MELEE_DMG_UNIT;
+    static constexpr std::string_view name = "EDGE_ENCODING_UNIT_MELEE_DMG_UNIT";
 
-    static constexpr std::size_t encoded_size = EncodedSize(encoding);
+	static constexpr encoding_type encoding = {
+		E5(A::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
+		E5(A::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
+		E5(A::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_VALUE_REL_BF, X::LS, 1000),
+		E5(A::RETAL_DMG_MEAN_REL_OTHER, X::LS, 1000),
+		E5(A::RETAL_DMG_MEAN_REL_BF, X::LS, 1000),
+		E5(A::RETAL_DMG_STD_REL_OTHER, X::LS, 1000),
+		E5(A::RETAL_DMG_STD_REL_BF, X::LS, 1000),
+		E5(A::RETAL_VALUE_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
+	};
 };
 
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_SHOOT_DMG_UNIT;
+	static constexpr std::string_view name = "EDGE_ENCODING_UNIT_SHOOT_DMG_UNIT";
+	static constexpr encoding_type encoding = {
+		E5(A::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
+		E5(A::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
+		E5(A::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_VALUE_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
+	};
+};
 
-// Dedining encodings for each attribute by hand is error-prone
-// The below compile-time asserts are essential.
-static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Global>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Player>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Unit>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<NodeEncoding_Hex>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding) == 0, "Found uninitialized elements");
-static_assert(UninitializedEncodingAttributes(EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>::encoding) == 0, "Found uninitialized elements");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Global>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Player>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Unit>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<NodeEncoding_Hex>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding) == -1, "Found wrong element at this index");
-static_assert(DisarrayedEncodingAttributeIndex(EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>::encoding) == -1, "Found wrong element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Global>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Player>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<NodeEncoding_Hex>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding) == -1, "Found miscalculated binary vmax element at this index");
-static_assert(MisconfiguredExpnormSlopeIndex(EncodingTraits<EdgeEncoding_Hex_Adjacent_Hex>::encoding) == -1, "Found miscalculated binary vmax element at this index");
+template <typename... AttrTypes>
+consteval bool AllEncodingAttributesInitialized()
+{
+    return ((UninitializedEncodingAttributes(
+                 EncodingTraits<AttrTypes>::encoding
+             ) == 0) && ...);
+}
 
+GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EndsAt_Hex, EDGE_ACTION_ENDS_AT_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToMeleeFrom_Unit, EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToShootFrom_Unit, EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_Melees_Unit, EDGE_ACTION_MELEES_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_Shoots_Unit, EDGE_ACTION_SHOOTS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Unit, EDGE_ACTION_THREATENS_UNIT);
+#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Hex, EDGE_ACTION_THREATENS_HEX);
+#endif
+
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_By_Unit, EDGE_ACTACTION_BY_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_Blocks_Unit, EDGE_ACTACTION_BLOCKS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_EndsAt_Hex, EDGE_ACTACTION_ENDS_AT_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToMeleeFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToShootFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_Melees_Unit, EDGE_ACTACTION_MELEES_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_Shoots_Unit, EDGE_ACTACTION_SHOOTS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_Threatens_Unit, EDGE_ACTACTION_THREATENS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_Threatens_Hex, EDGE_ACTACTION_THREATENS_HEX);
+
+
+template <typename AttrType>
+consteval bool EncodingIsValid()
+{
+    constexpr const auto& encoding = EncodingTraits<AttrType>::encoding;
+
+    return UninitializedEncodingAttributes(encoding) == 0
+        && DisarrayedEncodingAttributeIndex(encoding) == -1
+        && MisconfiguredExpnormSlopeIndex(encoding) == -1;
+}
+
+template <typename... AttrTypes>
+consteval bool AllEncodingsAreValid()
+{
+    return (EncodingIsValid<AttrTypes>() && ...);
+}
+
+static_assert(
+    AllEncodingsAreValid<
+		Graph::NodeAttributes::Hex,
+		Graph::NodeAttributes::Global,
+		Graph::NodeAttributes::Player,
+		Graph::NodeAttributes::Unit,
+		Graph::NodeAttributes::Hex,
+		Graph::NodeAttributes::Action,
+		Graph::EdgeAttributes::Hex_Adjacent_Hex,
+		Graph::EdgeAttributes::Unit_ActsBefore_Unit,
+		Graph::EdgeAttributes::Unit_MeleeDmg_Unit,
+		Graph::EdgeAttributes::Unit_ShootDmg_Unit,
+		Graph::EdgeAttributes::Unit_Blocks_Unit,
+		Graph::EdgeAttributes::Unit_Occupies_Hex,
+		Graph::EdgeAttributes::Action_By_Unit,
+		Graph::EdgeAttributes::Action_EndsAt_Hex,
+		Graph::EdgeAttributes::Action_ExposesToMeleeFrom_Unit,
+		Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit,
+		Graph::EdgeAttributes::Action_Melees_Unit,
+		Graph::EdgeAttributes::Action_Shoots_Unit,
+		Graph::EdgeAttributes::Action_Threatens_Unit,
+#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+		Graph::EdgeAttributes::Action_Threatens_Hex,
+#endif
+		Graph::EdgeAttributes::Actaction_By_Unit,
+		Graph::EdgeAttributes::Actaction_EndsAt_Hex,
+		Graph::EdgeAttributes::Actaction_ExposesToMeleeFrom_Unit,
+		Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit,
+		Graph::EdgeAttributes::Actaction_Melees_Unit,
+		Graph::EdgeAttributes::Actaction_Shoots_Unit,
+		Graph::EdgeAttributes::Actaction_Threatens_Unit,
+		Graph::EdgeAttributes::Actaction_Threatens_Hex
+    >(),
+    "Found invalid encoding configuration"
+);
+
+/*
+ * These below are not really used
+ * They are just for informational purposes
+ */
+
+/*
 constexpr int MAX_NUM_NODES_GLOBAL = 1;
 constexpr int MAX_NUM_NODES_PLAYER = 2;
 constexpr int MAX_NUM_NODES_UNIT = 30;
@@ -548,7 +557,7 @@ constexpr int ENCODED_EDGE_SIZE_ACTION_ENDS_AT_HEX = 0;
 constexpr int ENCODED_EDGE_SIZE_ACTION_BY_UNIT = 0;
 constexpr int ENCODED_EDGE_SIZE_UNIT_BLOCKS_UNIT = 0;
 constexpr int ENCODED_EDGE_SIZE_UNIT_MELEE_DMG_UNIT = EncodedSize(EncodingTraits<EdgeEncoding_Unit_MeleeDmg_Unit>::encoding);
-constexpr int ENCODED_EDGE_SIZE_UNIT_RANGED_DMG_UNIT = EncodedSize(EncodingTraits<EdgeEncoding_Unit_RangedDmg_Unit>::encoding);
+constexpr int ENCODED_EDGE_SIZE_UNIT_RANGED_DMG_UNIT = EncodedSize(EncodingTraits<EdgeEncoding_Unit_ShootDmg_Unit>::encoding);
 constexpr int ENCODED_EDGE_SIZE_UNIT_THREATENS_UNIT = 0;
 constexpr int ENCODED_EDGE_SIZE_UNIT_ACTS_BEFORE_UNIT = EncodedSize(EncodingTraits<EdgeEncoding_Unit_ActsBefore_Unit>::encoding);
 constexpr int ENCODED_EDGE_SIZE_UNIT_THREATENS_HEX = 0;
@@ -588,4 +597,6 @@ constexpr int BATTLEFIELD_STATE_SIZE_MAX =
 	+ (2 * MAX_NUM_EDGES_UNIT_THREATENS_HEX)
 	+ (2 * MAX_NUM_EDGES_UNIT_OCCUPIES_HEX)
 	+ (2 * MAX_NUM_EDGES_HEX_ADJACENT_HEX);
+*/
+
 }

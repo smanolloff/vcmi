@@ -103,7 +103,7 @@ Unit::Unit(
     setattr(UA::DMG_RECEIVED_REL, permille(stackStats.dmgReceivedNow, statsContainer.bfieldHpPrev));
     setattr(UA::DMG_RECEIVED_ACC_REL0, permille(stackStats.dmgReceivedTotal, statsContainer.bfieldHpStart));
 
-    static_assert(EU(UA::_count) == 25, "whistleblower in case attributes change");
+    static_assert(EU(UA::_count) == 24, "whistleblower in case attributes change");
 
     finalize();
 }

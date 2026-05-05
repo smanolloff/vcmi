@@ -23,7 +23,7 @@ class Element : public Interface
 {
 public:
     using encoding_traits = EncTraits;
-    using Attribute = typename EncTraits::attr_type;
+    using Attribute = typename EncTraits::A;
 
     S15::Graph::ElementType elementType() const override { return EncTraits::element_type; }
     std::vector<float> encodedAttributes() const override { return Encoder::Encode<EncTraits>(attrs); }

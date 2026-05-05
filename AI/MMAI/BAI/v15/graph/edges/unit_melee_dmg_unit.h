@@ -21,7 +21,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Unit_MeleeDmg_Unit_Traits = S15::EncodingTraits<S15::EdgeEncoding_Unit_MeleeDmg_Unit>;
+	using Unit_MeleeDmg_Unit_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Unit_MeleeDmg_Unit>;
 	using Unit_MeleeDmg_Unit_Base = Base<Nodes::Unit, Nodes::Unit, Unit_MeleeDmg_Unit_Traits>;
 }
 

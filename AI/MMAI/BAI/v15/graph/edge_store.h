@@ -106,7 +106,13 @@ public:
     auto entries() const
     {
         const auto & idx = container.template get<detail::by_ptr_identity>();
-        return entriesFrom(idx.begin(), idx.end());
+        // XXX: can't use entriesFrom here as the resulting range
+        // is not detected as const for some reason
+        return idx | std::views::transform(
+            [](const EdgePtr & ptr) -> const EdgeType & {
+                return *ptr;
+            }
+        );
     }
 
     auto getAllBySrc(const typename EdgeType::src_node_type & src) const

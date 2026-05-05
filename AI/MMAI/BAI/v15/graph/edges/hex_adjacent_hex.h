@@ -20,7 +20,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Hex_Adjacent_Hex_Traits = S15::EncodingTraits<S15::EdgeEncoding_Hex_Adjacent_Hex>;
+	using Hex_Adjacent_Hex_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Hex_Adjacent_Hex>;
 	using Hex_Adjacent_Hex_Base = Base<Nodes::Hex, Nodes::Hex, Hex_Adjacent_Hex_Traits>;
 }
 

@@ -15,8 +15,9 @@ public:
     // (needed due to dependent name lookup rules in C++ templates)
     using Element<S15::Graph::INode, EncTraits>::attrs;
     using Element<S15::Graph::INode, EncTraits>::setattr;
-    using A = typename EncTraits::attr_type;
+    using A = typename EncTraits::A;
     using extra_index_type = void;
+
 
     Base() = default;
 

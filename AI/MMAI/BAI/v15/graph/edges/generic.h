@@ -14,6 +14,7 @@
 #include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/graph/nodes/unit.h"
 #include "BAI/v15/graph/nodes/action.h"
+#include "BAI/v15/graph/nodes/actaction.h"
 #include "schema/v15/constants.h"
 
 namespace MMAI::BAI::V15::Graph::Edges
@@ -25,7 +26,7 @@ namespace S15 = Schema::V15;
  *
  * GENERIC_EDGE_ELEMENT(NodeA, Edge, NodeB) expands to:
  *
- *     using NodeA_Adjacent_NodeB_Traits = S15::EncodingTraits<S15::EdgeEncoding_NodeA_Edge_NodeB>;
+ *     using NodeA_Adjacent_NodeB_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::NodeA_Edge_NodeB>;
  *     using NodeA_Edge_NodeB_Base = Base<Nodes::NodeA, Nodes::NodeB, NodeA_Edge_NodeB_Traits>;
  *     class NodeA_Edge_NodeA : public S15::EncodingTraits<
  *         NodeA,
@@ -36,7 +37,7 @@ namespace S15 = Schema::V15;
 #define GENERIC_EDGE_ELEMENT(NodeA, Edge, NodeB) \
 namespace detail \
 { \
-    using NodeA##_##Edge##_##NodeB##_Traits = S15::EncodingTraits<S15::EdgeEncoding_##NodeA##_##Edge##_##NodeB>; \
+    using NodeA##_##Edge##_##NodeB##_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::NodeA##_##Edge##_##NodeB>; \
     using NodeA##_##Edge##_##NodeB##_Base = Base<Nodes::NodeA, Nodes::NodeB, NodeA##_##Edge##_##NodeB##_Traits>; \
 } \
 class NodeA##_##Edge##_##NodeB : public detail::NodeA##_##Edge##_##NodeB##_Base \
@@ -44,17 +45,32 @@ class NodeA##_##Edge##_##NodeB : public detail::NodeA##_##Edge##_##NodeB##_Base 
 public: \
     NodeA##_##Edge##_##NodeB(const Nodes::NodeA & a, const Nodes::NodeB & b) \
     : detail::NodeA##_##Edge##_##NodeB##_Base(a, b) {} \
+    static_assert(EU(A::_count) == 0, "generic edges cannot have attributes"); \
 }
 
-GENERIC_EDGE_ELEMENT(Action, ExposesTo, Unit);
-GENERIC_EDGE_ELEMENT(Action, Threatens, Unit);
-GENERIC_EDGE_ELEMENT(Action, Damages, Unit);
-GENERIC_EDGE_ELEMENT(Action, EndsAt, Hex);
-GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Unit, Blocks, Unit);
-GENERIC_EDGE_ELEMENT(Unit, Threatens, Unit);
-GENERIC_EDGE_ELEMENT(Unit, Threatens, Hex);
 GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
+
+GENERIC_EDGE_ELEMENT(Action, By, Unit);
+GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
+GENERIC_EDGE_ELEMENT(Action, EndsAt, Hex);
+GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
+GENERIC_EDGE_ELEMENT(Action, ExposesToShootFrom, Unit);
+GENERIC_EDGE_ELEMENT(Action, Melees, Unit);
+GENERIC_EDGE_ELEMENT(Action, Shoots, Unit);
+GENERIC_EDGE_ELEMENT(Action, Threatens, Unit);
+#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+GENERIC_EDGE_ELEMENT(Action, Threatens, Hex);
+#endif
+GENERIC_EDGE_ELEMENT(Actaction, By, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, Blocks, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, EndsAt, Hex);
+GENERIC_EDGE_ELEMENT(Actaction, ExposesToMeleeFrom, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, ExposesToShootFrom, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, Melees, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, Shoots, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, Threatens, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, Threatens, Hex);
 
 }
 

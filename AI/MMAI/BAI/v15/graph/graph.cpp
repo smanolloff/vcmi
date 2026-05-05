@@ -19,9 +19,6 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
 
     switch (t)
     {
-        case ET::NODE_ACTION:
-            return convert(getAll<Nodes::Action>());
-            // return convert(getStore<Nodes::Action>());
         case ET::NODE_GLOBAL:
             return convert(getAll<Nodes::Global>());
         case ET::NODE_PLAYER:
@@ -30,6 +27,10 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Nodes::Unit>());
         case ET::NODE_HEX:
             return convert(getAll<Nodes::Hex>());
+        case ET::NODE_ACTION:
+            return convert(getAll<Nodes::Action>());
+        case ET::NODE_ACTACTION:
+            return convert(getAll<Nodes::Actaction>());
         default:
             throw std::runtime_error(
                 "Unexpected node element type: " + std::to_string(EU(t))
@@ -44,8 +45,8 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
     {
         std::vector<const S15::Graph::IEdge*> res;
         res.reserve(entries.size());
-        for (const auto & elem : entries)
-            res.push_back(&elem);
+        for (const auto & e : entries)
+            res.push_back(&e);
         return res;
     };
 
@@ -57,26 +58,52 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Edges::Unit_ActsBefore_Unit>());
         case ET::EDGE_UNIT_MELEE_DMG_UNIT:
             return convert(getAll<Edges::Unit_MeleeDmg_Unit>());
-        case ET::EDGE_UNIT_RANGED_DMG_UNIT:
-            return convert(getAll<Edges::Unit_RangedDmg_Unit>());
-        case ET::EDGE_ACTION_EXPOSES_TO_UNIT:
-            return convert(getAll<Edges::Action_ExposesTo_Unit>());
-        case ET::EDGE_ACTION_THREATENS_UNIT:
-            return convert(getAll<Edges::Action_Threatens_Unit>());
-        case ET::EDGE_ACTION_DAMAGES_UNIT:
-            return convert(getAll<Edges::Action_Damages_Unit>());
-        case ET::EDGE_ACTION_ENDS_AT_HEX:
-            return convert(getAll<Edges::Action_EndsAt_Hex>());
-        case ET::EDGE_ACTION_BY_UNIT:
-            return convert(getAll<Edges::Action_By_Unit>());
+        case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+            return convert(getAll<Edges::Unit_ShootDmg_Unit>());
         case ET::EDGE_UNIT_BLOCKS_UNIT:
             return convert(getAll<Edges::Unit_Blocks_Unit>());
-        case ET::EDGE_UNIT_THREATENS_UNIT:
-            return convert(getAll<Edges::Unit_Threatens_Unit>());
-        case ET::EDGE_UNIT_THREATENS_HEX:
-            return convert(getAll<Edges::Unit_Threatens_Hex>());
         case ET::EDGE_UNIT_OCCUPIES_HEX:
             return convert(getAll<Edges::Unit_Occupies_Hex>());
+        case ET::EDGE_ACTION_BY_UNIT:
+            return convert(getAll<Edges::Action_By_Unit>());
+        case ET::EDGE_ACTION_BLOCKS_UNIT:
+            return convert(getAll<Edges::Action_Blocks_Unit>());
+        case ET::EDGE_ACTION_ENDS_AT_HEX:
+            return convert(getAll<Edges::Action_EndsAt_Hex>());
+        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
+            return convert(getAll<Edges::Action_ExposesToMeleeFrom_Unit>());
+        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
+            return convert(getAll<Edges::Action_ExposesToShootFrom_Unit>());
+        case ET::EDGE_ACTION_MELEES_UNIT:
+            return convert(getAll<Edges::Action_Melees_Unit>());
+        case ET::EDGE_ACTION_SHOOTS_UNIT:
+            return convert(getAll<Edges::Action_Shoots_Unit>());
+        case ET::EDGE_ACTION_THREATENS_UNIT:
+            return convert(getAll<Edges::Action_Threatens_Unit>());
+
+        #ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+        case ET::EDGE_ACTION_THREATENS_HEX:
+            return convert(getAll<Edges::Action_Threatens_Hex>());
+        #endif
+
+        case ET::EDGE_ACTACTION_BY_UNIT:
+            return convert(getAll<Edges::Actaction_By_Unit>());
+        case ET::EDGE_ACTACTION_BLOCKS_UNIT:
+            return convert(getAll<Edges::Actaction_Blocks_Unit>());
+        case ET::EDGE_ACTACTION_ENDS_AT_HEX:
+            return convert(getAll<Edges::Actaction_EndsAt_Hex>());
+        case ET::EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT:
+            return convert(getAll<Edges::Actaction_ExposesToMeleeFrom_Unit>());
+        case ET::EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
+            return convert(getAll<Edges::Actaction_ExposesToShootFrom_Unit>());
+        case ET::EDGE_ACTACTION_MELEES_UNIT:
+            return convert(getAll<Edges::Actaction_Melees_Unit>());
+        case ET::EDGE_ACTACTION_SHOOTS_UNIT:
+            return convert(getAll<Edges::Actaction_Shoots_Unit>());
+        case ET::EDGE_ACTACTION_THREATENS_UNIT:
+            return convert(getAll<Edges::Actaction_Threatens_Unit>());
+        case ET::EDGE_ACTACTION_THREATENS_HEX:
+            return convert(getAll<Edges::Actaction_Threatens_Hex>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
     }

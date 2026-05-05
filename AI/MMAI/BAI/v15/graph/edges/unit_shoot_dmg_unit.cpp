@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BAI/v15/graph/util.h"
-#include "BAI/v15/graph/edges/unit_ranged_dmg_unit.h"
+#include "BAI/v15/graph/edges/unit_shoot_dmg_unit.h"
 #include <numbers>
 
 namespace MMAI::BAI::V15::Graph::Edges
@@ -25,13 +25,13 @@ namespace {
     }
 }
 
-Unit_RangedDmg_Unit::Unit_RangedDmg_Unit(
+Unit_ShootDmg_Unit::Unit_ShootDmg_Unit(
     const Nodes::Unit & srcNode,
     const Nodes::Unit & dstNode,
     const DamageEstimation & attackEstimate,
     int battlefieldValue,
     int battlefieldHp
-) : detail::Unit_RangedDmg_Unit_Base(srcNode, dstNode)
+) : detail::Unit_ShootDmg_Unit_Base(srcNode, dstNode)
 {
     const auto & A_cstack = srcNode.cstack;
     const auto & B_cstack = dstNode.cstack;

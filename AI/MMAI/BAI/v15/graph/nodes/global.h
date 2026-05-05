@@ -25,7 +25,7 @@ namespace S15 = Schema::V15;
 
 namespace detail
 {
-	using Global_Traits = S15::EncodingTraits<S15::NodeEncoding_Global>;
+	using Global_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Global>;
 	using Global_Base = Base<Global_Traits>;
 }
 

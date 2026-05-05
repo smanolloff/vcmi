@@ -49,7 +49,7 @@ template <typename EncTraits>
 std::vector<float> Encoder::Encode(const std::array<int, EncTraits::attr_count> & attrs)
 {
 	auto out = std::vector<float>{};
-	out.reserve(EncTraits::encoded_size);
+	out.reserve(EncodedSize(EncTraits::encoding));
 
 	for(size_t i = 0; i < attrs.size(); ++i)
 	{

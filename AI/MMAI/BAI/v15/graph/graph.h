@@ -26,7 +26,7 @@
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
-#include "BAI/v15/graph/edges/unit_ranged_dmg_unit.h"
+#include "BAI/v15/graph/edges/unit_shoot_dmg_unit.h"
 #include "BAI/v15/graph/nodes/action.h"
 #include "BAI/v15/graph/nodes/global.h"
 #include "BAI/v15/graph/nodes/hex.h"
@@ -43,27 +43,38 @@ namespace MMAI::BAI::V15::Graph
 namespace detail
 {
     using TNodeStores = std::tuple<
-        NodeStore<Nodes::Action>,
         NodeStore<Nodes::Global>,
         NodeStore<Nodes::Player>,
         NodeStore<Nodes::Unit>,
-        NodeStore<Nodes::Hex>
+        NodeStore<Nodes::Hex>,
+        NodeStore<Nodes::Action>,
+        NodeStore<Nodes::Actaction>
     >;
 
     using TEdgeStores = std::tuple<
-        EdgeStore<Edges::Action_ExposesTo_Unit>,
-        EdgeStore<Edges::Action_Threatens_Unit>,
-        EdgeStore<Edges::Action_Damages_Unit>,
-        EdgeStore<Edges::Action_EndsAt_Hex>,
-        EdgeStore<Edges::Action_By_Unit>,
-        EdgeStore<Edges::Unit_Blocks_Unit>,
-        EdgeStore<Edges::Unit_MeleeDmg_Unit>,
-        EdgeStore<Edges::Unit_RangedDmg_Unit>,
-        EdgeStore<Edges::Unit_Threatens_Unit>,
+        EdgeStore<Edges::Hex_Adjacent_Hex>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,
-        EdgeStore<Edges::Unit_Threatens_Hex>,
+        EdgeStore<Edges::Unit_MeleeDmg_Unit>,
+        EdgeStore<Edges::Unit_ShootDmg_Unit>,
+        EdgeStore<Edges::Unit_Blocks_Unit>,
         EdgeStore<Edges::Unit_Occupies_Hex>,
-        EdgeStore<Edges::Hex_Adjacent_Hex>
+        EdgeStore<Edges::Action_By_Unit>,
+        EdgeStore<Edges::Action_Blocks_Unit>,
+        EdgeStore<Edges::Action_EndsAt_Hex>,
+        EdgeStore<Edges::Action_ExposesToMeleeFrom_Unit>,
+        EdgeStore<Edges::Action_ExposesToShootFrom_Unit>,
+        EdgeStore<Edges::Action_Melees_Unit>,
+        EdgeStore<Edges::Action_Shoots_Unit>,
+        EdgeStore<Edges::Action_Threatens_Unit>,
+        EdgeStore<Edges::Actaction_By_Unit>,
+        EdgeStore<Edges::Actaction_Blocks_Unit>,
+        EdgeStore<Edges::Actaction_EndsAt_Hex>,
+        EdgeStore<Edges::Actaction_ExposesToMeleeFrom_Unit>,
+        EdgeStore<Edges::Actaction_ExposesToShootFrom_Unit>,
+        EdgeStore<Edges::Actaction_Melees_Unit>,
+        EdgeStore<Edges::Actaction_Shoots_Unit>,
+        EdgeStore<Edges::Actaction_Threatens_Unit>,
+        EdgeStore<Edges::Actaction_Threatens_Hex>
     >;
 
     static_assert(
