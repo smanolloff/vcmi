@@ -26,16 +26,16 @@ namespace {
 }
 
 Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
-    const Nodes::Unit & srcNode,
-    const Nodes::Unit & dstNode,
+    const std::shared_ptr<const Nodes::Unit> & srcNode,
+    const std::shared_ptr<const Nodes::Unit> & dstNode,
     const DamageEstimation & attackEstimate,
     const DamageEstimation & retalEstimate,
     int battlefieldValue,
     int battlefieldHp
 ) : detail::Unit_MeleeDmg_Unit_Base(srcNode, dstNode)
 {
-    const auto & A_cstack = srcNode.cstack;
-    const auto & B_cstack = dstNode.cstack;
+    const auto & A_cstack = srcNode->cstack;
+    const auto & B_cstack = dstNode->cstack;
 
     auto A_dmg_min = static_cast<int>(attackEstimate.damage.min);
     auto A_dmg_max = static_cast<int>(attackEstimate.damage.max);

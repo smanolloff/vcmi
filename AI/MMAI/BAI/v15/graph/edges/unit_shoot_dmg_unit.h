@@ -19,8 +19,8 @@ class Unit_ShootDmg_Unit : public detail::Unit_ShootDmg_Unit_Base
 {
 public:
 	Unit_ShootDmg_Unit(
-		const Nodes::Unit & srcNode,
-		const Nodes::Unit & dstNode,
+		const std::shared_ptr<const Nodes::Unit> & srcNode,
+		const std::shared_ptr<const Nodes::Unit> & dstNode,
 		const DamageEstimation & attackEstimate,
 		int battlefieldValue,
 		int battlefieldHp

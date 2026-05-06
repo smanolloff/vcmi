@@ -432,6 +432,29 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
 	};
 };
 
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Action_EndsAt_Hex>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_EndsAt_Hex>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENDS_AT_HEX;
+	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTION_ENDS_AT_HEX";
+	static constexpr encoding_type encoding = {
+		E5(A::IS_REAR, X::BS, 1),
+	};
+};
+
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Actaction_EndsAt_Hex>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Actaction_EndsAt_Hex>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTACTION_ENDS_AT_HEX;
+	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTACTION_ENDS_AT_HEX";
+	static constexpr encoding_type encoding = {
+		E5(A::IS_REAR, X::BS, 1),
+	};
+};
+
+
 template <typename... AttrTypes>
 consteval bool AllEncodingAttributesInitialized()
 {
@@ -442,7 +465,8 @@ consteval bool AllEncodingAttributesInitialized()
 
 GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EndsAt_Hex, EDGE_ACTION_ENDS_AT_HEX);
+
+
 GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToMeleeFrom_Unit, EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToShootFrom_Unit, EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Melees_Unit, EDGE_ACTION_MELEES_UNIT);
@@ -454,7 +478,8 @@ GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Hex, EDGE_ACTION_THREATENS_HEX);
 
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_By_Unit, EDGE_ACTACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Blocks_Unit, EDGE_ACTACTION_BLOCKS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_EndsAt_Hex, EDGE_ACTACTION_ENDS_AT_HEX);
+
+
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToMeleeFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToShootFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Melees_Unit, EDGE_ACTACTION_MELEES_UNIT);

@@ -29,8 +29,8 @@ class Unit_MeleeDmg_Unit : public detail::Unit_MeleeDmg_Unit_Base
 {
 public:
 	Unit_MeleeDmg_Unit(
-		const Nodes::Unit & srcNode,
-		const Nodes::Unit & dstNode,
+		const std::shared_ptr<const Nodes::Unit> & srcNode,
+		const std::shared_ptr<const Nodes::Unit> & dstNode,
 		const DamageEstimation & attackEstimate,
 		const DamageEstimation & retalEstimate,
 		int battlefieldValue,

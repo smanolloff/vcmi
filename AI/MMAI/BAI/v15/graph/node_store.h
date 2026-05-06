@@ -5,7 +5,6 @@
 #include <boost/multi_index_container.hpp>
 
 #include <memory>
-#include <ranges>
 #include <stdexcept>
 
 namespace detail
@@ -17,14 +16,6 @@ namespace detail
     struct by_ptr_identity;
     struct by_extra_index;
 
-    template <typename NodeType>
-    struct node_ptr_index {
-        using result_type = const NodeType*;
-        const NodeType* operator()(const std::shared_ptr<NodeType>& ptr) const {
-            return ptr.get();
-        }
-    };
-
     // Helper template with partial specialization
     template <typename T>
     struct MultiIndexContainerHelper;
@@ -34,14 +25,14 @@ namespace detail
         requires std::is_same_v<typename T::extra_index_type, void>
     struct MultiIndexContainerHelper<T> {
         using type = boost::multi_index::multi_index_container<
-            std::shared_ptr<T>,
+            std::shared_ptr<const T>,
             boost::multi_index::indexed_by<
                 boost::multi_index::random_access<
                     boost::multi_index::tag<by_ordinal_id>
                 >,
                 boost::multi_index::hashed_unique<
                     boost::multi_index::tag<by_ptr_identity>,
-                    node_ptr_index<T>
+                    boost::multi_index::identity<std::shared_ptr<const T>>
                 >
             >
         >;
@@ -60,7 +51,7 @@ namespace detail
         requires (!std::is_same_v<typename T::extra_index_type, void>)
     struct MultiIndexContainerHelper<T> {
         using type = boost::multi_index::multi_index_container<
-            std::shared_ptr<T>,
+            std::shared_ptr<const T>,
             boost::multi_index::indexed_by<
                 boost::multi_index::random_access<
                     boost::multi_index::tag<by_ordinal_id>
@@ -68,7 +59,7 @@ namespace detail
 
                 boost::multi_index::hashed_unique<
                     boost::multi_index::tag<by_ptr_identity>,
-                    node_ptr_index<T>
+                    boost::multi_index::identity<std::shared_ptr<const T>>
                 >,
 
                 boost::multi_index::hashed_unique<
@@ -95,29 +86,31 @@ public:
     NodeStore(NodeStore &&) = delete;
     NodeStore & operator=(NodeStore &&) = delete;
 
-    const NodeType & add(const std::shared_ptr<NodeType> & node)
+    // XXX: pass-by-value + move is preferred to pass-by-reference
+    //      => must accept non-const std::shared ptr
+    // avoids the copying and incrementing the counter when the shared_ptr is rvalue.
+    void add(std::shared_ptr<const NodeType> node)
     {
         // Insertion fails when there is a duplicate in *any* unique index
-        auto [it, inserted] = container.push_back(node);
+        auto [_, inserted] = container.push_back(std::move(node));
         if(!inserted)
             throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": insertion failed. Duplicate index?");
-        return **it;
     }
 
     std::shared_ptr<const NodeType> getById(std::size_t ind) const
     {
-        const auto& idx = container.template get<0>();
+        const auto & idx = container.template get<detail::by_ordinal_id>();
         if (ind >= idx.size())
-            return nullptr;
+            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getById: not found: " + std::to_string(ind));
         return idx[ind];
     }
 
-    std::shared_ptr<const NodeType> getByIdentity(NodeType & node) const
+    std::shared_ptr<const NodeType> getByIdentity(const std::shared_ptr<const NodeType> & node) const
     {
-        const auto& idx = container.template get<detail::by_ptr_identity>();
-        auto it = idx.find(&node);
+        const auto & idx = container.template get<detail::by_ptr_identity>();
+        auto it = idx.find(node);
         if (it == idx.end())
-            return nullptr;
+            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByIdentity: not found");
         return *it;
     }
 
@@ -127,25 +120,18 @@ public:
     // Without it, the argument would have to be exactly std::string("foo").
     template <typename Key>
         requires (!std::is_same_v<typename NodeType::extra_index_type, void>)
-    std::shared_ptr<const NodeType> getByExtraIndex(const Key& key) const
+    std::shared_ptr<const NodeType> getByExtraIndex(const Key & key) const
     {
-        const auto& idx = container.template get<detail::by_extra_index>();
+        const auto & idx = container.template get<detail::by_extra_index>();
         auto it = idx.find(key);
         if (it == idx.end())
-            return nullptr;
+            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByExtraIndex: not found");
         return *it;
     }
 
-    auto entries() const
+    const auto & entries() const
     {
-        const auto & idx = container.template get<detail::by_ordinal_id>();
-
-        // return std::ranges::subrange(idx.begin(), idx.end());
-        return idx | std::views::transform(
-            [](const std::shared_ptr<NodeType> & ptr) -> const NodeType & {
-                return *ptr;
-            }
-        );
+        return container.template get<detail::by_ordinal_id>();
     }
 
     std::size_t size() const
@@ -153,9 +139,9 @@ public:
         return container.size();
     }
 
-    std::ptrdiff_t getId(const NodeType & node) const
+    std::ptrdiff_t getId(const std::shared_ptr<const NodeType> & node) const
     {
-        const auto& identity_idx = container.template get<detail::by_ptr_identity>();
+        const auto & identity_idx = container.template get<detail::by_ptr_identity>();
 
         auto identity_it = identity_idx.find(&node);
         if (identity_it == identity_idx.end())

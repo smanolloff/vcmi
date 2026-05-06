@@ -217,7 +217,13 @@ namespace EdgeAttributes
 
         BLANK_ENUM_DEF(Action_By_Unit);
         BLANK_ENUM_DEF(Action_Blocks_Unit);
-        BLANK_ENUM_DEF(Action_EndsAt_Hex);
+
+        enum class Action_EndsAt_Hex : uint8_t
+        {
+            IS_REAR,
+            _count
+        };
+
         BLANK_ENUM_DEF(Action_ExposesToMeleeFrom_Unit);
         BLANK_ENUM_DEF(Action_ExposesToShootFrom_Unit);
         BLANK_ENUM_DEF(Action_Melees_Unit);
@@ -230,7 +236,13 @@ namespace EdgeAttributes
 
         BLANK_ENUM_DEF(Actaction_By_Unit);
         BLANK_ENUM_DEF(Actaction_Blocks_Unit);
-        BLANK_ENUM_DEF(Actaction_EndsAt_Hex);
+
+        enum class Actaction_EndsAt_Hex : uint8_t
+        {
+            IS_REAR,
+            _count
+        };
+
         BLANK_ENUM_DEF(Actaction_ExposesToMeleeFrom_Unit);
         BLANK_ENUM_DEF(Actaction_ExposesToShootFrom_Unit);
         BLANK_ENUM_DEF(Actaction_Melees_Unit);

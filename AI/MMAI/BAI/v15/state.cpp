@@ -28,8 +28,10 @@ namespace MMAI::BAI::V15
 
 namespace
 {
-	using Global = Graph::Nodes::Global;
-	using Player = Graph::Nodes::Player;
+	namespace N = Graph::Nodes;
+	namespace E = Graph::Edges;
+	using Global = N::Global;
+	using Player = N::Player;
 	using TowerFlags = Global::TowerFlags;
 	using CorpseFlags = Global::CorpseFlags;
 	using ET = S15::Graph::ElementType;
@@ -83,7 +85,7 @@ namespace
 
 		for(auto & stack : battle.battleGetStacks())
 		{
-			auto v = stack->getCount() * Graph::Nodes::Unit::GetValue(stack->unitType());
+			auto v = stack->getCount() * N::Unit::GetValue(stack->unitType());
 			auto h = stack->getAvailableHealth();
 
 			if(stack->unitSide() == BattleSide::ATTACKER)
@@ -189,7 +191,7 @@ namespace
 
 	AttackLogAggregateData ProcessAttackLogs(
 		const std::vector<AttackLog> & attackLogs,
-		std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> sstats
+		std::unordered_map<const CStack *, N::Unit::Stats> sstats
 	)
 	{
 		auto res = AttackLogAggregateData{};
@@ -314,7 +316,7 @@ namespace
 		ASSERT(!added.test(EU(ET::NODE_GLOBAL)), "Elements of type NODE_GLOBAL already added");
 		added.set(EU(ET::NODE_GLOBAL));
 
-		G->add(std::make_shared<Graph::Nodes::Global>(
+		G->add(std::make_shared<N::Global>(
 			acstack ? acstack->unitSide() : battle.battleGetMySide(),
 	        result,
 	        round,
@@ -341,7 +343,7 @@ namespace
         static_assert(EU(BattleSide::LEFT_SIDE) == 0);
         static_assert(EU(BattleSide::RIGHT_SIDE) == 1);
 
-		G->add(std::make_shared<Graph::Nodes::Player>(
+		G->add(std::make_shared<N::Player>(
 			BattleSide::LEFT_SIDE,
 			startStats.totalValue,
 			startStats.totalHp,
@@ -355,7 +357,7 @@ namespace
 			logdata.lvl
 		));
 
-		G->add(std::make_shared<Graph::Nodes::Player>(
+		G->add(std::make_shared<N::Player>(
 			BattleSide::LEFT_SIDE,
 			startStats.totalValue,
 			startStats.totalHp,
@@ -378,14 +380,14 @@ namespace
 		const State::GlobalStats & startStats,
 		const State::GlobalStats & lastStats,
 		const State::GlobalStats & stats,
-		const std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> & sstats)
+		const std::unordered_map<const CStack *, N::Unit::Stats> & sstats)
 	{
 		ASSERT(!added.test(EU(ET::NODE_UNIT)), "Elements of type NODE_UNIT already added");
 		added.set(EU(ET::NODE_UNIT));
 
 		for(auto & cstack : battle.battleGetStacks())
 		{
-			auto sc = Graph::Nodes::Unit::StatsContainer{
+			auto sc = N::Unit::StatsContainer{
 				.bfieldValueNow = stats.totalValue,
 				.bfieldValuePrev = lastStats.totalValue,
 				.bfieldValueStart = startStats.totalValue,
@@ -395,7 +397,7 @@ namespace
 				.stackStats = sstats.at(cstack)
 			};
 
-			G->add(std::make_shared<Graph::Nodes::Unit>(*cstack, sc, acstack == cstack));
+			G->add(std::make_shared<N::Unit>(*cstack, sc, acstack == cstack));
 		}
 	}
 
@@ -413,7 +415,7 @@ namespace
 		for(const auto & obstacle : battle.battleGetAllObstacles())
 			for(const auto & bh : obstacle->getAffectedTiles())
 				if(bh.isAvailable())
-					hexobstacles.at(Graph::Nodes::Hex::CalcId(bh)).push_back(obstacle);
+					hexobstacles.at(N::Hex::CalcId(bh)).push_back(obstacle);
 
 		auto gatestate = battle.battleGetGateState();
 		bool isGateOpen = battle.battleGetFortifications().wallsHealth > 0
@@ -427,7 +429,7 @@ namespace
 				auto bh = BattleHex(x + 1, y);
 				ASSERT(bh.isAvailable(), "invalid bhex");
 
-				G->add(std::make_shared<Graph::Nodes::Hex>(
+				G->add(std::make_shared<N::Hex>(
 					bh,
 					G->getAccessibility().at(bh.toInt()),
 					acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
@@ -448,16 +450,16 @@ namespace
 		added.set(EU(ET::EDGE_HEX_ADJACENT_HEX));
 
 		static const auto adjmap = InitAdjMap();
-		const auto hexes = G->getAll<Graph::Nodes::Hex>();
+		const auto & hexes = G->getAll<N::Hex>();
 
 		for(const auto & src : hexes)
 		{
 			for(const auto & dst : hexes)
 			{
-				auto it = adjmap.find({src.bhex.toInt(), dst.bhex.toInt()});
+				auto it = adjmap.find({src->bhex.toInt(), dst->bhex.toInt()});
 				if(it == adjmap.end())
 					continue;
-				G->add(std::make_shared<Graph::Edges::Hex_Adjacent_Hex>(src, dst, it->second));
+				G->add(std::make_shared<E::Hex_Adjacent_Hex>(src, dst, it->second));
 			}
 		}
 	}
@@ -472,7 +474,7 @@ namespace
 		added.set(EU(ET::EDGE_UNIT_ACTS_BEFORE_UNIT));
 
 		const auto matrix = Q::BuildActsBeforeMatrix(battle);
-		const auto & nodes = G->getAll<Graph::Nodes::Unit>();
+		const auto & nodes = G->getAll<N::Unit>();
 
 		ASSERT(matrix.unique_count <= nodes.size(), "unique_count exceeds size of graph nodes");
 
@@ -481,7 +483,7 @@ namespace
 			auto unitId = matrix.unique_units.at(i);
 			// XXX: assuming unit ID is the same as CStack ID. This must be OK
 			// since as of 2026, battle::Unit is just a superclass of CStack.
-			const auto & unit = G->getByExtraIndex<Graph::Nodes::Unit>(unitId);
+			const auto & unit = G->getByExtraIndex<N::Unit>(unitId);
 			ASSERT(unit, "unit not found: " + std::to_string(unitId));
 
 			for(int j = 0; j < matrix.unique_count; ++j)
@@ -491,9 +493,9 @@ namespace
 					continue;
 
 				auto otherId = matrix.unique_units.at(j);
-				const auto & other = G->getByExtraIndex<Graph::Nodes::Unit>(otherId);
+				const auto & other = G->getByExtraIndex<N::Unit>(otherId);
 				ASSERT(other, "unit not found: " + std::to_string(otherId));
-				G->add(std::make_shared<Graph::Edges::Unit_ActsBefore_Unit>(*unit, *other, times));
+				G->add(std::make_shared<E::Unit_ActsBefore_Unit>(unit, other, times));
 			}
 		}
 	}
@@ -509,14 +511,14 @@ namespace
 		added.set(EU(ET::EDGE_UNIT_MELEE_DMG_UNIT));
 
 		auto pairs = std::unordered_set<std::pair<int, int>>{};
-		const auto & units = G->getAll<Graph::Nodes::Unit>();
+		const auto & units = G->getAll<N::Unit>();
 
 		for(const auto & unit : units)
 		{
-			const auto & cstack = unit.cstack;
+			const auto & cstack = unit->cstack;
 			for(const auto & other : units)
 			{
-				const auto & ostack = other.cstack;
+				const auto & ostack = other->cstack;
 				auto [_, inserted] = pairs.emplace<std::pair<int, int>>({cstack.unitId(), ostack.unitId()});
 
 				if(inserted || ostack.unitSide() == cstack.unitSide())
@@ -526,7 +528,7 @@ namespace
 				auto retalEstimate = DamageEstimation{};
 				const auto attackEstimate = battle.battleEstimateDamage(attinfo, &retalEstimate);
 
-				G->add(std::make_shared<Graph::Edges::Unit_MeleeDmg_Unit>(
+				G->add(std::make_shared<E::Unit_MeleeDmg_Unit>(
 					unit,
 					other,
 					attackEstimate,
@@ -550,18 +552,18 @@ namespace
 
 		// RANGED_DMG edges use a subset of the MELEE_DMG edge nodes
 		// (all ranged units can also melee)
-		for(const auto & edge : G->getAll<Graph::Edges::Unit_MeleeDmg_Unit>())
+		for(const auto & edge : G->getAll<E::Unit_MeleeDmg_Unit>())
 		{
-			const auto & unit = edge.srcNode;
-			const auto & cstack = unit.cstack;
+			const auto & unit = edge->srcNode;
+			const auto & cstack = unit->cstack;
 			if(!cstack.canShoot() || cstack.shots.available() <= 0)
 				continue;
 
-			const auto & other = edge.dstNode;
-			const auto & ostack = other.cstack;
+			const auto & other = edge->dstNode;
+			const auto & ostack = other->cstack;
 			const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, true);
 			const auto estimate = battle.battleEstimateDamage(attinfo);
-			G->add(std::make_shared<Graph::Edges::Unit_ShootDmg_Unit>(
+			G->add(std::make_shared<E::Unit_ShootDmg_Unit>(
 				unit,
 				other,
 				estimate,
@@ -581,23 +583,23 @@ namespace
 
 		// BLOCKS edges use a subset of the RANGED_DMG edge nodes
 		// (all blocked units must be ranged units)
-		for(const auto & edge : G->getAll<Graph::Edges::Unit_ShootDmg_Unit>())
+		for(const auto & edge : G->getAll<E::Unit_ShootDmg_Unit>())
 		{
-			const auto & unit = edge.srcNode;
-			const auto & cstack = unit.cstack;
+			const auto & unit = edge->srcNode;
+			const auto & cstack = unit->cstack;
 
 			// These can never be blocked.
 			if(cstack.hasBonusOfType(BonusType::FREE_SHOOTING) || cstack.hasBonusOfType(BonusType::SIEGE_WEAPON))
 				continue;
 
-			const auto & other = edge.dstNode;
-			const auto & ostack = other.cstack;
+			const auto & other = edge->dstNode;
+			const auto & ostack = other->cstack;
 
 			for(const auto & bhex : cstack.getSurroundingHexes())
 			{
 				if(ostack.coversPos(bhex))
 				{
-					G->add(std::make_shared<Graph::Edges::Unit_Blocks_Unit>(unit, other));
+					G->add(std::make_shared<E::Unit_Blocks_Unit>(unit, other));
 					break;
 				}
 			}
@@ -613,16 +615,16 @@ namespace
 		ASSERT(!added.test(EU(ET::EDGE_UNIT_OCCUPIES_HEX)), "Elements of type EDGE_UNIT_OCCUPIES_HEX already added");
 		added.set(EU(ET::EDGE_UNIT_OCCUPIES_HEX));
 
-		for(const auto & unit : G->getAll<Graph::Nodes::Unit>())
+		for(const auto & unit : G->getAll<N::Unit>())
 		{
-			const auto & cstack = unit.cstack;
+			const auto & cstack = unit->cstack;
 			for(const auto & bhex : cstack.getHexes())
 			{
 				if(!bhex.isAvailable())
 					continue;
-				const auto & hex = G->getByExtraIndex<Graph::Nodes::Hex>(bhex.toInt());
+				const auto & hex = G->getByExtraIndex<N::Hex>(bhex.toInt());
 				ASSERT(hex, "hex not found: " + std::to_string(bhex.toInt()));
-				G->add(std::make_shared<Graph::Edges::Unit_Occupies_Hex>(unit, *hex));
+				G->add(std::make_shared<E::Unit_Occupies_Hex>(unit, hex));
 			}
 		}
 	}
@@ -638,26 +640,59 @@ namespace
 		added.set(EU(ET::NODE_ACTION));
 		added.set(EU(ET::NODE_ACTACTION));
 
-		// WAIT action
+		auto activeActionsToAdd = std::vector<N::Action *>{};
+		auto activeEdgesToAdd = std::vector<N::Action *>{};
 
-		for(const auto & hex : G->getAll<Graph::Nodes::Hex>())
-		{
-			if(hex.statemask.test(EU(Schema::V15::HexState::OBSTACLE)))
-				continue;
+		auto aunit = acstack ? G->getByExtraIndex<N::Unit>(acstack->unitId()) : nullptr;
 
-			const auto & bhex = hex.bhex;
-			for(const auto & unit : G->getAll<Graph::Nodes::Unit>())
-			{
-				const auto & cstack = unit.cstack;
-				bool isActive = (&cstack) == acstack;
+		// TODO: WAIT action
 
-				const auto & reachability = G->getReachability(cstack);
-				if(reachability.distances.at(bhex.toInt()) <= cstack.getMovementRange())
-				{
-					const auto & move = G->add(std::make_shared<Graph::Nodes::Action>());
-				}
-			}
-		}
+		// for(const auto & hex : G->getAll<N::Hex>())
+		// {
+		// 	if(hex->statemask.test(EU(Schema::V15::HexState::OBSTACLE)))
+		// 		continue;
+
+		// 	const auto & bhex = hex->bhex;
+		// 	for(const auto & unit : G->getAll<N::Unit>())
+		// 	{
+		// 		const auto & cstack = unit->cstack;
+
+		// 		auto addNode = [&G, &unit, &aunit]<typename N, typename AN>()
+		// 		{
+		// 			if(aunit)
+		// 				G->add(std::make_shared<AN>());
+		// 			return G->add(std::make_shared<N>());
+		// 		};
+
+		// 		auto addEdge = [&G, &isActive, &acstack]<typename E, typename AE, typename N1, typename N2>(N1 n1, N2 n2)
+		// 		{
+		// 			G->add(std::make_shared)
+		// 		};
+
+		// 		const auto & reachability = G->getReachability(cstack);
+
+		// 		if(reachability.distances.at(bhex.toInt()) <= cstack.getMovementRange())
+		// 		{
+		// 			const auto move = std::make_shared<N::Action>();
+		// 			G->add(move);
+		// 			auto x= E::Action_By_Unit(*move, unit);
+		// 			G->add(std::make_shared<E::Action_By_Unit>(move, unit));
+		// 			G->add(std::make_shared<E::Action_EndsAt_Hex>(move, hex));
+		// 			if(cstack.doubleWide())
+		// 			{
+		// 				const auto & ohex = G->getByExtraIndex<N::Hex>(cstack.occupiedHex().toInt());
+		// 				ASSERT(ohex, "AddActionNodes: ohex is nullptr!");
+		// 				G->add(std::make_shared<E::Action_EndsAt_Hex>(move, *ohex, true));
+		// 			}
+
+		// 			// TODO: duplicate for isActive
+		// 			// maybe accumulate in added then iterate and readd?
+
+
+
+		// 		}
+		// 	}
+		// }
 	}
 
 	/* REDUNDANT because it is just saves 1 message passing layer compared
@@ -671,7 +706,7 @@ namespace
 		added.set(EU(ET::EDGE_UNIT_THREATENS_UNIT));
 
 		// THREATENS_UNIT edges use a subset of the MELEE_DMG edge nodes
-		for(const auto & edge : G->getAll<Graph::Edges::Unit_MeleeDmg_Unit>())
+		for(const auto & edge : G->getAll<E::Unit_MeleeDmg_Unit>())
 		{
 			const auto & unit = edge.srcNode;
 			const auto & cstack = unit.cstack;
@@ -685,7 +720,7 @@ namespace
 			{
 				if(oreach.distances.at(bhex.toInt()) <= ospeed || G->isRUFR(ostack, bhex))
 				{
-					G->add(std::make_shared<Graph::Edges::Unit_Threatens_Unit>(unit, other));
+					G->add(std::make_shared<E::Unit_Threatens_Unit>(unit, other));
 					break;
 				}
 			}
@@ -707,20 +742,20 @@ namespace
 		ASSERT(!added.test(EU(ET::EDGE_UNIT_THREATENS_HEX)), "Elements of type EDGE_UNIT_THREATENS_HEX already added");
 		added.set(EU(ET::EDGE_UNIT_THREATENS_HEX));
 
-		for(const auto & unit : G->getAll<Graph::Nodes::Unit>())
+		for(const auto & unit : G->getAll<N::Unit>())
 		{
 			const auto & cstack = unit.cstack;
 			const auto & speed = cstack.getMovementRange();
 			const auto & reach = G->getReachability(cstack);
 
-			for(const auto & hex : G->getAll<Graph::Nodes::Hex>())
+			for(const auto & hex : G->getAll<N::Hex>())
 			{
 				const auto & bhex = hex.bhex;
 				for(const auto & nbh : bhex.getNeighbouringTiles())
 				{
 					if(reach.distances.at(nbh.toInt()) <= speed || G->isRUFR(cstack, nbh))
 					{
-						G->add(std::make_shared<Graph::Edges::Unit_Threatens_Hex>(unit, hex));
+						G->add(std::make_shared<E::Unit_Threatens_Hex>(unit, hex));
 						break;
 					}
 				}
@@ -812,7 +847,7 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 
 		auto bf_valueNow = lastStats.leftValue + lastStats.rightValue;
 		auto bf_hpNow = lastStats.leftHp + lastStats.rightHp;
-		auto value = elem.killedAmount * Graph::Nodes::Unit::GetValue(defender->unitType());
+		auto value = elem.killedAmount * N::Unit::GetValue(defender->unitType());
 
 		attackLogs.emplace_back(
 			attacker,

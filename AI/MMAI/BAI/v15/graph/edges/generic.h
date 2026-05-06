@@ -52,7 +52,6 @@ GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
 
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
-GENERIC_EDGE_ELEMENT(Action, EndsAt, Hex);
 GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
 GENERIC_EDGE_ELEMENT(Action, ExposesToShootFrom, Unit);
 GENERIC_EDGE_ELEMENT(Action, Melees, Unit);
@@ -63,7 +62,6 @@ GENERIC_EDGE_ELEMENT(Action, Threatens, Hex);
 #endif
 GENERIC_EDGE_ELEMENT(Actaction, By, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Blocks, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, EndsAt, Hex);
 GENERIC_EDGE_ELEMENT(Actaction, ExposesToMeleeFrom, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, ExposesToShootFrom, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Melees, Unit);
