@@ -21,8 +21,8 @@ public:
     using A = typename EncTraits::A;
 
     Base(
-        const SrcNode & srcNode,
-        const DstNode & dstNode
+        const std::shared_ptr<const SrcNode> & srcNode,
+        const std::shared_ptr<const DstNode> & dstNode
     ) : srcNode(srcNode), dstNode(dstNode), Element<S15::Graph::IEdge, EncTraits>()
     {}
 
@@ -36,7 +36,7 @@ public:
         return {&srcNode, &dstNode};
     }
 
-    const SrcNode & srcNode;
-    const DstNode & dstNode;
+    const std::shared_ptr<const SrcNode> & srcNode;
+    const std::shared_ptr<const DstNode> & dstNode;
 };
 }

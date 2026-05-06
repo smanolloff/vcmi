@@ -23,6 +23,7 @@
 #include "BAI/v15/graph/node_store.h"
 #include "BAI/v15/graph/edge_store.h"
 #include "BAI/v15/graph/edges/generic.h"
+#include "BAI/v15/graph/edges/action_ends_at_hex.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
@@ -117,49 +118,52 @@ public:
     Graph(Graph &&) = delete;
     Graph & operator=(Graph &&) = delete;
 
+    // XXX: pass-by-value + move is preferred to pass-by-reference
+    //      => must accept non-const std::shared ptr
+    // XXX: The stores hold pointers-to-const, but template deduction fails
+    //      => must accept pointer-to-non-const here, but specify it upstream
+    //          (to avoid having to specify it at the G->add call site)
     template <typename T>
-    auto & add(const std::shared_ptr<T> & elem)
+    void add(std::shared_ptr<T> elem)
     {
-        return getMutableStore<T>().add(elem);
+        getMutableStore<T>().add(std::shared_ptr<const T>{std::move(elem)});
     }
 
     template <typename T>
-    auto getById(std::size_t ind) const
+    std::shared_ptr<const T> getById(std::size_t ind) const
     {
         return getStore<T>().getById(ind);
     }
 
-    // For lookup, you usually do not want forwarding, because lookup should
-    // not consume or mutate the argument. Prefer a const reference.
     template <typename T>
-    auto getByIdentity(const T & elem) const
+    std::shared_ptr<const T> getByIdentity(const std::shared_ptr<const T> & elem) const
     {
         return getStore<T>().getByIdentity(elem);
     }
 
     template <typename T, typename Key>
         requires (!std::is_same_v<typename T::extra_index_type, void>)
-    auto getByExtraIndex(const Key & key) const
+    std::shared_ptr<const T> getByExtraIndex(const Key & key) const
     {
         return getStore<T>().getByExtraIndex(key);
     }
 
     template <typename T>
-    auto getAll() const
+    const auto & getAll() const
     {
         return getStore<T>().entries();
     }
 
-    template <typename EdgeT, typename NodeT>
-    auto getAllEdgesBySrc(const NodeT & src) const
+    template <typename EdgeType, typename NodeType>
+    auto getAllEdgesBySrc(const std::shared_ptr<const NodeType> & src) const
     {
-        return getStore<EdgeT>().getAllBySrc(src);
+        return getStore<EdgeType>().getAllBySrc(src);
     }
 
-    template <typename EdgeT, typename NodeT>
-    auto getAllEdgesByDst(const NodeT & src) const
+    template <typename EdgeType, typename NodeType>
+    auto getAllEdgesByDst(const std::shared_ptr<const NodeType> & dst) const
     {
-        return getStore<EdgeT>().getAllByDst(src);
+        return getStore<EdgeType>().getAllByDst(dst);
     }
 
     template <typename T>
@@ -175,7 +179,7 @@ public:
     }
 
     template <typename T>
-    const auto& getStore() const
+    const auto & getStore() const
     {
         using U = std::remove_cvref_t<T>;
         if constexpr (detail::is_stored_node_v<U>)
@@ -216,7 +220,7 @@ private:
 
     // identical to getStore(), but returned type is non-const
     template <typename T>
-    auto& getMutableStore()
+    auto & getMutableStore()
     {
         using U = std::remove_cvref_t<T>;
         if constexpr (detail::is_stored_node_v<U>)
