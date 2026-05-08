@@ -1,6 +1,7 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/indexed_by.hpp>
+#include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index_container.hpp>
 
@@ -10,6 +11,7 @@ namespace detail
 {
     struct by_ordinal_id;
     struct by_ptr_identity;
+    struct by_src_dst_nodes;
     struct by_src_node;
     struct by_dst_node;
 
@@ -46,10 +48,21 @@ namespace detail
                 boost::multi_index::tag<by_ptr_identity>,
                 boost::multi_index::identity<std::shared_ptr<const T>>
             >,
+
+            boost::multi_index::hashed_unique<
+                boost::multi_index::tag<by_src_dst_nodes>,
+                boost::multi_index::composite_key<
+                    std::shared_ptr<const T>,
+                    SrcKey<T>,
+                    DstKey<T>
+                >
+            >,
+
             boost::multi_index::hashed_non_unique<
                 boost::multi_index::tag<by_src_node>,
                 SrcKey<T>
             >,
+
             boost::multi_index::hashed_non_unique<
                 boost::multi_index::tag<by_dst_node>,
                 DstKey<T>
@@ -78,26 +91,69 @@ public:
             throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": add: insertion failed. Duplicate index?");
     }
 
-    std::shared_ptr<const EdgeType> getById(std::size_t ind) const
+    std::shared_ptr<const EdgeType> getById(std::size_t ind, bool strict) const
     {
         const auto & idx = container.template get<detail::by_ordinal_id>();
         if (ind >= idx.size())
-            throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getById: not found: " + std::to_string(ind));
+        {
+            if (strict)
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getById: not found: " + std::to_string(ind));
+            return nullptr;
+        }
         return idx[ind];
     }
 
-    std::shared_ptr<const EdgeType> getByIdentity(const std::shared_ptr<const EdgeType> & edge) const
+    std::shared_ptr<const EdgeType> getByIdentity(const std::shared_ptr<const EdgeType> & edge, bool strict) const
     {
         const auto & idx = container.template get<detail::by_ptr_identity>();
         auto it = idx.find(edge);
         if (it == idx.end())
-            throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getByIdentity: not found");
+        {
+            if (strict)
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getByIdentity: not found");
+            return nullptr;
+        }
         return *it;
     }
 
-    const auto & entries() const
+    std::shared_ptr<const EdgeType> getBySrcDst(
+        const std::shared_ptr<const typename EdgeType::src_node_type> & src,
+        const std::shared_ptr<const typename EdgeType::dst_node_type> & dst,
+        bool strict) const
     {
-        return container.template get<detail::by_ordinal_id>();
+        const auto & idx = container.template get<detail::by_src_dst_nodes>();
+        auto it = idx.find(boost::make_tuple(src, dst));
+        if (it == idx.end())
+        {
+            if (strict)
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getBySrcDst: not found");
+            return nullptr;
+        }
+        return *it;
+    }
+
+    std::shared_ptr<const EdgeType> getOneBySrc(
+        const std::shared_ptr<const typename EdgeType::src_node_type> & src,
+        bool strict) const
+    {
+        const auto & idx = container.template get<detail::by_src_node>();
+        auto it = idx.find(src);
+        if (it == idx.end())
+        {
+            if (strict)
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getOneBySrc: none found");
+            return nullptr;
+        }
+        return *it;
+    }
+
+    std::shared_ptr<const typename EdgeType::dst_node_type> getOneDstBySrc(
+        const std::shared_ptr<const typename EdgeType::src_node_type> & src,
+        bool strict) const
+    {
+        if (auto res = getOneBySrc(src, strict))
+            return res->dstNode;
+        return nullptr;
     }
 
     auto getAllBySrc(const std::shared_ptr<const typename EdgeType::src_node_type> & src) const
@@ -107,11 +163,56 @@ public:
         return std::ranges::subrange(first, last);
     }
 
+    auto getAllDstBySrc(const std::shared_ptr<const typename EdgeType::src_node_type>& src) const
+    {
+        return getAllBySrc(src)
+            | std::views::transform([](const auto& edge) {
+                  return edge->dstNode;
+              });
+    }
+
+    std::shared_ptr<const EdgeType> getOneByDst(
+        const std::shared_ptr<const typename EdgeType::dst_node_type> & dst,
+        bool strict) const
+    {
+        const auto & idx = container.template get<detail::by_dst_node>();
+        auto it = idx.find(dst);
+        if (it == idx.end())
+        {
+            if (strict)
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getOneByDst: none found");
+            return nullptr;
+        }
+        return *it;
+    }
+
+    std::shared_ptr<const typename EdgeType::src_node_type> getOneSrcByDst(
+        const std::shared_ptr<const typename EdgeType::dst_node_type> & dst,
+        bool strict) const
+    {
+        if (auto res = getOneByDst(dst, strict))
+            return res->srcNode;
+        return nullptr;
+    }
+
     auto getAllByDst(const std::shared_ptr<const typename EdgeType::dst_node_type> & dst) const
     {
         const auto & idx = container.template get<detail::by_dst_node>();
         auto [first, last] = idx.equal_range(dst);
         return std::ranges::subrange(first, last);
+    }
+
+    auto getAllSrcByDst(const std::shared_ptr<const typename EdgeType::dst_node_type>& dst) const
+    {
+        return getAllByDst(dst)
+            | std::views::transform([](const auto& edge) {
+                  return edge->srcNode;
+              });
+    }
+
+    const auto & entries() const
+    {
+        return container.template get<detail::by_ordinal_id>();
     }
 
     std::size_t size() const

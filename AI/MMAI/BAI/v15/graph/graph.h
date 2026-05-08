@@ -66,7 +66,12 @@ namespace detail
         EdgeStore<Edges::Action_ExposesToShootFrom_Unit>,
         EdgeStore<Edges::Action_Melees_Unit>,
         EdgeStore<Edges::Action_Shoots_Unit>,
-        EdgeStore<Edges::Action_Threatens_Unit>,
+        EdgeStore<Edges::Action_EnablesMeleeAt_Unit>,
+        EdgeStore<Edges::Action_EnablesShootAt_Unit>,
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
+        EdgeStore<Edges::Action_EnablesMeleeAt_Hex>,
+        EdgeStore<Edges::Action_EnablesShootAt_Hex>,
+#endif
         EdgeStore<Edges::Actaction_By_Unit>,
         EdgeStore<Edges::Actaction_Blocks_Unit>,
         EdgeStore<Edges::Actaction_EndsAt_Hex>,
@@ -74,8 +79,10 @@ namespace detail
         EdgeStore<Edges::Actaction_ExposesToShootFrom_Unit>,
         EdgeStore<Edges::Actaction_Melees_Unit>,
         EdgeStore<Edges::Actaction_Shoots_Unit>,
-        EdgeStore<Edges::Actaction_Threatens_Unit>,
-        EdgeStore<Edges::Actaction_Threatens_Hex>
+        EdgeStore<Edges::Actaction_EnablesMeleeAt_Unit>,
+        EdgeStore<Edges::Actaction_EnablesShootAt_Unit>,
+        EdgeStore<Edges::Actaction_EnablesMeleeAt_Hex>,
+        EdgeStore<Edges::Actaction_EnablesShootAt_Hex>
     >;
 
     static_assert(
@@ -126,44 +133,124 @@ public:
     template <typename T>
     void add(std::shared_ptr<T> elem)
     {
+        // if (!elem)
+        //     throw std::runtime_error("add: nullptr given");
+        assert(elem);
         getMutableStore<T>().add(std::shared_ptr<const T>{std::move(elem)});
     }
 
     template <typename T>
-    std::shared_ptr<const T> getById(std::size_t ind) const
+    std::shared_ptr<const T> getById(std::size_t ind, bool strict = true) const
     {
-        return getStore<T>().getById(ind);
+        return getStore<T>().getById(ind, strict);
     }
 
     template <typename T>
-    std::shared_ptr<const T> getByIdentity(const std::shared_ptr<const T> & elem) const
+    std::shared_ptr<const T> getByIdentity(const std::shared_ptr<const T> & elem, bool strict = true) const
     {
-        return getStore<T>().getByIdentity(elem);
+        // if (!elem)
+        //     throw std::runtime_error("getByIdentity: nullptr given");
+        assert(elem);
+        return getStore<T>().getByIdentity(elem, strict);
     }
 
     template <typename T, typename Key>
         requires (!std::is_same_v<typename T::extra_index_type, void>)
-    std::shared_ptr<const T> getByExtraIndex(const Key & key) const
+    std::shared_ptr<const T> getByExtraIndex(const Key & key, bool strict = true) const
     {
-        return getStore<T>().getByExtraIndex(key);
+        return getStore<T>().getByExtraIndex(key, strict);
+    }
+
+    template <typename EdgeType, typename SrcNodeType>
+    std::shared_ptr<const EdgeType> getOneEdgeBySrc(const std::shared_ptr<const SrcNodeType> & src, bool strict = true) const
+    {
+        // if (!src)
+        //     throw std::runtime_error("getOneEdgeBySrc: nullptr given");
+        assert(src);
+        return getStore<EdgeType>().getOneBySrc(src, strict);
+    }
+
+    template <typename EdgeType, typename SrcNodeType>
+    auto getOneEdgeDstBySrc(const std::shared_ptr<const SrcNodeType> & src, bool strict = true) const
+    {
+        // if (!src)
+        //     throw std::runtime_error("getOneEdgeBySrc: nullptr given");
+        assert(src);
+        return getStore<EdgeType>().getOneDstBySrc(src, strict);
+    }
+
+    template <typename EdgeType, typename SrcNodeType>
+    auto getAllEdgesBySrc(const std::shared_ptr<const SrcNodeType> & src) const
+    {
+        // if (!src)
+        //     throw std::runtime_error("getAllEdgesBySrc: nullptr given");
+        assert(src);
+        return getStore<EdgeType>().getAllBySrc(src);
+    }
+
+    template <typename EdgeType, typename SrcNodeType>
+    auto getAllEdgesDstBySrc(const std::shared_ptr<const SrcNodeType> & src) const
+    {
+        // if (!src)
+        //     throw std::runtime_error("getAllEdgesBySrc: nullptr given");
+        assert(src);
+        return getStore<EdgeType>().getAllDstBySrc(src);
+    }
+
+    template <typename EdgeType, typename DstNodeType>
+    std::shared_ptr<const EdgeType> getOneEdgeByDst(const std::shared_ptr<const DstNodeType> & dst, bool strict = true) const
+    {
+        // if (!dst)
+        //     throw std::runtime_error("getOneEdgeByDst: nullptr given");
+        assert(dst);
+        return getStore<EdgeType>().getOneByDst(dst, strict);
+    }
+
+    template <typename EdgeType, typename DstNodeType>
+    auto getOneEdgeSrcByDst(const std::shared_ptr<const DstNodeType> & dst, bool strict = true) const
+    {
+        // if (!dst)
+        //     throw std::runtime_error("getOneEdgeByDst: nullptr given");
+        assert(dst);
+        return getStore<EdgeType>().getOneSrcByDst(dst, strict);
+    }
+
+
+    template <typename EdgeType, typename DstNodeType>
+    auto getAllEdgesByDst(const std::shared_ptr<const DstNodeType> & dst) const
+    {
+        // if (!dst)
+        //     throw std::runtime_error("getAllEdgesByDst: nullptr given");
+        assert(dst);
+        return getStore<EdgeType>().getAllByDst(dst);
+    }
+
+    template <typename EdgeType, typename DstNodeType>
+    auto getAllEdgesSrcByDst(const std::shared_ptr<const DstNodeType> & dst) const
+    {
+        // if (!dst)
+        //     throw std::runtime_error("getAllEdgesByDst: nullptr given");
+        assert(dst);
+        return getStore<EdgeType>().getAllSrcByDst(dst);
+    }
+
+
+    template <typename EdgeType, typename SrcNodeType, typename DstNodeType>
+    auto getEdgeBySrcDst(
+        const std::shared_ptr<const SrcNodeType> & src,
+        const std::shared_ptr<const DstNodeType> & dst,
+        bool strict = true) const
+    {
+        // if (!src || !dst)
+        //     throw std::runtime_error("getEdgeBySrcDst: nullptr given");
+        assert(src && dst);
+        return getStore<EdgeType>().getBySrcDst(src, dst, strict);
     }
 
     template <typename T>
     const auto & getAll() const
     {
         return getStore<T>().entries();
-    }
-
-    template <typename EdgeType, typename NodeType>
-    auto getAllEdgesBySrc(const std::shared_ptr<const NodeType> & src) const
-    {
-        return getStore<EdgeType>().getAllBySrc(src);
-    }
-
-    template <typename EdgeType, typename NodeType>
-    auto getAllEdgesByDst(const std::shared_ptr<const NodeType> & dst) const
-    {
-        return getStore<EdgeType>().getAllByDst(dst);
     }
 
     template <typename T>
@@ -173,8 +260,11 @@ public:
     }
 
     template <typename T>
-    std::ptrdiff_t getId(const T & elem) const
+    std::ptrdiff_t getId(const std::shared_ptr<const T> & elem) const
     {
+        // if (!elem)
+        //     throw std::runtime_error("getAllEdgesByDst: nullptr given");
+        assert(elem);
         return getStore<T>().getId(elem);
     }
 

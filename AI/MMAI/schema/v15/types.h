@@ -79,6 +79,15 @@ enum class GlobalAction : uint8_t
 	_count
 };
 
+enum class ActionType : uint8_t
+{
+	WAIT,
+	MOVE,
+	AMOVE,
+	SHOOT,
+	_count
+};
+
 // flags are split into two, as they can't fit in a single int after encoding
 enum class StackFlag1 : uint8_t
 {

@@ -13,7 +13,7 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
         std::vector<const S15::Graph::INode*> res;
         res.reserve(entries.size());
         for (const auto & e : entries)
-            res.push_back(&e);
+            res.push_back(e.get());
         return res;
     };
 
@@ -29,8 +29,6 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Nodes::Hex>());
         case ET::NODE_ACTION:
             return convert(getAll<Nodes::Action>());
-        case ET::NODE_ACTACTION:
-            return convert(getAll<Nodes::Actaction>());
         default:
             throw std::runtime_error(
                 "Unexpected node element type: " + std::to_string(EU(t))
@@ -46,7 +44,7 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
         std::vector<const S15::Graph::IEdge*> res;
         res.reserve(entries.size());
         for (const auto & e : entries)
-            res.push_back(&e);
+            res.push_back(e.get());
         return res;
     };
 
@@ -78,14 +76,16 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Edges::Action_Melees_Unit>());
         case ET::EDGE_ACTION_SHOOTS_UNIT:
             return convert(getAll<Edges::Action_Shoots_Unit>());
-        case ET::EDGE_ACTION_THREATENS_UNIT:
-            return convert(getAll<Edges::Action_Threatens_Unit>());
-
-        #ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
-        case ET::EDGE_ACTION_THREATENS_HEX:
-            return convert(getAll<Edges::Action_Threatens_Hex>());
-        #endif
-
+        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
+            return convert(getAll<Edges::Action_EnablesMeleeAt_Unit>());
+        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
+            return convert(getAll<Edges::Action_EnablesShootAt_Unit>());
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
+        case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
+            return convert(getAll<Edges::Action_EnablesMeleeAt_Hex>());
+        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
+            return convert(getAll<Edges::Action_EnablesShootAt_Hex>());
+#endif
         case ET::EDGE_ACTACTION_BY_UNIT:
             return convert(getAll<Edges::Actaction_By_Unit>());
         case ET::EDGE_ACTACTION_BLOCKS_UNIT:
@@ -100,10 +100,14 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Edges::Actaction_Melees_Unit>());
         case ET::EDGE_ACTACTION_SHOOTS_UNIT:
             return convert(getAll<Edges::Actaction_Shoots_Unit>());
-        case ET::EDGE_ACTACTION_THREATENS_UNIT:
-            return convert(getAll<Edges::Actaction_Threatens_Unit>());
-        case ET::EDGE_ACTACTION_THREATENS_HEX:
-            return convert(getAll<Edges::Actaction_Threatens_Hex>());
+        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT:
+            return convert(getAll<Edges::Actaction_EnablesMeleeAt_Unit>());
+        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT:
+            return convert(getAll<Edges::Actaction_EnablesShootAt_Unit>());
+        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_HEX:
+            return convert(getAll<Edges::Actaction_EnablesMeleeAt_Hex>());
+        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX:
+            return convert(getAll<Edges::Actaction_EnablesShootAt_Hex>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
     }
@@ -145,7 +149,7 @@ void Graph::buildReachabilityCache()
     haveReachabilityCache = true;
 
     for (const auto & unit : getAll<Nodes::Unit>()) {
-        const auto & cstack = unit.cstack;
+        const auto & cstack = unit->cstack;
         auto rinfo = battle.getReachability(&cstack);
         auto dists = rinfo.distances;  // must not mutate rinfo => copy
         auto attacker = cstack.unitSide() == BattleSide::ATTACKER;

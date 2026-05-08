@@ -27,10 +27,10 @@ namespace detail
 
 class Action : public detail::Action_Base
 {
-    using A = S15::Graph::NodeAttributes::Action;
-    using CombatResult = Schema::V15::CombatResult;
-    using TowerFlags = std::bitset<3>;
-    using CorpseFlags = std::bitset<2>;
-    static_assert(EU(A::_count) == 0);
+    explicit Action(S15::ActionType actionType)
+    {
+        setattr(A::TYPE, EU(actionType));
+        static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
+    }
 };
 }
