@@ -31,18 +31,13 @@ namespace detail
 
 class Global : public detail::Global_Base
 {
-	using A = S15::Graph::NodeAttributes::Global;
-	using CombatResult = S15::CombatResult;
-	using GlobalAction = S15::GlobalAction;
-	using GlobalActionMask = std::bitset<EU(GlobalAction::_count)>;
-
 public:
 	using TowerFlags = std::bitset<3>;
 	using CorpseFlags = std::bitset<2>;
 
 	Global(
 		BattleSide side,
-		CombatResult res,
+		S15::CombatResult res,
 		int round,
 		int valueStart,
 		int value,

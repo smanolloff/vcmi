@@ -31,10 +31,12 @@ public:
 		const std::shared_ptr<const Nodes::Unit> & srcNode,
 		const std::shared_ptr<const Nodes::Unit> & dstNode,
 		int times
-	) : detail::Unit_ActsBefore_Unit_Base(srcNode, dstNode)
+	) : detail::Unit_ActsBefore_Unit_Base(srcNode, dstNode), times(times)
 	{
 		setattr(A::TIMES, times);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
 	}
+
+	const int times;
 };
 }

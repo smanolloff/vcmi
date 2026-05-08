@@ -7,7 +7,7 @@ namespace MMAI::BAI::V15::Graph::Nodes
 
 Global::Global(
     BattleSide side,
-    CombatResult res,
+    S15::CombatResult res,
     int round,
     int valueStart,
     int value,
@@ -19,7 +19,7 @@ Global::Global(
 {
     setattr(A::BATTLE_ROUND, round);
 
-    (res == CombatResult::NONE)
+    (res == S15::CombatResult::NONE)
         ? setattr(A::BATTLE_WINNER, S15::NULL_VALUE_UNENCODED)
         : setattr(A::BATTLE_WINNER, EU(res));
 

@@ -322,7 +322,9 @@ struct EncodingTraits<Graph::NodeAttributes::Action>
 {
     static constexpr auto element_type = Graph::ElementType::NODE_ACTION;
     static constexpr std::string_view name = "ACTION_ENCODING";
-    static constexpr encoding_type encoding = {};
+    static constexpr encoding_type encoding = {
+    	E5(A::TYPE, X::RAW, EI(ActionType::_count))
+    };
 };
 
 template <>
@@ -465,27 +467,27 @@ consteval bool AllEncodingAttributesInitialized()
 
 GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
-
-
 GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToMeleeFrom_Unit, EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToShootFrom_Unit, EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Melees_Unit, EDGE_ACTION_MELEES_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Shoots_Unit, EDGE_ACTION_SHOOTS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Unit, EDGE_ACTION_THREATENS_UNIT);
-#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
-GENERIC_EDGE_ENCODING_TRAITS(Action_Threatens_Hex, EDGE_ACTION_THREATENS_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Unit, EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Unit, EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Hex, EDGE_ACTION_ENABLES_MELEE_AT_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Hex, EDGE_ACTION_ENABLES_SHOOT_AT_HEX);
 #endif
 
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_By_Unit, EDGE_ACTACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Blocks_Unit, EDGE_ACTACTION_BLOCKS_UNIT);
-
-
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToMeleeFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToShootFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Melees_Unit, EDGE_ACTACTION_MELEES_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Shoots_Unit, EDGE_ACTACTION_SHOOTS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_Threatens_Unit, EDGE_ACTACTION_THREATENS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_Threatens_Hex, EDGE_ACTACTION_THREATENS_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesMeleeAt_Unit, EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesShootAt_Unit, EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesMeleeAt_Hex, EDGE_ACTACTION_ENABLES_MELEE_AT_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesShootAt_Hex, EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX);
 
 
 template <typename AttrType>
@@ -524,9 +526,11 @@ static_assert(
 		Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit,
 		Graph::EdgeAttributes::Action_Melees_Unit,
 		Graph::EdgeAttributes::Action_Shoots_Unit,
-		Graph::EdgeAttributes::Action_Threatens_Unit,
-#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
-		Graph::EdgeAttributes::Action_Threatens_Hex,
+		Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit,
+		Graph::EdgeAttributes::Action_EnablesShootAt_Unit,
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
+		Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex,
+		Graph::EdgeAttributes::Action_EnablesShootAt_Hex,
 #endif
 		Graph::EdgeAttributes::Actaction_By_Unit,
 		Graph::EdgeAttributes::Actaction_EndsAt_Hex,
@@ -534,8 +538,10 @@ static_assert(
 		Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit,
 		Graph::EdgeAttributes::Actaction_Melees_Unit,
 		Graph::EdgeAttributes::Actaction_Shoots_Unit,
-		Graph::EdgeAttributes::Actaction_Threatens_Unit,
-		Graph::EdgeAttributes::Actaction_Threatens_Hex
+		Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Unit,
+		Graph::EdgeAttributes::Actaction_EnablesShootAt_Unit,
+		Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Hex,
+		Graph::EdgeAttributes::Actaction_EnablesShootAt_Hex
     >(),
     "Found invalid encoding configuration"
 );

@@ -56,18 +56,24 @@ GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
 GENERIC_EDGE_ELEMENT(Action, ExposesToShootFrom, Unit);
 GENERIC_EDGE_ELEMENT(Action, Melees, Unit);
 GENERIC_EDGE_ELEMENT(Action, Shoots, Unit);
-GENERIC_EDGE_ELEMENT(Action, Threatens, Unit);
-#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
-GENERIC_EDGE_ELEMENT(Action, Threatens, Hex);
+GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Unit);
+GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Unit);
+
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
+GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Hex);
+GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Hex);
 #endif
+
 GENERIC_EDGE_ELEMENT(Actaction, By, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, ExposesToMeleeFrom, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, ExposesToShootFrom, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Melees, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Shoots, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, Threatens, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, Threatens, Hex);
+GENERIC_EDGE_ELEMENT(Actaction, EnablesMeleeAt, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, EnablesShootAt, Unit);
+GENERIC_EDGE_ELEMENT(Actaction, EnablesMeleeAt, Hex);
+GENERIC_EDGE_ELEMENT(Actaction, EnablesShootAt, Hex);
 
 }
 

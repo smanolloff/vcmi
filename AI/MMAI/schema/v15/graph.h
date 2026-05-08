@@ -38,14 +38,19 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
         EDGE_ACTION_MELEES_UNIT,
         EDGE_ACTION_SHOOTS_UNIT,
-        EDGE_ACTION_THREATENS_UNIT,
+        EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
+        EDGE_ACTION_ENABLES_SHOOT_AT_UNIT,
 
         // EDGE_UNIT_THREATENS_HEX,        // 99% overlap with EDGE_ACTION_ENDS_AT
         // EDGE_UNIT_THREATENS_UNIT,       // 100% overlap with EDGE_ACTION_DAMAGES_UNIT
+        // However, the above may still need to be added in case
+        // I decide to have Action nodes for the active unit
+        // (which chat GPT says is usually better, but I want to try with all units)
 
-#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
         // can explode to 350K for 14 archangels
-        EDGE_ACTION_THREATENS_HEX,
+        EDGE_ACTACTION_ENABLES_MELEE_AT_HEX,
+        EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX,
 #endif
 
         EDGE_ACTACTION_BY_UNIT,
@@ -55,8 +60,11 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
         EDGE_ACTACTION_MELEES_UNIT,
         EDGE_ACTACTION_SHOOTS_UNIT,
-        EDGE_ACTACTION_THREATENS_UNIT,
-        EDGE_ACTACTION_THREATENS_HEX,
+        EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT,
+        EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT,
+
+        EDGE_ACTACTION_ENABLES_MELEE_AT_HEX,
+        EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX,
 
         _count
     };
@@ -160,13 +168,16 @@ namespace MMAI::Schema::V15::Graph
         };
 
         // Action = action by ANY unit
-        BLANK_ENUM_DEF(Action);
+        enum class Action : uint8_t
+        {
+            TYPE,   // see ActionType enum
+            _count
+        };
 
         // Actaction = action by ACTIVE unit
         enum class Actaction : uint8_t
         {
             ID, // 0..N_ACTIONS
-
             _count
         };
     }
@@ -228,10 +239,12 @@ namespace EdgeAttributes
         BLANK_ENUM_DEF(Action_ExposesToShootFrom_Unit);
         BLANK_ENUM_DEF(Action_Melees_Unit);
         BLANK_ENUM_DEF(Action_Shoots_Unit);
-        BLANK_ENUM_DEF(Action_Threatens_Unit);
+        BLANK_ENUM_DEF(Action_EnablesMeleeAt_Unit);
+        BLANK_ENUM_DEF(Action_EnablesShootAt_Unit);
 
-#ifdef MMAI_ENABLE_EDGE_ACTION_THREATENS_HEX
-        BLANK_ENUM_DEF(Action_Threatens_Hex);
+#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
+        BLANK_ENUM_DEF(Action_EnablesMeleeAt_Hex);
+        BLANK_ENUM_DEF(Action_EnablesShootAt_Hex);
 #endif
 
         BLANK_ENUM_DEF(Actaction_By_Unit);
@@ -247,11 +260,13 @@ namespace EdgeAttributes
         BLANK_ENUM_DEF(Actaction_ExposesToShootFrom_Unit);
         BLANK_ENUM_DEF(Actaction_Melees_Unit);
         BLANK_ENUM_DEF(Actaction_Shoots_Unit);
-        BLANK_ENUM_DEF(Actaction_Threatens_Unit);
-        BLANK_ENUM_DEF(Actaction_Threatens_Hex);
+        BLANK_ENUM_DEF(Actaction_EnablesMeleeAt_Unit);
+        BLANK_ENUM_DEF(Actaction_EnablesShootAt_Unit);
+        BLANK_ENUM_DEF(Actaction_EnablesMeleeAt_Hex);
+        BLANK_ENUM_DEF(Actaction_EnablesShootAt_Hex);
 
-        // 6 nodes, 21 edges
-        static_assert(static_cast<int>(ElementType::_count) == 6 + 23);
+        // 6 nodes, 26 edges
+        static_assert(static_cast<int>(ElementType::_count) == 6 + 26);
     };
 
     class INode

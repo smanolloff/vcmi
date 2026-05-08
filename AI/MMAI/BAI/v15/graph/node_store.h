@@ -97,20 +97,28 @@ public:
             throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": insertion failed. Duplicate index?");
     }
 
-    std::shared_ptr<const NodeType> getById(std::size_t ind) const
+    std::shared_ptr<const NodeType> getById(std::size_t ind, bool strict) const
     {
         const auto & idx = container.template get<detail::by_ordinal_id>();
         if (ind >= idx.size())
-            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getById: not found: " + std::to_string(ind));
+        {
+            if (strict)
+                throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getById: not found: " + std::to_string(ind));
+            return nullptr;
+        }
         return idx[ind];
     }
 
-    std::shared_ptr<const NodeType> getByIdentity(const std::shared_ptr<const NodeType> & node) const
+    std::shared_ptr<const NodeType> getByIdentity(const std::shared_ptr<const NodeType> & node, bool strict) const
     {
         const auto & idx = container.template get<detail::by_ptr_identity>();
         auto it = idx.find(node);
         if (it == idx.end())
-            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByIdentity: not found");
+        {
+            if (strict)
+                throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByIdentity: not found");
+            return nullptr;
+        }
         return *it;
     }
 
@@ -120,12 +128,16 @@ public:
     // Without it, the argument would have to be exactly std::string("foo").
     template <typename Key>
         requires (!std::is_same_v<typename NodeType::extra_index_type, void>)
-    std::shared_ptr<const NodeType> getByExtraIndex(const Key & key) const
+    std::shared_ptr<const NodeType> getByExtraIndex(const Key & key, bool strict) const
     {
         const auto & idx = container.template get<detail::by_extra_index>();
         auto it = idx.find(key);
         if (it == idx.end())
-            throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByExtraIndex: not found");
+        {
+            if (strict)
+                throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByExtraIndex: not found");
+            return nullptr;
+        }
         return *it;
     }
 

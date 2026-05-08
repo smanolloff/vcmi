@@ -17,11 +17,6 @@ namespace detail
 
 class Actaction : public detail::Actaction_Base
 {
-    using A = S15::Graph::NodeAttributes::Actaction;
-    using CombatResult = Schema::V15::CombatResult;
-    using TowerFlags = std::bitset<3>;
-    using CorpseFlags = std::bitset<2>;
-
 public:
     explicit Actaction(int action)
     {
