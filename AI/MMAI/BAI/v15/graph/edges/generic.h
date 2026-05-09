@@ -14,7 +14,6 @@
 #include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/graph/nodes/unit.h"
 #include "BAI/v15/graph/nodes/action.h"
-#include "BAI/v15/graph/nodes/actaction.h"
 #include "schema/v15/constants.h"
 
 namespace MMAI::BAI::V15::Graph::Edges
@@ -53,7 +52,6 @@ GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
-GENERIC_EDGE_ELEMENT(Action, ExposesToShootFrom, Unit);
 GENERIC_EDGE_ELEMENT(Action, Melees, Unit);
 GENERIC_EDGE_ELEMENT(Action, Shoots, Unit);
 GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Unit);
@@ -67,7 +65,6 @@ GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Hex);
 GENERIC_EDGE_ELEMENT(Actaction, By, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, ExposesToMeleeFrom, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, ExposesToShootFrom, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Melees, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, Shoots, Unit);
 GENERIC_EDGE_ELEMENT(Actaction, EnablesMeleeAt, Unit);

@@ -24,6 +24,7 @@
 #include "BAI/v15/graph/edge_store.h"
 #include "BAI/v15/graph/edges/generic.h"
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
+#include "BAI/v15/graph/edges/action_exposes_to_shoot_from_unit.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
@@ -98,15 +99,24 @@ namespace detail
         : std::bool_constant<(std::same_as<T, Ts> || ...)> {};
 
     template <typename T>
-    constexpr bool is_stored_node_v =
+    concept is_stored_node =
         tuple_contains<NodeStore<std::remove_cvref_t<T>>, TNodeStores>::value;
 
     template <typename T>
-    constexpr bool is_stored_edge_v =
+    concept is_stored_edge =
         tuple_contains<EdgeStore<std::remove_cvref_t<T>>, TEdgeStores>::value;
 
+    template <typename T>
+    concept is_stored_element = is_stored_node<T> || is_stored_edge<T>;
+
+    template <typename EdgeType, typename NodeType>
+    concept is_edge_src = std::is_same_v<typename EdgeType::src_node_type, NodeType>;
+
+    template <typename EdgeType, typename NodeType>
+    concept is_edge_dst = std::is_same_v<typename EdgeType::dst_node_type, NodeType>;
+
     template <typename>
-    inline constexpr bool always_false_v = false;
+    inline constexpr bool always_false = false;
 }
 
 namespace S15 = Schema::V15;
@@ -131,12 +141,13 @@ public:
     //      => must accept pointer-to-non-const here, but specify it upstream
     //          (to avoid having to specify it at the G->add call site)
     template <typename T>
+    requires detail::is_stored_element<T>
     void add(std::shared_ptr<T> elem)
     {
         // if (!elem)
         //     throw std::runtime_error("add: nullptr given");
         assert(elem);
-        getMutableStore<T>().add(std::shared_ptr<const T>{std::move(elem)});
+        getMutableStore<T>().add(std::move(elem));
     }
 
     template <typename T>
@@ -146,6 +157,7 @@ public:
     }
 
     template <typename T>
+    requires detail::is_stored_element<T>
     std::shared_ptr<const T> getByIdentity(const std::shared_ptr<const T> & elem, bool strict = true) const
     {
         // if (!elem)
@@ -162,6 +174,8 @@ public:
     }
 
     template <typename EdgeType, typename SrcNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_src<EdgeType, SrcNodeType>
     std::shared_ptr<const EdgeType> getOneEdgeBySrc(const std::shared_ptr<const SrcNodeType> & src, bool strict = true) const
     {
         // if (!src)
@@ -171,6 +185,8 @@ public:
     }
 
     template <typename EdgeType, typename SrcNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_src<EdgeType, SrcNodeType>
     auto getOneEdgeDstBySrc(const std::shared_ptr<const SrcNodeType> & src, bool strict = true) const
     {
         // if (!src)
@@ -180,6 +196,8 @@ public:
     }
 
     template <typename EdgeType, typename SrcNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_src<EdgeType, SrcNodeType>
     auto getAllEdgesBySrc(const std::shared_ptr<const SrcNodeType> & src) const
     {
         // if (!src)
@@ -189,6 +207,8 @@ public:
     }
 
     template <typename EdgeType, typename SrcNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_src<EdgeType, SrcNodeType>
     auto getAllEdgesDstBySrc(const std::shared_ptr<const SrcNodeType> & src) const
     {
         // if (!src)
@@ -198,6 +218,8 @@ public:
     }
 
     template <typename EdgeType, typename DstNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_dst<EdgeType, DstNodeType>
     std::shared_ptr<const EdgeType> getOneEdgeByDst(const std::shared_ptr<const DstNodeType> & dst, bool strict = true) const
     {
         // if (!dst)
@@ -207,6 +229,8 @@ public:
     }
 
     template <typename EdgeType, typename DstNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_dst<EdgeType, DstNodeType>
     auto getOneEdgeSrcByDst(const std::shared_ptr<const DstNodeType> & dst, bool strict = true) const
     {
         // if (!dst)
@@ -217,6 +241,8 @@ public:
 
 
     template <typename EdgeType, typename DstNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_dst<EdgeType, DstNodeType>
     auto getAllEdgesByDst(const std::shared_ptr<const DstNodeType> & dst) const
     {
         // if (!dst)
@@ -226,6 +252,8 @@ public:
     }
 
     template <typename EdgeType, typename DstNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_dst<EdgeType, DstNodeType>
     auto getAllEdgesSrcByDst(const std::shared_ptr<const DstNodeType> & dst) const
     {
         // if (!dst)
@@ -236,6 +264,9 @@ public:
 
 
     template <typename EdgeType, typename SrcNodeType, typename DstNodeType>
+    requires detail::is_stored_edge<EdgeType>
+        && detail::is_edge_src<EdgeType, SrcNodeType>
+        && detail::is_edge_dst<EdgeType, DstNodeType>
     auto getEdgeBySrcDst(
         const std::shared_ptr<const SrcNodeType> & src,
         const std::shared_ptr<const DstNodeType> & dst,
@@ -248,18 +279,21 @@ public:
     }
 
     template <typename T>
+    requires detail::is_stored_element<T>
     const auto & getAll() const
     {
         return getStore<T>().entries();
     }
 
     template <typename T>
+    requires detail::is_stored_element<T>
     auto size() const
     {
         return getStore<T>().size();
     }
 
     template <typename T>
+    requires detail::is_stored_element<T>
     std::ptrdiff_t getId(const std::shared_ptr<const T> & elem) const
     {
         // if (!elem)
@@ -269,15 +303,19 @@ public:
     }
 
     template <typename T>
+    requires detail::is_stored_node<T>
     const auto & getStore() const
     {
         using U = std::remove_cvref_t<T>;
-        if constexpr (detail::is_stored_node_v<U>)
-            return std::get<NodeStore<U>>(nodeStores);
-        else if constexpr (detail::is_stored_edge_v<U>)
-            return std::get<EdgeStore<U>>(edgeStores);
-        else
-            static_assert(detail::always_false_v<U>, "type is not a stored node/edge");
+        return std::get<NodeStore<U>>(nodeStores);
+    }
+
+    template <typename T>
+    requires detail::is_stored_edge<T>
+    const auto & getStore() const
+    {
+        using U = std::remove_cvref_t<T>;
+        return std::get<EdgeStore<U>>(edgeStores);
     }
 
     std::vector<const S15::Graph::INode*>
@@ -310,15 +348,19 @@ private:
 
     // identical to getStore(), but returned type is non-const
     template <typename T>
+    requires detail::is_stored_node<T>
     auto & getMutableStore()
     {
         using U = std::remove_cvref_t<T>;
-        if constexpr (detail::is_stored_node_v<U>)
-            return std::get<NodeStore<U>>(nodeStores);
-        else if constexpr (detail::is_stored_edge_v<U>)
-            return std::get<EdgeStore<U>>(edgeStores);
-        else
-            static_assert(detail::always_false_v<U>, "type is not a stored node/edge");
+        return std::get<NodeStore<U>>(nodeStores);
+    }
+
+    template <typename T>
+    requires detail::is_stored_edge<T>
+    auto & getMutableStore()
+    {
+        using U = std::remove_cvref_t<T>;
+        return std::get<EdgeStore<U>>(edgeStores);
     }
 };
 }

@@ -1,3 +1,4 @@
+#include "BAI/v15/graph/util.h"
 #include "BAI/v15/graph/nodes/unit.h"
 
 #include "GameLibrary.h"
@@ -72,11 +73,6 @@ Unit::Unit(
         valueOne *= 5;
     else if(cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER)
         valueOne = static_cast<int>(valueOne * 0.2);
-
-    auto permille = [](int v1, int v2)
-    {
-        return static_cast<int>((1000LL * v1) / v2);
-    };
 
     auto value = valueOne * cstack.getCount();
 

@@ -1,0 +1,56 @@
+#pragma once
+
+#include "BAI/v15/graph/util.h"
+#include "BAI/v15/graph/edges/base.h"
+#include "BAI/v15/graph/nodes/action.h"
+#include "BAI/v15/graph/nodes/unit.h"
+#include "schema/v15/constants.h"
+
+namespace MMAI::BAI::V15::Graph::Edges
+{
+namespace S15 = Schema::V15;
+
+namespace detail
+{
+    using Action_ExposesToShootFrom_Unit_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>;
+    using Action_ExposesToShootFrom_Unit_Base = Base<Nodes::Action, Nodes::Unit, Action_ExposesToShootFrom_Unit_Traits>;
+}
+
+class Action_ExposesToShootFrom_Unit : public detail::Action_ExposesToShootFrom_Unit_Base
+{
+public:
+    Action_ExposesToShootFrom_Unit(
+        const std::shared_ptr<const Nodes::Action> & srcNode,
+        const std::shared_ptr<const Nodes::Unit> & dstNode,
+        float mult
+    ) : detail::Action_ExposesToShootFrom_Unit_Base(srcNode, dstNode)
+    {
+        setattr(A::DMG_MULT, permille(mult, 1));
+        static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
+    }
+};
+
+/*
+ * Active
+ */
+
+namespace detail
+{
+    using Actaction_ExposesToShootFrom_Unit_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>;
+    using Actaction_ExposesToShootFrom_Unit_Base = Base<Nodes::Actaction, Nodes::Unit, Actaction_ExposesToShootFrom_Unit_Traits>;
+}
+
+class Actaction_ExposesToShootFrom_Unit : public detail::Actaction_ExposesToShootFrom_Unit_Base
+{
+public:
+    Actaction_ExposesToShootFrom_Unit(
+        const std::shared_ptr<const Nodes::Actaction> & srcNode,
+        const std::shared_ptr<const Nodes::Unit> & dstNode,
+        float mult
+    ) : detail::Actaction_ExposesToShootFrom_Unit_Base(srcNode, dstNode)
+    {
+        setattr(A::DMG_MULT, permille(mult, 1));
+        static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
+    }
+};
+}

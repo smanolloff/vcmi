@@ -170,13 +170,14 @@ namespace MMAI::Schema::V15::Graph
         // Action = action by ANY unit
         enum class Action : uint8_t
         {
-            TYPE,   // see ActionType enum
+            TYPE, // see ActionType enum
             _count
         };
 
         // Actaction = action by ACTIVE unit
         enum class Actaction : uint8_t
         {
+            TYPE, // see ActionType enum
             ID, // 0..N_ACTIONS
             _count
         };
@@ -236,7 +237,13 @@ namespace EdgeAttributes
         };
 
         BLANK_ENUM_DEF(Action_ExposesToMeleeFrom_Unit);
-        BLANK_ENUM_DEF(Action_ExposesToShootFrom_Unit);
+
+        enum class Action_ExposesToShootFrom_Unit : uint8_t
+        {
+            DMG_MULT,  // 1=full dmg
+            _count
+        };
+
         BLANK_ENUM_DEF(Action_Melees_Unit);
         BLANK_ENUM_DEF(Action_Shoots_Unit);
         BLANK_ENUM_DEF(Action_EnablesMeleeAt_Unit);
@@ -257,7 +264,13 @@ namespace EdgeAttributes
         };
 
         BLANK_ENUM_DEF(Actaction_ExposesToMeleeFrom_Unit);
-        BLANK_ENUM_DEF(Actaction_ExposesToShootFrom_Unit);
+
+        enum class Actaction_ExposesToShootFrom_Unit : uint8_t
+        {
+            DMG_MULT,  // 1=full dmg
+            _count
+        };
+
         BLANK_ENUM_DEF(Actaction_Melees_Unit);
         BLANK_ENUM_DEF(Actaction_Shoots_Unit);
         BLANK_ENUM_DEF(Actaction_EnablesMeleeAt_Unit);

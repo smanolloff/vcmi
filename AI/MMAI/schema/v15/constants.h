@@ -334,7 +334,8 @@ struct EncodingTraits<Graph::NodeAttributes::Actaction>
     static constexpr auto element_type = Graph::ElementType::NODE_ACTACTION;
     static constexpr std::string_view name = "ACTACTION_ENCODING";
     static constexpr encoding_type encoding = {
-		E5(A::ID, X::RAW, N_ACTIONS),
+    	E5(A::TYPE, X::RAW, EI(ActionType::_count)),
+		E5(A::ID, X::RAW, N_ACTIONS)
 	};
 };
 
@@ -457,18 +458,21 @@ struct EncodingTraits<Graph::EdgeAttributes::Actaction_EndsAt_Hex>
 };
 
 
-template <typename... AttrTypes>
-consteval bool AllEncodingAttributesInitialized()
-{
-    return ((UninitializedEncodingAttributes(
-                 EncodingTraits<AttrTypes>::encoding
-             ) == 0) && ...);
-}
-
 GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToMeleeFrom_Unit, EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToShootFrom_Unit, EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT;
+	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT";
+	static constexpr encoding_type encoding = {
+		E5(A::DMG_MULT, X::LS, 1000),
+	};
+};
+
 GENERIC_EDGE_ENCODING_TRAITS(Action_Melees_Unit, EDGE_ACTION_MELEES_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Shoots_Unit, EDGE_ACTION_SHOOTS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Unit, EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
@@ -481,7 +485,18 @@ GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Hex, EDGE_ACTION_ENABLES_SHOO
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_By_Unit, EDGE_ACTACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Blocks_Unit, EDGE_ACTACTION_BLOCKS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToMeleeFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToShootFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT;
+	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT";
+	static constexpr encoding_type encoding = {
+		E5(A::DMG_MULT, X::LS, 1000),
+	};
+};
+
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Melees_Unit, EDGE_ACTACTION_MELEES_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_Shoots_Unit, EDGE_ACTACTION_SHOOTS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesMeleeAt_Unit, EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT);
@@ -489,62 +504,58 @@ GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesShootAt_Unit, EDGE_ACTACTION_ENABL
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesMeleeAt_Hex, EDGE_ACTACTION_ENABLES_MELEE_AT_HEX);
 GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesShootAt_Hex, EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX);
 
-
 template <typename AttrType>
 consteval bool EncodingIsValid()
 {
     constexpr const auto& encoding = EncodingTraits<AttrType>::encoding;
 
+    // The explicit asserts here are used for more informative errors
+    // (a return value is still needed to flag the problematic attribute type)
+	static_assert(UninitializedEncodingAttributes(encoding) == 0);
+	static_assert(DisarrayedEncodingAttributeIndex(encoding) == -1);
+	static_assert(MisconfiguredExpnormSlopeIndex(encoding) == -1);
+
     return UninitializedEncodingAttributes(encoding) == 0
         && DisarrayedEncodingAttributeIndex(encoding) == -1
-        && MisconfiguredExpnormSlopeIndex(encoding) == -1;
-}
+        && MisconfiguredExpnormSlopeIndex(encoding) == -1;}
 
-template <typename... AttrTypes>
-consteval bool AllEncodingsAreValid()
-{
-    return (EncodingIsValid<AttrTypes>() && ...);
-}
 
-static_assert(
-    AllEncodingsAreValid<
-		Graph::NodeAttributes::Hex,
-		Graph::NodeAttributes::Global,
-		Graph::NodeAttributes::Player,
-		Graph::NodeAttributes::Unit,
-		Graph::NodeAttributes::Hex,
-		Graph::NodeAttributes::Action,
-		Graph::EdgeAttributes::Hex_Adjacent_Hex,
-		Graph::EdgeAttributes::Unit_ActsBefore_Unit,
-		Graph::EdgeAttributes::Unit_MeleeDmg_Unit,
-		Graph::EdgeAttributes::Unit_ShootDmg_Unit,
-		Graph::EdgeAttributes::Unit_Blocks_Unit,
-		Graph::EdgeAttributes::Unit_Occupies_Hex,
-		Graph::EdgeAttributes::Action_By_Unit,
-		Graph::EdgeAttributes::Action_EndsAt_Hex,
-		Graph::EdgeAttributes::Action_ExposesToMeleeFrom_Unit,
-		Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit,
-		Graph::EdgeAttributes::Action_Melees_Unit,
-		Graph::EdgeAttributes::Action_Shoots_Unit,
-		Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit,
-		Graph::EdgeAttributes::Action_EnablesShootAt_Unit,
+static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Global>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Player>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Unit>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Action>());
+static_assert(EncodingIsValid<Graph::NodeAttributes::Actaction>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_Adjacent_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ActsBefore_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ShootDmg_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Blocks_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Occupies_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_By_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EndsAt_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_ExposesToMeleeFrom_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Melees_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Shoots_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>());
 #ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
-		Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex,
-		Graph::EdgeAttributes::Action_EnablesShootAt_Hex,
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>());
 #endif
-		Graph::EdgeAttributes::Actaction_By_Unit,
-		Graph::EdgeAttributes::Actaction_EndsAt_Hex,
-		Graph::EdgeAttributes::Actaction_ExposesToMeleeFrom_Unit,
-		Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit,
-		Graph::EdgeAttributes::Actaction_Melees_Unit,
-		Graph::EdgeAttributes::Actaction_Shoots_Unit,
-		Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Unit,
-		Graph::EdgeAttributes::Actaction_EnablesShootAt_Unit,
-		Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Hex,
-		Graph::EdgeAttributes::Actaction_EnablesShootAt_Hex
-    >(),
-    "Found invalid encoding configuration"
-);
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_By_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EndsAt_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_ExposesToMeleeFrom_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_Melees_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_Shoots_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesShootAt_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesShootAt_Hex>());
 
 /*
  * These below are not really used
