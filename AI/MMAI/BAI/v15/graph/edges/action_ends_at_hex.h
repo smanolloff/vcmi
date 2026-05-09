@@ -21,7 +21,7 @@ public:
     Action_EndsAt_Hex(
         const std::shared_ptr<const Nodes::Action> & srcNode,
         const std::shared_ptr<const Nodes::Hex> & dstNode,
-        bool isRear = false
+        bool isRear
     ) : detail::Action_EndsAt_Hex_Base(srcNode, dstNode)
     {
         setattr(A::IS_REAR, isRear);
@@ -29,19 +29,23 @@ public:
     }
 };
 
+/*
+ * Active
+ */
+
 namespace detail
 {
     using Actaction_EndsAt_Hex_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Actaction_EndsAt_Hex>;
-    using Actaction_EndsAt_Hex_Base = Base<Nodes::Action, Nodes::Hex, Actaction_EndsAt_Hex_Traits>;
+    using Actaction_EndsAt_Hex_Base = Base<Nodes::Actaction, Nodes::Hex, Actaction_EndsAt_Hex_Traits>;
 }
 
 class Actaction_EndsAt_Hex : public detail::Actaction_EndsAt_Hex_Base
 {
 public:
     Actaction_EndsAt_Hex(
-        const std::shared_ptr<const Nodes::Action> & srcNode,
+        const std::shared_ptr<const Nodes::Actaction> & srcNode,
         const std::shared_ptr<const Nodes::Hex> & dstNode,
-        bool isRear = false
+        bool isRear
     ) : detail::Actaction_EndsAt_Hex_Base(srcNode, dstNode)
     {
         setattr(A::IS_REAR, isRear);

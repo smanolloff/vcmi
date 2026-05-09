@@ -27,10 +27,32 @@ namespace detail
 
 class Action : public detail::Action_Base
 {
+public:
     explicit Action(S15::ActionType actionType)
     {
         setattr(A::TYPE, EU(actionType));
         static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
+    }
+};
+
+/*
+ * Active
+ */
+
+namespace detail
+{
+    using Actaction_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Actaction>;
+    using Actaction_Base = Base<Actaction_Traits>;
+}
+
+class Actaction : public detail::Actaction_Base
+{
+public:
+    explicit Actaction(S15::ActionType actionType, int action)
+    {
+        setattr(A::TYPE, EU(actionType));
+        setattr(A::ID, action);
+        static_assert(EU(A::_count) == 2, "whistleblower in case attributes change");
     }
 };
 }
