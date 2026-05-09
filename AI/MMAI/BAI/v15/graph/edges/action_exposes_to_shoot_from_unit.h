@@ -23,11 +23,13 @@ public:
         const std::shared_ptr<const Nodes::Action> & srcNode,
         const std::shared_ptr<const Nodes::Unit> & dstNode,
         float mult
-    ) : detail::Action_ExposesToShootFrom_Unit_Base(srcNode, dstNode)
+    ) : detail::Action_ExposesToShootFrom_Unit_Base(srcNode, dstNode), mult(mult)
     {
         setattr(A::DMG_MULT, permille(mult, 1));
         static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
     }
+
+    const float mult;
 };
 
 /*

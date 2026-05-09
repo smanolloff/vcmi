@@ -7,9 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
-#include "StdInc.h"
 #include "BattleAttackInfo.h"
-#include "CUnitState.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 

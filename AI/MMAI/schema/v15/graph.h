@@ -167,17 +167,11 @@ namespace MMAI::Schema::V15::Graph
             _count
         };
 
-        // Action = action by ANY unit
-        enum class Action : uint8_t
-        {
-            TYPE, // see ActionType enum
-            _count
-        };
+        BLANK_ENUM_DEF(Action);
 
         // Actaction = action by ACTIVE unit
         enum class Actaction : uint8_t
         {
-            TYPE, // see ActionType enum
             ID, // 0..N_ACTIONS
             _count
         };
