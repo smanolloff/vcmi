@@ -22,11 +22,13 @@ public:
         const std::shared_ptr<const Nodes::Action> & srcNode,
         const std::shared_ptr<const Nodes::Hex> & dstNode,
         bool isRear
-    ) : detail::Action_EndsAt_Hex_Base(srcNode, dstNode)
+    ) : detail::Action_EndsAt_Hex_Base(srcNode, dstNode), isRear(isRear)
     {
         setattr(A::IS_REAR, isRear);
         static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
     }
+
+    const bool isRear;
 };
 
 /*
@@ -46,10 +48,12 @@ public:
         const std::shared_ptr<const Nodes::Actaction> & srcNode,
         const std::shared_ptr<const Nodes::Hex> & dstNode,
         bool isRear
-    ) : detail::Actaction_EndsAt_Hex_Base(srcNode, dstNode)
+    ) : detail::Actaction_EndsAt_Hex_Base(srcNode, dstNode), isRear(isRear)
     {
         setattr(A::IS_REAR, isRear);
         static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
     }
+
+    const bool isRear;
 };
 }

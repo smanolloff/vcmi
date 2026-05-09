@@ -12,6 +12,8 @@
 
 #include "AI/MMAI/common.h"
 #include "BAI/v15/graph/nodes/base.h"
+#include "BAI/v15/graph/nodes/hex.h"
+#include "BAI/v15/graph/nodes/unit.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/constants.h"
 
@@ -28,11 +30,18 @@ namespace detail
 class Action : public detail::Action_Base
 {
 public:
-    explicit Action(S15::ActionType actionType)
-    {
-        setattr(A::TYPE, EU(actionType));
-        static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
-    }
+    explicit Action(
+        S15::ActionType actionType,
+        int id,
+        const std::shared_ptr<const Nodes::Unit> & by,
+        const std::vector<std::shared_ptr<const Nodes::Hex>> & endsAt)
+    : actionType(actionType), id(id), by(by), endsAt(endsAt)
+    {}
+
+    const S15::ActionType actionType;
+    const int id;
+    const std::shared_ptr<const Nodes::Unit> by;
+    const std::vector<std::shared_ptr<const Nodes::Hex>> endsAt; // primary hex is always first
 };
 
 /*
@@ -48,11 +57,10 @@ namespace detail
 class Actaction : public detail::Actaction_Base
 {
 public:
-    explicit Actaction(S15::ActionType actionType, int action)
+    explicit Actaction(int id)
     {
-        setattr(A::TYPE, EU(actionType));
-        setattr(A::ID, action);
-        static_assert(EU(A::_count) == 2, "whistleblower in case attributes change");
+        setattr(A::ID, id);
+        static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
     }
 };
 }

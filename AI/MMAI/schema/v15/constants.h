@@ -322,9 +322,7 @@ struct EncodingTraits<Graph::NodeAttributes::Action>
 {
     static constexpr auto element_type = Graph::ElementType::NODE_ACTION;
     static constexpr std::string_view name = "ACTION_ENCODING";
-    static constexpr encoding_type encoding = {
-    	E5(A::TYPE, X::RAW, EI(ActionType::_count))
-    };
+    static constexpr encoding_type encoding = {};
 };
 
 template <>
@@ -334,7 +332,6 @@ struct EncodingTraits<Graph::NodeAttributes::Actaction>
     static constexpr auto element_type = Graph::ElementType::NODE_ACTACTION;
     static constexpr std::string_view name = "ACTACTION_ENCODING";
     static constexpr encoding_type encoding = {
-    	E5(A::TYPE, X::RAW, EI(ActionType::_count)),
 		E5(A::ID, X::RAW, N_ACTIONS)
 	};
 };
