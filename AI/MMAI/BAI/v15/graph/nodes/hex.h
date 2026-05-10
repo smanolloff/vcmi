@@ -40,6 +40,7 @@ class Hex : public detail::Hex_Base
 	using HA = S15::Graph::NodeAttributes::Hex;
 	using HS = S15::HexState;
 	using HexAction = S15::HexAction;
+	using HexActMask = std::bitset<EI(HexAction::_count)>;
 public:
 	using HexStateMask = std::bitset<EU(HS::_count)>;
 	using HexActionHex = std::array<BattleHex, 12>;

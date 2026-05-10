@@ -79,22 +79,26 @@ set(MMAI_FILES
   BAI/v15/action.cpp
   BAI/v15/action.h
   BAI/v15/attack_log.h
-  BAI/v15/battlefield.cpp
-  BAI/v15/battlefield.h
   BAI/v15/encoder.cpp
   BAI/v15/encoder.h
   BAI/v15/graph/builder.cpp
+  BAI/v15/graph/edge_store.h
+  BAI/v15/graph/edges/action_ends_at_hex.h
+  BAI/v15/graph/edges/action_exposes_to_shoot_from_unit.h
   BAI/v15/graph/edges/base.h
   BAI/v15/graph/edges/generic.h
   BAI/v15/graph/edges/hex_adjacent_hex.h
   BAI/v15/graph/edges/unit_acts_before_unit.h
+  BAI/v15/graph/edges/unit_melee_dmg_unit.cpp
   BAI/v15/graph/edges/unit_melee_dmg_unit.h
+  BAI/v15/graph/edges/unit_shoot_dmg_unit.cpp
   BAI/v15/graph/edges/unit_shoot_dmg_unit.h
   BAI/v15/graph/element.h
-  BAI/v15/graph/element_store.h
   BAI/v15/graph/graph.cpp
   BAI/v15/graph/graph.h
+  BAI/v15/graph/node_store.h
   BAI/v15/graph/nodes/action.h
+  BAI/v15/graph/nodes/base.h
   BAI/v15/graph/nodes/global.cpp
   BAI/v15/graph/nodes/global.h
   BAI/v15/graph/nodes/hex.cpp
@@ -105,8 +109,6 @@ set(MMAI_FILES
   BAI/v15/graph/nodes/unit.h
   BAI/v15/graph/util.h
   BAI/v15/hexaction.h
-  BAI/v15/hexactmask.h
-  BAI/v15/links.h
   BAI/v15/render.cpp
   BAI/v15/render.h
   BAI/v15/state.cpp

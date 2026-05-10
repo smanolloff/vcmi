@@ -17,7 +17,7 @@ namespace MMAI::BAI::V14
 {
 Schema::V14::Hexes SupplementaryData::getHexes() const
 {
-	ASSERT(battlefield, "getHexes() called when battlefield is null");
+	ASSERT(battlefield != nullptr, "getHexes() called when battlefield is null");
 	auto res = Schema::V14::Hexes{};
 
 	for(int y = 0; y < battlefield->hexes->size(); ++y)
@@ -35,7 +35,7 @@ Schema::V14::Hexes SupplementaryData::getHexes() const
 
 Schema::V14::Stacks SupplementaryData::getStacks() const
 {
-	ASSERT(battlefield, "getStacks() called when battlefield is null");
+	ASSERT(battlefield != nullptr, "getStacks() called when battlefield is null");
 	auto res = Schema::V14::Stacks{};
 
 	for(const auto & stack : battlefield->stacks)
@@ -48,7 +48,7 @@ Schema::V14::Stacks SupplementaryData::getStacks() const
 
 Schema::V14::AllLinks SupplementaryData::getAllLinks() const
 {
-	ASSERT(battlefield, "getAllLinks() called when battlefield is null");
+	ASSERT(battlefield != nullptr, "getAllLinks() called when battlefield is null");
 	auto res = Schema::V14::AllLinks{};
 
 	for(const auto & [lt, links] : battlefield->allLinks)

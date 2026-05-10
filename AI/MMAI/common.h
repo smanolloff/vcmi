@@ -21,8 +21,8 @@ namespace MMAI
 
 inline void ASSERT(
     bool cond,
-    const std::string & msg,
-    const std::source_location & loc = std::source_location::current()
+    std::string_view msg,
+    const std::source_location& loc = std::source_location::current()
 )
 {
     if (!cond)
@@ -30,8 +30,10 @@ inline void ASSERT(
         throw std::runtime_error(
             std::string("Assertion failed in ")
             + std::filesystem::path(loc.file_name()).filename().string()
+            + ":"
+            + std::to_string(loc.line())
             + ": "
-            + msg
+            + std::string(msg)
         );
     }
 }
