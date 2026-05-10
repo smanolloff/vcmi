@@ -77,7 +77,7 @@ public:
 
 	std::string renderANSI() const;
 	std::string debugInfo(Action * action, const CStack * astack, const BattleHex * nbh) const; // DEBUG ONLY
-	void handleUnexpectedAction(const CStack * acstack, const Hex * hex, Action * action);
+	void handleUnexpectedAction(const CStack * acstack, const Graph::Nodes::Hex * hex, Action * action);
 	std::shared_ptr<BattleAction> buildBattleAction();
 	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack, const BattleID & bid) const;
 	bool maybeCastSpell(const CStack * stack, const BattleID & bid);

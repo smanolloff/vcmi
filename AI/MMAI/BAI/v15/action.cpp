@@ -87,7 +87,7 @@ std::string Action::buildName(const Graph::Graph & G)
 	else if(action == Schema::V15::ACTION_WAIT)
 		return "Wait";
 
-	ASSERT(hex, "hex is null");
+	ASSERT(hex != nullptr, "hex is null");
 
 	auto ha = static_cast<HexAction>((action - EI(GlobalAction::_count)) % EI(HexAction::_count));
 	auto res = std::string{};

@@ -53,6 +53,17 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX,
 #endif
 
+        // XXX:
+        // For the GNN, it makes no difference if we transport the active actions
+        // as separate nodes in the observation: they have the same attributes,
+        // so it's identical to feeding the *regular* action nodes in another GNN.
+        //
+        // TODO: Remove actaction nodes and instead expose a SupplementaryData
+        // method "getActiveActionIds" for selecting the active subset of actions.
+        // RL can feed *all* actions through one GNN and the active ones through another GNN.
+        // Also expose "getActiveEdgeTypes" method to allow hiding those from
+        // the first GNN.
+
         EDGE_ACTACTION_BY_UNIT,
         EDGE_ACTACTION_BLOCKS_UNIT,
         EDGE_ACTACTION_ENDS_AT_HEX,

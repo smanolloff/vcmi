@@ -444,7 +444,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 
 std::shared_ptr<BattleAction> BAI::buildBattleAction()
 {
-	ASSERT(state->battlefield, "Cannot build battle action if state->battlefield is missing");
+	ASSERT(state->battlefield != nullptr, "Cannot build battle action if state->battlefield is missing");
 	auto * action = state->action.get();
 	const auto * bf = state->battlefield.get();
 	const auto * acstack = bf->astack->cstack;
@@ -510,7 +510,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 			}
 			break;
 			case HexAction::SHOOT:
-				ASSERT(stack, "no target to shoot");
+				ASSERT(stack != nullptr, "no target to shoot");
 				res = std::make_shared<BattleAction>(BattleAction::makeShotAttack(acstack, stack->cstack));
 				break;
 			case HexAction::AMOVE_TR:
@@ -524,7 +524,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 				auto nbh = action->hex->bhex.cloneInDirection(edir, false); // neighbouring bhex
 				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
 				const auto * estack = battle->battleGetStackByPos(nbh);
-				ASSERT(estack, "no enemy stack for melee attack");
+				ASSERT(estack != nullptr, "no enemy stack for melee attack");
 				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, moveTo));
 			}
 			break;
@@ -541,7 +541,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 				auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
 				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
 				const auto * estack = battle->battleGetStackByPos(nbh);
-				ASSERT(estack, "no enemy stack for melee attack");
+				ASSERT(estack != nullptr, "no enemy stack for melee attack");
 				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, action->hex->bhex));
 			}
 			break;
@@ -624,7 +624,7 @@ void BAI::handleUnexpectedAction(const CStack * acstack, const Hex * hex, Action
 			}
 
 			// only remaining is ACCESSIBLE
-			ASSERT(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: " = std::to_string(EI(a)));
+			ASSERT(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: " + std::to_string(EI(a)));
 
 			// Check if this is a RUFR hex
 			if(acstack->doubleWide() && rinfo.distances.at(bhex.toInt()) == ReachabilityInfo::INFINITE_DIST)

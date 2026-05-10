@@ -164,7 +164,7 @@ namespace
 		if(!model)
 		{
 			logAi->error("MMAI: %s: falling back to %s", key, repo->fallbackName);
-			ASSERT(repo->fallbackModel, "fallback error: model is null");
+			ASSERT(repo->fallbackModel != nullptr, "fallback error: model is null");
 			model = repo->fallbackModel;
 		}
 
@@ -344,7 +344,7 @@ void Router::battleStart(
 		// Additionally, the `cb->getPlayerID` is used instead of `side`
 		// to accomodate for the "side swapping" training feature.
 		// XXX: dev mode assumes there are no neutral players in battle
-		ASSERT(baggage, "baggage is nullptr");
+		ASSERT(baggage != nullptr, "baggage is nullptr");
 		ASSERT(cb->getPlayerID()->hasValue(), "cb->getPlayerID() has no value");
 		if (cb->getPlayerID()->num) {
 			model = baggage->modelRight;
@@ -353,7 +353,7 @@ void Router::battleStart(
 			model = baggage->modelLeft;
 			allowMlBot = baggage->allowMlBotLeft;
 		}
-		ASSERT(model, "model is nullptr");
+		ASSERT(model != nullptr, "model is nullptr");
 		if(model->getType() == Schema::ModelType::PATH)
 		{
 			// If the baggage does not carry a model, it means we must load one from file
@@ -364,7 +364,7 @@ void Router::battleStart(
 			model = GetModel(modelkey);
 		}
 
-		ASSERT(model, "model is nullptr");
+		ASSERT(model != nullptr, "model is nullptr");
 	}
 	else
 	{
