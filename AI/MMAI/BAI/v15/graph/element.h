@@ -13,6 +13,7 @@
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "BAI/v15/encoder.h"
+#include "common.h"
 
 namespace MMAI::BAI::V15::Graph
 {
@@ -26,6 +27,7 @@ public:
     using Attribute = typename EncTraits::A;
 
     S15::Graph::ElementType elementType() const override { return EncTraits::element_type; }
+    std::vector<int> rawAttributes() const override { return std::vector(attrs.begin(), attrs.end()); }
     std::vector<float> encodedAttributes() const override { return Encoder::Encode<EncTraits>(attrs); }
 
     Element()
@@ -35,21 +37,20 @@ public:
 
     int attr(Attribute a) const
     {
-        ASSERT(guardflags.test(EU(a)), EncTraits::name + ": attribute not set: " + std::to_string(EU(a)));
+        ASSERT(guardflags.test(EU(a)), std::string(EncTraits::name) + ": attribute not set: " + std::to_string(EU(a)));
         return attrs.at(EU(a));
     }
 
     void setattr(Attribute a, int value)
     {
-        ASSERT(!guardflags.test(EU(a)), EncTraits::name + ": attribute already set: " + std::to_string(EU(a)));
+        ASSERT(!guardflags.test(EU(a)), std::string(EncTraits::name) + ": attribute already set: " + std::to_string(EU(a)));
         guardflags.set(EU(a));
         attrs.at(EU(a)) = value;
     }
 
-    void addattr(Attribute a, int value)
+    std::string name() const override
     {
-        ASSERT(guardflags.test(EU(a)), EncTraits::name + ": attribute not set: " + std::to_string(EU(a)));
-        attrs.at(EU(a)) += value;
+        return std::string(EncTraits::name);
     }
 
     std::array<int, EncTraits::attr_count> attrs = {};

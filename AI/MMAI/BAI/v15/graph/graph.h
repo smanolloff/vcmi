@@ -15,11 +15,15 @@
 // =============================================================================
 
 #pragma once
+#include "StdInc.h"
 
+#include "BAI/v15/graph/edges/action_melees_unit.h"
+#include "BAI/v15/graph/edges/action_shoots_unit.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/ReachabilityInfo.h"
 #include "battle/AccessibilityInfo.h"
 
+#include "BAI/v15/enum_flags.h"
 #include "BAI/v15/graph/node_store.h"
 #include "BAI/v15/graph/edge_store.h"
 #include "BAI/v15/graph/edges/generic.h"
@@ -49,11 +53,12 @@ namespace detail
         NodeStore<Nodes::Player>,
         NodeStore<Nodes::Unit>,
         NodeStore<Nodes::Hex>,
-        NodeStore<Nodes::Action>,
-        NodeStore<Nodes::Actaction>
+        NodeStore<Nodes::Action>
     >;
 
     using TEdgeStores = std::tuple<
+        EdgeStore<Edges::Global_Yields_Player>,
+        EdgeStore<Edges::Player_Owns_Unit>,
         EdgeStore<Edges::Hex_Adjacent_Hex>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,
         EdgeStore<Edges::Unit_MeleeDmg_Unit>,
@@ -69,21 +74,8 @@ namespace detail
         EdgeStore<Edges::Action_Shoots_Unit>,
         EdgeStore<Edges::Action_EnablesMeleeAt_Unit>,
         EdgeStore<Edges::Action_EnablesShootAt_Unit>,
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
         EdgeStore<Edges::Action_EnablesMeleeAt_Hex>,
-        EdgeStore<Edges::Action_EnablesShootAt_Hex>,
-#endif
-        EdgeStore<Edges::Actaction_By_Unit>,
-        EdgeStore<Edges::Actaction_Blocks_Unit>,
-        EdgeStore<Edges::Actaction_EndsAt_Hex>,
-        EdgeStore<Edges::Actaction_ExposesToMeleeFrom_Unit>,
-        EdgeStore<Edges::Actaction_ExposesToShootFrom_Unit>,
-        EdgeStore<Edges::Actaction_Melees_Unit>,
-        EdgeStore<Edges::Actaction_Shoots_Unit>,
-        EdgeStore<Edges::Actaction_EnablesMeleeAt_Unit>,
-        EdgeStore<Edges::Actaction_EnablesShootAt_Unit>,
-        EdgeStore<Edges::Actaction_EnablesMeleeAt_Hex>,
-        EdgeStore<Edges::Actaction_EnablesShootAt_Hex>
+        EdgeStore<Edges::Action_EnablesShootAt_Hex>
     >;
 
     static_assert(
@@ -125,10 +117,7 @@ class Graph : public S15::Graph::IGraph
 {
 
 public:
-    Graph(
-        const CPlayerBattleCallback & battle,
-        const CStack * acstack
-    ) : battle(battle), acstack(acstack) {};
+    explicit Graph(const CPlayerBattleCallback & battle);
 
     Graph(const Graph &) = delete;
     Graph & operator=(const Graph &) = delete;
@@ -144,6 +133,7 @@ public:
     requires detail::is_stored_element<T>
     void add(std::shared_ptr<T> elem)
     {
+        std::cout << "DEBUG: Add: " << elem->name() << "\n";
         // if (!elem)
         //     throw std::runtime_error("add: nullptr given");
         assert(elem);
@@ -167,7 +157,10 @@ public:
     }
 
     template <typename T, typename Key>
-        requires (!std::is_same_v<typename T::extra_index_type, void>)
+        requires (
+            !std::is_same_v<typename T::extra_index_type, void> &&
+            std::is_same_v<typename T::extra_index_type::result_type, Key>
+        )
     std::shared_ptr<const T> getByExtraIndex(const Key & key, bool strict = true) const
     {
         return getStore<T>().getByExtraIndex(key, strict);
@@ -324,27 +317,30 @@ public:
     std::vector<const S15::Graph::IEdge*>
     getEdges(S15::Graph::ElementType t) const override;
 
-    const AccessibilityInfo & getAccessibility() const;
+    std::vector<std::tuple<int, int>>
+    getActiveNodeToActionIds() const override;
 
+    EnumFlags<S15::Graph::ElementType> getFlags() const;
+    void setFlag(S15::Graph::ElementType et);
+
+    const AccessibilityInfo & getAccessibility() const;
     const ReachabilityInfo & getReachability(const CStack & cstack) const;
-    bool isRUFR(const CStack & cstack, const BattleHex & bh) const;
 
     // Explicitly building caches allows to define getters as const.
     void buildAccessibilityCache();
     void buildReachabilityCache();
 private:
+    EnumFlags<S15::Graph::ElementType> flags;
     bool haveAccessibilityCache = false;
     bool haveReachabilityCache = false;
 
     const CPlayerBattleCallback & battle;
-    const CStack * acstack;  // can be nullptr
 
     detail::TNodeStores nodeStores;
     detail::TEdgeStores edgeStores;
 
     std::unique_ptr<AccessibilityInfo> acache;
     std::unordered_map<uint32_t, ReachabilityInfo> rcache;
-    std::unordered_map<uint32_t, std::array<bool, GameConstants::BFIELD_SIZE>> rufrHexes;
 
     // identical to getStore(), but returned type is non-const
     template <typename T>

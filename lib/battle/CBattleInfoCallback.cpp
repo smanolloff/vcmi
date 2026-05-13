@@ -1702,45 +1702,16 @@ AttackableTiles CBattleInfoCallback::getPotentiallyShootableHexes(const battle::
 }
 
 battle::Units CBattleInfoCallback::getAttackedBattleUnits(
-	const battle::Unit * attacker,
-	const  battle::Unit * defender,
+	const battle::Unit * attacker_,
+	const  battle::Unit * defender_,
 	BattleHex destinationTile,
 	bool rangedAttack,
 	BattleHex attackerPos,
 	BattleHex defenderPos) const
 {
-	battle::Units units;
-	RETURN_IF_NOT_BATTLE(units);
-
-	if(attackerPos == BattleHex::INVALID)
-		attackerPos = attacker->getPosition();
-
-	if(defenderPos == BattleHex::INVALID)
-		defenderPos = defender->getPosition();
-
-	AttackableTiles at;
-
-	if (rangedAttack)
-		at = getPotentiallyShootableHexes(attacker, destinationTile, attackerPos);
-	else
-		at = getPotentiallyAttackableHexes(attacker, defender, destinationTile, attackerPos, defenderPos);
-
-	units = battleGetUnitsIf([=](const battle::Unit * unit)
-	{
-		if (unit->isGhost() || !unit->alive() || unit->isInvincible())
-			return false;
-
-		for (const BattleHex & hex : unit->getHexes())
-		{
-			if (at.hostileCreaturePositions.contains(hex))
-				return true;
-			if (at.friendlyCreaturePositions.contains(hex))
-				return true;
-		}
-		return false;
-	});
-
-	return units;
+	const auto * attacker = battleGetStackByID(static_cast<int>(attacker_->unitId()));
+	const auto & [stacks, _] = getAttackedCreatures(attacker, destinationTile, rangedAttack, attackerPos);
+	return battle::Units(stacks.begin(), stacks.end());
 }
 
 std::pair<std::set<const CStack*>, bool> CBattleInfoCallback::getAttackedCreatures(const CStack* attacker, const BattleHex & destinationTile, bool rangedAttack, BattleHex attackerPos) const

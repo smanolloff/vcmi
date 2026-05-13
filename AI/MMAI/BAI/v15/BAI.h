@@ -54,6 +54,7 @@ public:
 	// Subsequent versions may override this with subclasses of State
 	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);
 	std::unique_ptr<State> state = nullptr;
+	std::unique_ptr<Action> lastAction = nullptr;
 
 	Schema::IModel * model;
 	const int version;
@@ -78,7 +79,7 @@ public:
 	std::string renderANSI() const;
 	std::string debugInfo(Action * action, const CStack * astack, const BattleHex * nbh) const; // DEBUG ONLY
 	void handleUnexpectedAction(const CStack * acstack, const Graph::Nodes::Hex * hex, Action * action);
-	std::shared_ptr<BattleAction> buildBattleAction();
+	std::shared_ptr<BattleAction> buildBattleAction(Schema::Action a, const CStack * acstack) const;
 	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack, const BattleID & bid) const;
 	bool maybeCastSpell(const CStack * stack, const BattleID & bid);
 	void _activeStack(const BattleID & bid, const CStack * stack);

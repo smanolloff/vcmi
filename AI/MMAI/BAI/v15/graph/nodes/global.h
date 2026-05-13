@@ -32,8 +32,18 @@ namespace detail
 class Global : public detail::Global_Base
 {
 public:
+	// TODO: make these 3 and 2 some enum (because they are also referenced in encoding)
 	using TowerFlags = std::bitset<3>;
 	using CorpseFlags = std::bitset<2>;
+
+	struct extra_index_type {
+		using result_type = int;
+		result_type operator()(const std::shared_ptr<const Global> & _global) const {
+			// There can't be two Global nodes
+			// Make sure attempt to insert another one causes an index conflict
+			return 0;
+		}
+	};
 
 	Global(
 		BattleSide side,

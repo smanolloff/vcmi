@@ -30,37 +30,33 @@ namespace detail
 class Action : public detail::Action_Base
 {
 public:
+    struct extra_index_type {
+        using result_type = std::pair<int, int>;
+        result_type operator()(const std::shared_ptr<const Action> & action) const {
+            return {action->id, action->by->cstack.unitId()};
+        }
+    };
+
     explicit Action(
         S15::ActionType actionType,
         int id,
         const std::shared_ptr<const Nodes::Unit> & by,
-        const std::vector<std::shared_ptr<const Nodes::Hex>> & endsAt)
-    : actionType(actionType), id(id), by(by), endsAt(endsAt)
+        const std::vector<std::shared_ptr<const Nodes::Hex>> & endsAt,
+        bool isActive)
+    : actionType(actionType), id(id), by(by), endsAt(endsAt), isActive(isActive)
     {}
+
+    std::string name() const override
+    {
+        std::stringstream ss;
+        ss << detail::Action_Base::name() << "(" << id << "," << by->cstack.unitId() << "," << isActive << ")";
+        return ss.str();
+    }
 
     const S15::ActionType actionType;
     const int id;
     const std::shared_ptr<const Nodes::Unit> by;
     const std::vector<std::shared_ptr<const Nodes::Hex>> endsAt; // primary hex is always first
-};
-
-/*
- * Active
- */
-
-namespace detail
-{
-    using Actaction_Traits = S15::EncodingTraits<S15::Graph::NodeAttributes::Actaction>;
-    using Actaction_Base = Base<Actaction_Traits>;
-}
-
-class Actaction : public detail::Actaction_Base
-{
-public:
-    explicit Actaction(int id)
-    {
-        setattr(A::ID, id);
-        static_assert(EU(A::_count) == 1, "whistleblower in case attributes change");
-    }
+    bool isActive;
 };
 }

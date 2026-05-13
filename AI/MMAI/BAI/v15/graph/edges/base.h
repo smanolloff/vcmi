@@ -2,6 +2,7 @@
 
 #include "BAI/v15/graph/element.h"
 #include "schema/v15/graph.h"
+#include <sstream>
 
 namespace MMAI::BAI::V15::Graph::Edges
 {
@@ -10,20 +11,21 @@ namespace S15 = Schema::V15;
 template <typename SrcNode, typename DstNode, typename EncTraits>
 class Base : public Element<S15::Graph::IEdge, EncTraits>
 {
+    using Base_Base = Element<S15::Graph::IEdge, EncTraits>;
 public:
     using src_node_type = SrcNode;
     using dst_node_type = DstNode;
 
     // bring names into scope
     // (needed due to dependent name lookup rules in C++ templates)
-    using Element<S15::Graph::IEdge, EncTraits>::attrs;
-    using Element<S15::Graph::IEdge, EncTraits>::setattr;
+    using Base_Base::attrs;
+    using Base_Base::setattr;
     using A = typename EncTraits::A;
 
     Base(
         const std::shared_ptr<const SrcNode> & srcNode,
         const std::shared_ptr<const DstNode> & dstNode
-    ) : srcNode(srcNode), dstNode(dstNode), Element<S15::Graph::IEdge, EncTraits>()
+    ) : Base_Base(), srcNode(srcNode), dstNode(dstNode)
     {}
 
     Base(const Base &) = delete;
@@ -31,12 +33,19 @@ public:
     Base(Base &&) = delete;
     Base & operator=(Base &&) = delete;
 
-    Schema::V15::Graph::Endpoints endpoints() const override
+    std::string name() const override
     {
-        return {&srcNode, &dstNode};
+        std::stringstream ss;
+        ss << Base_Base::name() << "[" << srcNode->name() << "->" << dstNode->name() <<"]";
+        return ss.str();
     }
 
-    const std::shared_ptr<const SrcNode> & srcNode;
-    const std::shared_ptr<const DstNode> & dstNode;
+    Schema::V15::Graph::Endpoints endpoints() const override
+    {
+        return {srcNode.get(), dstNode.get()};
+    }
+
+    const std::shared_ptr<const SrcNode> srcNode;
+    const std::shared_ptr<const DstNode> dstNode;
 };
 }

@@ -29,6 +29,13 @@ class Player : public detail::Player_Base
 {
 	using A = S15::Graph::NodeAttributes::Player;
 public:
+	struct extra_index_type {
+		using result_type = BattleSide;
+		result_type operator()(const std::shared_ptr<const Player> & player) const {
+			return player->side;
+		}
+	};
+
 	struct Stats
 	{
 		int v = 0; // army value
@@ -53,14 +60,13 @@ public:
 		int valueLost
 	);
 
-	struct extra_index_type {
-		using result_type = BattleSide;
-		result_type operator()(const std::shared_ptr<Player> & player) const {
-			return player->side;
-		}
-	};
+    std::string name() const override
+    {
+        std::stringstream ss;
+        ss << detail::Player_Base::name() << "(" << EU(side) << ")";
+        return ss.str();
+    }
 
-private:
 	BattleSide side;
 };
 

@@ -11,7 +11,7 @@
 #include "StdInc.h"
 
 #include "BAI/v15/supplementary_data.h"
-#include "common.h"
+#include "schema/v15/types.h"
 
 namespace MMAI::BAI::V15
 {
@@ -22,7 +22,7 @@ Schema::V15::AttackLogs SupplementaryData::getAttackLogs() const
 	res.reserve(attackLogs.size());
 
 	for(const auto & al : attackLogs)
-		res.push_back(al.get());
+		res.push_back(&al);
 
 	return res;
 }

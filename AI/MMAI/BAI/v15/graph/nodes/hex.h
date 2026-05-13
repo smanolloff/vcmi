@@ -45,6 +45,13 @@ public:
 	using HexStateMask = std::bitset<EU(HS::_count)>;
 	using HexActionHex = std::array<BattleHex, 12>;
 
+	struct extra_index_type {
+		using result_type = int16_t;
+		result_type operator()(const std::shared_ptr<const Hex> & hex) const {
+			return hex->bhex.toInt();
+		}
+	};
+
 	static int CalcId(const BattleHex& bh);
 	static std::pair<int, int> CalcXY(const BattleHex& bh);
 	static HexActionHex NearbyBattleHexes(const BattleHex& bh);
@@ -65,12 +72,6 @@ public:
 	const int id;
 	HexStateMask statemask = 0;
 
-	struct extra_index_type {
-		using result_type = int16_t;
-		result_type operator()(const std::shared_ptr<Hex> & hex) const {
-			return hex->bhex.toInt();
-		}
-	};
 private:
 	void setStateMask(
 		EAccessibility accessibility,

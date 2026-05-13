@@ -17,6 +17,7 @@
 #pragma once
 
 #include "./base.h"
+#include "schema/v15/graph.h"
 
 namespace ML {
     namespace UserAgents {
@@ -29,17 +30,16 @@ namespace ML {
             int getAction(const MMAI::Schema::IState * s) override;
             double getValue(const MMAI::Schema::IState * s) override;
         private:
-            unsigned long steps = 0;
-            unsigned long resets = 0;
+            uint64_t steps = 0;
+            uint64_t resets = 0;
             clock_t t0 = 0;
             bool render = false;
-            const MMAI::Schema::ActionMask* lastmask = nullptr;
             int recording_i = 0;
 
-            MMAI::Schema::Action promptAction(const MMAI::Schema::ActionMask* mask);
+            MMAI::Schema::Action promptAction(const MMAI::Schema::V15::Graph::IGraph * G) const;
             MMAI::Schema::Action recordedAction();
-            MMAI::Schema::Action randomValidAction(const MMAI::Schema::ActionMask* mask);
-            MMAI::Schema::Action firstValidAction(const MMAI::Schema::ActionMask* mask);
+            MMAI::Schema::Action randomValidAction(const MMAI::Schema::V15::Graph::IGraph * G) const;
+            MMAI::Schema::Action firstValidAction(const MMAI::Schema::V15::Graph::IGraph * G) const;
         };
     }
 }

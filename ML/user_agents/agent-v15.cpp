@@ -17,9 +17,14 @@
 #include "./agent-v15.h"
 #include "AI/MMAI/common.h"
 #include "AI/MMAI/schema/v15/types.h"
+#include "schema/v15/constants.h"
+#include "schema/v15/graph.h"
 
 namespace ML {
     namespace UserAgents {
+        namespace S15 = MMAI::Schema::V15;
+        namespace Graph = S15::Graph;
+
         std::string AgentV15::getName() { return "USER_AGENT"; };
         int AgentV15::getVersion() { return 15; };
         double AgentV15::getValue(const MMAI::Schema::IState * s) { return -666; };
@@ -31,11 +36,11 @@ namespace ML {
                 throw std::runtime_error("Expected version 15, got: " + std::to_string(s->version()));
 
             auto any = s->getSupplementaryData();
-            auto err = MMAI::Schema::AnyCastError(any, typeid(const MMAI::Schema::V15::ISupplementaryData*));
-            ASSERT(err.empty(), "anycast for getSumpplementaryData error: " + err);
+            auto err = MMAI::Schema::AnyCastError(any, typeid(const S15::ISupplementaryData*));
+            MMAI::ASSERT(err.empty(), "anycast for getSumpplementaryData error: " + err);
 
-            auto sup = std::any_cast<const MMAI::Schema::V15::ISupplementaryData*>(any);
-            auto side = static_cast<int>(sup->getSide());
+            const auto * sup = std::any_cast<const S15::ISupplementaryData*>(any);
+            const auto * G = sup->getGraph();
 
             if (steps == 0 && benchmark) {
                 t0 = clock();
@@ -43,32 +48,37 @@ namespace ML {
 
             steps++;
 
-            if (sup->getType() == MMAI::Schema::V15::ISupplementaryData::Type::ANSI_RENDER) {
+            auto isEnded = [&sup]
+            {
+                const auto * global = sup->getGraph()->getNodes(Graph::ElementType::NODE_GLOBAL).at(0);
+                return global->rawAttributes().at(EI(Graph::NodeAttributes::Global::BATTLE_WINNER)) == S15::NULL_VALUE_UNENCODED;
+            };
+
+            if (sup->getType() == S15::ISupplementaryData::Type::ANSI_RENDER) {
                 std::cout << sup->getAnsiRender() << "\n";
                 // use stored mask from pre-render result
                 act = interactive
-                    ? promptAction(lastmask)
-                    : (actions.empty() ? randomValidAction(lastmask) : recordedAction());
+                    ? promptAction(G)
+                    : (actions.empty() ? randomValidAction(G) : recordedAction());
 
                 render = false;
             } else if (autorender && !benchmark && !render) {
-                logAi->debug("Side: %d", side);
                 render = true;
                 // store mask of this result for the next action
-                lastmask = s->getActionMask();
                 act = MMAI::Schema::ACTION_RENDER_ANSI;
-            } else if (sup->getIsBattleEnded()) {
+            } else if (isEnded()) {
                 resets++;
 
                 switch (resets % 4) {
-                case 0: printf("\r|"); break;
-                case 1: printf("\r\\"); break;
-                case 2: printf("\r-"); break;
-                case 3: printf("\r/"); break;
+                case 0: std::cout << "\r|"; break;
+                case 1: std::cout << "\r\\"; break;
+                case 2: std::cout << "\r-"; break;
+                case 3: std::cout << "\r/"; break;
+                default: std::cout << "?"; break;;
                 }
 
                 if (resets == 10) {
-                    auto s = double(clock() - t0) / CLOCKS_PER_SEC;
+                    auto s = static_cast<double>(clock() - t0) / CLOCKS_PER_SEC;
                     printf("  steps/s: %-6.0f resets/s: %-6.2f\n", steps/s, resets/s);
                     resets = 0;
                     steps = 0;
@@ -83,8 +93,8 @@ namespace ML {
             } else {
                 render = false;
                 act = interactive
-                    ? promptAction(s->getActionMask())
-                    : (actions.empty() ? randomValidAction(s->getActionMask()) : recordedAction());
+                    ? promptAction(G)
+                    : (actions.empty() ? randomValidAction(G) : recordedAction());
             }
 
             if (verbose && !benchmark) logGlobal->debug("user-callback getAction returning: %d", EI(act));
@@ -92,8 +102,13 @@ namespace ML {
         };
 
 
-        MMAI::Schema::Action AgentV15::promptAction(const MMAI::Schema::ActionMask* mask) {
-            int num;
+        MMAI::Schema::Action AgentV15::promptAction(const S15::Graph::IGraph * G) const
+        {
+            int choice;
+
+            std::unordered_set<int> validChoices;
+            for (const auto & [_, actionId] : G->getActiveNodeToActionIds())
+                validChoices.emplace(actionId);
 
             while (true) {
                 std::cout << "Enter an integer (blank or 0 for a random valid action): ";
@@ -104,15 +119,16 @@ namespace ML {
 
                 // If the input is empty, treat it as if 0 was entered
                 if (input.empty()) {
-                    num = 0;
+                    choice = 0;
                     break;
                 } else {
                     try {
-                        num = std::stoi(input);
-                        if (num >= 0)
+                        choice = std::stoi(input);
+
+                        if (choice == 0 || validChoices.contains(choice))
                             break;
-                        else
-                            std::cerr << "Invalid input!\n";
+
+                        std::cerr << "Invalid input!\n";
                     } catch (const std::invalid_argument& e) {
                         std::cerr << "Invalid input!\n";
                     } catch (const std::out_of_range& e) {
@@ -121,7 +137,7 @@ namespace ML {
                 }
             }
 
-            return num == 0 ? randomValidAction(mask) : MMAI::Schema::Action(num);
+            return choice == 0 ? randomValidAction(G) : choice;
         }
 
         MMAI::Schema::Action AgentV15::recordedAction() {
@@ -129,31 +145,26 @@ namespace ML {
             return MMAI::Schema::Action(actions[recording_i++]);
         };
 
-        MMAI::Schema::Action AgentV15::randomValidAction(const MMAI::Schema::ActionMask* mask) {
-            auto validActions = std::vector<MMAI::Schema::Action>{};
+        MMAI::Schema::Action AgentV15::randomValidAction(const S15::Graph::IGraph * G) const
+        {
+            auto validPairs = G->getActiveNodeToActionIds();
 
-            for (int j = 1; j < mask->size(); j++) {
-                if ((*mask)[j])
-                    validActions.push_back(j);
-            }
-
-            if (validActions.empty()) {
+            if (validPairs.empty()) {
                 logAi->info("No valid actions => reset");
                 return MMAI::Schema::ACTION_RESET;
             }
 
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dist(0, validActions.size() - 1);
+            std::uniform_int_distribution<> dist(0, validPairs.size() - 1);
             int randomIndex = dist(gen);
-            return validActions[randomIndex];
+            const auto &[_, actionId] = validPairs[randomIndex];
+            return actionId;
         }
 
-        MMAI::Schema::Action AgentV15::firstValidAction(const MMAI::Schema::ActionMask* mask) {
-            for (int j = 1; j < mask->size(); j++)
-                if ((*mask)[j]) return j;
-
-            return -5;
+        MMAI::Schema::Action AgentV15::firstValidAction(const S15::Graph::IGraph * G) const
+        {
+            return std::get<1>(G->getActiveNodeToActionIds().at(0));
         }
     }
 }

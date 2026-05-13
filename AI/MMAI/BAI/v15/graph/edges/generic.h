@@ -11,7 +11,9 @@
 #pragma once
 
 #include "BAI/v15/graph/edges/base.h"
+#include "BAI/v15/graph/nodes/global.h"
 #include "BAI/v15/graph/nodes/hex.h"
+#include "BAI/v15/graph/nodes/player.h"
 #include "BAI/v15/graph/nodes/unit.h"
 #include "BAI/v15/graph/nodes/action.h"
 #include "schema/v15/constants.h"
@@ -46,31 +48,19 @@ public: \
     static_assert(EU(A::_count) == 0, "generic edges cannot have attributes"); \
 }
 
+GENERIC_EDGE_ELEMENT(Global, Yields, Player);
+GENERIC_EDGE_ELEMENT(Player, Owns, Unit);
+
 GENERIC_EDGE_ELEMENT(Unit, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
 
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
-GENERIC_EDGE_ELEMENT(Action, Melees, Unit);
-GENERIC_EDGE_ELEMENT(Action, Shoots, Unit);
 GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Unit);
 GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Unit);
-
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
 GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Hex);
 GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Hex);
-#endif
-
-GENERIC_EDGE_ELEMENT(Actaction, By, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, Blocks, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, ExposesToMeleeFrom, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, Melees, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, Shoots, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, EnablesMeleeAt, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, EnablesShootAt, Unit);
-GENERIC_EDGE_ELEMENT(Actaction, EnablesMeleeAt, Hex);
-GENERIC_EDGE_ELEMENT(Actaction, EnablesShootAt, Hex);
 
 }
 

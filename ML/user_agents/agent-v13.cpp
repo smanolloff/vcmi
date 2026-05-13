@@ -32,7 +32,7 @@ namespace ML {
 
             auto any = s->getSupplementaryData();
             auto err = MMAI::Schema::AnyCastError(any, typeid(const MMAI::Schema::V13::ISupplementaryData*));
-            ASSERT(err.empty(), "anycast for getSumpplementaryData error: " + err);
+            MMAI::ASSERT(err.empty(), "anycast for getSumpplementaryData error: " + err);
 
             auto sup = std::any_cast<const MMAI::Schema::V13::ISupplementaryData*>(any);
             auto side = static_cast<int>(sup->getSide());

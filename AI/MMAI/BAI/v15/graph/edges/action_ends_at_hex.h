@@ -30,30 +30,4 @@ public:
 
     const bool isRear;
 };
-
-/*
- * Active
- */
-
-namespace detail
-{
-    using Actaction_EndsAt_Hex_Traits = S15::EncodingTraits<S15::Graph::EdgeAttributes::Actaction_EndsAt_Hex>;
-    using Actaction_EndsAt_Hex_Base = Base<Nodes::Actaction, Nodes::Hex, Actaction_EndsAt_Hex_Traits>;
-}
-
-class Actaction_EndsAt_Hex : public detail::Actaction_EndsAt_Hex_Base
-{
-public:
-    Actaction_EndsAt_Hex(
-        const std::shared_ptr<const Nodes::Actaction> & srcNode,
-        const std::shared_ptr<const Nodes::Hex> & dstNode,
-        bool isRear
-    ) : detail::Actaction_EndsAt_Hex_Base(srcNode, dstNode), isRear(isRear)
-    {
-        setattr(A::IS_REAR, isRear);
-        static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");
-    }
-
-    const bool isRear;
-};
 }

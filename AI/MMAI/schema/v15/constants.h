@@ -28,7 +28,6 @@ constexpr int N_HEX_ACTIONS = EI(HexAction::_count);
 constexpr int N_ACTIONS = N_NONHEX_ACTIONS + (165 * N_HEX_ACTIONS);
 
 // Control actions (not part of the regular action space)
-constexpr Action ACTION_UNSET = -666;
 constexpr Action ACTION_RESET = -1;
 constexpr Action ACTION_RENDER_ANSI = -2;
 
@@ -90,11 +89,15 @@ constexpr std::tuple<T, Encoding, int, int, double> E5(T a, Encoding e, int vmax
 		// Log2(8)=3 (2^3), but if vmax=8 then 4 bits will be required
 		// => Log2(9)=4
 		case X::BE:
-			return {a, e, static_cast<int>(Log2(vmax + 1)) + 1, vmax, -1};
+		{
+			return {a, e, static_cast<int>(Log2(1 << vmax)) + 1, (1 << vmax) - 1, -1};
+		}
 		case X::BM:
 		case X::BS:
 		case X::BZ:
-			return {a, e, static_cast<int>(Log2(vmax + 1)), vmax, -1};
+		{
+			return {a, e, static_cast<int>(Log2(1 << vmax)), (1 << vmax) - 1, -1};
+		}
 
 		// "0" is a category => vmax+1 categories
 		case X::CE:
@@ -213,7 +216,7 @@ struct EncodingTraits<Graph::NodeAttributes::Global>
 : detail::EncodingTraitsBase<Graph::NodeAttributes::Global>
 {
     static constexpr auto element_type = Graph::ElementType::NODE_GLOBAL;
-    static constexpr std::string_view name = "GLOBAL_ENCODING";
+    static constexpr std::string_view name = "Global";
     static constexpr encoding_type encoding = {
 		// LS is the correct encoding for BATTLE_ROUND, but since it replaces BATTLE_SIDE
 		// which had n=2 => use LE to keep the dimensions unchanged.
@@ -226,8 +229,8 @@ struct EncodingTraits<Graph::NodeAttributes::Global>
 		E5(A::BFIELD_HP_START_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
 		E5(A::BFIELD_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
 		E5(A::BFIELD_HP_NOW_REL0, X::LS, 1000), // bfield_hp_now / bfield_hp_at_start
-		E5(A::SIEGE_TOWERS, X::BS, (1 << 3) - 1),
-		E5(A::SIEGE_CORPSES, X::BS, (1 << 2) - 1),
+		E5(A::SIEGE_TOWERS, X::BS, 3),
+		E5(A::SIEGE_CORPSES, X::BS, 2),
 	};
 };
 
@@ -236,7 +239,7 @@ struct EncodingTraits<Graph::NodeAttributes::Player>
 : detail::EncodingTraitsBase<Graph::NodeAttributes::Player>
 {
     static constexpr auto element_type = Graph::ElementType::NODE_PLAYER;
-    static constexpr std::string_view name = "PLAYER_ENCODING";
+    static constexpr std::string_view name = "Player";
     static constexpr encoding_type encoding = {
 		E5(A::BATTLE_SIDE, X::CS, 1),
 		E5(A::ARMY_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
@@ -269,7 +272,7 @@ struct EncodingTraits<Graph::NodeAttributes::Unit>
 : detail::EncodingTraitsBase<Graph::NodeAttributes::Unit>
 {
     static constexpr Graph::ElementType element_type = Graph::ElementType::NODE_UNIT;
-    static constexpr std::string_view name = "UNIT_ENCODING";
+    static constexpr std::string_view name = "Unit";
     static constexpr encoding_type encoding = {
 		E5(A::SIDE, X::CE, 1), // 0=attacker, 1=defender
 		E5(A::SLOT, X::CE, STACK_SLOT_MAX),
@@ -283,8 +286,8 @@ struct EncodingTraits<Graph::NodeAttributes::Unit>
 		E5(A::HP_LEFT, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
 		E5(A::SPEED, X::CE, 20),
 		E5(A::VALUE_ONE, X::EZ, STACK_VALUE_MAX, STACK_VALUE_SLOPE),
-		E5(A::FLAGS1, X::BZ, (1 << EI(StackFlag1::_count)) - 1),
-		E5(A::FLAGS2, X::BZ, (1 << EI(StackFlag2::_count)) - 1),
+		E5(A::FLAGS1, X::BZ, EI(StackFlag1::_count)),
+		E5(A::FLAGS2, X::BZ, EI(StackFlag2::_count)),
 
 		E5(A::VALUE_REL, X::LZ, 1000),
 		E5(A::VALUE_REL0, X::LZ, 1000),
@@ -304,14 +307,11 @@ struct EncodingTraits<Graph::NodeAttributes::Hex>
 : detail::EncodingTraitsBase<Graph::NodeAttributes::Hex>
 {
     static constexpr auto element_type = Graph::ElementType::NODE_HEX;
-    static constexpr std::string_view name = "HEX_ENCODING";
+    static constexpr std::string_view name = "Hex";
 	static constexpr encoding_type encoding = {
 		E5(A::Y_COORD, X::CS, 10),
 		E5(A::X_COORD, X::CS, 14),
-		E5(A::STATE_MASK, X::BS, (1 << EI(HexState::_count)) - 1),
-		E5(A::ACTION_MASK, X::BZ, (1 << EI(HexAction::_count)) - 1),
-		E5(A::IS_REAR, X::CZ, 1), // 1=this is the rear hex of a stack
-		E5(A::IS_RUFR, X::CS, 1), // 1=this is the rear part of a RUFR pair
+		E5(A::STATE_MASK, X::BS, EI(HexState::_count)),
 		E5(A::WALL_HEALTH, X::LE, MAX_WALL_HEALTH),
 	};
 };
@@ -321,19 +321,8 @@ struct EncodingTraits<Graph::NodeAttributes::Action>
 : detail::EncodingTraitsBase<Graph::NodeAttributes::Action>
 {
     static constexpr auto element_type = Graph::ElementType::NODE_ACTION;
-    static constexpr std::string_view name = "ACTION_ENCODING";
+    static constexpr std::string_view name = "Action";
     static constexpr encoding_type encoding = {};
-};
-
-template <>
-struct EncodingTraits<Graph::NodeAttributes::Actaction>
-: detail::EncodingTraitsBase<Graph::NodeAttributes::Actaction>
-{
-    static constexpr auto element_type = Graph::ElementType::NODE_ACTACTION;
-    static constexpr std::string_view name = "ACTACTION_ENCODING";
-    static constexpr encoding_type encoding = {
-		E5(A::ID, X::RAW, N_ACTIONS)
-	};
 };
 
 
@@ -369,12 +358,15 @@ struct EncodingTraits<Graph::EdgeAttributes::attr_type> \
     static constexpr encoding_type encoding = {}; \
 }
 
+GENERIC_EDGE_ENCODING_TRAITS(Global_Yields_Player, EDGE_GLOBAL_YIELDS_PLAYER);
+GENERIC_EDGE_ENCODING_TRAITS(Player_Owns_Unit, EDGE_PLAYER_OWNS_UNIT);
+
 template <>
 struct EncodingTraits<Graph::EdgeAttributes::Hex_Adjacent_Hex>
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::Hex_Adjacent_Hex>
 {
 	static constexpr auto element_type = Graph::ElementType::EDGE_HEX_ADJACENT_HEX;
-	static constexpr std::string_view name = "EDGE_ENCODING_HEX_ADJACENT_HEX";
+	static constexpr std::string_view name = "Hex_Adjacent_Hex";
 	static constexpr encoding_type encoding = {
 		E5(A::DIRECTION, X::CS, 5),
 	};
@@ -388,7 +380,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
 {
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_ACTS_BEFORE_UNIT;
-	static constexpr std::string_view name = "EDGE_ENCODING_UNIT_ACTS_BEFORE_UNIT";
+	static constexpr std::string_view name = "Unit_ActsBefore_Unit";
 	static constexpr encoding_type encoding = {
 		E5(A::TIMES, X::LZ, 2),
 	};
@@ -399,7 +391,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>
 {
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_MELEE_DMG_UNIT;
-    static constexpr std::string_view name = "EDGE_ENCODING_UNIT_MELEE_DMG_UNIT";
+    static constexpr std::string_view name = "Unit_MeleeDmg_Unit";
 
 	static constexpr encoding_type encoding = {
 		E5(A::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
@@ -421,7 +413,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
 {
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_SHOOT_DMG_UNIT;
-	static constexpr std::string_view name = "EDGE_ENCODING_UNIT_SHOOT_DMG_UNIT";
+	static constexpr std::string_view name = "Unit_ShootDmg_Unit";
 	static constexpr encoding_type encoding = {
 		E5(A::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
 		E5(A::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
@@ -437,18 +429,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_EndsAt_Hex>
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_EndsAt_Hex>
 {
 	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENDS_AT_HEX;
-	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTION_ENDS_AT_HEX";
-	static constexpr encoding_type encoding = {
-		E5(A::IS_REAR, X::BS, 1),
-	};
-};
-
-template <>
-struct EncodingTraits<Graph::EdgeAttributes::Actaction_EndsAt_Hex>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Actaction_EndsAt_Hex>
-{
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTACTION_ENDS_AT_HEX;
-	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTACTION_ENDS_AT_HEX";
+	static constexpr std::string_view name = "Action_EndsAt_Hex";
 	static constexpr encoding_type encoding = {
 		E5(A::IS_REAR, X::BS, 1),
 	};
@@ -464,42 +445,38 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
 {
 	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT;
-	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT";
+	static constexpr std::string_view name = "Action_ExposesToShootFrom_Unit";
 	static constexpr encoding_type encoding = {
 		E5(A::DMG_MULT, X::LS, 1000),
 	};
 };
-
-GENERIC_EDGE_ENCODING_TRAITS(Action_Melees_Unit, EDGE_ACTION_MELEES_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_Shoots_Unit, EDGE_ACTION_SHOOTS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Unit, EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Unit, EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Hex, EDGE_ACTION_ENABLES_MELEE_AT_HEX);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Hex, EDGE_ACTION_ENABLES_SHOOT_AT_HEX);
-#endif
-
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_By_Unit, EDGE_ACTACTION_BY_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_Blocks_Unit, EDGE_ACTACTION_BLOCKS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_ExposesToMeleeFrom_Unit, EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT);
 
 template <>
-struct EncodingTraits<Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>
+struct EncodingTraits<Graph::EdgeAttributes::Action_Melees_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_Melees_Unit>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT;
-	static constexpr std::string_view name = "EDGE_ENCODING_EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT";
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_MELEES_UNIT;
+	static constexpr std::string_view name = "Action_Melees_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::DMG_MULT, X::LS, 1000),
+		E5(A::IS_PRIMARY_TARGET, X::CS, 1),
 	};
 };
 
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_Melees_Unit, EDGE_ACTACTION_MELEES_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_Shoots_Unit, EDGE_ACTACTION_SHOOTS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesMeleeAt_Unit, EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesShootAt_Unit, EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesMeleeAt_Hex, EDGE_ACTACTION_ENABLES_MELEE_AT_HEX);
-GENERIC_EDGE_ENCODING_TRAITS(Actaction_EnablesShootAt_Hex, EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX);
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Action_Shoots_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_Shoots_Unit>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_SHOOTS_UNIT;
+	static constexpr std::string_view name = "Action_Shoots_Unit";
+	static constexpr encoding_type encoding = {
+		E5(A::IS_PRIMARY_TARGET, X::CS, 1),
+	};
+};
+
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Unit, EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Unit, EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Hex, EDGE_ACTION_ENABLES_MELEE_AT_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Hex, EDGE_ACTION_ENABLES_SHOOT_AT_HEX);
 
 template <typename AttrType>
 consteval bool EncodingIsValid()
@@ -518,13 +495,13 @@ consteval bool EncodingIsValid()
 
 
 static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
-static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Global>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Player>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Unit>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Action>());
-static_assert(EncodingIsValid<Graph::NodeAttributes::Actaction>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Yields_Player>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Player_Owns_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_Adjacent_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ActsBefore_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>());
@@ -539,20 +516,8 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Melees_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Shoots_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>());
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>());
-#endif
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_By_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EndsAt_Hex>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_ExposesToMeleeFrom_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_ExposesToShootFrom_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_Melees_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_Shoots_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesShootAt_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesMeleeAt_Hex>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Actaction_EnablesShootAt_Hex>());
 
 /*
  * These below are not really used
