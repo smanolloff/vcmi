@@ -55,7 +55,7 @@ Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
     auto B_min = static_cast<int>(retalEstimate.damage.min);
     auto B_max = static_cast<int>(retalEstimate.damage.max);
     auto B_dmg_range = B_max - B_min;
-    auto B_n = std::min(B_cstack.getCount() - A_kills_mean, 0.0);
+    auto B_n = std::max(B_cstack.getCount() - A_kills_mean, 0.0);
     auto B_k = std::min(static_cast<int>(std::round(B_n)), 10); // see BattleInfo::getActualDamage()
     auto B_dmg_mean = 0.5 * (B_min + B_max);
     auto B_dmg_std = std::sqrt((B_dmg_range * B_dmg_range) / (12.0 * B_k));
@@ -65,12 +65,12 @@ Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
     setattr(A::ATTACK_DMG_MEAN_REL_BF, permille(A_dmg_mean, battlefieldHp));
     setattr(A::ATTACK_DMG_STD_REL_OTHER, permille(A_dmg_std, B_hp));
     setattr(A::ATTACK_DMG_STD_REL_BF, permille(A_dmg_std, battlefieldHp));
-    setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(A_cstack.unitType()), battlefieldValue));
+    setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(B_cstack.unitType()), battlefieldValue));
     setattr(A::RETAL_DMG_MEAN_REL_OTHER, permille(B_dmg_mean, A_hp));
     setattr(A::RETAL_DMG_MEAN_REL_BF, permille(B_dmg_mean, battlefieldHp));
     setattr(A::RETAL_DMG_STD_REL_OTHER, permille(B_dmg_std, A_hp));
     setattr(A::RETAL_DMG_STD_REL_BF, permille(B_dmg_std, battlefieldHp));
-    setattr(A::RETAL_VALUE_REL_BF, permille(B_kills_mean * Nodes::Unit::GetValue(B_cstack.unitType()), battlefieldValue));
+    setattr(A::RETAL_VALUE_REL_BF, permille(B_kills_mean * Nodes::Unit::GetValue(A_cstack.unitType()), battlefieldValue));
     setattr(A::ATTACK_ALLKILL_CHANCE, permille(A_allkill_chance, 1));
 
     static_assert(static_cast<size_t>(A::_count) == 11, "whistleblower in case attributes change");

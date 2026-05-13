@@ -209,7 +209,7 @@ namespace
 
 	AttackLogAggregateData ProcessAttackLogs(
 		const std::vector<AttackLog> & attackLogs,
-		std::unordered_map<const CStack *, N::Unit::Stats> sstats
+		std::unordered_map<const CStack *, N::Unit::Stats> & sstats
 	)
 	{
 		auto res = AttackLogAggregateData{};
@@ -342,8 +342,8 @@ namespace
 			result,
 			round,
 			startStats.totalValue,
-			startStats.totalHp,
 			stats.totalValue,
+			startStats.totalHp,
 			stats.totalHp,
 			GetSiegeTowers(battle),
 			GetSiegeCorpses(battle)
@@ -555,7 +555,7 @@ namespace
 		G.getFlags().require(ET::NODE_UNIT);
 		G.setFlag(ET::EDGE_UNIT_MELEE_DMG_UNIT);
 
-		auto pairs = std::unordered_set<std::tuple<int, int>, PairHash>{};
+		auto pairs = std::unordered_set<std::pair<int, int>, PairHash>{};
 		const auto & units = G.getAll<N::Unit>();
 
 		for(const auto & unit : units)
@@ -569,7 +569,7 @@ namespace
 					continue;
 
 				const auto & ostack = other->cstack;
-				auto [_, inserted] = pairs.emplace<std::tuple<int, int>>({cstack.unitId(), ostack.unitId()});
+				auto [_, inserted] = pairs.emplace<std::pair<int, int>>({cstack.unitId(), ostack.unitId()});
 
 				if(!inserted) // key already existed
 					continue;
@@ -844,28 +844,28 @@ namespace
 			for(const auto & hex : G.getAll<N::Hex>())
 			{
 				if(reachability.distances.at(hex->bhex.toInt()) > unit->cstack.getMovementRange())
+					continue;
+
+				auto stackhexes = std::vector<HexPtr>{};
+				for(const auto & stackbhex : stack.getHexes(hex->bhex))
+					stackhexes.emplace_back(G.getByExtraIndex<N::Hex>(stackbhex.toInt()));
+
+				auto at = hex->bhex == stack.getPosition()
+					? AT::DEFEND
+					: AT::MOVE;
+
+				int id = CalcActionId(at, unit, nullptr, hex);
+
+				const auto action = std::make_shared<N::Action>(at, id, unit, stackhexes, isActive);
+
+				G.add(action);
+				G.add(std::make_shared<E::Action_By_Unit>(action, unit));
+
+				bool isRear = false; // getHexes always returns primary hex first
+				for(const auto & stackhex : stackhexes)
 				{
-					auto stackhexes = std::vector<HexPtr>{};
-					for(const auto & stackbhex : stack.getHexes())
-						stackhexes.emplace_back(G.getByExtraIndex<N::Hex>(stackbhex.toInt()));
-
-					auto at = hex->bhex == stack.getPosition()
-						? AT::DEFEND
-						: AT::MOVE;
-
-					int id = CalcActionId(at, unit, nullptr, hex);
-
-					const auto action = std::make_shared<N::Action>(at, id, unit, stackhexes, isActive);
-
-					G.add(action);
-					G.add(std::make_shared<E::Action_By_Unit>(action, unit));
-
-					bool isRear = false; // getHexes always returns primary hex first
-					for(const auto & stackhex : stackhexes)
-					{
-						G.add(std::make_shared<E::Action_EndsAt_Hex>(action, stackhex, isRear));
-						isRear = true;
-					}
+					G.add(std::make_shared<E::Action_EndsAt_Hex>(action, stackhex, isRear));
+					isRear = true;
 				}
 			}
 		}
@@ -877,7 +877,34 @@ namespace
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack)
 	{
-		throw std::runtime_error("AddMoveActionEdges_Action_Blocks_Unit: not implemented");
+		G.getFlags().require(ET::NODE_ACTION);
+		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
+		G.getFlags().require(ET::NODE_HEX);
+		G.getFlags().require(ET::EDGE_UNIT_OCCUPIES_HEX);
+		G.getFlags().require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
+
+		G.setFlag(ET::EDGE_ACTION_BLOCKS_UNIT);
+
+		for (const auto & action : G.getAll<N::Action>())
+		{
+			assert(action->actionType == AT::MOVE);
+			const auto & unit = action->by;
+			const auto & stack = unit->cstack;
+			const auto & hex = action->endsAt.at(0);
+
+			for (const auto & adjbhex : stack.getSurroundingHexes(hex->bhex))
+			{
+				if (!adjbhex.isAvailable())
+					continue;
+
+				const auto & adjhex = G.getByExtraIndex<N::Hex>(adjbhex.toInt());
+				const auto & adjunit = G.getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex, false);
+
+				if (adjunit && G.getEdgeBySrcDst<E::Unit_ShootDmg_Unit>(adjunit, unit))
+					G.add(std::make_shared<E::Action_Blocks_Unit>(action, adjunit));
+			}
+
+		}
 	}
 
 	void AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(
@@ -1056,24 +1083,30 @@ namespace
 			const auto & stack = unit->cstack;
 
 			if (!stack.canShoot())
-				break;
+				continue;
 
 			const auto & hex = action->endsAt.at(0);
 
-			if (!stack.canShootBlocked())
+			auto willBeBlocked = [&G, &unit, &hex]()
 			{
-				// If blocked after the move => return early
 				for (const auto & adjbhex : unit->cstack.getSurroundingHexes(hex->bhex))
 				{
+					if (!adjbhex.isAvailable())
+						continue;
+
 					const auto & adjhex = G.getByExtraIndex<N::Hex>(adjbhex.toInt());
 					const auto & ounit = G.getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex, false);
 					if (ounit && G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(ounit, unit, false))
-						return; // we will be blocked
+						return true;
 				}
-			}
+				return false;
+			};
+
+			if (!stack.canShootBlocked() && willBeBlocked())
+				continue;
 
 			for (const auto & ounit : G.getAllEdgesDstBySrc<E::Unit_ShootDmg_Unit>(unit))
-				G.add(std::make_shared<E::Action_EnablesShootAt_Unit>(action, unit));
+				G.add(std::make_shared<E::Action_EnablesShootAt_Unit>(action, ounit));
 		}
 	}
 
@@ -1190,6 +1223,9 @@ namespace
 
 		for (const auto & adjbhex : unit->cstack.getSurroundingHexes(hex->bhex))
 		{
+			if (!adjbhex.isAvailable())
+				continue;
+
 			const auto & adjhex = G.getByExtraIndex<N::Hex>(adjbhex.toInt());
 			const auto & ounit = G.getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex);
 
@@ -1207,7 +1243,7 @@ namespace
 			const auto & hex = move->endsAt.at(0);
 			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
-			auto id = move->id == CalcActionId(AT::AMOVE, unit, ounit, hex);
+			auto id = CalcActionId(AT::AMOVE, unit, ounit, hex);
 
 			auto amove = std::make_shared<N::Action>(AT::AMOVE, id, unit, move->endsAt, move->isActive);
 			G.add(amove);
