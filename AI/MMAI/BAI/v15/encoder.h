@@ -12,71 +12,72 @@
 #include "schema/base.h"
 #include "schema/v15/types.h"
 
-namespace MMAI::BAI::V15
+namespace MMAI::BAI::V15::Encoder
 {
-using GA = Schema::V15::Graph::NodeAttributes::Global;
-using HA = Schema::V15::Graph::NodeAttributes::Hex;
-using PA = Schema::V15::Graph::NodeAttributes::Player;
-using BS = Schema::BattlefieldState;
+	using BS = Schema::BattlefieldState;
+	struct EncoderInput
+	{
+		const std::string_view & attrname;
+		const int a;
+		const Schema::V15::Encoding e;
+		const int n;
+		const int vmax;
+		const double p;
+		const int v;
+	};
 
-struct EncoderInput
-{
-	const std::string_view & attrname;
-	const int a;
-	const Schema::V15::Encoding e;
-	const int n;
-	const int vmax;
-	const double p;
-	const int v;
-};
-
-class Encoder
-{
-public:
-	static void Encode(HA a, int v, BS & out);
-	static void Encode(PA a, int v, BS & out);
-	static void Encode(GA a, int v, BS & out);
+	void Encode(const EncoderInput & in, BS & out);
 
 	template <typename EncTraits>
-	static std::vector<float> Encode(const std::array<int, EncTraits::attr_count> & attrs);
+	std::vector<float> Encode(const std::array<int, EncTraits::attr_count> & attrs)
+	{
+		auto out = std::vector<float>{};
+		out.reserve(EncodedSize(EncTraits::encoding));
 
-	static void Encode(const EncoderInput & in, BS & out);
+		for(size_t i = 0; i < attrs.size(); ++i)
+		{
+			const auto & [_, e, n, vmax, p] = EncTraits::encoding.at(i);
+			Encode(EncoderInput{
+				.attrname = EncTraits::name,
+				.a = static_cast<int>(i),
+				.e = e,
+				.n = n,
+				.vmax = vmax,
+				.p = p,
+				.v = attrs.at(i)
+			}, out);
+		}
 
-	static void EncodeAccumulatingExplicitNull(int v, int n, BS & out);
-	static void EncodeAccumulatingImplicitNull(int v, int n, BS & out);
-	static void EncodeAccumulatingMaskingNull(int v, int n, BS & out);
-	static void EncodeAccumulatingStrictNull(int v, int n, BS & out);
-	static void EncodeAccumulatingZeroNull(int v, int n, BS & out);
+		return out;
+	}
 
-	static void EncodeBinaryExplicitNull(int v, int n, BS & out);
-	static void EncodeBinaryMaskingNull(int v, int n, BS & out);
-	static void EncodeBinaryStrictNull(int v, int n, BS & out);
-	static void EncodeBinaryZeroNull(int v, int n, BS & out);
+	void EncodeAccumulatingExplicitNull(int v, int n, BS & out);
+	void EncodeAccumulatingImplicitNull(int v, int n, BS & out);
+	void EncodeAccumulatingMaskingNull(int v, int n, BS & out);
+	void EncodeAccumulatingStrictNull(int v, int n, BS & out);
+	void EncodeAccumulatingZeroNull(int v, int n, BS & out);
 
-	static void EncodeCategoricalExplicitNull(int v, int n, BS & out);
-	static void EncodeCategoricalImplicitNull(int v, int n, BS & out);
-	static void EncodeCategoricalMaskingNull(int v, int n, BS & out);
-	static void EncodeCategoricalStrictNull(int v, int n, BS & out);
-	static void EncodeCategoricalZeroNull(int v, int n, BS & out);
+	void EncodeBinaryExplicitNull(int v, int n, BS & out);
+	void EncodeBinaryMaskingNull(int v, int n, BS & out);
+	void EncodeBinaryStrictNull(int v, int n, BS & out);
+	void EncodeBinaryZeroNull(int v, int n, BS & out);
 
-	static void EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out);
-	static void EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out);
-	static void EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out);
-	static void EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out);
+	void EncodeCategoricalExplicitNull(int v, int n, BS & out);
+	void EncodeCategoricalImplicitNull(int v, int n, BS & out);
+	void EncodeCategoricalMaskingNull(int v, int n, BS & out);
+	void EncodeCategoricalStrictNull(int v, int n, BS & out);
+	void EncodeCategoricalZeroNull(int v, int n, BS & out);
 
-	static void EncodeLinnormExplicitNull(int v, int vmax, BS & out);
-	static void EncodeLinnormMaskingNull(int v, int vmax, BS & out);
-	static void EncodeLinnormStrictNull(int v, int vmax, BS & out);
-	static void EncodeLinnormZeroNull(int v, int vmax, BS & out);
+	void EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out);
+	void EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out);
+	void EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out);
+	void EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out);
 
-	static float CalcExpnorm(int v, int vmax, double slope);
-	static float CalcLinnorm(int v, int vmax);
+	void EncodeLinnormExplicitNull(int v, int vmax, BS & out);
+	void EncodeLinnormMaskingNull(int v, int vmax, BS & out);
+	void EncodeLinnormStrictNull(int v, int vmax, BS & out);
+	void EncodeLinnormZeroNull(int v, int vmax, BS & out);
 
-private:
-	static void EncodeAccumulating(int v, int n, BS & out);
-	static void EncodeBinary(int v, int n, BS & out);
-	static void EncodeCategorical(int v, int n, BS & out);
-	static void EncodeExpnorm(int v, int vmax, double slope, BS & out);
-	static void EncodeLinnorm(int v, int vmax, BS & out);
+	float CalcExpnorm(int v, int vmax, double slope);
+	float CalcLinnorm(int v, int vmax);
 };
-}

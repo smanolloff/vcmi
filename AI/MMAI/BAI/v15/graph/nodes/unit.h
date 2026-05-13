@@ -36,8 +36,15 @@ class Unit : public detail::Unit_Base
 	using StackFlag2 = S15::StackFlag2;
 	using StackFlags1 = S15::StackFlags1;
 	using StackFlags2 = S15::StackFlags2;
-	using CreatureValues = std::unordered_map<CreatureID, int>;
+	using CreatureValues = std::unordered_map<int, int>;
 public:
+	struct extra_index_type {
+		using result_type = uint32_t;
+		result_type operator()(const std::shared_ptr<const Unit> & unit) const {
+			return unit->cstack.unitId();
+		}
+	};
+
 	struct Stats
 	{
 		int dmgDealtNow = 0;
@@ -70,12 +77,12 @@ public:
 		bool isActive
 	);
 
-	struct extra_index_type {
-		using result_type = uint32_t;
-		result_type operator()(const std::shared_ptr<Unit> & unit) const {
-			return unit->cstack.unitId();
-		}
-	};
+    std::string name() const override
+    {
+        std::stringstream ss;
+        ss << detail::Unit_Base::name() << "(" << cstack.unitId() << ")";
+        return ss.str();
+    }
 
 	int getFlag(StackFlag1 sf) const;
 	int getFlag(StackFlag2 sf) const;

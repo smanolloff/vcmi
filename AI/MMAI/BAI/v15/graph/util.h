@@ -1,3 +1,5 @@
+#pragma once
+
 namespace MMAI::BAI::V15::Graph
 {
     inline int permille(int a, int b)

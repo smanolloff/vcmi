@@ -15,7 +15,7 @@
 #include "BAI/v15/encoder.h"
 #include "common.h"
 
-namespace MMAI::BAI::V15
+namespace MMAI::BAI::V15::Encoder
 {
 
 namespace S15 = Schema::V15;
@@ -44,31 +44,7 @@ using clock = std::chrono::system_clock;
 	if((v) == S15::NULL_VALUE_UNENCODED) \
 	throw std::runtime_error("NULL values are not allowed for strict encoding")
 
-
-template <typename EncTraits>
-std::vector<float> Encoder::Encode(const std::array<int, EncTraits::attr_count> & attrs)
-{
-	auto out = std::vector<float>{};
-	out.reserve(EncodedSize(EncTraits::encoding));
-
-	for(size_t i = 0; i < attrs.size(); ++i)
-	{
-		const auto & [_, e, n, vmax, p] = EncTraits::encoding.at(i);
-		Encoder::Encode(EncoderInput{
-			.attrname = EncTraits::name,
-			.a = static_cast<int>(i),
-			.e = e,
-			.n = n,
-			.vmax = vmax,
-			.p = p,
-			.v = attrs.at(i)
-		}, out);
-	}
-
-	return out;
-}
-
-void Encoder::Encode(const EncoderInput & in, BS & out)
+void Encode(const EncoderInput & in, BS & out)
 {
 	if(in.e == Encoding::RAW)
 	{
@@ -172,28 +148,20 @@ void Encoder::Encode(const EncoderInput & in, BS & out)
 	}
 }
 
-void Encoder::Encode(const HA a, int v, BS & out)
-{
-	const auto & [_, e, n, vmax, p] = S15::HEX_ENCODING.at(EI(a));
-	Encode(EncoderInput{.attrname = "HexAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
-}
-
-void Encoder::Encode(const PA a, int v, BS & out)
-{
-	const auto & [_, e, n, vmax, p] = S15::PLAYER_ENCODING.at(EI(a));
-	Encode(EncoderInput{.attrname = "PlayerAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
-}
-
-void Encoder::Encode(const GA a, int v, BS & out)
-{
-	const auto & [_, e, n, vmax, p] = S15::GLOBAL_ENCODING.at(EI(a));
-	Encode(EncoderInput{.attrname = "GlobalAttribute", .a = EI(a), .e = e, .n = n, .vmax = vmax, .p = p, .v = v}, out);
-}
-
 //
 // ACCUMULATING
 //
-void Encoder::EncodeAccumulatingExplicitNull(int v, int n, BS & out)
+
+namespace
+{
+	void EncodeAccumulating(int v, int n, BS & out)
+	{
+		out.insert(out.end(), v + 1, 1);
+		out.insert(out.end(), n - v - 1, 0);
+	}
+}
+
+void EncodeAccumulatingExplicitNull(int v, int n, BS & out)
 {
 	if(v == S15::NULL_VALUE_UNENCODED)
 	{
@@ -204,7 +172,7 @@ void Encoder::EncodeAccumulatingExplicitNull(int v, int n, BS & out)
 	EncodeAccumulating(v, n - 1, out);
 }
 
-void Encoder::EncodeAccumulatingImplicitNull(int v, int n, BS & out)
+void EncodeAccumulatingImplicitNull(int v, int n, BS & out)
 {
 	if(v == S15::NULL_VALUE_UNENCODED)
 	{
@@ -213,19 +181,19 @@ void Encoder::EncodeAccumulatingImplicitNull(int v, int n, BS & out)
 	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulatingMaskingNull(int v, int n, BS & out)
+void EncodeAccumulatingMaskingNull(int v, int n, BS & out)
 {
 	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
 	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulatingStrictNull(int v, int n, BS & out)
+void EncodeAccumulatingStrictNull(int v, int n, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulatingZeroNull(int v, int n, BS & out)
+void EncodeAccumulatingZeroNull(int v, int n, BS & out)
 {
 	if(v <= 0)
 	{
@@ -235,56 +203,78 @@ void Encoder::EncodeAccumulatingZeroNull(int v, int n, BS & out)
 	EncodeAccumulating(v, n, out);
 }
 
-void Encoder::EncodeAccumulating(int v, int n, BS & out)
-{
-	out.insert(out.end(), v + 1, 1);
-	out.insert(out.end(), n - v - 1, 0);
-}
-
 //
 // BINARY
 //
 
-void Encoder::EncodeBinaryExplicitNull(int v, int n, BS & out)
+namespace
+{
+	void EncodeBinary(int v, int n, BS & out)
+	{
+		MAYBE_ADD_ZEROS_AND_RETURN(v, n, out);
+
+		int vtmp = v;
+		for(int i = 0; i < n; ++i)
+		{
+			out.push_back(vtmp % 2);
+			vtmp /= 2;
+		}
+	}
+}
+
+void EncodeBinaryExplicitNull(int v, int n, BS & out)
 {
 	out.push_back(v == S15::NULL_VALUE_UNENCODED);
 	EncodeBinary(v, n - 1, out);
 }
 
-void Encoder::EncodeBinaryMaskingNull(int v, int n, BS & out)
+void EncodeBinaryMaskingNull(int v, int n, BS & out)
 {
 	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
 	EncodeBinary(v, n, out);
 }
 
-void Encoder::EncodeBinaryStrictNull(int v, int n, BS & out)
+void EncodeBinaryStrictNull(int v, int n, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeBinary(v, n, out);
 }
 
-void Encoder::EncodeBinaryZeroNull(int v, int n, BS & out)
+void EncodeBinaryZeroNull(int v, int n, BS & out)
 {
 	EncodeBinary(v, n, out);
-}
-
-void Encoder::EncodeBinary(int v, int n, BS & out)
-{
-	MAYBE_ADD_ZEROS_AND_RETURN(v, n, out);
-
-	int vtmp = v;
-	for(int i = 0; i < n; ++i)
-	{
-		out.push_back(vtmp % 2);
-		vtmp /= 2;
-	}
 }
 
 //
 // CATEGORICAL
 //
 
-void Encoder::EncodeCategoricalExplicitNull(int v, int n, BS & out)
+namespace
+{
+	void EncodeCategorical(int v, int n, BS & out)
+	{
+		if(v <= 0)
+		{
+			out.push_back(1);
+			ADD_ZEROS_AND_RETURN(n - 1, out);
+		}
+
+		for(int i = 0; i < n; ++i)
+		{
+			if(i == v)
+			{
+				out.push_back(1);
+				ADD_ZEROS_AND_RETURN(n - i - 1, out);
+			}
+			else
+			{
+				out.push_back(0);
+			}
+		}
+	}
+}
+
+void EncodeCategoricalExplicitNull(int v, int n, BS & out)
 {
 	if(v == S15::NULL_VALUE_UNENCODED)
 	{
@@ -295,7 +285,7 @@ void Encoder::EncodeCategoricalExplicitNull(int v, int n, BS & out)
 	EncodeCategorical(v, n - 1, out);
 }
 
-void Encoder::EncodeCategoricalImplicitNull(int v, int n, BS & out)
+void EncodeCategoricalImplicitNull(int v, int n, BS & out)
 {
 	if(v == S15::NULL_VALUE_UNENCODED)
 	{
@@ -305,56 +295,59 @@ void Encoder::EncodeCategoricalImplicitNull(int v, int n, BS & out)
 	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategoricalMaskingNull(int v, int n, BS & out)
+void EncodeCategoricalMaskingNull(int v, int n, BS & out)
 {
 	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
 	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategoricalStrictNull(int v, int n, BS & out)
+void EncodeCategoricalStrictNull(int v, int n, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeCategorical(v, n, out);
 }
 
-void Encoder::EncodeCategoricalZeroNull(int v, int n, BS & out)
+void EncodeCategoricalZeroNull(int v, int n, BS & out)
 {
 	EncodeCategorical(v, n, out);
-}
-
-void Encoder::EncodeCategorical(int v, int n, BS & out)
-{
-	if(v <= 0)
-	{
-		out.push_back(1);
-		ADD_ZEROS_AND_RETURN(n - 1, out);
-	}
-
-	for(int i = 0; i < n; ++i)
-	{
-		if(i == v)
-		{
-			out.push_back(1);
-			ADD_ZEROS_AND_RETURN(n - i - 1, out);
-		}
-		else
-		{
-			out.push_back(0);
-		}
-	}
 }
 
 //
 // EXPNORM
 //
 
-void Encoder::EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out)
+namespace
+{
+	// Visualise on https://www.desmos.com/calculator:
+	// ln(1 + (x/M) * (exp(S)-1))/S
+	// Add slider "S" (slope) and "M" (vmax).
+	// Play with the sliders to see the nonlinearity (use M=1 for best view)
+	// XXX: slope cannot be 0
+	float CalcExpnorm(int v, int vmax, double slope)
+	{
+		auto ratio = static_cast<double>(v) / vmax;
+		return std::log1p(ratio * (std::exp(slope) - 1.0)) / (slope + 1e-6);
+	}
+
+	void EncodeExpnorm(int v, int vmax, double slope, BS & out)
+	{
+		if(v <= 0)
+		{
+			out.push_back(0);
+			return;
+		}
+
+		out.push_back(CalcExpnorm(v, vmax, slope));
+	}
+}
+
+void EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out)
 {
 	out.push_back(v == S15::NULL_VALUE_UNENCODED);
 	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out)
+void EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out)
 {
 	if(v == S15::NULL_VALUE_UNENCODED)
 	{
@@ -364,50 +357,49 @@ void Encoder::EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out)
 	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out)
+void EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out)
+void EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out)
 {
 	EncodeExpnorm(v, vmax, slope, out);
 }
 
-void Encoder::EncodeExpnorm(int v, int vmax, double slope, BS & out)
-{
-	if(v <= 0)
-	{
-		out.push_back(0);
-		return;
-	}
-
-	out.push_back(CalcExpnorm(v, vmax, slope));
-}
-
-// Visualise on https://www.desmos.com/calculator:
-// ln(1 + (x/M) * (exp(S)-1))/S
-// Add slider "S" (slope) and "M" (vmax).
-// Play with the sliders to see the nonlinearity (use M=1 for best view)
-// XXX: slope cannot be 0
-float Encoder::CalcExpnorm(int v, int vmax, double slope)
-{
-	auto ratio = static_cast<double>(v) / vmax;
-	return std::log1p(ratio * (std::exp(slope) - 1.0)) / (slope + 1e-6);
-}
 
 //
 // LINNORM
 //
 
-void Encoder::EncodeLinnormExplicitNull(int v, int vmax, BS & out)
+namespace
+{
+	float CalcLinnorm(int v, int vmax)
+	{
+		return static_cast<float>(v) / static_cast<float>(vmax);
+	}
+
+	void EncodeLinnorm(int v, int vmax, BS & out)
+	{
+		if(v <= 0)
+		{
+			out.push_back(0);
+			return;
+		}
+
+		// XXX: this is a simplified version for 0..1 norm
+		out.push_back(CalcLinnorm(v, vmax));
+	}
+}
+
+void EncodeLinnormExplicitNull(int v, int vmax, BS & out)
 {
 	out.push_back(v == S15::NULL_VALUE_UNENCODED);
 	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnormMaskingNull(int v, int vmax, BS & out)
+void EncodeLinnormMaskingNull(int v, int vmax, BS & out)
 {
 	if(v == S15::NULL_VALUE_UNENCODED)
 	{
@@ -417,31 +409,15 @@ void Encoder::EncodeLinnormMaskingNull(int v, int vmax, BS & out)
 	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnormStrictNull(int v, int vmax, BS & out)
+void EncodeLinnormStrictNull(int v, int vmax, BS & out)
 {
 	MAYBE_THROW_STRICT_ERROR(v);
 	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnormZeroNull(int v, int vmax, BS & out)
+void EncodeLinnormZeroNull(int v, int vmax, BS & out)
 {
 	EncodeLinnorm(v, vmax, out);
 }
 
-void Encoder::EncodeLinnorm(int v, int vmax, BS & out)
-{
-	if(v <= 0)
-	{
-		out.push_back(0);
-		return;
-	}
-
-	// XXX: this is a simplified version for 0..1 norm
-	out.push_back(CalcLinnorm(v, vmax));
-}
-
-float Encoder::CalcLinnorm(int v, int vmax)
-{
-	return static_cast<float>(v) / static_cast<float>(vmax);
-}
 }

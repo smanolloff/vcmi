@@ -19,7 +19,7 @@ namespace detail
     struct SrcKey
     {
         using result_type = std::shared_ptr<const typename EdgeType::src_node_type>;
-        result_type operator()(const std::shared_ptr<EdgeType> & edge) const
+        result_type operator()(const std::shared_ptr<const EdgeType> & edge) const
         {
             return edge->srcNode;
         }
@@ -29,7 +29,7 @@ namespace detail
     struct DstKey
     {
         using result_type = std::shared_ptr<const typename EdgeType::dst_node_type>;
-        result_type operator()(const std::shared_ptr<EdgeType> & edge) const
+        result_type operator()(const std::shared_ptr<const EdgeType> & edge) const
         {
             return edge->dstNode;
         }

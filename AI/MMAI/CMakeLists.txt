@@ -81,10 +81,12 @@ set(MMAI_FILES
   BAI/v15/attack_log.h
   BAI/v15/encoder.cpp
   BAI/v15/encoder.h
-  BAI/v15/graph/builder.cpp
+  BAI/v15/enum_flags.h
   BAI/v15/graph/edge_store.h
   BAI/v15/graph/edges/action_ends_at_hex.h
   BAI/v15/graph/edges/action_exposes_to_shoot_from_unit.h
+  BAI/v15/graph/edges/action_melees_unit.h
+  BAI/v15/graph/edges/action_shoots_unit.h
   BAI/v15/graph/edges/base.h
   BAI/v15/graph/edges/generic.h
   BAI/v15/graph/edges/hex_adjacent_hex.h
@@ -115,6 +117,7 @@ set(MMAI_FILES
   BAI/v15/state.h
   BAI/v15/supplementary_data.cpp
   BAI/v15/supplementary_data.h
+
 
   schema/schema.h
   schema/v13/constants.h

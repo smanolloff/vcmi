@@ -11,12 +11,16 @@
 #include "StdInc.h"
 
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
+#include "BAI/v15/graph/edges/action_melees_unit.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
 #include "BAI/v15/graph/edges/unit_shoot_dmg_unit.h"
 #include "BAI/v15/graph/graph.h"
 #include "BAI/v15/graph/edges/generic.h"
+#include "BAI/v15/graph/nodes/player.h"
+#include "BAI/v15/graph/nodes/unit.h"
+#include "BAI/v15/hexaction.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -24,8 +28,13 @@
 #include "BAI/v15/state.h"
 #include "BAI/v15/supplementary_data.h"
 #include "common.h"
+#include "schema/base.h"
 #include "schema/v15/types.h"
+#include "spells/CSpellHandler.h"
+#include "spells/ISpellMechanics.h"
+#include "spells/ProxyCaster.h"
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -45,43 +54,6 @@ namespace
 	using CorpseFlags = N::Global::CorpseFlags;
 	using ET = S15::Graph::ElementType;
 	using AT = S15::ActionType;
-
-	template <typename T>
-	struct Flags
-	{
-		std::bitset<EU(T::_count)> flags;
-
-	    void set(T v)
-	    {
-	        assert(EU(v) < flags.size());
-	        assert(!flags.test(EU(v)));
-	        flags.set(EU(v));
-	    };
-
-	    bool isSet(T v)
-	    {
-	        assert(EU(v) < flags.size());
-	        return flags.test(EU(v));
-	    };
-
-	    void require(T v)
-	    {
-	        if (!isSet(v))
-	        	throw std::runtime_error("Required flag is not set: " + std::to_string(EU(v)));
-	    }
-
-	    void reject(T v)
-	    {
-	        if (isSet(v))
-	        	throw std::runtime_error("Rejected flag is set: " + std::to_string(EU(v)));
-	    }
-
-	    void requireExclusive(T v)
-	    {
-	    	for(int i = 0; i < EU(T::_count); ++i)
-	    		EU(v) == i ? require(v) : reject(v);
-	    }
-	};
 
 	TowerFlags GetSiegeTowers(const CPlayerBattleCallback & battle) {
 		TowerFlags res = 0; // {upper, middle, lower}
@@ -332,13 +304,13 @@ namespace
 		}
 	};
 
-	std::unordered_map<std::pair<si16, si16>, int, PairHash> InitAdjMap()
+	std::unordered_map<std::pair<int, int>, int, PairHash> InitAdjMap()
 	{
-		auto res = std::unordered_map<std::pair<si16, si16>, int, PairHash>{};
+		auto res = std::unordered_map<std::pair<int, int>, int, PairHash>{};
 
 		for(int id1 = 0; id1 < GameConstants::BFIELD_SIZE; id1++)
 		{
-			auto hex1 = BattleHex(id1);
+			auto hex1 = BattleHex(static_cast<int16_t>(id1));
 			for(int i=0; i<6; ++i)
 			{
 				auto hex2 = hex1.cloneInDirection(AMOVE_TO_EDIR[i], false);
@@ -355,8 +327,7 @@ namespace
 	}
 
 	void AddGlobalNode(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack,
 		const S15::CombatResult result,
@@ -364,9 +335,9 @@ namespace
 		const State::GlobalStats & startStats,
 		const State::GlobalStats & stats)
 	{
-		etFlags.set(ET::NODE_GLOBAL);
+		G.setFlag(ET::NODE_GLOBAL);
 
-		G->add(std::make_shared<N::Global>(
+		G.add(std::make_shared<N::Global>(
 			acstack ? acstack->unitSide() : battle.battleGetMySide(),
 			result,
 			round,
@@ -380,19 +351,18 @@ namespace
 	}
 
 	void AddPlayerNodes(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const State::GlobalStats & startStats,
 		const State::GlobalStats & lastStats,
 		const State::GlobalStats & stats,
 		const AttackLogAggregateData & logdata)
 	{
-		etFlags.set(ET::NODE_PLAYER);
+		G.setFlag(ET::NODE_PLAYER);
 
 		static_assert(EU(BattleSide::LEFT_SIDE) == 0);
 		static_assert(EU(BattleSide::RIGHT_SIDE) == 1);
 
-		G->add(std::make_shared<N::Player>(
+		G.add(std::make_shared<N::Player>(
 			BattleSide::LEFT_SIDE,
 			startStats.totalValue,
 			startStats.totalHp,
@@ -406,8 +376,8 @@ namespace
 			logdata.lvl
 		));
 
-		G->add(std::make_shared<N::Player>(
-			BattleSide::LEFT_SIDE,
+		G.add(std::make_shared<N::Player>(
+			BattleSide::RIGHT_SIDE,
 			startStats.totalValue,
 			startStats.totalHp,
 			lastStats.totalValue,
@@ -422,16 +392,15 @@ namespace
 	}
 
 	void AddUnitNodes(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack,
 		const State::GlobalStats & startStats,
 		const State::GlobalStats & lastStats,
 		const State::GlobalStats & stats,
-		const std::unordered_map<const CStack *, N::Unit::Stats> & sstats)
+		std::unordered_map<const CStack *, N::Unit::Stats> & sstats)
 	{
-		etFlags.set(ET::NODE_UNIT);
+		G.setFlag(ET::NODE_UNIT);
 
 		for(auto & cstack : battle.battleGetStacks())
 		{
@@ -442,20 +411,19 @@ namespace
 				.bfieldHpNow = stats.totalHp,
 				.bfieldHpPrev = lastStats.totalHp,
 				.bfieldHpStart = startStats.totalHp,
-				.stackStats = sstats.at(cstack)
+				.stackStats = sstats[cstack]  // init if key is missing
 			};
 
-			G->add(std::make_shared<N::Unit>(*cstack, sc, acstack == cstack));
+			G.add(std::make_shared<N::Unit>(*cstack, sc, acstack == cstack));
 		}
 	}
 
 	void AddHexNodes(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack)
 	{
-		etFlags.set(ET::NODE_HEX);
+		G.setFlag(ET::NODE_HEX);
 
 		auto hexobstacles = std::array<std::vector<std::shared_ptr<const CObstacleInstance>>, 165>{};
 
@@ -473,12 +441,12 @@ namespace
 			for(int x = 0; x < 15; ++x)
 			{
 				auto i = (y * 15) + x;
-				auto bh = BattleHex(x + 1, y);
+				auto bh = BattleHex(static_cast<int16_t>(x + 1), static_cast<int16_t>(y));
 				ASSERT(bh.isAvailable(), "invalid bhex");
 
-				G->add(std::make_shared<N::Hex>(
+				G.add(std::make_shared<N::Hex>(
 					bh,
-					G->getAccessibility().at(bh.toInt()),
+					G.getAccessibility().at(bh.toInt()),
 					acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
 					hexobstacles.at(i),
 					WallHP(battle, bh),
@@ -488,15 +456,50 @@ namespace
 		}
 	}
 
-	void AddEdges_Hex_Adjacent_Hex(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags)
+	void AddEdges_Global_Yields_Player(
+		Graph::Graph & G,
+		const CPlayerBattleCallback & battle)
 	{
-		etFlags.require(ET::NODE_HEX);
-		etFlags.set(ET::EDGE_HEX_ADJACENT_HEX);
+		G.getFlags().require(ET::NODE_GLOBAL);
+		G.getFlags().require(ET::NODE_PLAYER);
+		G.setFlag(ET::EDGE_GLOBAL_YIELDS_PLAYER);
+
+		const auto & global = G.getAll<N::Global>().at(0);
+		const auto side = battle.battleGetMySide();
+
+		for (const auto & player : G.getAll<N::Player>())
+		{
+			if(player->side == side)
+			{
+				G.add(std::make_shared<E::Global_Yields_Player>(global, player));
+				break;
+			}
+		}
+	}
+
+	void AddEdges_Player_Owns_Unit(
+		Graph::Graph & G,
+		const CPlayerBattleCallback & battle)
+	{
+		G.getFlags().require(ET::NODE_PLAYER);
+		G.getFlags().require(ET::NODE_UNIT);
+		G.setFlag(ET::EDGE_PLAYER_OWNS_UNIT);
+
+		for (const auto & unit : G.getAll<N::Unit>())
+		{
+			const auto & player = G.getByExtraIndex<N::Player>(unit->cstack.unitSide());
+			G.add(std::make_shared<E::Player_Owns_Unit>(player, unit));
+		}
+	}
+
+	void AddEdges_Hex_Adjacent_Hex(
+		Graph::Graph & G)
+	{
+		G.getFlags().require(ET::NODE_HEX);
+		G.setFlag(ET::EDGE_HEX_ADJACENT_HEX);
 
 		static const auto adjmap = InitAdjMap();
-		const auto & hexes = G->getAll<N::Hex>();
+		const auto & hexes = G.getAll<N::Hex>();
 
 		for(const auto & src : hexes)
 		{
@@ -505,21 +508,20 @@ namespace
 				auto it = adjmap.find({src->bhex.toInt(), dst->bhex.toInt()});
 				if(it == adjmap.end())
 					continue;
-				G->add(std::make_shared<E::Hex_Adjacent_Hex>(src, dst, it->second));
+				G.add(std::make_shared<E::Hex_Adjacent_Hex>(src, dst, it->second));
 			}
 		}
 	}
 
 	void AddEdges_Unit_ActsBefore_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const CPlayerBattleCallback & battle)
 	{
-		etFlags.require(ET::NODE_UNIT);
-		etFlags.set(ET::EDGE_UNIT_ACTS_BEFORE_UNIT);
+		G.getFlags().require(ET::NODE_UNIT);
+		G.setFlag(ET::EDGE_UNIT_ACTS_BEFORE_UNIT);
 
 		const auto matrix = Q::BuildActsBeforeMatrix(battle);
-		const auto & nodes = G->getAll<N::Unit>();
+		const auto & nodes = G.getAll<N::Unit>();
 
 		ASSERT(matrix.unique_count <= nodes.size(), "unique_count exceeds size of graph nodes");
 
@@ -528,7 +530,7 @@ namespace
 			auto unitId = matrix.unique_units.at(i);
 			// XXX: assuming unit ID is the same as CStack ID. This must be OK
 			// since as of 2026, battle::Unit is just a superclass of CStack.
-			const auto & unit = G->getByExtraIndex<N::Unit>(unitId);
+			const auto & unit = G.getByExtraIndex<N::Unit>(unitId);
 			ASSERT(unit != nullptr, "unit not found: " + std::to_string(unitId));
 
 			for(int j = 0; j < matrix.unique_count; ++j)
@@ -538,24 +540,23 @@ namespace
 					continue;
 
 				auto otherId = matrix.unique_units.at(j);
-				const auto & other = G->getByExtraIndex<N::Unit>(otherId);
+				const auto & other = G.getByExtraIndex<N::Unit>(otherId);
 				ASSERT(other != nullptr, "unit not found: " + std::to_string(otherId));
-				G->add(std::make_shared<E::Unit_ActsBefore_Unit>(unit, other, times));
+				G.add(std::make_shared<E::Unit_ActsBefore_Unit>(unit, other, times));
 			}
 		}
 	}
 
 	void AddEdges_Unit_MeleeDmg_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
 		const State::GlobalStats & stats)
 	{
-		etFlags.require(ET::NODE_UNIT);
-		etFlags.set(ET::EDGE_UNIT_MELEE_DMG_UNIT);
+		G.getFlags().require(ET::NODE_UNIT);
+		G.setFlag(ET::EDGE_UNIT_MELEE_DMG_UNIT);
 
-		auto pairs = std::unordered_set<std::pair<int, int>>{};
-		const auto & units = G->getAll<N::Unit>();
+		auto pairs = std::unordered_set<std::tuple<int, int>, PairHash>{};
+		const auto & units = G.getAll<N::Unit>();
 
 		for(const auto & unit : units)
 		{
@@ -568,7 +569,7 @@ namespace
 					continue;
 
 				const auto & ostack = other->cstack;
-				auto [_, inserted] = pairs.emplace<std::pair<int, int>>({cstack.unitId(), ostack.unitId()});
+				auto [_, inserted] = pairs.emplace<std::tuple<int, int>>({cstack.unitId(), ostack.unitId()});
 
 				if(!inserted) // key already existed
 					continue;
@@ -580,7 +581,7 @@ namespace
 				auto retalEstimate = DamageEstimation{};
 				const auto attackEstimate = battle.battleEstimateDamage(attinfo, &retalEstimate);
 
-				G->add(std::make_shared<E::Unit_MeleeDmg_Unit>(
+				G.add(std::make_shared<E::Unit_MeleeDmg_Unit>(
 					unit,
 					other,
 					attackEstimate,
@@ -593,17 +594,16 @@ namespace
 	}
 
 	void AddEdges_Unit_ShootDmg_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
+		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
 		const State::GlobalStats & stats)
 	{
-		etFlags.require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
-		etFlags.set(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
+		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
+		G.setFlag(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
 
 		// RANGED_DMG edges use a subset of the MELEE_DMG edge nodes
 		// (all ranged units can also melee)
-		for(const auto & edge : G->getAll<E::Unit_MeleeDmg_Unit>())
+		for(const auto & edge : G.getAll<E::Unit_MeleeDmg_Unit>())
 		{
 			const auto & unit = edge->srcNode;
 			const auto & cstack = unit->cstack;
@@ -614,7 +614,8 @@ namespace
 			const auto & ostack = other->cstack;
 			const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, true);
 			const auto estimate = battle.battleEstimateDamage(attinfo);
-			G->add(std::make_shared<E::Unit_ShootDmg_Unit>(
+
+			G.add(std::make_shared<E::Unit_ShootDmg_Unit>(
 				unit,
 				other,
 				estimate,
@@ -624,16 +625,14 @@ namespace
 		}
 	}
 
-	void AddEdges_Unit_Blocks_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags)
+	void AddEdges_Unit_Blocks_Unit(Graph::Graph & G)
 	{
-		etFlags.require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
-		etFlags.set(ET::EDGE_UNIT_BLOCKS_UNIT);
+		G.getFlags().require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
+		G.setFlag(ET::EDGE_UNIT_BLOCKS_UNIT);
 
 		// BLOCKS edges use a subset of the RANGED_DMG edge nodes
 		// (all blocked units must be ranged units)
-		for(const auto & edge : G->getAll<E::Unit_ShootDmg_Unit>())
+		for(const auto & edge : G.getAll<E::Unit_ShootDmg_Unit>())
 		{
 			const auto & unit = edge->srcNode;
 			const auto & cstack = unit->cstack;
@@ -653,31 +652,29 @@ namespace
 			{
 				if(ostack.coversPos(bhex))
 				{
-					G->add(std::make_shared<E::Unit_Blocks_Unit>(unit, other));
+					G.add(std::make_shared<E::Unit_Blocks_Unit>(unit, other));
 					break;
 				}
 			}
 		}
 	}
 
-	void AddEdges_Unit_Occupies_Hex(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags)
+	void AddEdges_Unit_Occupies_Hex(Graph::Graph & G)
 	{
-		etFlags.require(ET::NODE_UNIT);
-		etFlags.require(ET::NODE_HEX);
-		etFlags.set(ET::EDGE_UNIT_OCCUPIES_HEX);
+		G.getFlags().require(ET::NODE_UNIT);
+		G.getFlags().require(ET::NODE_HEX);
+		G.setFlag(ET::EDGE_UNIT_OCCUPIES_HEX);
 
-		for(const auto & unit : G->getAll<N::Unit>())
+		for(const auto & unit : G.getAll<N::Unit>())
 		{
 			const auto & cstack = unit->cstack;
 			for(const auto & bhex : cstack.getHexes())
 			{
 				if(!bhex.isAvailable())
 					continue;
-				const auto & hex = G->getByExtraIndex<N::Hex>(bhex.toInt());
+				const auto & hex = G.getByExtraIndex<N::Hex>(bhex.toInt());
 				ASSERT(hex != nullptr, "hex not found: " + std::to_string(bhex.toInt()));
-				G->add(std::make_shared<E::Unit_Occupies_Hex>(unit, hex));
+				G.add(std::make_shared<E::Unit_Occupies_Hex>(unit, hex));
 			}
 		}
 	}
@@ -757,24 +754,24 @@ namespace
 			ASSERT(targetUnit != nullptr, "targetUnit is required for AMOVE");
 			ASSERT(targetHex != nullptr, "targetHex is required for AMOVE");
 
-			static const auto dirmapHead = std::map<BattleHex::EDir, HexAction>
+			static const auto dirmapHead = std::map<BattleHex::EDir, S15::HexAction>
 			{
-				{BattleHex::EDir::TOP_RIGHT, HexAction::AMOVE_TR},
-				{BattleHex::EDir::RIGHT, HexAction::AMOVE_R},
-				{BattleHex::EDir::BOTTOM_RIGHT, HexAction::AMOVE_BR},
-				{BattleHex::EDir::BOTTOM_LEFT, HexAction::AMOVE_BL},
-				{BattleHex::EDir::LEFT, HexAction::AMOVE_L},
-				{BattleHex::EDir::TOP_LEFT, HexAction::AMOVE_TL}
+				{BattleHex::EDir::TOP_RIGHT, S15::HexAction::AMOVE_TR},
+				{BattleHex::EDir::RIGHT, S15::HexAction::AMOVE_R},
+				{BattleHex::EDir::BOTTOM_RIGHT, S15::HexAction::AMOVE_BR},
+				{BattleHex::EDir::BOTTOM_LEFT, S15::HexAction::AMOVE_BL},
+				{BattleHex::EDir::LEFT, S15::HexAction::AMOVE_L},
+				{BattleHex::EDir::TOP_LEFT, S15::HexAction::AMOVE_TL}
 			};
 
-			static const auto dirmapTail = std::map<BattleHex::EDir, HexAction>
+			static const auto dirmapTail = std::map<BattleHex::EDir, S15::HexAction>
 			{
-				{BattleHex::EDir::TOP_RIGHT, HexAction::AMOVE_2TR},
-				{BattleHex::EDir::RIGHT, HexAction::AMOVE_2R},
-				{BattleHex::EDir::BOTTOM_RIGHT, HexAction::AMOVE_2BR},
-				{BattleHex::EDir::BOTTOM_LEFT, HexAction::AMOVE_2BL},
-				{BattleHex::EDir::LEFT, HexAction::AMOVE_2L},
-				{BattleHex::EDir::TOP_LEFT, HexAction::AMOVE_2TL}
+				{BattleHex::EDir::TOP_RIGHT, S15::HexAction::AMOVE_2TR},
+				{BattleHex::EDir::RIGHT, S15::HexAction::AMOVE_2R},
+				{BattleHex::EDir::BOTTOM_RIGHT, S15::HexAction::AMOVE_2BR},
+				{BattleHex::EDir::BOTTOM_LEFT, S15::HexAction::AMOVE_2BL},
+				{BattleHex::EDir::LEFT, S15::HexAction::AMOVE_2L},
+				{BattleHex::EDir::TOP_LEFT, S15::HexAction::AMOVE_2TL}
 			};
 
 			const auto & astack = actingUnit->cstack;
@@ -801,13 +798,13 @@ namespace
 			else
 				throw std::runtime_error("mutual position mapping failed");
 
-			return 2 + (targetHex->id * EU(HexAction::_count)) + amove;
+			return 2 + (targetHex->id * EU(S15::HexAction::_count)) + amove;
 		}
 		case S15::ActionType::MOVE:
 		{
 			ASSERT(actingUnit != nullptr, "actingUnit is required for AMOVE");
 			ASSERT(targetHex != nullptr, "targetHex is required for AMOVE");
-			return 2 + (targetHex->id * EU(HexAction::_count)) + EU(HexAction::MOVE);
+			return 2 + (targetHex->id * EU(S15::HexAction::_count)) + EU(S15::HexAction::MOVE);
 		}
 		case S15::ActionType::SHOOT:
 		{
@@ -815,50 +812,58 @@ namespace
 			ASSERT(targetUnit != nullptr, "targetUnit is required for AMOVE");
 			// VCMI's BattleAction::makeShotAttack takes a target unit, not hex
 			int hexid = N::Hex::CalcId(targetUnit->cstack.getPosition());
-			return 2 + (hexid * EU(HexAction::_count)) + EU(HexAction::SHOOT);
+			return 2 + (hexid * EU(S15::HexAction::_count)) + EU(S15::HexAction::SHOOT);
 		}
 		default:
 			throw std::runtime_error("Unexpected action type: " + std::to_string(EU(actionType)));
 		}
 	};
 
-	void AddMoveActionNodes(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags)
+	void AddMoveAndDefendActions(
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
+		const CStack * acstack)
 	{
-		etFlags.require(ET::NODE_UNIT);
-		etFlags.require(ET::NODE_HEX);
+		G.getFlags().require(ET::NODE_UNIT);
+		G.getFlags().require(ET::NODE_HEX);
 
 		// XXX: these edges will be set only for MOVE actions, however
 		// they are required the other 3 action types (AMOVE, SHOOT, WAIT)
 		atFlags.set(AT::MOVE);
-		etFlags.set(ET::NODE_ACTION);
-		etFlags.set(ET::EDGE_ACTION_BY_UNIT);
-		etFlags.set(ET::EDGE_ACTION_ENDS_AT_HEX);
+		atFlags.set(AT::DEFEND);
+		G.setFlag(ET::NODE_ACTION);
+		G.setFlag(ET::EDGE_ACTION_BY_UNIT);
+		G.setFlag(ET::EDGE_ACTION_ENDS_AT_HEX);
 
-		for(const auto & unit : G->getAll<N::Unit>())
+		for(const auto & unit : G.getAll<N::Unit>())
 		{
 			const auto & stack = unit->cstack;
-			const auto & reachability = G->getReachability(stack);
-			for(const auto & hex : G->getAll<N::Hex>())
+			const auto & reachability = G.getReachability(stack);
+			bool isActive = &stack == acstack;
+
+			for(const auto & hex : G.getAll<N::Hex>())
 			{
 				if(reachability.distances.at(hex->bhex.toInt()) > unit->cstack.getMovementRange())
 				{
 					auto stackhexes = std::vector<HexPtr>{};
 					for(const auto & stackbhex : stack.getHexes())
-						stackhexes.emplace_back(G->getByExtraIndex<N::Hex>(stackbhex.toInt()));
+						stackhexes.emplace_back(G.getByExtraIndex<N::Hex>(stackbhex.toInt()));
 
-					int id = CalcActionId(AT::MOVE, unit, nullptr, hex);
-					const auto action = std::make_shared<N::Action>(AT::MOVE, id, unit, stackhexes);
+					auto at = hex->bhex == stack.getPosition()
+						? AT::DEFEND
+						: AT::MOVE;
 
-					G->add(action);
-					G->add(std::make_shared<E::Action_By_Unit>(action, unit));
+					int id = CalcActionId(at, unit, nullptr, hex);
+
+					const auto action = std::make_shared<N::Action>(at, id, unit, stackhexes, isActive);
+
+					G.add(action);
+					G.add(std::make_shared<E::Action_By_Unit>(action, unit));
 
 					bool isRear = false; // getHexes always returns primary hex first
 					for(const auto & stackhex : stackhexes)
 					{
-						G->add(std::make_shared<E::Action_EndsAt_Hex>(action, stackhex, isRear));
+						G.add(std::make_shared<E::Action_EndsAt_Hex>(action, stackhex, isRear));
 						isRear = true;
 					}
 				}
@@ -867,29 +872,27 @@ namespace
 	}
 
 	void AddMoveActionEdges_Action_Blocks_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags,
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack)
 	{
-		throw std::runtime_error("not implemented");
+		throw std::runtime_error("AddMoveActionEdges_Action_Blocks_Unit: not implemented");
 	}
 
 	void AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags)
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags)
 	{
-		etFlags.require(ET::NODE_ACTION);
-		atFlags.requireExclusive(AT::MOVE);
-		etFlags.require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
-		etFlags.require(ET::EDGE_UNIT_ACTS_BEFORE_UNIT);
-		etFlags.require(ET::EDGE_ACTION_ENDS_AT_HEX);
+		G.getFlags().require(ET::NODE_ACTION);
+		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
+		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
+		G.getFlags().require(ET::EDGE_UNIT_ACTS_BEFORE_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
 
 
-		// See note in AddMoveActionNodes()
-		etFlags.set(ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
+		// See note in AddMoveActions()
+		G.setFlag(ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
 
 		// Plan:
 		// For each MOVE action, find units which:
@@ -898,20 +901,20 @@ namespace
 		//  3. can move such that they will end up occupying
 		// 		at least of the hexes around the actor's new position
 		//  4. the enemy move doesn't overlap with the actor's own move
-		for (const auto & action : G->getAll<N::Action>())
+		for (const auto & action : G.getAll<N::Action>())
 		{
 			assert(action->actionType == AT::MOVE);
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
 			const auto & stackhexes = stack.getHexes();
 
-			for (const auto & ounit : G->getAllEdgesSrcByDst<E::Unit_MeleeDmg_Unit>(unit))
+			for (const auto & ounit : G.getAllEdgesSrcByDst<E::Unit_MeleeDmg_Unit>(unit))
 			{
-				if(G->getEdgeBySrcDst<E::Unit_ActsBefore_Unit>(unit, ounit)->times > 1)
+				if(G.getEdgeBySrcDst<E::Unit_ActsBefore_Unit>(unit, ounit)->times > 1)
 					continue;
 
 				const auto & adjbhexes = stack.getSurroundingHexes();
-				for (const auto &oaction : G->getAllEdgesSrcByDst<E::Action_By_Unit>(ounit)) {
+				for (const auto &oaction : G.getAllEdgesSrcByDst<E::Action_By_Unit>(ounit)) {
 					// must check for overlaps to ensure no exposure is set if
 					// the hypothetical endsAt hexes of both stacks overlap
 					// e.g. both our and enemy stack can move onto the "x" hexes
@@ -932,7 +935,7 @@ namespace
 					}
 
 					if (candidate && !overlap) {
-						G->add(std::make_shared<E::Action_ExposesToMeleeFrom_Unit>(action, ounit));
+						G.add(std::make_shared<E::Action_ExposesToMeleeFrom_Unit>(action, ounit));
 						break;
 					}
 				}
@@ -941,20 +944,19 @@ namespace
 	}
 
 	void AddMoveActionEdges_Action_ExposesToShootFrom_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags,
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle)
 	{
-		etFlags.require(ET::NODE_ACTION);
-		atFlags.requireExclusive(AT::MOVE);
-		etFlags.require(ET::NODE_ACTION);
-		etFlags.require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
-		etFlags.require(ET::EDGE_UNIT_BLOCKS_UNIT);
-		etFlags.require(ET::EDGE_ACTION_BLOCKS_UNIT);
+		G.getFlags().require(ET::NODE_ACTION);
+		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
+		G.getFlags().require(ET::NODE_ACTION);
+		G.getFlags().require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
+		G.getFlags().require(ET::EDGE_UNIT_BLOCKS_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_BLOCKS_UNIT);
 
-		// See note in AddMoveActionNodes()
-		etFlags.set(ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+		// See note in AddMoveActions()
+		G.setFlag(ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
 
 		// Plan:
 		// For each MOVE action, find units which:
@@ -964,15 +966,15 @@ namespace
 		// 	    b. are currently blocked *only* by the actor, but will become
 		// 			unblocked after the move
 
-		for (const auto & action : G->getAll<N::Action>())
+		for (const auto & action : G.getAll<N::Action>())
 		{
 			assert(action->actionType == AT::MOVE);
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
 
-			for (const auto & ounit : G->getAllEdgesSrcByDst<E::Unit_ShootDmg_Unit>(unit))
+			for (const auto & ounit : G.getAllEdgesSrcByDst<E::Unit_ShootDmg_Unit>(unit))
 			{
-				const auto & blockers = G->getAllEdgesSrcByDst<E::Unit_Blocks_Unit>(ounit);
+				const auto & blockers = G.getAllEdgesSrcByDst<E::Unit_Blocks_Unit>(ounit);
 
 				auto numBlockers = std::ranges::distance(blockers);
 				if (numBlockers > 1)
@@ -982,7 +984,7 @@ namespace
 				if (numBlockers == 1 && !actorIsBlocker)
 					continue; // no threat (already blocked by someone else)
 
-				bool willBlock = G->getEdgeBySrcDst<E::Action_Blocks_Unit>(action, ounit, false) != nullptr;
+				bool willBlock = G.getEdgeBySrcDst<E::Action_Blocks_Unit>(action, ounit, false) != nullptr;
 				if (willBlock)
 					continue; // no threat (will become blocked after the move)
 
@@ -995,15 +997,14 @@ namespace
 				if(battle.battleHasWallPenalty(&ostack, ostack.getPosition(), stack.getPosition()))
 					mult *= 0.5;
 
-				G->add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(action, ounit, mult));
+				G.add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(action, ounit, mult));
 			}
 		}
 	}
 
 	void AddMoveActionEdges_Action_EnablesMeleeAt_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags,
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack)
 	{
@@ -1025,24 +1026,23 @@ namespace
 		 * 		(compare traditional makeBFS with optimized versions)
 		 */
 
-		throw std::runtime_error("not implemented");
+		throw std::runtime_error("AddMoveActionEdges_Action_EnablesMeleeAt_Unit: not implemented");
 	}
 
 	void AddMoveActionEdges_Action_EnablesShootAt_Unit(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags,
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack)
 	{
-		etFlags.require(ET::NODE_ACTION);
-		atFlags.requireExclusive(AT::MOVE);
-		etFlags.require(ET::EDGE_UNIT_OCCUPIES_HEX);
-		etFlags.require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
-		etFlags.require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
+		G.getFlags().require(ET::NODE_ACTION);
+		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
+		G.getFlags().require(ET::EDGE_UNIT_OCCUPIES_HEX);
+		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
+		G.getFlags().require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
 
-		// See note in AddMoveActionNodes()
-		etFlags.set(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+		// See note in AddMoveActions()
+		G.setFlag(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
 
 		// Plan:
 		// For each MOVE action:
@@ -1050,7 +1050,7 @@ namespace
 		//  1. Check if the actor will be blocked after the move
 		// 	2. Find units with "ShootDmg" edge from the actor
 		//
-		for (const auto & action : G->getAll<N::Action>())
+		for (const auto & action : G.getAll<N::Action>())
 		{
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
@@ -1065,30 +1065,48 @@ namespace
 				// If blocked after the move => return early
 				for (const auto & adjbhex : unit->cstack.getSurroundingHexes(hex->bhex))
 				{
-					const auto & adjhex = G->getByExtraIndex<N::Hex>(adjbhex.toInt());
-					const auto & ounit = G->getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex, false);
-					if (ounit && G->getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(ounit, unit, false))
+					const auto & adjhex = G.getByExtraIndex<N::Hex>(adjbhex.toInt());
+					const auto & ounit = G.getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex, false);
+					if (ounit && G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(ounit, unit, false))
 						return; // we will be blocked
 				}
 			}
 
-			for (const auto & ounit : G->getAllEdgesDstBySrc<E::Unit_ShootDmg_Unit>(unit))
-				G->add(std::make_shared<E::Action_EnablesShootAt_Unit>(action, unit));
+			for (const auto & ounit : G.getAllEdgesDstBySrc<E::Unit_ShootDmg_Unit>(unit))
+				G.add(std::make_shared<E::Action_EnablesShootAt_Unit>(action, unit));
 		}
+	}
+
+	void AddMoveActionEdges_Action_EnablesMeleeAt_Hex(
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
+		const CPlayerBattleCallback & battle,
+		const CStack * acstack)
+	{
+		throw std::runtime_error("AddMoveActionEdges_Action_EnablesMeleeAt_Hex: not implemented");
+	}
+
+	void AddMoveActionEdges_Action_EnablesShootAt_Hex(
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
+		const CPlayerBattleCallback & battle,
+		const CStack * acstack)
+	{
+		throw std::runtime_error("AddMoveActionEdges_Action_EnablesShootAt_Hex: not implemented");
 	}
 
 	template <typename T>
 	void CloneActionGenericEdges(
-		std::shared_ptr<Graph::Graph> & G,
+		Graph::Graph & G,
 		const ActionPtr & src,
 		const std::shared_ptr<N::Action> & dst)
 	{
-    	for (const std::shared_ptr<const T> & e : G->getAllEdgesBySrc<T>(src))
-    		G->add(std::make_shared<T>(dst, e->dstNode));
+		for (const std::shared_ptr<const T> & e : G.getAllEdgesBySrc<T>(src))
+			G.add(std::make_shared<T>(dst, e->dstNode));
 	}
 
 	void CloneActionEdges(
-		std::shared_ptr<Graph::Graph> & G,
+		Graph::Graph & G,
 		const ActionPtr & src,
 		const std::shared_ptr<N::Action> & dst)
 	{
@@ -1096,69 +1114,60 @@ namespace
 		{
 			switch(ET(i))
 			{
-		        case ET::EDGE_ACTION_BY_UNIT:
-		        	CloneActionGenericEdges<E::Action_By_Unit>(G, src, dst);
-		        	break;
-		        case ET::EDGE_ACTION_BLOCKS_UNIT:
-		        	CloneActionGenericEdges<E::Action_Blocks_Unit>(G, src, dst);
-		        	break;
-		        case ET::EDGE_ACTION_ENDS_AT_HEX:
-		        	for (const auto & e : G->getAllEdgesBySrc<E::Action_EndsAt_Hex>(src))
-		        		G->add(std::make_shared<E::Action_EndsAt_Hex>(dst, e->dstNode, e->isRear));
-		        	break;
-		        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-		        	CloneActionGenericEdges<E::Action_ExposesToMeleeFrom_Unit>(G, src, dst);
-		        	break;
-		        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-		        	for (const auto & e : G->getAllEdgesBySrc<E::Action_ExposesToShootFrom_Unit>(src))
-		        		G->add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(dst, e->dstNode, e->mult));
-		        	break;
-		        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
-		        	CloneActionGenericEdges<E::Action_EnablesMeleeAt_Unit>(G, src, dst);
-		        	break;
-		        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
-		        	CloneActionGenericEdges<E::Action_EnablesShootAt_Unit>(G, src, dst);
-		        	break;
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
-		        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_HEX:
-		        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX:
-#endif
-	        	// Nothing to add for those
-		        case ET::NODE_GLOBAL:
-		        case ET::NODE_PLAYER:
-		        case ET::NODE_UNIT:
-		        case ET::NODE_HEX:
-		        case ET::NODE_ACTION:
-		        case ET::NODE_ACTACTION:
-		        case ET::EDGE_HEX_ADJACENT_HEX:
-		        case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
-		        case ET::EDGE_UNIT_MELEE_DMG_UNIT:
-		        case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
-		        case ET::EDGE_UNIT_BLOCKS_UNIT:
-		        case ET::EDGE_UNIT_OCCUPIES_HEX:
-		        case ET::EDGE_ACTION_MELEES_UNIT:
-		        case ET::EDGE_ACTION_SHOOTS_UNIT:
-		        case ET::EDGE_ACTACTION_BY_UNIT:
-		        case ET::EDGE_ACTACTION_BLOCKS_UNIT:
-		        case ET::EDGE_ACTACTION_ENDS_AT_HEX:
-		        case ET::EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-		        case ET::EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-		        case ET::EDGE_ACTACTION_MELEES_UNIT:
-		        case ET::EDGE_ACTACTION_SHOOTS_UNIT:
-		        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT:
-		        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT:
-		        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_HEX:
-		        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX:
-		        	break;
-		        default:
-		        	throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
+				case ET::EDGE_ACTION_BY_UNIT:
+					CloneActionGenericEdges<E::Action_By_Unit>(G, src, dst);
+					break;
+				case ET::EDGE_ACTION_BLOCKS_UNIT:
+					CloneActionGenericEdges<E::Action_Blocks_Unit>(G, src, dst);
+					break;
+				case ET::EDGE_ACTION_ENDS_AT_HEX:
+					for (const auto & e : G.getAllEdgesBySrc<E::Action_EndsAt_Hex>(src))
+						G.add(std::make_shared<E::Action_EndsAt_Hex>(dst, e->dstNode, e->isRear));
+					break;
+				case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
+					CloneActionGenericEdges<E::Action_ExposesToMeleeFrom_Unit>(G, src, dst);
+					break;
+				case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
+					for (const auto & e : G.getAllEdgesBySrc<E::Action_ExposesToShootFrom_Unit>(src))
+						G.add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(dst, e->dstNode, e->mult));
+					break;
+				case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
+					CloneActionGenericEdges<E::Action_EnablesMeleeAt_Unit>(G, src, dst);
+					break;
+				case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
+					CloneActionGenericEdges<E::Action_EnablesShootAt_Unit>(G, src, dst);
+					break;
+				case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
+					CloneActionGenericEdges<E::Action_EnablesMeleeAt_Hex>(G, src, dst);
+					break;
+				case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
+					CloneActionGenericEdges<E::Action_EnablesShootAt_Hex>(G, src, dst);
+					break;
+				// Nothing to add for those
+				case ET::NODE_GLOBAL:
+				case ET::NODE_PLAYER:
+				case ET::NODE_UNIT:
+				case ET::NODE_HEX:
+				case ET::NODE_ACTION:
+				case ET::EDGE_HEX_ADJACENT_HEX:
+				case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
+				case ET::EDGE_UNIT_MELEE_DMG_UNIT:
+				case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+				case ET::EDGE_UNIT_BLOCKS_UNIT:
+				case ET::EDGE_UNIT_OCCUPIES_HEX:
+				case ET::EDGE_ACTION_MELEES_UNIT:
+				case ET::EDGE_ACTION_SHOOTS_UNIT:
+					break;
+				default:
+					throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
 			}
 		}
 	};
 
 	void AddAmoveAction(
-		std::shared_ptr<Graph::Graph> & G,
-		const ActionPtr & move)
+		Graph::Graph & G,
+		const ActionPtr & move,
+		const CPlayerBattleCallback & battle)
 	{
 		const auto & unit = move->by;
 		const auto & hex = move->endsAt.at(0);
@@ -1167,7 +1176,7 @@ namespace
 		bool willMoveIntoMoat = (
 			hex->bhex != unit->cstack.getPosition() &&
 			std::ranges::any_of(move->endsAt, [](const HexPtr & hex) {
-			    return hex->statemask.test(EU(S15::HexState::STOPPING));
+				return hex->statemask.test(EU(S15::HexState::STOPPING));
 			})
 		);
 
@@ -1181,13 +1190,13 @@ namespace
 
 		for (const auto & adjbhex : unit->cstack.getSurroundingHexes(hex->bhex))
 		{
-			const auto & adjhex = G->getByExtraIndex<N::Hex>(adjbhex.toInt());
-			const auto & ounit = G->getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex);
+			const auto & adjhex = G.getByExtraIndex<N::Hex>(adjbhex.toInt());
+			const auto & ounit = G.getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex);
 
 			if (!ounit)
 				continue;
 
-			if (!G->getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(unit, ounit, false))
+			if (!G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(unit, ounit, false))
 				continue;
 
 			auto [it, inserted] = ounits.emplace(ounit);
@@ -1198,59 +1207,137 @@ namespace
 			const auto & hex = move->endsAt.at(0);
 			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
-			auto id = CalcActionId(AT::MOVE, unit, ounit, hex);
-			auto amove = std::make_shared<N::Action>(AT::AMOVE, id, unit, move->endsAt);
-			G->add(amove);
-			G->add(std::make_shared<E::Action_Melees_Unit>(amove, ounit));
+			auto id = move->id == CalcActionId(AT::AMOVE, unit, ounit, hex);
+
+			auto amove = std::make_shared<N::Action>(AT::AMOVE, id, unit, move->endsAt, move->isActive);
+			G.add(amove);
+
+			// Melee AoE attacks, e.g. dragons, hydras
+			const auto & stack = unit->cstack;
+			const auto & ostack = ounit->cstack;
+
+			// XXX: The code in getAttackedCreatures (for melee attacks) uses
+			//      destination hex ONLY for obtaining the defending stack
+			// 		(which is great because the attack targets a unit, not a hex)
+			const auto & [targets, _] = battle.getAttackedCreatures(
+				&stack,
+				ostack.getPosition(),
+				false,
+				hex->bhex
+			);
+
+			for (const auto & tstack : targets)
+			{
+				if (tstack == &ostack)
+					// XXX: getAttackedCreatures has some stupid logic which does not
+					//      return the creature standing on the target hex.
+					//      HOWEVER, if the same creature occupies an AoE hex, it is returned
+					//      => make sure to not duplicate it.
+					continue;
+
+				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
+				G.add(std::make_shared<E::Action_Melees_Unit>(amove, tunit, false));
+			}
+
+			G.add(std::make_shared<E::Action_Melees_Unit>(amove, ounit, true));
 			CloneActionEdges(G, move, amove);
 		}
 	}
 
 	void AddShootAction(
-		std::shared_ptr<Graph::Graph> & G,
-		const ActionPtr & defend)
+		Graph::Graph & G,
+		const ActionPtr & defend,
+		const CPlayerBattleCallback & battle)
 	{
-		for (const auto & ounit : G->getAllEdgesDstBySrc<E::Action_EnablesShootAt_Unit>(defend))
+		for (const auto & ounit : G.getAllEdgesDstBySrc<E::Action_EnablesShootAt_Unit>(defend))
 		{
 			auto id = CalcActionId(AT::SHOOT, defend->by, ounit, nullptr);
-			auto shoot = std::make_shared<N::Action>(AT::SHOOT, id, defend->by, defend->endsAt);
-			G->add(shoot);
-			G->add(std::make_shared<E::Action_Shoots_Unit>(shoot, ounit));
+			auto shoot = std::make_shared<N::Action>(AT::SHOOT, id, defend->by, defend->endsAt, defend->isActive);
+			G.add(shoot);
+			G.add(std::make_shared<E::Action_Shoots_Unit>(shoot, ounit, true));
+
+			const auto & unit = shoot->by;
+
+			// AoE attacks - e.g. dragon breath
+			const auto & stack = unit->cstack;
+			const auto & ostack = ounit->cstack;
+			const auto & ohex = G.getByExtraIndex<N::Hex>(ounit->cstack.getPosition().toInt());
+
+			// XXX: The code in getAttackedCreatures (for ranged attacks)
+			// 		does NOT consider AoE from SPELL_LIKE_ATTACK
+			//      (which is all the AoE in vanilla H3/SoD: Fireball, Death Cloud)
+			// 		Call it, in case some mod adds a regular non-spell like ranged AoE,
+			// 		but make sure to handle the spell-like attacks separately.
+			auto [targets, _] = battle.getAttackedCreatures(
+				&stack,
+				ohex->bhex,
+				true,
+				stack.getPosition()
+			);
+
+			// Handle spell-like attacks
+			if (const auto & bonus = stack.getBonus(Selector::type()(BonusType::SPELL_LIKE_ATTACK)))
+			{
+				// Stolen from CBattleInfoCallback::estimateSpellLikeAttackDamage
+				const auto * spell = bonus->subtype.as<SpellID>().toSpell();
+				const auto & proxy = spells::ProxyCaster(&stack);
+				const auto & params = spells::BattleCast(&battle, &proxy, spells::Mode::PASSIVE, spell);
+				const auto mech = std::unique_ptr<spells::Mechanics>(spell->battleMechanics(&params));
+				if(!mech)
+					return;
+				auto aim = spells::Target{};
+				aim.emplace_back(ohex->bhex);
+				for (const auto & tstack : mech->getAffectedStacks(aim))
+					targets.emplace(tstack);
+			}
+
+			for (const auto & tstack : targets)
+			{
+				if (tstack == &ostack)
+					// see note in AddAmoveAction
+					continue;
+
+				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
+				G.add(std::make_shared<E::Action_Shoots_Unit>(shoot, tunit, false));
+			}
+
+			G.add(std::make_shared<E::Action_Shoots_Unit>(shoot, ounit, true));
 			CloneActionEdges(G, defend, shoot);
 		}
 	}
 
 	void AddWaitAction(
-		std::shared_ptr<Graph::Graph> & G,
+		Graph::Graph & G,
 		const ActionPtr & defend)
 	{
 		if (defend->by->cstack.waitedThisTurn)
 			return;
+
 		auto id = CalcActionId(AT::WAIT, nullptr, nullptr, nullptr);
-		auto wait = std::make_shared<N::Action>(AT::WAIT, id, defend->by, defend->endsAt);
-		G->add(wait);
+		auto wait = std::make_shared<N::Action>(AT::WAIT, id, defend->by, defend->endsAt, defend->isActive);
+		G.add(wait);
 		CloneActionEdges(G, defend, wait);
 	}
 
 	void AddOtherActions(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags)
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
+		const CPlayerBattleCallback & battle)
 	{
 		// All MOVE actions with all their edges must be available here
 		// except for MELEES and SHOOTS edges which are for AMOVE only
-		etFlags.require(ET::NODE_ACTION);
-		atFlags.requireExclusive(AT::MOVE);
-        etFlags.require(ET::EDGE_ACTION_BY_UNIT);
-        etFlags.require(ET::EDGE_ACTION_BLOCKS_UNIT);
-        etFlags.require(ET::EDGE_ACTION_ENDS_AT_HEX);
-        etFlags.require(ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
-        etFlags.require(ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
-        etFlags.require(ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
-        etFlags.require(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+		G.getFlags().require(ET::NODE_ACTION);
+		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
+		G.getFlags().require(ET::EDGE_ACTION_BY_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_BLOCKS_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
+		G.getFlags().require(ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
+		G.getFlags().require(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
 
-        etFlags.set(ET::EDGE_ACTION_MELEES_UNIT);
-        etFlags.set(ET::EDGE_ACTION_SHOOTS_UNIT);
+		G.setFlag(ET::EDGE_ACTION_MELEES_UNIT);
+		G.setFlag(ET::EDGE_ACTION_SHOOTS_UNIT);
 		atFlags.set(AT::AMOVE);
 		atFlags.set(AT::SHOOT);
 		atFlags.set(AT::WAIT);
@@ -1260,124 +1347,34 @@ namespace
 
 		// Iterate from a vector as we will new nodes will be added to the index
 		auto moveactions = std::vector<ActionPtr>{};
-		moveactions.reserve(G->size<N::Action>());
-		for (const auto & move : G->getAll<N::Action>())
+		moveactions.reserve(G.size<N::Action>());
+		for (const auto & move : G.getAll<N::Action>())
 		{
-		    moveactions.push_back(move);
-		    if(move->by->cstack.getPosition() == move->endsAt.at(0)->bhex)
-		    	defendmoves.try_emplace(move->by, move);
+			moveactions.push_back(move);
+			if(move->by->cstack.getPosition() == move->endsAt.at(0)->bhex)
+				defendmoves.try_emplace(move->by, move);
 		}
 
 		for (const auto & move : moveactions)
 		{
-			AddAmoveAction(G, move);
+			AddAmoveAction(G, move, battle);
 		}
 
-		for(const auto & unit : G->getAll<N::Unit>())
+		for(const auto & unit : G.getAll<N::Unit>())
 		{
-			const auto & defendhex = G->getByExtraIndex<N::Hex>(unit->cstack.getPosition());
+			const auto & defendhex = G.getByExtraIndex<N::Hex>(unit->cstack.getPosition().toInt());
 			const auto & defend = defendmoves.at(unit);
-			AddShootAction(G, defend);
+			AddShootAction(G, defend, battle);
 			AddWaitAction(G, defend);
-		}
-	}
-
-	void AddActactions(
-		std::shared_ptr<Graph::Graph> & G,
-		Flags<ET> & etFlags,
-		Flags<AT> & atFlags,
-		const CPlayerBattleCallback & battle,
-		const CStack * acstack
-	)
-	{
-		if (!acstack)
-			return;
-
-		for (const auto & a : G->getAll<N::Action>())
-		{
-			const auto & unit = a->by;
-			const auto & stack = unit->cstack;
-
-			if (&stack != acstack)
-				continue;
-
-			const auto aa = std::make_shared<N::Actaction>(a->id);
-			G->add(aa);
-
-			#define GENERIC_ACTION_CLONE(tail) \
-				for (const auto & e : G->getAllEdgesBySrc<E::Action_##tail>(a)) \
-					G->add(std::make_shared<E::Actaction_##tail>(aa, e->dstNode))
-
-			for(int i = 0; i < EU(ET::_count); ++i)
-			{
-				switch(ET(i))
-				{
-			        case ET::EDGE_ACTION_BY_UNIT:
-						GENERIC_ACTION_CLONE(By_Unit);
-						break;
-			        case ET::EDGE_ACTION_BLOCKS_UNIT:
-						GENERIC_ACTION_CLONE(Blocks_Unit);
-						break;
-			        case ET::EDGE_ACTION_ENDS_AT_HEX:
-						for (const auto & e : G->getAllEdgesBySrc<E::Action_EndsAt_Hex>(a))
-							G->add(std::make_shared<E::Actaction_EndsAt_Hex>(aa, e->dstNode, e->isRear));
-						break;
-			        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-						GENERIC_ACTION_CLONE(ExposesToMeleeFrom_Unit);
-						break;
-			        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-						for (const auto & e : G->getAllEdgesBySrc<E::Action_ExposesToShootFrom_Unit>(a))
-							G->add(std::make_shared<E::Actaction_ExposesToShootFrom_Unit>(aa, e->dstNode, e->mult));
-			        case ET::EDGE_ACTACTION_MELEES_UNIT:
-						GENERIC_ACTION_CLONE(Melees_Unit);
-			        case ET::EDGE_ACTACTION_SHOOTS_UNIT:
-						GENERIC_ACTION_CLONE(Shoots_Unit);
-			        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
-						GENERIC_ACTION_CLONE(EnablesMeleeAt_Unit);
-			        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
-						GENERIC_ACTION_CLONE(EnablesShootAt_Unit);
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
-			        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_HEX:
-			        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX:
-#endif
-		        	// Nothing to add for those
-			        case ET::NODE_GLOBAL:
-			        case ET::NODE_PLAYER:
-			        case ET::NODE_UNIT:
-			        case ET::NODE_HEX:
-			        case ET::NODE_ACTION:
-			        case ET::NODE_ACTACTION:
-			        case ET::EDGE_HEX_ADJACENT_HEX:
-			        case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
-			        case ET::EDGE_UNIT_MELEE_DMG_UNIT:
-			        case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
-			        case ET::EDGE_UNIT_BLOCKS_UNIT:
-			        case ET::EDGE_UNIT_OCCUPIES_HEX:
-			        case ET::EDGE_ACTION_MELEES_UNIT:
-			        case ET::EDGE_ACTION_SHOOTS_UNIT:
-			        case ET::EDGE_ACTACTION_BY_UNIT:
-			        case ET::EDGE_ACTACTION_BLOCKS_UNIT:
-			        case ET::EDGE_ACTACTION_ENDS_AT_HEX:
-			        case ET::EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-			        case ET::EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-			        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT:
-			        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT:
-			        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_HEX:
-			        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX:
-			        	break;
-			        default:
-			        	throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
-				}
-			}
 		}
 	}
 }
 
 State::State(
-	int version_,
+	int version,
 	const std::string & colorname,
 	const CPlayerBattleCallback & battle)
-: version_(version_)
+: version_(version)
 , battle(battle)
 , colorname(colorname)
 , side(battle.battleGetMySide())
@@ -1392,8 +1389,8 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 
 	for(const auto & elem : bsa)
 	{
-		const auto * defender = battle.battleGetStackByID(elem.stackAttacked, false);
-		const auto * attacker = battle.battleGetStackByID(elem.attackerID, false);
+		const auto * defender = battle.battleGetStackByID(static_cast<int>(elem.stackAttacked), false);
+		const auto * attacker = battle.battleGetStackByID(static_cast<int>(elem.attackerID), false);
 
 		if(!defender)
 		{
@@ -1446,43 +1443,47 @@ void State::onActiveStack(
 	S15::CombatResult result)
 {
 	logAi->debug("onActiveStack: round=%d, result=%d", round, EI(result));
-	auto G = std::make_shared<Graph::Graph>(battle, nullptr);
+	G = std::make_shared<Graph::Graph>(battle);
 
 	const auto stats = CalcGlobalStats(battle);
 	const auto logdata = ProcessAttackLogs(attackLogs, sstats);
-	auto etFlags = Flags<S15::Graph::ElementType>();
 
 	G->buildAccessibilityCache();
 
-	AddGlobalNode(G, etFlags, battle, acstack, result, round, startStats, stats);
-	AddPlayerNodes(G, etFlags, startStats, lastStats, stats, logdata);
-	AddUnitNodes(G, etFlags, battle, acstack, startStats, lastStats, stats, sstats);
-	AddHexNodes(G, etFlags, battle, acstack);
+	AddGlobalNode(*G, battle, acstack, result, round, startStats, stats);
+	AddPlayerNodes(*G, startStats, lastStats, stats, logdata);
+	AddUnitNodes(*G, battle, acstack, startStats, lastStats, stats, sstats);
+	AddHexNodes(*G, battle, acstack);
 
-	G->buildReachabilityCache(); // requires etFlags Units
+	G->buildReachabilityCache(); // requires Units
 
-	AddEdges_Hex_Adjacent_Hex(G, etFlags);
-	AddEdges_Unit_ActsBefore_Unit(G, etFlags, battle);
-	AddEdges_Unit_MeleeDmg_Unit(G, etFlags, battle, stats);
-	AddEdges_Unit_ShootDmg_Unit(G, etFlags, battle, stats);
-	AddEdges_Unit_Blocks_Unit(G, etFlags);
-	AddEdges_Unit_Occupies_Hex(G, etFlags);
+	AddEdges_Global_Yields_Player(*G, battle);
+	AddEdges_Player_Owns_Unit(*G, battle);
+	AddEdges_Hex_Adjacent_Hex(*G);
+	AddEdges_Unit_ActsBefore_Unit(*G, battle);
+	AddEdges_Unit_MeleeDmg_Unit(*G, battle, stats);
+	AddEdges_Unit_ShootDmg_Unit(*G, battle, stats);
+	AddEdges_Unit_Blocks_Unit(*G);
+	AddEdges_Unit_Occupies_Hex(*G);
 
-	auto atFlags = Flags<S15::ActionType>();
-	AddMoveActionNodes(G, etFlags, atFlags); // + edges: ActionByUnit, ActionEndsAtHex
+	auto atFlags = EnumFlags<S15::ActionType>();
+	AddMoveAndDefendActions(*G, atFlags, acstack); // + edges: ActionByUnit, ActionEndsAtHex
 	// AddMoveActionEdges_Action_By_Unit() // already added
-	AddMoveActionEdges_Action_Blocks_Unit(G, etFlags, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_Blocks_Unit(*G, atFlags, battle, acstack);
 	// AddMoveActionEdges_Action_EndsAt_Hex() // already added
-	AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(G, etFlags, atFlags);
-	AddMoveActionEdges_Action_ExposesToShootFrom_Unit(G, etFlags, atFlags, battle);
-    AddMoveActionEdges_Action_EnablesMeleeAt_Unit(G, etFlags, atFlags, battle, acstack);
-    AddMoveActionEdges_Action_EnablesShootAt_Unit(G, etFlags, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(*G, atFlags);
+	AddMoveActionEdges_Action_ExposesToShootFrom_Unit(*G, atFlags, battle);
+	AddMoveActionEdges_Action_EnablesMeleeAt_Unit(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_EnablesShootAt_Unit(*G, atFlags, battle, acstack);
 
-    AddOtherActions(G, etFlags, atFlags);
-    AddActactions(G, etFlags, atFlags, battle, acstack);
+	// active actions only
+	AddMoveActionEdges_Action_EnablesMeleeAt_Hex(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_EnablesShootAt_Hex(*G, atFlags, battle, acstack);
 
-	// ...
-	// AddActions(G, etFlags, battle, acstack); // add last; also adds Actaction nodes
+	AddOtherActions(*G, atFlags, battle);
+
+	ASSERT(G->getFlags().flags.all(), "etFlags check: " + G->getFlags().flags.to_string());
+	ASSERT(atFlags.flags.all(), "atFlags check: " + atFlags.flags.to_string());
 
 	supdata = std::make_unique<SupplementaryData>(
 		colorname,

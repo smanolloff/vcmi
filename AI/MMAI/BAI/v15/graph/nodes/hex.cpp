@@ -71,9 +71,12 @@ Hex::Hex(
     finalize();
 }
 
+
 std::string Hex::name() const
 {
-    return "(" + std::to_string(attr(HA::Y_COORD)) + "," + std::to_string(attr(HA::X_COORD)) + ")";
+    std::stringstream ss;
+    ss << detail::Hex_Base::name() << "(" << attr(HA::Y_COORD) << "," << attr(HA::X_COORD) << ")";
+    return ss.str();
 }
 
 void Hex::finalize()

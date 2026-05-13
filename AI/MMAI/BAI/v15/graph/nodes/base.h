@@ -18,7 +18,6 @@ public:
     using A = typename EncTraits::A;
     using extra_index_type = void;
 
-
     Base() = default;
 
     Base(const Base &) = delete;

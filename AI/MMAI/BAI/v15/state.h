@@ -13,11 +13,9 @@
 #include "battle/CPlayerBattleCallback.h"
 #include "networkPacks/PacksForClientBattle.h"
 
-#include "BAI/v15/action.h"
 #include "BAI/v15/attack_log.h"
 #include "BAI/v15/supplementary_data.h"
 #include "schema/base.h"
-#include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 #include <stdexcept>
 
@@ -44,7 +42,11 @@ public:
 
 	const Schema::ActionMask * getActionMask() const override
 	{
-		throw std::runtime_error("getActionMask() not yet implemented in v15");
+		// The valid actions to make can be obtained via:
+		// IGraph::getNodes(ElementType::NODE_ACTION) - all potential actions for all units
+		// +
+		// IGraph::getActiveNodeToActionIds() - indexes of the actions by the active unit
+		throw std::runtime_error("getActionMask() should not be called in v15");
 	};
 	const Schema::AttentionMask * getAttentionMask() const override
 	{
@@ -52,6 +54,7 @@ public:
 	}
 	const Schema::BattlefieldState * getBattlefieldState() const override
 	{
+		// The battlefield is now represented via IGraph.
 		throw std::runtime_error("getBattlefieldState() should not be called in v15");
 	}
 	std::any getSupplementaryData() const override
@@ -85,9 +88,10 @@ public:
 
 	GlobalStats startStats;
 	GlobalStats lastStats;
+
+	std::shared_ptr<Graph::Graph> G;
 	std::unique_ptr<SupplementaryData> supdata = nullptr;
 	std::vector<AttackLog> attackLogs;
-	std::unique_ptr<Action> action = nullptr;
 	std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> sstats;
 	const std::string colorname;
 	const BattleSide side;

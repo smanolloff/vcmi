@@ -22,8 +22,9 @@ namespace MMAI::Schema::V15::Graph
         NODE_UNIT,
         NODE_HEX,
         NODE_ACTION,
-        NODE_ACTACTION,
 
+        EDGE_GLOBAL_YIELDS_PLAYER,
+        EDGE_PLAYER_OWNS_UNIT,
         EDGE_HEX_ADJACENT_HEX,
         EDGE_UNIT_ACTS_BEFORE_UNIT,
         EDGE_UNIT_MELEE_DMG_UNIT,      // regardless if reachable
@@ -36,47 +37,15 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTION_ENDS_AT_HEX,
         EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
         EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
-        EDGE_ACTION_MELEES_UNIT,
-        EDGE_ACTION_SHOOTS_UNIT,
+        EDGE_ACTION_MELEES_UNIT, // v=primary target (e.g. for dragon breath, 3-headed attack, etc.)
+        EDGE_ACTION_SHOOTS_UNIT, // v=primary target (e.g. for fireball)
         EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
         EDGE_ACTION_ENABLES_SHOOT_AT_UNIT,
 
-        // EDGE_UNIT_THREATENS_HEX,        // 99% overlap with EDGE_ACTION_ENDS_AT
-        // EDGE_UNIT_THREATENS_UNIT,       // 100% overlap with EDGE_ACTION_DAMAGES_UNIT
-        // However, the above may still need to be added in case
-        // I decide to have Action nodes for the active unit
-        // (which chat GPT says is usually better, but I want to try with all units)
-
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
         // can explode to 350K for 14 archangels
-        EDGE_ACTACTION_ENABLES_MELEE_AT_HEX,
-        EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX,
-#endif
-
-        // XXX:
-        // For the GNN, it makes no difference if we transport the active actions
-        // as separate nodes in the observation: they have the same attributes,
-        // so it's identical to feeding the *regular* action nodes in another GNN.
-        //
-        // TODO: Remove actaction nodes and instead expose a SupplementaryData
-        // method "getActiveActionIds" for selecting the active subset of actions.
-        // RL can feed *all* actions through one GNN and the active ones through another GNN.
-        // Also expose "getActiveEdgeTypes" method to allow hiding those from
-        // the first GNN.
-
-        EDGE_ACTACTION_BY_UNIT,
-        EDGE_ACTACTION_BLOCKS_UNIT,
-        EDGE_ACTACTION_ENDS_AT_HEX,
-        EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT,
-        EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
-        EDGE_ACTACTION_MELEES_UNIT,
-        EDGE_ACTACTION_SHOOTS_UNIT,
-        EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT,
-        EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT,
-
-        EDGE_ACTACTION_ENABLES_MELEE_AT_HEX,
-        EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX,
-
+        // => present only for active action nodes
+        EDGE_ACTION_ENABLES_MELEE_AT_HEX,
+        EDGE_ACTION_ENABLES_SHOOT_AT_HEX,
         _count
     };
 
@@ -170,26 +139,19 @@ namespace MMAI::Schema::V15::Graph
             Y_COORD,
             X_COORD,
             STATE_MASK,
-            ACTION_MASK,
-            IS_REAR, // is this hex the rear hex of a stack
-            IS_RUFR,
             WALL_HEALTH,
 
             _count
         };
 
         BLANK_ENUM_DEF(Action);
-
-        // Actaction = action by ACTIVE unit
-        enum class Actaction : uint8_t
-        {
-            ID, // 0..N_ACTIONS
-            _count
-        };
     }
 
 namespace EdgeAttributes
     {
+        BLANK_ENUM_DEF(Global_Yields_Player);
+        BLANK_ENUM_DEF(Player_Owns_Unit);
+
         enum class Hex_Adjacent_Hex : uint8_t
         {
             DIRECTION,
@@ -249,49 +211,34 @@ namespace EdgeAttributes
             _count
         };
 
-        BLANK_ENUM_DEF(Action_Melees_Unit);
-        BLANK_ENUM_DEF(Action_Shoots_Unit);
+        enum class Action_Melees_Unit : uint8_t
+        {
+            IS_PRIMARY_TARGET,  // e.g. for dragons
+            _count
+        };
+
+        enum class Action_Shoots_Unit : uint8_t
+        {
+            IS_PRIMARY_TARGET,  // e.g. for magogs
+            _count
+        };
+
         BLANK_ENUM_DEF(Action_EnablesMeleeAt_Unit);
         BLANK_ENUM_DEF(Action_EnablesShootAt_Unit);
-
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
         BLANK_ENUM_DEF(Action_EnablesMeleeAt_Hex);
         BLANK_ENUM_DEF(Action_EnablesShootAt_Hex);
-#endif
-
-        BLANK_ENUM_DEF(Actaction_By_Unit);
-        BLANK_ENUM_DEF(Actaction_Blocks_Unit);
-
-        enum class Actaction_EndsAt_Hex : uint8_t
-        {
-            IS_REAR,
-            _count
-        };
-
-        BLANK_ENUM_DEF(Actaction_ExposesToMeleeFrom_Unit);
-
-        enum class Actaction_ExposesToShootFrom_Unit : uint8_t
-        {
-            DMG_MULT,  // 1=full dmg
-            _count
-        };
-
-        BLANK_ENUM_DEF(Actaction_Melees_Unit);
-        BLANK_ENUM_DEF(Actaction_Shoots_Unit);
-        BLANK_ENUM_DEF(Actaction_EnablesMeleeAt_Unit);
-        BLANK_ENUM_DEF(Actaction_EnablesShootAt_Unit);
-        BLANK_ENUM_DEF(Actaction_EnablesMeleeAt_Hex);
-        BLANK_ENUM_DEF(Actaction_EnablesShootAt_Hex);
 
         // 6 nodes, 26 edges
-        static_assert(static_cast<int>(ElementType::_count) == 6 + 26);
+        static_assert(static_cast<int>(ElementType::_count) == 5 + 19);
     };
 
     class INode
     {
     public:
         virtual ElementType elementType() const = 0;
+        virtual std::vector<int> rawAttributes() const = 0;
         virtual std::vector<float> encodedAttributes() const = 0;
+        virtual std::string name() const = 0;
         virtual ~INode() = default;
     };
 
@@ -301,7 +248,9 @@ namespace EdgeAttributes
     {
     public:
         virtual ElementType elementType() const = 0;
+        virtual std::vector<int> rawAttributes() const = 0;
         virtual std::vector<float> encodedAttributes() const = 0;
+        virtual std::string name() const = 0;
         virtual Endpoints endpoints() const = 0;
         virtual ~IEdge() = default;
     };
@@ -311,7 +260,51 @@ namespace EdgeAttributes
     public:
         virtual std::vector<const INode*> getNodes(ElementType t) const = 0;
         virtual std::vector<const IEdge*> getEdges(ElementType t) const = 0;
+
+        // Tuples of {Node ID, Action ID}
+        // Node IDs are indexes in the result of getNodes(NodeType::ACTION)
+        // Action IDs are the legacy numeric action (0..2312) for those nodes
+        virtual std::vector<std::tuple<int, int>> getActiveNodeToActionIds() const = 0;
+
         virtual ~IGraph() = default;
     };
+
+    inline constexpr std::array NODE_TYPES{
+        ElementType::NODE_GLOBAL,
+        ElementType::NODE_PLAYER,
+        ElementType::NODE_UNIT,
+        ElementType::NODE_HEX,
+        ElementType::NODE_ACTION,
+    };
+
+    inline constexpr std::array EDGE_TYPES{
+        ElementType::EDGE_GLOBAL_YIELDS_PLAYER,
+        ElementType::EDGE_PLAYER_OWNS_UNIT,
+        ElementType::EDGE_HEX_ADJACENT_HEX,
+        ElementType::EDGE_UNIT_ACTS_BEFORE_UNIT,
+        ElementType::EDGE_UNIT_MELEE_DMG_UNIT,
+        ElementType::EDGE_UNIT_SHOOT_DMG_UNIT,
+        ElementType::EDGE_UNIT_BLOCKS_UNIT,
+        ElementType::EDGE_UNIT_OCCUPIES_HEX,
+        ElementType::EDGE_ACTION_BY_UNIT,
+        ElementType::EDGE_ACTION_BLOCKS_UNIT,
+        ElementType::EDGE_ACTION_ENDS_AT_HEX,
+        ElementType::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
+        ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,
+        ElementType::EDGE_ACTION_MELEES_UNIT,
+        ElementType::EDGE_ACTION_SHOOTS_UNIT,
+        ElementType::EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
+        ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT,
+    };
+
+    inline constexpr std::array ACTIVE_ACTION_EXCLUSIVE_EDGE_TYPES{
+        ElementType::EDGE_ACTION_ENABLES_MELEE_AT_HEX,
+        ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_HEX,
+    };
+
+    static_assert(
+        NODE_TYPES.size() +
+        EDGE_TYPES.size() +
+        ACTIVE_ACTION_EXCLUSIVE_EDGE_TYPES.size() == static_cast<int>(ElementType::_count));
 
 } // namespace

@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "schema/base.h"
-#include "graph.h"
+#include "./graph.h"
 #include "encoding.h"
 
 namespace MMAI::Schema::V15
@@ -81,7 +81,9 @@ enum class GlobalAction : uint8_t
 
 enum class ActionType : uint8_t
 {
+	// RETREAT actions are not used by MMAI (they are only used through RESET)
 	WAIT,
+	DEFEND,
 	MOVE,
 	AMOVE,
 	SHOOT,
@@ -188,7 +190,7 @@ public:
 	virtual ~IAttackLog() = default;
 };
 
-using AttackLogs = std::vector<IAttackLog *>;
+using AttackLogs = std::vector<const IAttackLog *>;
 
 class ILinks
 {

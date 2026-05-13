@@ -1,9 +1,14 @@
 #include "BAI/v15/graph/graph.h"
+#include "schema/v15/graph.h"
 
 namespace MMAI::BAI::V15::Graph
 {
 
 using ET = S15::Graph::ElementType;
+
+Graph::Graph(const CPlayerBattleCallback & battle) : battle(battle)
+{};
+
 
 std::vector<const S15::Graph::INode*>
 Graph::getNodes(Schema::V15::Graph::ElementType t) const
@@ -80,37 +85,39 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Edges::Action_EnablesMeleeAt_Unit>());
         case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
             return convert(getAll<Edges::Action_EnablesShootAt_Unit>());
-#ifdef MMAI_ENABLE_EDGE_ACTION_ENABLES_AT_HEX
         case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
             return convert(getAll<Edges::Action_EnablesMeleeAt_Hex>());
         case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
             return convert(getAll<Edges::Action_EnablesShootAt_Hex>());
-#endif
-        case ET::EDGE_ACTACTION_BY_UNIT:
-            return convert(getAll<Edges::Actaction_By_Unit>());
-        case ET::EDGE_ACTACTION_BLOCKS_UNIT:
-            return convert(getAll<Edges::Actaction_Blocks_Unit>());
-        case ET::EDGE_ACTACTION_ENDS_AT_HEX:
-            return convert(getAll<Edges::Actaction_EndsAt_Hex>());
-        case ET::EDGE_ACTACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-            return convert(getAll<Edges::Actaction_ExposesToMeleeFrom_Unit>());
-        case ET::EDGE_ACTACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-            return convert(getAll<Edges::Actaction_ExposesToShootFrom_Unit>());
-        case ET::EDGE_ACTACTION_MELEES_UNIT:
-            return convert(getAll<Edges::Actaction_Melees_Unit>());
-        case ET::EDGE_ACTACTION_SHOOTS_UNIT:
-            return convert(getAll<Edges::Actaction_Shoots_Unit>());
-        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_UNIT:
-            return convert(getAll<Edges::Actaction_EnablesMeleeAt_Unit>());
-        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_UNIT:
-            return convert(getAll<Edges::Actaction_EnablesShootAt_Unit>());
-        case ET::EDGE_ACTACTION_ENABLES_MELEE_AT_HEX:
-            return convert(getAll<Edges::Actaction_EnablesMeleeAt_Hex>());
-        case ET::EDGE_ACTACTION_ENABLES_SHOOT_AT_HEX:
-            return convert(getAll<Edges::Actaction_EnablesShootAt_Hex>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
     }
+}
+
+std::vector<std::tuple<int, int>> Graph::getActiveNodeToActionIds() const
+{
+    std::vector<std::tuple<int, int>> res{};
+    res.reserve(50); // educated guess for a unit's average number of actions
+
+    int i = 0;
+    for (const auto & action : getAll<Nodes::Action>())
+    {
+        if (action->id >= 0)
+            res.emplace_back(i, action->id);
+        ++i;
+    }
+
+    return res;
+}
+
+EnumFlags<S15::Graph::ElementType> Graph::getFlags() const
+{
+    return flags;
+}
+
+void Graph::setFlag(S15::Graph::ElementType et)
+{
+    flags.set(et);
 }
 
 // XXX: the only difference between regular and per-stack accessibility
@@ -145,35 +152,14 @@ const ReachabilityInfo & Graph::getReachability(const CStack & cstack) const
 
 void Graph::buildReachabilityCache()
 {
-    ASSERT(!haveReachabilityCache, "cacheReachability: cache already built");
+    ASSERT(!haveReachabilityCache, "buildReachabilityCache: cache already built");
     haveReachabilityCache = true;
+
+    flags.require(ET::NODE_UNIT);
 
     for (const auto & unit : getAll<Nodes::Unit>()) {
         const auto & cstack = unit->cstack;
-        auto rinfo = battle.getReachability(&cstack);
-        auto dists = rinfo.distances;  // must not mutate rinfo => copy
-        auto attacker = cstack.unitSide() == BattleSide::ATTACKER;
-
-        if (cstack.doubleWide()) {
-            for (int i=0; i<dists.size(); ++i) {
-                const auto rhex = BattleHex(i);
-                if(!rhex.isAvailable())
-                    continue;
-
-                const auto fhex = rhex.cloneInDirection(attacker ? BattleHex::RIGHT : BattleHex::LEFT, false);
-                if(!fhex.isAvailable())
-                    continue;
-
-                // RUFR logic (Rear-Unreachable-with-Front-Reachable)
-                // VCMI does not allow moving onto such hexes.
-                // MMAI explicitly allows it, treating it as a MOVE to the front hex.
-                if(!rinfo.isReachable(rhex.toInt()) && rinfo.isReachable(fhex.toInt())) {
-                    dists[rhex.toInt()] = dists[fhex.toInt()];
-                    rufrHexes[cstack.unitId()][rhex.toInt()] = true;
-                }
-            }
-        }
-
+        const auto & rinfo = battle.getReachability(&cstack);
         rcache.try_emplace(cstack.unitId(), rinfo);
     }
 
@@ -183,23 +169,8 @@ void Graph::buildReachabilityCache()
         // => throw only if there are units still alive
         for (const auto * cstack : battle.battleGetAllStacks(false))
             if (cstack->alive())
-                throw std::runtime_error("cacheReachability: graph contains no units");
+                throw std::runtime_error("buildReachabilityCache: graph contains no units");
     }
-}
-
-bool Graph::isRUFR(const CStack & cstack, const BattleHex & bh) const
-{
-    // rufrHexes is built as part of reachability
-    ASSERT(haveReachabilityCache, "isRUFR: reachability cache not built");
-
-    if(!(cstack.doubleWide() && bh.isAvailable()))
-        return false;
-
-    const auto & it = rufrHexes.find(cstack.unitId());
-    if(it == rufrHexes.end())
-        return false;
-
-    return it->second.at(bh.toInt());
 }
 
 } // namespace

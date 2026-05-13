@@ -20,7 +20,7 @@ int Unit::GetValue(const CCreature* creature)
     if(!creature)
         throw std::runtime_error("GetValue: nullptr given");
 
-    const auto& it = CREATURE_VALUES.find(creature->getId());
+    const auto& it = CREATURE_VALUES.find(creature->getIndex());
 
     if(it == CREATURE_VALUES.end())
         throw std::runtime_error(
@@ -282,7 +282,7 @@ Unit::CreatureValues Unit::initCreatureValues()
     for(const auto& creature : LIBRARY->creh->objects)
     {
         if(creature)
-            values.try_emplace(creature->getId(), CalculateValue(creature.get()));
+            values.try_emplace(creature->getIndex(), CalculateValue(creature.get()));
     }
 
     return values;
@@ -393,6 +393,7 @@ void Unit::processBonuses()
                 setflag(StackFlag1::RETURN_AFTER_STRIKE);
                 break;
             case BonusType::ENEMY_DEFENCE_REDUCTION:
+                // XXX: this can have varying value
                 setflag(StackFlag1::ENEMY_DEFENCE_REDUCTION);
                 break;
             case BonusType::LIFE_DRAIN:
@@ -402,6 +403,7 @@ void Unit::processBonuses()
                 setflag(StackFlag1::DOUBLE_DAMAGE_CHANCE);
                 break;
             case BonusType::DEATH_STARE:
+                // XXX: hota also adds "ranged death stare" with lower kill chance
                 setflag(StackFlag1::DEATH_STARE);
                 break;
             case BonusType::NOT_ACTIVE:

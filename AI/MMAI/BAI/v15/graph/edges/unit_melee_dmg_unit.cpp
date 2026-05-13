@@ -1,5 +1,3 @@
-#pragma once
-
 #include "BAI/v15/graph/util.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
 #include <numbers>

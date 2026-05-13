@@ -11,11 +11,13 @@
 #include "StdInc.h"
 #include "AI/BattleAI/BattleEvaluator.h"
 #include "BAI/fallback/MLBot.h"
+#include "BAI/v15/graph/edges/generic.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleStateInfoForRetreat.h"
 #include "battle/CBattleInfoEssentials.h"
 #include "battle/ReachabilityInfo.h"
 #include "callback/CBattleCallback.h"
+#include "schema/v15/constants.h"
 #include "spells/CSpellHandler.h"
 
 #include "BAI/v15/BAI.h"
@@ -30,8 +32,14 @@
 namespace MMAI::BAI::V15
 {
 
+namespace
+{
+	namespace N = Graph::Nodes;
+	namespace E = Graph::Edges;
+}
+
 using ErrorCode = Schema::V15::ErrorCode;
-using PA = Schema::V15::PlayerAttribute;
+using PA = Schema::V15::Graph::NodeAttributes::Player;
 
 BAI::BAI(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb, bool enableSpellsUsage)
 	: model(model), version(version), logger(cb->getPlayerID()->toString()), env(env), cb(cb), enableSpellsUsage(enableSpellsUsage)
@@ -62,7 +70,7 @@ Schema::Action BAI::getNonRenderAction()
 
 std::unique_ptr<State> BAI::initState(const CPlayerBattleCallback * b)
 {
-	return std::make_unique<State>(version, cb->getPlayerID()->toString(), b);
+	return std::make_unique<State>(version, cb->getPlayerID()->toString(), *b);
 }
 
 void BAI::battleStart(
@@ -99,19 +107,19 @@ void BAI::battleStart(
 //      since the terminal result is needed only during training.
 void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID)
 {
-	state->onBattleEnd(br, roundcounter);
+	state->onBattleEnd(*br, roundcounter);
 
 	logger.debug("MMAI %s this battle.", (br->winner == battle->battleGetMySide() ? "won" : "lost"));
 
 	// Check if battle ended normally or was forced via a RETREAT action
-	if(state->action == nullptr)
+	if(lastAction == nullptr)
 	{
 		// no previous action means battle ended without giving us a turn (OK)
 		// Happens if the enemy immediately retreats (we won)
 		// or if the enemy one-shots us (we lost)
 		logger.info("Battle ended without giving us a turn: nothing to do");
 	}
-	else if(state->action->action == Schema::ACTION_RETREAT)
+	else if(lastAction->id == Schema::ACTION_RETREAT)
 	{
 		if(resetting)
 		{
@@ -176,8 +184,8 @@ bool BAI::maybeCastSpell(const CStack * astack, const BattleID & bid)
 	if(battle->battleCanCastSpell(hero, spells::Mode::HERO) != ESpellCastProblem::OK)
 		return false;
 
-	auto lv = state->lpstats->getAttr(PA::ARMY_VALUE_NOW_ABS);
-	auto rv = state->rpstats->getAttr(PA::ARMY_VALUE_NOW_ABS);
+	auto lv = state->G->getByExtraIndex<N::Player>(BattleSide::LEFT_SIDE)->attr(PA::ARMY_VALUE_NOW_ABS);
+	auto rv = state->G->getByExtraIndex<N::Player>(BattleSide::RIGHT_SIDE)->attr(PA::ARMY_VALUE_NOW_ABS);
 	auto vratio = static_cast<float>(lv) / rv;
 	if(battle->battleGetMySide() == BattleSide::RIGHT_SIDE)
 		vratio = 1 / vratio;
@@ -252,7 +260,7 @@ std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack, c
 			allstacks,
 			[](const CStack * a, const CStack * b)
 			{
-				return Stack::GetValue(a->unitType()) < Stack::GetValue(b->unitType());
+				return N::Unit::GetValue(a->unitType()) < N::Unit::GetValue(b->unitType());
 			}
 		);
 
@@ -363,21 +371,9 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	state->onActiveStack(astack, roundcounter);
 
 #ifndef ENABLE_ML
-	if(maybeCastSpell(astack, bid))
+	if(maybeCastSpell(G, astack, bid))
 		return;
 #endif
-
-	if(state->battlefield->astack == nullptr)
-	{
-		logger.error(
-			"The current stack is not part of the state. "
-			"This should NOT happen. "
-			"Falling back to a wait/defend action."
-		);
-		auto fa = astack->waitedThisTurn ? BattleAction::makeDefend(astack) : BattleAction::makeWait(astack);
-		cb->battleMakeUnitAction(bid, fa);
-		return;
-	}
 
 #ifndef ENABLE_ML
 	auto concede = maybeFleeOrSurrender(bid);
@@ -409,13 +405,12 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 			resetting = true;
 		}
 
-		state->action = std::make_unique<Action>(a, state->battlefield.get(), cb->getPlayerID()->toString());
-
-		ba = buildBattleAction();
+		lastAction = std::make_unique<Action>(a, astack, state->G, state->colorname);
+		ba = buildBattleAction(a, astack);
 
 		if(ba && (a != Schema::ACTION_RETREAT || resetting))
 		{
-			logger.debug("Action is VALID: %d: %s ", a, state->action->name());
+			logger.debug("Action is VALID: %d: %s ", a, lastAction->name);
 			errcounter = 0;
 			cb->battleMakeUnitAction(bid, *ba);
 			break;
@@ -423,7 +418,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		else
 		{
 			++errcounter;
-			logger.error("Action is INVALID: %d: %s ", a, state->action->name());
+			logger.error("Action is INVALID: %d: %s ", a, lastAction->name);
 
 			if(errcounter > 10)
 			{
@@ -441,338 +436,44 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 }
 
-std::shared_ptr<BattleAction> BAI::buildBattleAction()
+std::shared_ptr<BattleAction> BAI::buildBattleAction(Schema::Action a, const CStack * acstack) const
 {
-	ASSERT(state->battlefield != nullptr, "Cannot build battle action if state->battlefield is missing");
-	auto * action = state->action.get();
-	const auto * bf = state->battlefield.get();
-	const auto * acstack = bf->astack->cstack;
+	ASSERT(state->G != nullptr, "Cannot build battle action if state->G is missing");
 
-	auto [x, y] = Hex::CalcXY(acstack->getPosition());
-	const auto & hex = bf->hexes->at(y).at(x);
-	std::shared_ptr<BattleAction> res = nullptr;
-
-	if(state->action->action == Schema::ACTION_ERROR)
+	if(a == Schema::ACTION_RETREAT)
 	{
-		logger.error("ACTION_ERROR");
-		return nullptr;
+		assert(battle->battleCanFlee());
+		return std::make_shared<BattleAction>(BattleAction::makeRetreat(battle->battleGetMySide()));
 	}
 
-	if(!state->action->hex)
-	{
-		switch(static_cast<GlobalAction>(state->action->action))
-		{
-			case GlobalAction::RETREAT:
-				res = std::make_shared<BattleAction>(BattleAction::makeRetreat(battle->battleGetMySide()));
-				break;
-			case GlobalAction::WAIT:
-				if(acstack->waitedThisTurn)
-				{
-					ASSERT(!state->actmask.at(EI(GlobalAction::WAIT)), "mask allowed wait when stack has already waited");
-					state->supdata->errcode = ErrorCode::ALREADY_WAITED;
-					logger.error("Action error: %s (%d): ALREADY_WAITED", action->name(), EI(action->action));
-					return nullptr;
-				}
-				res = std::make_shared<BattleAction>(BattleAction::makeWait(acstack));
-				break;
-			default:
-				THROW_FORMAT("Unexpected non-hex action: %d", state->action->action);
-		}
+	const auto * G = state->G.get();
+	const auto & action = G->getByExtraIndex<N::Action>(std::pair<int, int>{acstack->unitId(), lastAction->id});
+	assert(&action->by->cstack == acstack);
+	const auto & endPos = action->endsAt.at(0)->bhex;
 
-		return res;
+	switch(action->actionType)
+	{
+	case S15::ActionType::WAIT:
+		assert(!acstack->waitedThisTurn);
+		return std::make_shared<BattleAction>(BattleAction::makeDefend(acstack));
+	case S15::ActionType::DEFEND:
+		return std::make_shared<BattleAction>(BattleAction::makeWait(acstack));
+	case S15::ActionType::MOVE:
+		return std::make_shared<BattleAction>(BattleAction::makeMove(acstack, endPos));
+	case S15::ActionType::AMOVE:
+		for (const auto & edge : G->getAllEdgesBySrc<E::Action_Melees_Unit>(action))
+			if (edge->isPrimaryTarget)
+				return std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, &edge->dstNode->cstack, endPos));
+		throw std::runtime_error("Got AMOVE but there are no valid targets");
+	case S15::ActionType::SHOOT:
+		for (const auto & edge : G->getAllEdgesBySrc<E::Action_Shoots_Unit>(action))
+			if (edge->isPrimaryTarget)
+				return std::make_shared<BattleAction>(BattleAction::makeShotAttack(acstack, &edge->dstNode->cstack));
+		throw std::runtime_error("Got SHOOT but there are no valid targets");
+	default:
+    	throw std::runtime_error("Unexpected action type: " + std::to_string(EU(action->actionType)));
 	}
 
-	// With action masking, invalid actions should never occur
-	// However, for manual playing/testing, it's bad to raise exceptions
-	// => return errcode (Gym env will raise an exception if errcode > 0)
-
-	// MMAI allows (A)MOVE to RUFR hexes, but VCMI does not
-	// => make sure to build the BattleAction using the *front* hex
-	const auto frontDir = battle->battleGetMySide() == BattleSide::ATTACKER ? BattleHex::RIGHT : BattleHex::LEFT;
-	const auto moveTo = action->hex->isRUFR
-		? action->hex->bhex.cloneInDirection(frontDir)
-		: action->hex->bhex;
-
-	const auto & stack = action->hex->stack; // may be null
-	const auto & mask = HexActMask(action->hex->attr(HexAttribute::ACTION_MASK));
-	if(mask.test(EI(action->hexaction)))
-	{
-		// Action is VALID
-		// XXX: Do minimal asserts to prevent bugs with nullptr deref
-		//      Server will log any attempted invalid actions otherwise
-		switch(action->hexaction)
-		{
-			case HexAction::MOVE:
-			{
-				auto ba = (moveTo == acstack->getPosition()) ? BattleAction::makeDefend(acstack) : BattleAction::makeMove(acstack, moveTo);
-				res = std::make_shared<BattleAction>(ba);
-			}
-			break;
-			case HexAction::SHOOT:
-				ASSERT(stack != nullptr, "no target to shoot");
-				res = std::make_shared<BattleAction>(BattleAction::makeShotAttack(acstack, stack->cstack));
-				break;
-			case HexAction::AMOVE_TR:
-			case HexAction::AMOVE_R:
-			case HexAction::AMOVE_BR:
-			case HexAction::AMOVE_BL:
-			case HexAction::AMOVE_L:
-			case HexAction::AMOVE_TL:
-			{
-				const auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
-				auto nbh = action->hex->bhex.cloneInDirection(edir, false); // neighbouring bhex
-				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
-				const auto * estack = battle->battleGetStackByPos(nbh);
-				ASSERT(estack != nullptr, "no enemy stack for melee attack");
-				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, moveTo));
-			}
-			break;
-			case HexAction::AMOVE_2TR:
-			case HexAction::AMOVE_2R:
-			case HexAction::AMOVE_2BR:
-			case HexAction::AMOVE_2BL:
-			case HexAction::AMOVE_2L:
-			case HexAction::AMOVE_2TL:
-			{
-				ASSERT(acstack->doubleWide(), "got AMOVE_2 action for a single-hex stack");
-				const auto & edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
-				auto obh = acstack->occupiedHex(action->hex->bhex);
-				auto nbh = obh.cloneInDirection(edir, false); // neighbouring bhex
-				ASSERT(nbh.isAvailable(), "mask allowed attack to an unavailable hex #" + std::to_string(nbh.toInt()));
-				const auto * estack = battle->battleGetStackByPos(nbh);
-				ASSERT(estack != nullptr, "no enemy stack for melee attack");
-				res = std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, nbh, action->hex->bhex));
-			}
-			break;
-			default:
-				THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
-		}
-
-		return res;
-	}
-
-	// Action is INVALID
-	// XXX:
-	// mask prevents certain actions, but during TESTING
-	// those actions may be taken anyway.
-	//
-	// IF we are here, it means the mask disallows that action
-	//
-	// => *throw* errors here only if the mask SHOULD HAVE ALLOWED it
-	//    and *set* regular, non-throw errors otherwise
-	//
-	handleUnexpectedAction(acstack, hex.get(), action);
-	ASSERT(state->supdata->errcode != ErrorCode::OK, "Could not identify why the action is invalid" + debugInfo(action, acstack, nullptr));
-
-	return res;
-}
-
-void BAI::handleUnexpectedAction(const CStack * acstack, const Hex * hex, Action * action)
-{
-	const auto & bhex = action->hex->bhex;
-	const auto & stack = action->hex->stack; // may be null
-	const auto rinfo = battle->getReachability(acstack);
-	const auto ainfo = battle->getAccessibility();
-
-	switch(state->action->hexaction)
-	{
-		case HexAction::AMOVE_TR:
-		case HexAction::AMOVE_R:
-		case HexAction::AMOVE_BR:
-		case HexAction::AMOVE_BL:
-		case HexAction::AMOVE_L:
-		case HexAction::AMOVE_TL:
-		case HexAction::AMOVE_2TR:
-		case HexAction::AMOVE_2R:
-		case HexAction::AMOVE_2BR:
-		case HexAction::AMOVE_2BL:
-		case HexAction::AMOVE_2L:
-		case HexAction::AMOVE_2TL:
-		case HexAction::MOVE:
-		{
-			auto a = ainfo.at(action->hex->bhex.toInt());
-			if(a == EAccessibility::OBSTACLE)
-			{
-				auto statemask = HexStateMask(hex->attr(HexAttribute::STATE_MASK));
-				ASSERT(
-					!statemask.test(EI(HexState::PASSABLE)),
-					"accessibility is OBSTACLE, but hex state mask has PASSABLE set: " + statemask.to_string() + debugInfo(action, acstack, nullptr)
-				);
-				state->supdata->errcode = ErrorCode::HEX_BLOCKED;
-				logger.error("Action error: %s (%d): HEX_BLOCKED", action->name(), EI(action->action));
-				break;
-			}
-			else if(a == EAccessibility::ALIVE_STACK)
-			{
-				if(bhex.toInt() == acstack->getPosition().toInt())
-				{
-					// means we want to defend (moving to self)
-					// or attack from same hex we're currently at
-					// this should always be allowed
-					ASSERT(false != nullptr, "mask prevented (A)MOVE to own hex" + debugInfo(action, acstack, nullptr));
-				}
-				else {
-					// with RUFR logic this must always be allowed
-					ASSERT(bhex.toInt() != acstack->occupiedHex().toInt(), "mask prevented (A)MOVE to self-occupied hex" + debugInfo(action, acstack, nullptr));
-				}
-
-				// means we try to move onto another stack
-				state->supdata->errcode = ErrorCode::HEX_BLOCKED;
-				logger.error("Action error: %s (%d): HEX_BLOCKED", action->name(), EI(action->action));
-				break;
-			}
-
-			// only remaining is ACCESSIBLE
-			ASSERT(a == EAccessibility::ACCESSIBLE, "accessibility should've been ACCESSIBLE, was: " = std::to_string(EI(a)));
-
-			// Check if this is a RUFR hex
-			if(acstack->doubleWide() && rinfo.distances.at(bhex.toInt()) == ReachabilityInfo::INFINITE_DIST)
-			{
-				auto defender = acstack->unitSide() == BattleSide::DEFENDER;
-				auto primaryHex = bhex.cloneInDirection(defender ? BattleHex::LEFT : BattleHex::RIGHT).toInt();
-				ASSERT(rinfo.distances.at(primaryHex) > acstack->getMovementRange(), "mask prevented (A)MOVE to a fixed-reachability hex" + debugInfo(action, acstack, nullptr));
-				// means we try to move too far (with a wide creature)
-				state->supdata->errcode = ErrorCode::HEX_UNREACHABLE;
-				logger.error("Action error: %s (%d): HEX_UNREACHABLE", action->name(), EI(action->action));
-				break;
-			}
-
-			if(rinfo.distances[action->hex->bhex.toInt()] > acstack->getMovementRange())
-			{
-				// means we try to move too far
-				state->supdata->errcode = ErrorCode::HEX_UNREACHABLE;
-				logger.error("Action error: %s (%d): HEX_UNREACHABLE", action->name(), EI(action->action));
-				break;
-			}
-
-			auto nbh = BattleHex{};
-
-			if(action->hexaction < HexAction::AMOVE_2TR)
-			{
-				auto edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
-				nbh = bhex.cloneInDirection(edir, false);
-			}
-			else
-			{
-				if(!acstack->doubleWide())
-				{
-					state->supdata->errcode = ErrorCode::INVALID_DIR;
-					logger.error("Action error: %s (%d): INVALID_DIR", action->name(), EI(action->action));
-					break;
-				}
-
-				auto edir = AMOVE_TO_EDIR.at(EI(action->hexaction));
-				nbh = acstack->occupiedHex().cloneInDirection(edir, false);
-			}
-
-			if(!nbh.isAvailable())
-			{
-				state->supdata->errcode = ErrorCode::HEX_MELEE_NA;
-				logger.error("Action error: %s (%d): HEX_MELEE_NA", action->name(), EI(action->action));
-				break;
-			}
-
-			const auto * estack = battle->battleGetStackByPos(nbh);
-
-			if(!estack)
-			{
-				state->supdata->errcode = ErrorCode::STACK_NA;
-				logger.error("Action error: %s (%d): STACK_NA", action->name(), EI(action->action));
-				break;
-			}
-
-			if(estack->unitSide() == acstack->unitSide())
-			{
-				state->supdata->errcode = ErrorCode::FRIENDLY_FIRE;
-				logger.error("Action error: %s (%d): FRIENDLY_FIRE", action->name(), EI(action->action));
-				break;
-			}
-		}
-		break;
-		case HexAction::SHOOT:
-			if(!stack)
-			{
-				state->supdata->errcode = ErrorCode::STACK_NA;
-				logger.error("Action error: %s (%d): STACK_NA", action->name(), EI(action->action));
-				break;
-			}
-			else if(stack->cstack->unitSide() == acstack->unitSide())
-			{
-				state->supdata->errcode = ErrorCode::FRIENDLY_FIRE;
-				logger.error("Action error: %s (%d): FRIENDLY_FIRE", action->name(), EI(action->action));
-				break;
-			}
-			else
-			{
-				ASSERT(!battle->battleCanShoot(acstack, bhex), "mask prevented SHOOT at a shootable bhex " + action->hex->name());
-				state->supdata->errcode = ErrorCode::CANNOT_SHOOT;
-				logger.error("Action error: %s (%d): CANNOT_SHOOT", action->name(), EI(action->action));
-				break;
-			}
-			break;
-		default:
-			THROW_FORMAT("Unexpected hexaction: %d", EI(action->hexaction));
-	}
-}
-
-std::string BAI::debugInfo(Action * action, const CStack * astack, const BattleHex * const nbh) const
-{
-	auto info = std::stringstream();
-	info << "\n*** DEBUG INFO ***\n";
-	info << "action: " << action->name() << " [" << action->action << "]\n";
-	info << "action->hex->bhex.toInt() = " << action->hex->bhex.toInt() << "\n";
-
-	auto ainfo = battle->getAccessibility();
-	auto rinfo = battle->getReachability(astack);
-
-	info << "ainfo[bhex]=" << EI(ainfo.at(action->hex->bhex.toInt())) << "\n";
-	info << "rinfo.distances[bhex] <= astack->getMovementRange(): " << (rinfo.distances[action->hex->bhex.toInt()] <= astack->getMovementRange()) << "\n";
-
-	info << "action->hex->name = " << action->hex->name() << "\n";
-
-	for(int i = 0; i < action->hex->attrs.size(); i++)
-		info << "action->hex->attrs[" << i << "] = " << EI(action->hex->attrs[i]) << "\n";
-
-	info << "action->hex->hexactmask = ";
-	info << HexActMask(action->hex->attr(HexAttribute::ACTION_MASK)).to_string();
-	info << "\n";
-
-	auto stack = action->hex->stack;
-	if(stack)
-	{
-		info << "stack->cstack->getPosition().toInt()=" << stack->cstack->getPosition().toInt() << "\n";
-		info << "stack->cstack->slot=" << stack->cstack->unitSlot() << "\n";
-		info << "stack->cstack->doubleWide=" << stack->cstack->doubleWide() << "\n";
-		info << "cb->battleCanShoot(stack->cstack)=" << battle->battleCanShoot(stack->cstack) << "\n";
-	}
-	else
-	{
-		info << "cstack: (nullptr)\n";
-	}
-
-	info << "astack->getPosition().toInt()=" << astack->getPosition().toInt() << "\n";
-	info << "astack->slot=" << astack->unitSlot() << "\n";
-	info << "astack->doubleWide=" << astack->doubleWide() << "\n";
-	info << "cb->battleCanShoot(astack)=" << battle->battleCanShoot(astack) << "\n";
-
-	if(nbh)
-	{
-		info << "nbh->toInt()=" << nbh->toInt() << "\n";
-		info << "ainfo[nbh]=" << EI(ainfo.at(nbh->toInt())) << "\n";
-		info << "rinfo.distances[nbh] <= astack->getMovementRange(): " << (rinfo.distances[nbh->toInt()] <= astack->getMovementRange()) << "\n";
-
-		if(stack)
-			info << "astack->isMeleeAttackPossible(...)=" << astack->isMeleeAttackPossible(astack, stack->cstack, *nbh) << "\n";
-	}
-
-	info << "\nACTION TRACE:\n";
-	for(const auto & a : allactions)
-		info << a << ",";
-
-	info << "\nRENDER:\n";
-	info << renderANSI();
-
-	return info.str();
 }
 
 std::string BAI::renderANSI() const
@@ -787,7 +488,7 @@ std::string BAI::renderANSI() const
 		{
 			std::cout << e.what() << "\n";
 			std::cout << "Disaster render:\n";
-			std::cout << Render(state.get(), state->action.get()) << "\n";
+			std::cout << Render(state.get(), lastAction.get()) << "\n";
 		}
 		catch(std::exception & e2)
 		{
@@ -796,6 +497,6 @@ std::string BAI::renderANSI() const
 		throw;
 	}
 
-	return Render(state.get(), state->action.get());
+	return Render(state.get(), lastAction.get());
 }
 }

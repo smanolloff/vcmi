@@ -15,11 +15,15 @@ namespace MMAI::BAI::V15
 
 // This function used during model development and is never called otherwise
 void Verify(const State * state) // NOSONAR - function used for debugging only
-{}
+{
+    throw std::runtime_error("not implemented");
+}
 
 // This intentionally uses the IState interface to ensure that
 // the schema is properly exposing all needed informaton
 std::string Render(const Schema::IState * istate, const Action * action) // NOSONAR - function used for debugging only
-{ return ""; }
+{
+    throw std::runtime_error("not implemented");
+}
 
 }

@@ -10,8 +10,8 @@
 
 #pragma once
 
+#include "schema/base.h"
 #include "BAI/v15/graph/graph.h"
-#include "BAI/v15/hexaction.h"
 
 namespace MMAI::BAI::V15
 {
@@ -20,18 +20,15 @@ namespace MMAI::BAI::V15
  */
 struct Action
 {
-	// Action(Schema::Action action_, const Graph::Graph & G, Cache & cache, const std::string & color_);
-	Action(Schema::Action action_, const Graph::Graph & G, const std::string & color_);
+	Action(
+		Schema::Action actionId,
+		const CStack * acstack,
+		const std::shared_ptr<Graph::Graph> & G,
+		const std::string & color
+	);
 
-	const Schema::Action action;
-	const Graph::Nodes::Hex * hex;
-	const Graph::Nodes::Hex * aMoveTargetHex;
-	const HexAction hexaction;
+	const Schema::Action id;
 	const std::string color;
-
-	std::string name;
-
-private:
-	std::string buildName(const Graph::Graph & G);
+	const std::string name;
 };
 }
