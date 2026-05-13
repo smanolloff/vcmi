@@ -49,7 +49,7 @@ Unit_ShootDmg_Unit::Unit_ShootDmg_Unit(
     setattr(A::ATTACK_DMG_MEAN_REL_BF, permille(A_dmg_mean, battlefieldHp));
     setattr(A::ATTACK_DMG_STD_REL_OTHER, permille(A_dmg_std, B_hp));
     setattr(A::ATTACK_DMG_STD_REL_BF, permille(A_dmg_std, battlefieldHp));
-    setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(A_cstack.unitType()), battlefieldValue));
+    setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(B_cstack.unitType()), battlefieldValue));
     setattr(A::ATTACK_ALLKILL_CHANCE, permille(A_allkill_chance, 1));
 
     static_assert(static_cast<size_t>(A::_count) == 6, "whistleblower in case attributes change");

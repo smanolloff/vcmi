@@ -155,7 +155,7 @@ public:
     {
         const auto & identity_idx = container.template get<detail::by_ptr_identity>();
 
-        auto identity_it = identity_idx.find(&node);
+        auto identity_it = identity_idx.find(node);
         if (identity_it == identity_idx.end())
             throw std::runtime_error("getId: node not found");
 

@@ -42,9 +42,9 @@ struct EnumFlags
     void requireExclusive(std::initializer_list<T> values)
     {
         for(int i = 0; i < EU(T::_count); ++i)
-            std::find(values.begin(), values.end(), static_cast<T>(i))
-                ? require(static_cast<T>(i))
-                : reject(static_cast<T>(i));
+            std::find(values.begin(), values.end(), static_cast<T>(i)) == values.end()
+                ? reject(static_cast<T>(i))
+                : require(static_cast<T>(i));
     }
 };
 

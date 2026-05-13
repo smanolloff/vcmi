@@ -1,4 +1,5 @@
 #include "BAI/v15/graph/graph.h"
+#include "BAI/v15/graph/edges/generic.h"
 #include "schema/v15/graph.h"
 
 namespace MMAI::BAI::V15::Graph
@@ -55,6 +56,10 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
 
     switch (t)
     {
+        case ET::EDGE_GLOBAL_YIELDS_PLAYER:
+            return convert(getAll<Edges::Global_Yields_Player>());
+        case ET::EDGE_PLAYER_OWNS_UNIT:
+            return convert(getAll<Edges::Player_Owns_Unit>());
         case ET::EDGE_HEX_ADJACENT_HEX:
             return convert(getAll<Edges::Hex_Adjacent_Hex>());
         case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
