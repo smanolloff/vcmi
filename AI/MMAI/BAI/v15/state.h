@@ -59,7 +59,7 @@ public:
 	}
 	std::any getSupplementaryData() const override
 	{
-		return static_cast<const SupplementaryData *>(supdata.get());
+		return static_cast<const MMAI::Schema::V15::ISupplementaryData *>(supdata.get());
 	}
 	int version() const override
 	{
