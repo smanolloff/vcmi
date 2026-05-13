@@ -22,6 +22,7 @@
 #include "BAI/v15/graph/nodes/unit.h"
 #include "BAI/v15/hexaction.h"
 #include "battle/CPlayerBattleCallback.h"
+#include "bonuses/BonusParameters.h"
 #include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
 
@@ -800,6 +801,7 @@ namespace
 
 			return 2 + (targetHex->id * EU(S15::HexAction::_count)) + amove;
 		}
+		case S15::ActionType::DEFEND:
 		case S15::ActionType::MOVE:
 		{
 			ASSERT(actingUnit != nullptr, "actingUnit is required for AMOVE");
@@ -887,7 +889,7 @@ namespace
 
 		for (const auto & action : G.getAll<N::Action>())
 		{
-			assert(action->actionType == AT::MOVE);
+			assert(action->actionType == AT::MOVE || action->actionType == AT::DEFEND);
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
 			const auto & hex = action->endsAt.at(0);
@@ -930,17 +932,18 @@ namespace
 		//  4. the enemy move doesn't overlap with the actor's own move
 		for (const auto & action : G.getAll<N::Action>())
 		{
-			assert(action->actionType == AT::MOVE);
+			assert(action->actionType == AT::MOVE || action->actionType == AT::DEFEND);
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
-			const auto & stackhexes = stack.getHexes();
+			const auto & hex = action->endsAt.at(0);
+			const auto & stackhexes = stack.getHexes(hex->bhex);
 
 			for (const auto & ounit : G.getAllEdgesSrcByDst<E::Unit_MeleeDmg_Unit>(unit))
 			{
 				if(G.getEdgeBySrcDst<E::Unit_ActsBefore_Unit>(unit, ounit)->times > 1)
 					continue;
 
-				const auto & adjbhexes = stack.getSurroundingHexes();
+				const auto & adjbhexes = stack.getSurroundingHexes(hex->bhex);
 				for (const auto &oaction : G.getAllEdgesSrcByDst<E::Action_By_Unit>(ounit)) {
 					// must check for overlaps to ensure no exposure is set if
 					// the hypothetical endsAt hexes of both stacks overlap
@@ -970,6 +973,29 @@ namespace
 		}
 	}
 
+	// This is copied from CBattleInfoCallback::battleHasDistancePenalty
+	// but it is changed to accept a hypothetical shooter position
+	bool battleHasDistancePenalty_CUSTOM(const IBonusBearer * shooter, const BattleHex & shooterPosition, const BattleHexArray & targetHexes)
+	{
+		const std::string cachingStrNoDistancePenalty = "type_NO_DISTANCE_PENALTY";
+		static const auto selectorNoDistancePenalty = Selector::type()(BonusType::NO_DISTANCE_PENALTY);
+
+		if(shooter->hasBonus(selectorNoDistancePenalty, cachingStrNoDistancePenalty))
+			return false;
+
+		int range = GameConstants::BATTLE_SHOOTING_PENALTY_DISTANCE;
+		auto bonus = shooter->getBonus(Selector::type()(BonusType::LIMITED_SHOOTING_RANGE));
+		if(bonus != nullptr && bonus->parameters)
+			range = bonus->parameters->toNumber();
+
+		for(const auto & hex : targetHexes)
+			if(BattleHex::getDistance(shooterPosition, hex) <= range)
+				//If any hex of target creature is within range, there is no penalty
+				return false;
+
+		return true;
+	}
+
 	void AddMoveActionEdges_Action_ExposesToShootFrom_Unit(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
@@ -995,9 +1021,11 @@ namespace
 
 		for (const auto & action : G.getAll<N::Action>())
 		{
-			assert(action->actionType == AT::MOVE);
+			assert(action->actionType == AT::MOVE || action->actionType == AT::DEFEND);
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
+			const auto & hex = action->endsAt.at(0);
+			const auto & bhex = hex->bhex;
 
 			for (const auto & ounit : G.getAllEdgesSrcByDst<E::Unit_ShootDmg_Unit>(unit))
 			{
@@ -1018,10 +1046,10 @@ namespace
 				const auto & ostack = ounit->cstack;
 				float mult = 1;
 
-				// XXX: are these VCMI functions efficient?
-				if(battle.battleHasDistancePenalty(&ostack, ostack.getPosition(), stack.getPosition()))
+				// XXX: using custom version of battleHasDistancePenalty where we can specify defender hex
+				if(battleHasDistancePenalty_CUSTOM(&ostack, ostack.getPosition(), stack.getHexes(bhex)))
 					mult *= 0.5;
-				if(battle.battleHasWallPenalty(&ostack, ostack.getPosition(), stack.getPosition()))
+				if(battle.battleHasWallPenalty(&ostack, ostack.getPosition(), hex->bhex))
 					mult *= 0.5;
 
 				G.add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(action, ounit, mult));
