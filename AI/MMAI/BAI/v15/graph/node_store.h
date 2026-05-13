@@ -116,7 +116,7 @@ public:
         if (it == idx.end())
         {
             if (strict)
-                throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByIdentity: not found");
+                throw std::runtime_error(std::string(NodeType::encoding_traits::name) + ": getByIdentity: not found: " + node->name());
             return nullptr;
         }
         return *it;

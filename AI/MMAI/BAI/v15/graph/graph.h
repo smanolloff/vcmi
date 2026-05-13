@@ -15,7 +15,7 @@
 // =============================================================================
 
 #pragma once
-#include "StdInc.h"
+#include "StdInc.h" // IWYU pragma: keep
 
 #include "BAI/v15/graph/edges/action_melees_unit.h"
 #include "BAI/v15/graph/edges/action_shoots_unit.h"
@@ -133,7 +133,7 @@ public:
     requires detail::is_stored_element<T>
     void add(std::shared_ptr<T> elem)
     {
-        std::cout << "DEBUG: Add: " << elem->name() << "\n";
+        // std::cout << "DEBUG: Add: " << elem->name() << "\n";
         // if (!elem)
         //     throw std::runtime_error("add: nullptr given");
         assert(elem);

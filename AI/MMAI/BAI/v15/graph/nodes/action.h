@@ -49,7 +49,8 @@ public:
     std::string name() const override
     {
         std::stringstream ss;
-        ss << detail::Action_Base::name() << "(" << id << "," << by->cstack.unitId() << "," << isActive << ")";
+        // XXX: don't use EU(actionType) as it results in a nonprintable char
+        ss << detail::Action_Base::name() << "(" << static_cast<int>(actionType) << "," << id << "," << by->cstack.unitId() << "," << isActive << ")";
         return ss.str();
     }
 

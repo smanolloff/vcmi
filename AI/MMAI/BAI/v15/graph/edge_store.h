@@ -110,7 +110,7 @@ public:
         if (it == idx.end())
         {
             if (strict)
-                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getByIdentity: not found");
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getByIdentity: not found: " + edge->name());
             return nullptr;
         }
         return *it;
@@ -126,7 +126,7 @@ public:
         if (it == idx.end())
         {
             if (strict)
-                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getBySrcDst: not found");
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getBySrcDst: not found: [" + src->name() + "->" + dst->name() + "]");
             return nullptr;
         }
         return *it;
@@ -141,7 +141,7 @@ public:
         if (it == idx.end())
         {
             if (strict)
-                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getOneBySrc: none found");
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getOneBySrc: none found: " + src->name());
             return nullptr;
         }
         return *it;
@@ -180,7 +180,7 @@ public:
         if (it == idx.end())
         {
             if (strict)
-                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getOneByDst: none found");
+                throw std::runtime_error(std::string(EdgeType::encoding_traits::name) + ": getOneByDst: none found: " + dst->name());
             return nullptr;
         }
         return *it;

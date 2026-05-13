@@ -33,8 +33,8 @@ namespace MMAI::Schema::V15::Graph
         EDGE_UNIT_OCCUPIES_HEX,
 
         EDGE_ACTION_BY_UNIT,
-        EDGE_ACTION_BLOCKS_UNIT,
         EDGE_ACTION_ENDS_AT_HEX,
+        EDGE_ACTION_BLOCKS_UNIT,
         EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
         EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
         EDGE_ACTION_MELEES_UNIT, // v=primary target (e.g. for dragon breath, 3-headed attack, etc.)
@@ -287,8 +287,8 @@ namespace EdgeAttributes
         ElementType::EDGE_UNIT_BLOCKS_UNIT,
         ElementType::EDGE_UNIT_OCCUPIES_HEX,
         ElementType::EDGE_ACTION_BY_UNIT,
-        ElementType::EDGE_ACTION_BLOCKS_UNIT,
         ElementType::EDGE_ACTION_ENDS_AT_HEX,
+        ElementType::EDGE_ACTION_BLOCKS_UNIT,
         ElementType::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
         ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,
         ElementType::EDGE_ACTION_MELEES_UNIT,

@@ -354,7 +354,7 @@ struct EncodingTraits<Graph::EdgeAttributes::attr_type> \
 : detail::EncodingTraitsBase<Graph::EdgeAttributes::attr_type> \
 { \
     static constexpr auto element_type = Graph::ElementType::elem_type; \
-    static constexpr std::string_view name = #elem_type; \
+    static constexpr std::string_view name = #attr_type; \
     static constexpr encoding_type encoding = {}; \
 }
 

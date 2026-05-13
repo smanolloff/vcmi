@@ -74,10 +74,10 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
             return convert(getAll<Edges::Unit_Occupies_Hex>());
         case ET::EDGE_ACTION_BY_UNIT:
             return convert(getAll<Edges::Action_By_Unit>());
-        case ET::EDGE_ACTION_BLOCKS_UNIT:
-            return convert(getAll<Edges::Action_Blocks_Unit>());
         case ET::EDGE_ACTION_ENDS_AT_HEX:
             return convert(getAll<Edges::Action_EndsAt_Hex>());
+        case ET::EDGE_ACTION_BLOCKS_UNIT:
+            return convert(getAll<Edges::Action_Blocks_Unit>());
         case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
             return convert(getAll<Edges::Action_ExposesToMeleeFrom_Unit>());
         case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
