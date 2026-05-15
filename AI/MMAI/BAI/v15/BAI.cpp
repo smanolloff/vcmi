@@ -447,7 +447,7 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction(Schema::Action a, const CSt
 	}
 
 	const auto * G = state->G.get();
-	const auto & action = G->getByExtraIndex<N::Action>(std::pair<int, int>{acstack->unitId(), lastAction->id});
+	const auto & action = G->getByExtraIndex<N::Action>(std::pair<int, int>{lastAction->id, acstack->unitId()});
 	assert(&action->by->cstack == acstack);
 	const auto & endPos = action->endsAt.at(0)->bhex;
 

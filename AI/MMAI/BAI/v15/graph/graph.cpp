@@ -107,7 +107,7 @@ std::vector<std::tuple<int, int>> Graph::getActiveNodeToActionIds() const
     int i = 0;
     for (const auto & action : getAll<Nodes::Action>())
     {
-        if (action->id >= 0)
+        if (action->isActive)
             res.emplace_back(i, action->id);
         ++i;
     }

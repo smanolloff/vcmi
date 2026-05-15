@@ -53,6 +53,8 @@ enum class HexState : uint8_t
 	_count
 };
 
+using HexStateMask = std::bitset<EI(HexState::_count)>;
+
 enum class HexAction : uint8_t
 {
 	AMOVE_TR, //  = Move to (*) + attack at hex 0..11:
