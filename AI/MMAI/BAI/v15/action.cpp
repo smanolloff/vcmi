@@ -44,17 +44,17 @@ namespace
 		case S15::ActionType::DEFEND:
 			return "Defend";
 		case S15::ActionType::MOVE:
-			return "Defend on hex(" + endhex->name() + ")";
+			return "Move to " + endhex->name();
 		case S15::ActionType::AMOVE:
 			for (const auto & edge : G->getAllEdgesBySrc<Graph::Edges::Action_Melees_Unit>(action))
 				if (edge->isPrimaryTarget)
-					return "Attack stack(" + stackstr(edge) + ") from hex(" + endhex->name() + ")";
+					return "Attack stack(" + stackstr(edge) + ") from " + endhex->name();
 
 			throw std::runtime_error("Got AMOVE but there are no valid targets");
 		case S15::ActionType::SHOOT:
 			for (const auto & edge : G->getAllEdgesBySrc<Graph::Edges::Action_Shoots_Unit>(action))
 				if (edge->isPrimaryTarget)
-					return "Attack stack(" + stackstr(edge) + ") from hex(" + endhex->name() + ")";
+					return "Attack stack(" + stackstr(edge) + ") from " + endhex->name();
 			throw std::runtime_error("Got SHOOT but there are no valid targets");
 		default:
 	    	throw std::runtime_error("Unexpected action type: " + std::to_string(EU(action->actionType)));

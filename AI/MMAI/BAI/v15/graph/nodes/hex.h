@@ -42,7 +42,6 @@ class Hex : public detail::Hex_Base
 	using HexAction = S15::HexAction;
 	using HexActMask = std::bitset<EI(HexAction::_count)>;
 public:
-	using HexStateMask = std::bitset<EU(HS::_count)>;
 	using HexActionHex = std::array<BattleHex, 12>;
 
 	struct extra_index_type {
@@ -70,7 +69,7 @@ public:
 
 	const BattleHex bhex;
 	const int id;
-	HexStateMask statemask = 0;
+	S15::HexStateMask statemask = 0;
 
 private:
 	void setStateMask(
