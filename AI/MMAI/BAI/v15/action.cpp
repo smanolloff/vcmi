@@ -34,7 +34,7 @@ namespace
 
 		auto stackstr = [&color](const auto & edge) {
 			std::string targetside = (color == "red") ? "L" : "R";
-			return targetside + "-" + std::string(1, edge->dstNode->getAlias());
+			return targetside + "-" + edge->dstNode->alias;
 		};
 
 		switch(action->actionType)

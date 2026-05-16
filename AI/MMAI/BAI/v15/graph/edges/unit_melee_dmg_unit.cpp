@@ -44,14 +44,28 @@ Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
     auto A_dmg_std = std::sqrt((A_dmg_range * A_dmg_range) / (12.0 * A_k));
     auto A_hp = static_cast<int>(A_cstack.getAvailableHealth());
     auto B_hp = static_cast<int>(B_cstack.getAvailableHealth());
+    auto B_firstHpLeft = static_cast<int>(B_cstack.getFirstHPleft());
 
     // XXX: Calculating kills from mean dmg is more accurate
     // than averaging `attack.kills`
     auto A_kills_mean = A_dmg_mean / B_hp;
+    auto A_onekill_chance = dmgChance(B_firstHpLeft, A_dmg_min, A_dmg_max, A_k);
     auto A_allkill_chance = dmgChance(B_hp, A_dmg_min, A_dmg_max, A_k);
+
+    // TODO: add death stare bonus here:
+    // - if qty<10  => add it to onekill chance (+0.1*N)
+    // - if qty>10  => add it directly as dmg (+HP*N/10)
+    // TODO2:
+    // - check out how death stare is handled in attack logs - maybe add it as dmg?
+    //
 
     // For B_n, use A_kills_mean to simplify calculations.
     // (otherwise we must calculate a mixture distribution)
+    // This has the following known issue:
+    // If B is 1 archangel which has 50% chance to die from A's attack
+    // B_damage min=0 max=50 mean=25 (which can be very misleading)
+
+
     auto B_min = static_cast<int>(retalEstimate.damage.min);
     auto B_max = static_cast<int>(retalEstimate.damage.max);
     auto B_dmg_range = B_max - B_min;
@@ -71,9 +85,10 @@ Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
     setattr(A::RETAL_DMG_STD_REL_OTHER, permille(B_dmg_std, A_hp));
     setattr(A::RETAL_DMG_STD_REL_BF, permille(B_dmg_std, battlefieldHp));
     setattr(A::RETAL_VALUE_REL_BF, permille(B_kills_mean * Nodes::Unit::GetValue(A_cstack.unitType()), battlefieldValue));
+    setattr(A::ATTACK_ONEKILL_CHANCE, permille(A_onekill_chance, 1));
     setattr(A::ATTACK_ALLKILL_CHANCE, permille(A_allkill_chance, 1));
 
-    static_assert(static_cast<size_t>(A::_count) == 11, "whistleblower in case attributes change");
+    static_assert(static_cast<size_t>(A::_count) == 12, "whistleblower in case attributes change");
 }
 
 }

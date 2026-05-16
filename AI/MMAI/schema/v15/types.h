@@ -32,14 +32,6 @@ enum class CombatResult : uint8_t
 	_count
 };
 
-enum class StackActState : uint8_t
-{
-	READY, //   will act this turn, not waited
-	WAITING, // will act this turn, already waited
-	DONE, //    will not act this turn
-	_count
-};
-
 enum class HexState : uint8_t
 {
 	PASSABLE, //      empty/mine/firewall/gate(open)/gate(closed,defender), ...
@@ -92,61 +84,6 @@ enum class ActionType : uint8_t
 	_count
 };
 
-// flags are split into two, as they can't fit in a single int after encoding
-enum class StackFlag1 : uint8_t
-{
-	IS_ACTIVE,
-	WILL_ACT,
-	CAN_WAIT,
-	CAN_RETALIATE,
-	SLEEPING,
-	// BLOCKED,
-	// BLOCKING,
-	IS_WIDE,
-	FLYING,
-	ADDITIONAL_ATTACK,
-	NO_MELEE_PENALTY,
-	TWO_HEX_ATTACK_BREATH,
-	BLOCKS_RETALIATION,
-	SHOOTER,
-	NON_LIVING,
-	WAR_MACHINE,
-	FIREBALL,
-	DEATH_CLOUD,
-	THREE_HEADED_ATTACK,
-	ALL_AROUND_ATTACK,
-	RETURN_AFTER_STRIKE,
-	ENEMY_DEFENCE_REDUCTION,
-	LIFE_DRAIN,
-	DOUBLE_DAMAGE_CHANCE,
-	DEATH_STARE,
-
-	_count
-};
-
-enum class StackFlag2 : uint8_t
-{
-	AGE,
-	AGE_ATTACK,
-	BIND,
-	BIND_ATTACK,
-	BLIND,
-	BLIND_ATTACK,
-	CURSE,
-	CURSE_ATTACK,
-	DISPEL_ATTACK,
-	PETRIFY,
-	PETRIFY_ATTACK,
-	POISON,
-	POISON_ATTACK,
-	WEAKNESS,
-	WEAKNESS_ATTACK,
-	_count
-};
-
-using StackFlags1 = std::bitset<EI(StackFlag1::_count)>;
-using StackFlags2 = std::bitset<EI(StackFlag2::_count)>;
-
 enum class ErrorCode : uint8_t
 {
 	OK,
@@ -163,16 +100,14 @@ enum class ErrorCode : uint8_t
 	INVALID_DIR,
 };
 
-enum class LinkType : uint8_t
+enum class TowerFlag : uint8_t
 {
-	ADJACENT,
-	REACH,
-	RANGED_MOD,
-	ACTS_BEFORE,
-	MELEE_DMG_REL,
-	RETAL_DMG_REL,
-	RANGED_DMG_REL,
-	_count
+
+};
+
+enum class CorpseFlag : uint8_t
+{
+
 };
 
 class IAttackLog

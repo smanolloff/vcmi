@@ -220,17 +220,13 @@ struct EncodingTraits<Graph::NodeAttributes::Global>
     static constexpr encoding_type encoding = {
 		// LS is the correct encoding for BATTLE_ROUND, but since it replaces BATTLE_SIDE
 		// which had n=2 => use LE to keep the dimensions unchanged.
-		E5(A::BATTLE_ROUND, X::LE, MAX_ROUNDS + 1),
-		E5(A::BATTLE_SIDE_ACTIVE_PLAYER, X::CE, 1), // NULL means no battle
 		E5(A::BATTLE_WINNER, X::CE, 1), // NULL means ongoing battle
-		E5(A::BFIELD_VALUE_START_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(A::BFIELD_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(A::BFIELD_VALUE_NOW_REL0, X::LS, 1000), // bfield_value_now / bfield_value_at_start
-		E5(A::BFIELD_HP_START_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(A::BFIELD_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(A::BFIELD_HP_NOW_REL0, X::LS, 1000), // bfield_hp_now / bfield_hp_at_start
-		E5(A::SIEGE_TOWERS, X::BS, 3),
-		E5(A::SIEGE_CORPSES, X::BS, 2),
+		E5(A::BATTLE_ROUND, X::LE, MAX_ROUNDS + 1),
+		E5(A::HAS_UPPER_TOWER, X::BS, 1),
+		E5(A::HAS_MIDDLE_TOWER, X::BS, 1),
+		E5(A::HAS_BOTTOM_TOWER, X::BS, 1),
+		E5(A::HAS_GATE_CORPSE, X::BS, 1),
+		E5(A::HAS_BRIDGE_CORPSE, X::BS, 1),
 	};
 };
 
@@ -242,28 +238,13 @@ struct EncodingTraits<Graph::NodeAttributes::Player>
     static constexpr std::string_view name = "Player";
     static constexpr encoding_type encoding = {
 		E5(A::BATTLE_SIDE, X::CS, 1),
-		E5(A::ARMY_VALUE_NOW_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
+		E5(A::IS_ACTIVE, X::BS, 1),
 		E5(A::ARMY_VALUE_NOW_REL, X::LS, 1000), //     (army_value_now / global_value_now)
-		E5(A::ARMY_VALUE_NOW_REL0, X::LS, 1000), //    (army_value_now / global_value_at_start)
-		E5(A::ARMY_HP_NOW_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
 		E5(A::ARMY_HP_NOW_REL, X::LS, 1000), //        (army_hp_now / global_hp_now)
-		E5(A::ARMY_HP_NOW_REL0, X::LS, 1000), //       (army_hp_now / global_hp_at_start)
-		E5(A::VALUE_KILLED_NOW_ABS, X::ES, VALUE_KILLED_NOW_MAX, VALUE_KILLED_NOW_SLOPE),
 		E5(A::VALUE_KILLED_NOW_REL, X::LS, 1000), //   (value_killed_this_turn / global_value_last_turn)
-		E5(A::VALUE_KILLED_ACC_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(A::VALUE_KILLED_ACC_REL0, X::LS, 1000), //  (value_killed_lifetime / global_value_at_start)
-		E5(A::VALUE_LOST_NOW_ABS, X::ES, VALUE_KILLED_NOW_MAX, VALUE_KILLED_NOW_SLOPE),
 		E5(A::VALUE_LOST_NOW_REL, X::LS, 1000), //     (value_lost_this_turn / global_value_last_turn)
-		E5(A::VALUE_LOST_ACC_ABS, X::ES, BFIELD_VALUE_MAX, BFIELD_VALUE_SLOPE),
-		E5(A::VALUE_LOST_ACC_REL0, X::LS, 1000), //    (value_lost_lifetime / global_value_at_start)
-		E5(A::DMG_DEALT_NOW_ABS, X::ES, DMG_DEALT_NOW_MAX, DMG_DEALT_NOW_SLOPE),
 		E5(A::DMG_DEALT_NOW_REL, X::LS, 1000), //      (dmg_dealt_this_turn / global_hp_last_turn)
-		E5(A::DMG_DEALT_ACC_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(A::DMG_DEALT_ACC_REL0, X::LS, 1000), //     (dmg_dealt_lifetime / global_hp_at_start)
-		E5(A::DMG_RECEIVED_NOW_ABS, X::ES, DMG_DEALT_NOW_MAX, DMG_DEALT_NOW_SLOPE),
 		E5(A::DMG_RECEIVED_NOW_REL, X::LS, 1000), //   (dmg_received_this_turn / global_hp_last_turn)
-		E5(A::DMG_RECEIVED_ACC_ABS, X::ES, BFIELD_HP_MAX, BFIELD_HP_SLOPE),
-		E5(A::DMG_RECEIVED_ACC_REL0, X::LS, 1000), //  (dmg_received_lifetime / global_hp_at_start)
 	};
 };
 
@@ -274,31 +255,40 @@ struct EncodingTraits<Graph::NodeAttributes::Unit>
     static constexpr Graph::ElementType element_type = Graph::ElementType::NODE_UNIT;
     static constexpr std::string_view name = "Unit";
     static constexpr encoding_type encoding = {
-		E5(A::SIDE, X::CE, 1), // 0=attacker, 1=defender
-		E5(A::SLOT, X::CE, STACK_SLOT_MAX),
-		E5(A::QUANTITY, X::EZ, STACK_QTY_MAX, STACK_QTY_SLOPE),
-		E5(A::ATTACK, X::LZ, 80),
-		E5(A::DEFENSE, X::LZ, 80), // azure dragon is 60 when defending
-		E5(A::SHOTS, X::LZ, 32), // sharpshooter is 32
-		E5(A::DMG_MIN, X::LZ, 100),
-		E5(A::DMG_MAX, X::LZ, 100),
-		E5(A::HP, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
-		E5(A::HP_LEFT, X::EZ, STACK_HP_MAX, STACK_HP_SLOPE),
-		E5(A::SPEED, X::CE, 20),
-		E5(A::VALUE_ONE, X::EZ, STACK_VALUE_MAX, STACK_VALUE_SLOPE),
-		E5(A::FLAGS1, X::BZ, EI(StackFlag1::_count)),
-		E5(A::FLAGS2, X::BZ, EI(StackFlag2::_count)),
-
-		E5(A::VALUE_REL, X::LZ, 1000),
-		E5(A::VALUE_REL0, X::LZ, 1000),
-		E5(A::VALUE_KILLED_REL, X::LZ, 1000),
-		E5(A::VALUE_KILLED_ACC_REL0, X::LZ, 1000),
-		E5(A::VALUE_LOST_REL, X::LZ, 1000),
-		E5(A::VALUE_LOST_ACC_REL0, X::LZ, 1000),
-		E5(A::DMG_DEALT_REL, X::LZ, 1000),
-		E5(A::DMG_DEALT_ACC_REL0, X::LZ, 1000),
-		E5(A::DMG_RECEIVED_REL, X::LZ, 1000),
-		E5(A::DMG_RECEIVED_ACC_REL0, X::LZ, 1000),
+        E5(A::VALUE_REL, X::LS, 1000), // stack_value_now / global_value_now
+        E5(A::SHOTS, X::LS, 32), // sharpshooter is 32
+        E5(A::IS_ACTIVE, X::BS, 1),
+        E5(A::IS_ENEMY, X::BS, 1),
+        E5(A::IS_SLEEPING, X::BS, 1),
+        E5(A::IS_WAR_MACHINE, X::BS, 1),
+        E5(A::HAS_ADDITIONAL_ATTACK, X::BS, 1),
+        E5(A::HAS_ALL_AROUND_ATTACK, X::BS, 1),
+        E5(A::HAS_BLOCKS_RETALIATION, X::BS, 1),
+        E5(A::HAS_DEATH_CLOUD, X::BS, 1),
+        E5(A::HAS_DOUBLE_DAMAGE_CHANCE, X::LS, 1000), // v=chance
+        E5(A::HAS_FIREBALL, X::BS, 1),
+        E5(A::HAS_FLYING, X::BS, 1),
+        E5(A::HAS_LIFE_DRAIN, X::BS, 1),
+        E5(A::HAS_NON_LIVING, X::BS, 1),
+        E5(A::HAS_NO_MELEE_PENALTY, X::BS, 1),
+        E5(A::HAS_RETURN_AFTER_STRIKE, X::BS, 1),
+        E5(A::HAS_THREE_HEADED_ATTACK, X::BS, 1),
+        E5(A::HAS_TWO_HEX_ATTACK_BREATH, X::BS, 1),
+        E5(A::HAS_AGE, X::BS, 3), // 			 	v=rounds
+        E5(A::HAS_AGE_ATTACK, X::LS, 1000), //      v=chance
+        E5(A::HAS_BIND, X::BS, 3), //            	v=rounds
+        E5(A::HAS_BIND_ATTACK, X::LS, 1000), //     v=chance
+        E5(A::HAS_BLIND, X::BS, 3), //           	v=rounds
+        E5(A::HAS_BLIND_ATTACK, X::LS, 1000), //    v=chance
+        E5(A::HAS_CURSE, X::BS, 3), //           	v=rounds
+        E5(A::HAS_CURSE_ATTACK, X::LS, 1000), //    v=chance
+        E5(A::HAS_DISPEL_ATTACK, X::LS, 1000), //   v=chance
+        E5(A::HAS_PETRIFY, X::BS, 3), //         	v=rounds
+        E5(A::HAS_PETRIFY_ATTACK, X::LS, 1000), //  v=chance
+        E5(A::HAS_POISON, X::BS, 3), //          	v=rounds
+        E5(A::HAS_POISON_ATTACK, X::LS, 1000), //   v=chance
+        E5(A::HAS_WEAKNESS, X::BS, 3), //        	v=rounds
+        E5(A::HAS_WEAKNESS_ATTACK, X::LS, 1000), // v=chance
 	};
 };
 
@@ -358,7 +348,9 @@ struct EncodingTraits<Graph::EdgeAttributes::attr_type> \
     static constexpr encoding_type encoding = {}; \
 }
 
-GENERIC_EDGE_ENCODING_TRAITS(Global_Yields_Player, EDGE_GLOBAL_YIELDS_PLAYER);
+GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Player, EDGE_GLOBAL_HAS_PLAYER);
+GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Unit, EDGE_GLOBAL_HAS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Hex, EDGE_GLOBAL_HAS_HEX);
 GENERIC_EDGE_ENCODING_TRAITS(Player_Owns_Unit, EDGE_PLAYER_OWNS_UNIT);
 
 template <>
@@ -382,7 +374,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_ACTS_BEFORE_UNIT;
 	static constexpr std::string_view name = "Unit_ActsBefore_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::TIMES, X::LZ, 2),
+		E5(A::TIMES, X::LS, 2),
 	};
 };
 
@@ -404,6 +396,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>
 		E5(A::RETAL_DMG_STD_REL_OTHER, X::LS, 1000),
 		E5(A::RETAL_DMG_STD_REL_BF, X::LS, 1000),
 		E5(A::RETAL_VALUE_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_ONEKILL_CHANCE, X::LS, 1000),
 		E5(A::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
 	};
 };
@@ -420,6 +413,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
 		E5(A::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
 		E5(A::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
 		E5(A::ATTACK_VALUE_REL_BF, X::LS, 1000),
+		E5(A::ATTACK_ONEKILL_CHANCE, X::LS, 1000),
 		E5(A::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
 	};
 };
@@ -485,13 +479,14 @@ consteval bool EncodingIsValid()
 
     // The explicit asserts here are used for more informative errors
     // (a return value is still needed to flag the problematic attribute type)
-	static_assert(UninitializedEncodingAttributes(encoding) == 0);
-	static_assert(DisarrayedEncodingAttributeIndex(encoding) == -1);
-	static_assert(MisconfiguredExpnormSlopeIndex(encoding) == -1);
+	static_assert(UninitializedEncodingAttributes(encoding) == 0, "Found uninitialized elements");
+	static_assert(DisarrayedEncodingAttributeIndex(encoding) == -1, "Found wrong element at this index");
+	static_assert(MisconfiguredExpnormSlopeIndex(encoding) == -1, "Found miscalculated binary vmax element at this index");
 
     return UninitializedEncodingAttributes(encoding) == 0
         && DisarrayedEncodingAttributeIndex(encoding) == -1
-        && MisconfiguredExpnormSlopeIndex(encoding) == -1;}
+        && MisconfiguredExpnormSlopeIndex(encoding) == -1;
+}
 
 
 static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
@@ -500,7 +495,9 @@ static_assert(EncodingIsValid<Graph::NodeAttributes::Player>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Unit>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Action>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Yields_Player>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Player>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Player_Owns_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_Adjacent_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ActsBefore_Unit>());
@@ -518,6 +515,7 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit>
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>());
+static_assert(static_cast<int>(Graph::ElementType::_count) == 26);
 
 /*
  * These below are not really used

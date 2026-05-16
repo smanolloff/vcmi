@@ -57,7 +57,9 @@ namespace detail
     >;
 
     using TEdgeStores = std::tuple<
-        EdgeStore<Edges::Global_Yields_Player>,
+        EdgeStore<Edges::Global_Has_Player>,
+        EdgeStore<Edges::Global_Has_Unit>,
+        EdgeStore<Edges::Global_Has_Hex>,
         EdgeStore<Edges::Player_Owns_Unit>,
         EdgeStore<Edges::Hex_Adjacent_Hex>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,

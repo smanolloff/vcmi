@@ -11,13 +11,9 @@
 #pragma once
 
 #include "BAI/v15/graph/nodes/base.h"
-#include "battle/BattleSide.h"
-#include "common.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
-
-#include <bitset>
 
 namespace MMAI::BAI::V15::Graph::Nodes
 {
@@ -32,9 +28,18 @@ namespace detail
 class Global : public detail::Global_Base
 {
 public:
-	// TODO: make these 3 and 2 some enum (because they are also referenced in encoding)
-	using TowerFlags = std::bitset<3>;
-	using CorpseFlags = std::bitset<2>;
+	struct TowerFlags
+	{
+		bool hasUpperTower = false;
+		bool hasMiddleTower = false;
+		bool hasBottomTower = false;
+	};
+
+	struct CorpseFlags
+	{
+		bool hasGateCorpse = false;
+		bool hasBridgeCorpse = false;
+	};
 
 	struct extra_index_type {
 		using result_type = int;
@@ -46,12 +51,9 @@ public:
 	};
 
 	Global(
-		BattleSide side,
 		S15::CombatResult res,
 		int round,
-		int valueStart,
 		int value,
-		int hpStart,
 		int hp,
 		TowerFlags towers,
 		CorpseFlags corpses

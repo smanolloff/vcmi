@@ -2,15 +2,15 @@
 
 namespace MMAI::BAI::V15::Graph
 {
-    inline int permille(int a, int b)
+    inline int permille(int v, int max)
     {
         // Multiplying by 1000 might cause int32 overflow
         // => use temp l
-        return static_cast<int>((1000LL * a) / b);
+        return static_cast<int>((1000LL * v) / max);
     }
 
-    inline int permille(double a, int b)
+    inline int permille(double v, int max)
     {
-        return permille(static_cast<int>(std::round(a)), b);
+        return permille(static_cast<int>(std::round(v)), max);
     }
 }

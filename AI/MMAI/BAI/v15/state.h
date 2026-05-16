@@ -92,7 +92,6 @@ public:
 	std::shared_ptr<Graph::Graph> G;
 	std::unique_ptr<SupplementaryData> supdata = nullptr;
 	std::vector<AttackLog> attackLogs;
-	std::unordered_map<const CStack *, Graph::Nodes::Unit::Stats> sstats;
 	const std::string colorname;
 	const BattleSide side;
 	bool isMorale = false;
