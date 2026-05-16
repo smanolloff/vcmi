@@ -64,7 +64,7 @@ public:
 		bool isGateOpen
 	);
 
-	std::string name() const;
+	std::string name() const override;
 	void finalize();
 
 	const BattleHex bhex;
@@ -78,6 +78,12 @@ private:
 		BattleSide side,
 		bool isGateOpen
 	);
+
+	void processObstacles(
+	    const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,
+	    bool isGateOpen,
+	    BattleSide side
+    );
 };
 
 }

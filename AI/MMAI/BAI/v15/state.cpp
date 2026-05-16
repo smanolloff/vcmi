@@ -55,7 +55,7 @@ namespace
 	using AT = S15::ActionType;
 
 	TowerFlags GetSiegeTowers(const CPlayerBattleCallback & battle) {
-		TowerFlags res = 0; // {upper, middle, lower}
+		TowerFlags res; // {upper, middle, lower}
 
 		auto has = [&battle](EWallPart part) {
 			auto ws = battle.battleGetWallState(part);
@@ -63,18 +63,18 @@ namespace
 		};
 
 		if (has(EWallPart::UPPER_TOWER))
-			res.set(0);
+			res.hasUpperTower = true;
 		if (has(EWallPart::KEEP))
-			res.set(1);
+			res.hasMiddleTower = true;
 		if (has(EWallPart::BOTTOM_TOWER))
-			res.set(2);
+			res.hasBottomTower = true;
 
 		return res;
 	}
 
 	CorpseFlags GetSiegeCorpses(const CPlayerBattleCallback & battle)
 	{
-		CorpseFlags res = 0; // {gate, bridge}
+		CorpseFlags res; // {gate, bridge}
 
 		if(battle.battleGetFortifications().wallsHealth == 0)
 			return res;
@@ -85,9 +85,9 @@ namespace
 				continue;
 
 			if(cstack->coversPos(BattleHex::GATE_INNER) || cstack->coversPos(BattleHex::GATE_OUTER))
-				res.set(0);
+				res.hasGateCorpse = true;
 			if (cstack->coversPos(BattleHex::GATE_BRIDGE))
-				res.set(1);
+				res.hasBridgeCorpse = true;
 		};
 
 		return res;
@@ -207,28 +207,14 @@ namespace
 	};
 
 	AttackLogAggregateData ProcessAttackLogs(
-		const std::vector<AttackLog> & attackLogs,
-		std::unordered_map<const CStack *, N::Unit::Stats> & sstats
-	)
+		const std::vector<AttackLog> & attackLogs)
 	{
 		auto res = AttackLogAggregateData{};
-		for(auto & [cstack, ss] : sstats)
-		{
-			ss.dmgDealtNow = 0;
-			ss.dmgReceivedNow = 0;
-			ss.valueKilledNow = 0;
-			ss.valueLostNow = 0;
-		}
 
 		for(const auto & al : attackLogs)
 		{
 			if(al.attacker)
 			{
-				sstats.at(al.attacker).dmgDealtNow += al.dmg;
-				sstats.at(al.attacker).dmgDealtTotal += al.dmg;
-				sstats.at(al.attacker).valueKilledNow += al.value;
-				sstats.at(al.attacker).valueKilledTotal += al.value;
-
 				if(al.attacker->unitSide() == BattleSide::LEFT_SIDE)
 				{
 					res.ldd += al.dmg;
@@ -240,11 +226,6 @@ namespace
 					res.rvk += al.value;
 				}
 			}
-
-			sstats[&al.defender].dmgReceivedNow += al.dmg;
-			sstats[&al.defender].dmgReceivedTotal += al.dmg;
-			sstats[&al.defender].valueLostNow += al.value;
-			sstats[&al.defender].valueLostTotal += al.value;
 
 			if(al.defender.unitSide() == BattleSide::LEFT_SIDE)
 			{
@@ -331,18 +312,14 @@ namespace
 		const CStack * acstack,
 		const S15::CombatResult result,
 		const int round,
-		const State::GlobalStats & startStats,
 		const State::GlobalStats & stats)
 	{
 		G.setFlag(ET::NODE_GLOBAL);
 
 		G.add(std::make_shared<N::Global>(
-			acstack ? acstack->unitSide() : battle.battleGetMySide(),
 			result,
 			round,
-			startStats.totalValue,
 			stats.totalValue,
-			startStats.totalHp,
 			stats.totalHp,
 			GetSiegeTowers(battle),
 			GetSiegeCorpses(battle)
@@ -351,7 +328,7 @@ namespace
 
 	void AddPlayerNodes(
 		Graph::Graph & G,
-		const State::GlobalStats & startStats,
+		const CPlayerBattleCallback & battle,
 		const State::GlobalStats & lastStats,
 		const State::GlobalStats & stats,
 		const AttackLogAggregateData & logdata)
@@ -363,8 +340,7 @@ namespace
 
 		G.add(std::make_shared<N::Player>(
 			BattleSide::LEFT_SIDE,
-			startStats.totalValue,
-			startStats.totalHp,
+			BattleSide::LEFT_SIDE == battle.battleGetMySide(),
 			lastStats.totalValue,
 			lastStats.totalHp,
 			stats.leftValue,
@@ -377,8 +353,7 @@ namespace
 
 		G.add(std::make_shared<N::Player>(
 			BattleSide::RIGHT_SIDE,
-			startStats.totalValue,
-			startStats.totalHp,
+			BattleSide::RIGHT_SIDE == battle.battleGetMySide(),
 			lastStats.totalValue,
 			lastStats.totalHp,
 			stats.rightValue,
@@ -394,26 +369,15 @@ namespace
 		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack,
-		const State::GlobalStats & startStats,
-		const State::GlobalStats & lastStats,
-		const State::GlobalStats & stats,
-		std::unordered_map<const CStack *, N::Unit::Stats> & sstats)
+		const State::GlobalStats & stats)
 	{
 		G.setFlag(ET::NODE_UNIT);
 
 		for(auto & cstack : battle.battleGetStacks())
 		{
-			auto sc = N::Unit::StatsContainer{
-				.bfieldValueNow = stats.totalValue,
-				.bfieldValuePrev = lastStats.totalValue,
-				.bfieldValueStart = startStats.totalValue,
-				.bfieldHpNow = stats.totalHp,
-				.bfieldHpPrev = lastStats.totalHp,
-				.bfieldHpStart = startStats.totalHp,
-				.stackStats = sstats[cstack]  // init if key is missing
-			};
-
-			G.add(std::make_shared<N::Unit>(*cstack, sc, acstack == cstack));
+			bool isActive = cstack == acstack;
+			bool isEnemy = cstack->unitSide() == battle.battleGetMySide();
+			G.add(std::make_shared<N::Unit>(*cstack, isActive, isEnemy, stats.totalValue));
 		}
 	}
 
@@ -455,25 +419,28 @@ namespace
 		}
 	}
 
-	void AddEdges_Global_Yields_Player(
+	void AddEdges_Global_Has_PlayerUnitHex(
 		Graph::Graph & G,
 		const CPlayerBattleCallback & battle)
 	{
 		G.getFlags().require(ET::NODE_GLOBAL);
 		G.getFlags().require(ET::NODE_PLAYER);
-		G.setFlag(ET::EDGE_GLOBAL_YIELDS_PLAYER);
+		G.getFlags().require(ET::NODE_UNIT);
+		G.getFlags().require(ET::NODE_HEX);
+		G.setFlag(ET::EDGE_GLOBAL_HAS_PLAYER);
+		G.setFlag(ET::EDGE_GLOBAL_HAS_UNIT);
+		G.setFlag(ET::EDGE_GLOBAL_HAS_HEX);
 
 		const auto & global = G.getAll<N::Global>().at(0);
-		const auto side = battle.battleGetMySide();
 
 		for (const auto & player : G.getAll<N::Player>())
-		{
-			if(player->side == side)
-			{
-				G.add(std::make_shared<E::Global_Yields_Player>(global, player));
-				break;
-			}
-		}
+			G.add(std::make_shared<E::Global_Has_Player>(global, player));
+
+		for (const auto & unit : G.getAll<N::Unit>())
+			G.add(std::make_shared<E::Global_Has_Unit>(global, unit));
+
+		for (const auto & hex : G.getAll<N::Hex>())
+			G.add(std::make_shared<E::Global_Has_Hex>(global, hex));
 	}
 
 	void AddEdges_Player_Owns_Unit(
@@ -579,6 +546,8 @@ namespace
 
 				const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, false);
 				auto retalEstimate = DamageEstimation{};
+
+				// FIXME: this VCMI helper does not take into account HAS_ADDITIONAL_ATTACK
 				const auto attackEstimate = battle.battleEstimateDamage(attinfo, &retalEstimate);
 
 				G.add(std::make_shared<E::Unit_MeleeDmg_Unit>(
@@ -1241,7 +1210,9 @@ namespace
 					cloneActionGenericEdges.template operator()<E::Action_EnablesShootAt_Hex>();
 					break;
 				// Nothing to add for those
-        		case ET::EDGE_GLOBAL_YIELDS_PLAYER:
+        		case ET::EDGE_GLOBAL_HAS_PLAYER:
+        		case ET::EDGE_GLOBAL_HAS_UNIT:
+        		case ET::EDGE_GLOBAL_HAS_HEX:
         		case ET::EDGE_PLAYER_OWNS_UNIT:
 				case ET::NODE_GLOBAL:
 				case ET::NODE_PLAYER:
@@ -1548,18 +1519,18 @@ void State::onActiveStack(
 	G = std::make_shared<Graph::Graph>(battle);
 
 	const auto stats = CalcGlobalStats(battle);
-	const auto logdata = ProcessAttackLogs(attackLogs, sstats);
+	const auto logdata = ProcessAttackLogs(attackLogs);
 
 	G->buildAccessibilityCache();
 
-	AddGlobalNode(*G, battle, acstack, result, round, startStats, stats);
-	AddPlayerNodes(*G, startStats, lastStats, stats, logdata);
-	AddUnitNodes(*G, battle, acstack, startStats, lastStats, stats, sstats);
+	AddGlobalNode(*G, battle, acstack, result, round, stats);
+	AddPlayerNodes(*G, battle, lastStats, stats, logdata);
+	AddUnitNodes(*G, battle, acstack, stats);
 	AddHexNodes(*G, battle, acstack);
 
 	G->buildReachabilityCache(); // requires Units
 
-	AddEdges_Global_Yields_Player(*G, battle);
+	AddEdges_Global_Has_PlayerUnitHex(*G, battle);
 	AddEdges_Player_Owns_Unit(*G, battle);
 	AddEdges_Hex_Adjacent_Hex(*G);
 	AddEdges_Unit_ActsBefore_Unit(*G, battle);

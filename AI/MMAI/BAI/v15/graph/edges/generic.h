@@ -48,7 +48,10 @@ public: \
     static_assert(EU(A::_count) == 0, "generic edges cannot have attributes"); \
 }
 
-GENERIC_EDGE_ELEMENT(Global, Yields, Player);
+GENERIC_EDGE_ELEMENT(Global, Has, Player);
+GENERIC_EDGE_ELEMENT(Global, Has, Unit);
+GENERIC_EDGE_ELEMENT(Global, Has, Hex);
+
 GENERIC_EDGE_ELEMENT(Player, Owns, Unit);
 
 GENERIC_EDGE_ELEMENT(Unit, Blocks, Unit);

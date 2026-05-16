@@ -9,6 +9,7 @@
  */
 
 #include "BAI/v15/render.h"
+#include "BAI/v15/state.h"
 
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
@@ -163,8 +164,9 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 
     ASSERT(lplayer && rplayer, "players not found");
 
-    const auto & myplayer = attr(gnode, GA::BATTLE_SIDE_ACTIVE_PLAYER) == EU(BattleSide::LEFT_SIDE)
-        ? lplayer : rplayer;
+    const auto & myplayer = attr(lplayer, PA::IS_ACTIVE) ? lplayer : rplayer;
+
+    ASSERT(attr(myplayer, PA::IS_ACTIVE), "active player not found");
 
     const IUnit * aunit = nullptr;
 
@@ -709,5 +711,4 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 
     return res;
 }
-
 }

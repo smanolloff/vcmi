@@ -42,7 +42,9 @@ Unit_ShootDmg_Unit::Unit_ShootDmg_Unit(
     auto A_dmg_mean = 0.5 * (A_dmg_min + A_dmg_max);
     auto A_dmg_std = std::sqrt((A_dmg_range * A_dmg_range) / (12.0 * A_k));
     auto B_hp = static_cast<int>(B_cstack.getAvailableHealth());
+    auto B_firstHpLeft = static_cast<int>(B_cstack.getFirstHPleft());
     auto A_kills_mean = A_dmg_mean / B_hp;
+    auto A_onekill_chance = dmgChance(B_firstHpLeft, A_dmg_min, A_dmg_max, A_k);
     auto A_allkill_chance = dmgChance(B_hp, A_dmg_min, A_dmg_max, A_k);
 
     setattr(A::ATTACK_DMG_MEAN_REL_OTHER, permille(A_dmg_mean, B_hp));
@@ -50,9 +52,10 @@ Unit_ShootDmg_Unit::Unit_ShootDmg_Unit(
     setattr(A::ATTACK_DMG_STD_REL_OTHER, permille(A_dmg_std, B_hp));
     setattr(A::ATTACK_DMG_STD_REL_BF, permille(A_dmg_std, battlefieldHp));
     setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(B_cstack.unitType()), battlefieldValue));
+    setattr(A::ATTACK_ONEKILL_CHANCE, permille(A_onekill_chance, 1));
     setattr(A::ATTACK_ALLKILL_CHANCE, permille(A_allkill_chance, 1));
 
-    static_assert(static_cast<size_t>(A::_count) == 6, "whistleblower in case attributes change");
+    static_assert(static_cast<size_t>(A::_count) == 7, "whistleblower in case attributes change");
 }
 
 }

@@ -91,6 +91,51 @@ void Hex::setStateMask(
     bool isGateOpen
 )
 {
+    processObstacles(obstacles, isGateOpen, side);
+
+    switch(accessibility)
+    {
+        case EAccessibility::ACCESSIBLE:
+            statemask.set(EU(HS::PASSABLE));
+            break;
+
+        case EAccessibility::OBSTACLE:
+        case EAccessibility::UNAVAILABLE:
+            statemask.set(EU(HS::OBSTACLE));
+            // no break
+        case EAccessibility::ALIVE_STACK:
+        case EAccessibility::DESTRUCTIBLE_WALL:
+            statemask.reset(EU(HS::PASSABLE));
+            break;
+
+        case EAccessibility::GATE:
+            side == BattleSide::DEFENDER
+                ? statemask.set(EU(HS::PASSABLE))
+                : statemask.reset(EU(HS::PASSABLE));
+            break;
+
+        default:
+            THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EU(accessibility));
+    }
+
+    if(bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)
+        statemask.set(EU(HS::SIEGE_GATE));
+    else if(bhex == BattleHex::GATE_BRIDGE)
+        statemask.set(EU(HS::SIEGE_BRIDGE));
+    else if(
+        bhex == BattleHex::DESTRUCTIBLE_WALL_1 ||
+        bhex == BattleHex::DESTRUCTIBLE_WALL_2 ||
+        bhex == BattleHex::DESTRUCTIBLE_WALL_3 ||
+        bhex == BattleHex::DESTRUCTIBLE_WALL_4
+    )
+        statemask.set(EU(HS::SIEGE_WALL));
+}
+
+void Hex::processObstacles(
+    const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,
+    bool isGateOpen,
+    BattleSide side)
+{
     for(const auto& obstacle : obstacles)
     {
         switch(obstacle->obstacleType)
@@ -139,43 +184,6 @@ void Hex::setStateMask(
                 THROW_FORMAT("Unexpected obstacle type: %d", EU(obstacle->obstacleType));
         }
     }
-
-    switch(accessibility)
-    {
-        case EAccessibility::ACCESSIBLE:
-            statemask.set(EU(HS::PASSABLE));
-            break;
-
-        case EAccessibility::OBSTACLE:
-        case EAccessibility::UNAVAILABLE:
-            statemask.set(EU(HS::OBSTACLE));
-            // no break
-        case EAccessibility::ALIVE_STACK:
-        case EAccessibility::DESTRUCTIBLE_WALL:
-            statemask.reset(EU(HS::PASSABLE));
-            break;
-
-        case EAccessibility::GATE:
-            side == BattleSide::DEFENDER
-                ? statemask.set(EU(HS::PASSABLE))
-                : statemask.reset(EU(HS::PASSABLE));
-            break;
-
-        default:
-            THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EU(accessibility));
-    }
-
-    if(bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)
-        statemask.set(EU(HS::SIEGE_GATE));
-    else if(bhex == BattleHex::GATE_BRIDGE)
-        statemask.set(EU(HS::SIEGE_BRIDGE));
-    else if(
-        bhex == BattleHex::DESTRUCTIBLE_WALL_1 ||
-        bhex == BattleHex::DESTRUCTIBLE_WALL_2 ||
-        bhex == BattleHex::DESTRUCTIBLE_WALL_3 ||
-        bhex == BattleHex::DESTRUCTIBLE_WALL_4
-    )
-        statemask.set(EU(HS::SIEGE_WALL));
 }
 
 }

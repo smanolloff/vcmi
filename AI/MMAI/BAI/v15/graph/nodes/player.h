@@ -48,8 +48,7 @@ public:
 
 	Player(
 		BattleSide side,
-		int globalValueStart,
-		int globalHpStart,
+		bool isActive,
 		int globalValuePrevRound,
 		int globalHpPrevRound,
 		int value,
