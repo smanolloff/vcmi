@@ -18,10 +18,11 @@ namespace MMAI::BAI::V15
 
 class AttackLog : public Schema::V15::IAttackLog
 {
+	using UnitPtr = std::shared_ptr<const Graph::Nodes::Unit>;
 public:
 	AttackLog(
-		const CStack * attacker,
-		const CStack & defender,
+		const UnitPtr & attacker,
+		const UnitPtr & defender,
 		const int dmg,
 		const int dmgPermille,
 		const int units,
@@ -36,32 +37,6 @@ public:
 	, value(value)
 	, valuePermille(valuePermille)
 	{};
-
-	std::string getAttackerColor() const override
-	{
-		if (!attacker)
-			return "?";
-
-		return attacker->unitSide() == BattleSide::ATTACKER ? "red" : "blue";
-	}
-
-	std::string getAttackerAlias() const override
-	{
-		return attacker
-			? std::to_string(Graph::Nodes::Unit::CalculateAlias(Graph::Nodes::Unit::CalculateSlot(*attacker)))
-			: "?";
-	}
-
-	std::string getDefenderColor() const override
-	{
-		return defender.unitSide() == BattleSide::ATTACKER ? "red" : "blue";
-	}
-
-	std::string getDefenderAlias() const override
-	{
-		return std::to_string(Graph::Nodes::Unit::CalculateAlias(Graph::Nodes::Unit::CalculateSlot(defender)));
-	}
-
 
 	int getDamageDealt() const override
 	{
@@ -93,8 +68,8 @@ public:
 	 * => store only defender slot
 	 */
 
-	const CStack * attacker;
-	const CStack & defender;
+	const UnitPtr attacker;
+	const UnitPtr defender;
 	const int dmg;
 	const int dmgPermille;
 	const int units;

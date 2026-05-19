@@ -22,6 +22,8 @@
 #include "BAI/v15/graph/nodes/unit.h"
 #include "BAI/v15/hexaction.h"
 #include "battle/CPlayerBattleCallback.h"
+#include "battle/DamageCalculator.h"
+#include "battle/CUnitState.h"
 #include "bonuses/BonusParameters.h" // IWYU pragma: keep (needed for bonus->parameters)
 #include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -33,6 +35,8 @@
 #include "spells/ISpellMechanics.h"
 #include "spells/ProxyCaster.h"
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -118,13 +122,291 @@ namespace
 		}
 
 		return State::GlobalStats{
-			.leftValue = lv,
-			.leftHp = lh,
-			.rightValue = rv,
-			.rightHp = rh,
-			.totalValue = lv + rv,
-			.totalHp = lh + rh
+			.leftValue=lv,
+			.leftHp=lh,
+			.rightValue=rv,
+			.rightHp=rh,
+			.totalValue=lv + rv,
+			.totalHp=lh + rh
 		};
+	}
+
+    // Stolen from BattleActionProcessor::handleDeathStare
+    // Calculates number of kills
+    double CalcDeathStare(
+    	const CPlayerBattleCallback & battle,
+    	const battle::CUnitState * attacker,
+    	const battle::CUnitState * defender,
+    	bool ranged)
+    {
+    	/*
+         * Death stare:
+         * - X=10% chance to kill per gorgon
+         * - rolled separately for each gorgon in the stack
+         * - kills capped to (N*X/100), where N=number of gorgons
+         *
+         * Accurate Shot (HotA seadogs):
+         * - same mechanic as death stare, but ranged
+         * - X=3% chance to kill for each seadog (X=2% with range penalty)
+         *
+         * Commander death stare:
+         * - different mechanic: kills depend on level
+         */
+
+        auto subtype = BonusCustomSubtype::deathStareGorgon;
+
+        if (ranged)
+        {
+            bool distancePenalty = battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition());
+            bool obstaclePenalty = battle.battleHasWallPenalty(attacker, attacker->getPosition(), defender->getPosition());
+
+            if(distancePenalty)
+                subtype = obstaclePenalty
+                    ? BonusCustomSubtype::deathStareRangeObstaclePenalty
+                    : BonusCustomSubtype::deathStareRangePenalty;
+            else
+                subtype = obstaclePenalty
+                    ? BonusCustomSubtype::deathStareObstaclePenalty
+                    : BonusCustomSubtype::deathStareNoRangePenalty;
+        }
+
+        // Non-commander death stare
+        int n = attacker->getCount();
+        int x = attacker->valOfBonuses(BonusType::DEATH_STARE, subtype);
+        double kills = n * x / 100.0;
+
+        // Commander death stare
+        int x1 = attacker->valOfBonuses(BonusType::DEATH_STARE, BonusCustomSubtype::deathStareCommander);
+        kills += static_cast<double>(x1 * attacker->creatureLevel()) / defender->creatureLevel();
+
+        return kills;
+    }
+
+    struct CUnitStateWrapper {
+    	explicit CUnitStateWrapper(const CStack * cstack)
+    	: cstack(cstack), cstate(cstack->acquireState()) {}
+
+    	CUnitStateWrapper fork() const
+    	{
+    		return CUnitStateWrapper(cstack);
+    	}
+
+    	const CStack * cstack;
+    	std::shared_ptr<battle::CUnitState> cstate;
+    };
+
+    struct UnitStates {
+		CUnitStateWrapper a;
+		CUnitStateWrapper b;
+    };
+
+    // Executes a single attack (without retaliation logic)
+    // Applies damage to defender and to attacker (if fire shield)
+    // Mutates the given states.
+    void ApplyAttack(
+    	UnitStates & states,
+		const CPlayerBattleCallback & battle,
+    	bool ranged)
+    {
+    	auto & A_state = states.a.cstate;
+    	auto & B_state = states.b.cstate;
+
+		auto A_bai = BattleAttackInfo(A_state.get(), B_state.get(), 0, ranged);
+		auto estimation = std::make_shared<DamageEstimation>(DamageCalculator(battle, A_bai).calculateDmgRange());
+	    auto A_dmg_min = static_cast<int>(estimation->damage.min);
+	    auto A_dmg_max = static_cast<int>(estimation->damage.max);
+	    auto A_dmg_mean = static_cast<int64_t>(0.5 * (A_dmg_min + A_dmg_max));
+    	auto B_hp = static_cast<int>(B_state->getAvailableHealth());
+    	auto A_kills_mean = A_dmg_mean / B_hp;
+
+		// CUnitState->damage() expects a *mutable* ref and can set it to 0 (?!?)
+		{
+			int64_t dmg = A_dmg_mean;
+			B_state->damage(dmg);
+		}
+
+		// 1. Handle LIFE_DRAIN and SOUL_STEAL
+		// Stolen from BattleActionProcessor::applyBattleEffects
+		if(B_state->isLiving()) {
+			if(A_state->hasBonusOfType(BonusType::LIFE_DRAIN) && A_state->getTotalHealth() != A_state->getAvailableHealth())
+			{
+				int64_t toHeal = A_dmg_mean * A_state->valOfBonuses(BonusType::LIFE_DRAIN) / 100;
+				A_state->heal(toHeal, EHealLevel::RESURRECT, EHealPower::PERMANENT);
+			}
+
+			if(A_state->hasBonusOfType(BonusType::SOUL_STEAL))
+			{
+				//we can have two bonuses - one with subtype 0 and another with subtype 1
+				//try to use permanent first, use only one of two
+				for(const auto & subtype : { BonusCustomSubtype::soulStealBattle, BonusCustomSubtype::soulStealPermanent})
+				{
+					if(A_state->hasBonusOfType(BonusType::SOUL_STEAL, subtype))
+					{
+						int64_t toHeal = static_cast<int64_t>(A_kills_mean) * A_state->valOfBonuses(BonusType::SOUL_STEAL, subtype) * A_state->getMaxHealth();
+						bool permanent = subtype == BonusCustomSubtype::soulStealPermanent;
+						A_state->heal(toHeal, EHealLevel::OVERHEAL, (permanent ? EHealPower::PERMANENT : EHealPower::ONE_BATTLE));
+						break;
+					}
+				}
+			}
+		}
+
+		// 2. Handle FIRE_SHIELD (triggers even if B is not alive)
+		// Stolen from BattleActionProcessor::applyBattleEffects
+		if(!ranged &&
+			!B_state->isClone() &&
+			B_state->hasBonusOfType(BonusType::FIRE_SHIELD) &&
+			!A_state->hasBonusOfType(BonusType::SPELL_SCHOOL_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE)) &&
+			!A_state->hasBonusOfType(BonusType::NEGATIVE_EFFECTS_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE)) &&
+			A_state->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::FIRE)) < 100 &&
+			CStack::isMeleeAttackPossible(A_state.get(), B_state.get())) // attacked needs to be adjacent to defender for fire shield to trigger (e.g. Dragon Breath attack)
+		{
+			//TODO: use damage with bonus but without penalties
+			auto dmg = (std::min(B_state->getAvailableHealth(), A_dmg_mean) * B_state->valOfBonuses(BonusType::FIRE_SHIELD)) / 100;
+			A_state->damage(dmg);
+		}
+
+		// 3. Handle DEATH_STARE (must come last)
+		if (B_state->alive())
+		{
+			int staredeaths = static_cast<int>(std::round(CalcDeathStare(battle, A_state.get(), B_state.get(), ranged)));
+			while (staredeaths > 0 && B_state->alive())
+			{
+				int64_t dmg = B_state->getFirstHPleft();
+				B_state->damage(dmg);
+				--staredeaths;
+			}
+		}
+    }
+
+    /*
+     * VCMI's damage estimation helper does not take into account stuff such as:
+	 * 	- Base mechanics:
+	 * 	 	* HAS_ADDITIONAL_ATTACK
+	 * 	 	* DEATH_STARE
+	 * 	 	* FIRE_SHIELD
+	 * 	 	* LIFE_DRAIN
+	 *	- Mod mechanics:
+	 * 		* RANGED_RATALIATION
+	 * 		* FIRST_STRIKE
+	 * 		* SOUL_STEAL
+	 * 		* FEROCITY
+	 *
+	 * This is an attempt to reimplement it here.
+	 */
+	UnitStates SimulateAttackAction(
+		const CPlayerBattleCallback & battle,
+		const CStack & attacker,
+		const CStack & defender,
+		bool isRangedAttack,
+		bool isDefenderBlocked)
+	{
+		// Stolen from BattleActionProcessor::doShootAction
+		auto checkRangedRetal = [&attacker, isRangedAttack, isDefenderBlocked](bool canMeleeRetal)
+		{
+			return (canMeleeRetal
+				&& isRangedAttack
+				&& !isDefenderBlocked
+				&& !attacker.hasBonusOfType(BonusType::BLOCKS_RANGED_RETALIATION));
+		};
+
+		// Stolen from BattleActionProcessor::doAttackAction
+		// but using different getBonus functions which use caching strs
+		auto checkFirstStrike = [&defender, isRangedAttack](bool canMeleeRetal, bool canRangedRetal)
+		{
+			if ((isRangedAttack && !canRangedRetal) || (!isRangedAttack && !canMeleeRetal))
+				return false;
+
+			static const auto selRanged = Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeAll).Or(Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeRanged));
+			static const auto selMelee = Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeAll).Or(Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeMelee));
+			static const auto strRanged = std::string("firstStrikeSelectorRanged");
+			static const auto strMelee = std::string("firstStrikeSelectorMelee");
+
+			return isRangedAttack
+				? defender.hasBonus(selRanged, strRanged)
+				: defender.hasBonus(selMelee, strMelee);
+		};
+
+		// Stolen from BattleActionProcessor::doAttackAction
+		auto getAdditionalAttacks = [&attacker, isRangedAttack]
+		{
+			int totalAttacks = attacker.getTotalAttacks(isRangedAttack);
+			if(const auto * attackingHero = attacker.getMyHero())
+				totalAttacks += attackingHero->valOfBonuses(BonusType::HERO_GRANTS_ATTACKS, BonusSubtypeID(attacker.creatureId()));
+
+			return totalAttacks - 1;
+		};
+
+		// Stolen from BattleActionProcessor::doAttackAction
+		// but using different getBonus functions which use caching strs
+		auto getFerocityAttacks = [&attacker](int kills)
+		{
+			const auto bonuses = attacker.getBonusesOfType(BonusType::FEROCITY);
+			const auto bonus = bonuses->getFirst(Selector::all);
+			if (!bonus)
+				return 0;
+
+			int killThreshold = bonus->parameters ? bonus->parameters->toNumber() : 1;
+			return kills >= killThreshold ? bonuses->totalValue(0) : 0;
+		};
+
+		bool canMeleeRetal = defender.ableToRetaliate();
+		bool canRangedRetal = checkRangedRetal(canMeleeRetal);
+		bool switchNext = false;  // cache var to prevent unneeded ranged retal checks
+		int ferocityCheckAfter = 0;  // when to check for ferocity (depends on first strike)
+		auto positions = std::vector<int>{}; //  0=keep, 1=switch
+
+		if (checkFirstStrike(canMeleeRetal, canRangedRetal))
+		{
+			positions.push_back(1); // switch: initial strike is by defender
+			positions.push_back(1); // switch: attacker strikes (this is not a retaliation)
+			ferocityCheckAfter = 1; // initial attacker strike is actually 2nd
+		}
+		else
+		{
+			positions.push_back(0); // no switch: initial strike is by attacker
+			if (canMeleeRetal || canRangedRetal)
+				positions.push_back(1); // switch: defender strikes (if able to retalate)
+			switchNext = true;
+		}
+
+		for (int i = 0; i < getAdditionalAttacks(); ++i)
+		{
+			positions.push_back(switchNext);
+			switchNext = false; // further additional attacks keep the same position
+		}
+
+		const auto states0 = UnitStates{.a=CUnitStateWrapper(&attacker), .b=CUnitStateWrapper(&defender)};
+		auto states = states0;
+
+		for (int i = 0; i < positions.size(); ++i)
+		{
+			if (!states.a.cstate->alive() || !states.b.cstate->alive())
+				break;
+
+			bool shouldSwitch = positions.at(i);
+			auto prevstates = states;
+			states = shouldSwitch
+				? UnitStates{.a=states.b.fork(), .b=states.a.fork()}
+				: UnitStates{.a=states.a.fork(), .b=states.b.fork()};
+
+			// mutates states
+			ApplyAttack(states, battle, isRangedAttack);
+
+			if (i == ferocityCheckAfter)
+			{
+				ASSERT(states.b.cstack->unitId() == defender.unitId(), "SimulateAttackAction: ferocity check: expected A=attacker B=defender");
+				const auto prevb = shouldSwitch ? prevstates.a : prevstates.b;
+				// ferocity check must always be when a=attacker, b=defender
+				int ferocityAttacks = getFerocityAttacks(states.b.cstate->getCount() - prevb.cstate->getCount());
+				for (int j = 0; j < ferocityAttacks; ++j)
+					positions.push_back(0);
+			}
+		}
+
+		return states.a.cstack->unitId() == states0.a.cstack->unitId()
+			? states
+			: UnitStates{.a=states.b, .b=states.a};
 	}
 
 	namespace Q {
@@ -213,9 +495,10 @@ namespace
 
 		for(const auto & al : attackLogs)
 		{
+		    // TODO: check out how death stare is handled. Maybe add it as dmg?
 			if(al.attacker)
 			{
-				if(al.attacker->unitSide() == BattleSide::LEFT_SIDE)
+				if(al.attacker->cstack.unitSide() == BattleSide::LEFT_SIDE)
 				{
 					res.ldd += al.dmg;
 					res.lvk += al.value;
@@ -227,7 +510,7 @@ namespace
 				}
 			}
 
-			if(al.defender.unitSide() == BattleSide::LEFT_SIDE)
+			if(al.defender->cstack.unitSide() == BattleSide::LEFT_SIDE)
 			{
 				res.ldr += al.dmg;
 				res.lvl += al.value;
@@ -376,7 +659,7 @@ namespace
 		for(auto & cstack : battle.battleGetStacks())
 		{
 			bool isActive = cstack == acstack;
-			bool isEnemy = cstack->unitSide() == battle.battleGetMySide();
+			bool isEnemy = cstack->unitSide() != battle.battleGetMySide();
 			G.add(std::make_shared<N::Unit>(*cstack, isActive, isEnemy, stats.totalValue));
 		}
 	}
@@ -526,8 +809,8 @@ namespace
 
 		for(const auto & unit : units)
 		{
-			const auto & cstack = unit->cstack;
-			bool isBerserk = checkBerserk(cstack);
+			const auto & stack = unit->cstack;
+			bool isBerserk = checkBerserk(stack);
 
 			for(const auto & other : units)
 			{
@@ -535,26 +818,36 @@ namespace
 					continue;
 
 				const auto & ostack = other->cstack;
-				const auto pair = std::pair<int, int>{cstack.unitId(), ostack.unitId()};
+				const auto pair = std::pair<int, int>{stack.unitId(), ostack.unitId()};
 				auto [_, inserted] = pairs.emplace(pair);
 
 				if(!inserted) // key already existed
 					continue;
 
-				if(ostack.unitSide() == cstack.unitSide() && !isBerserk && !checkBerserk(ostack))
+				if(ostack.unitSide() == stack.unitSide() && !isBerserk && !checkBerserk(ostack))
 					continue;
 
-				const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, false);
-				auto retalEstimate = DamageEstimation{};
+				bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
+				const auto states = SimulateAttackAction(battle, stack, ostack, false, isOtherBlocked);
+				const auto & state = states.a.cstate;
+				const auto & ostate = states.b.cstate;
 
-				// FIXME: this VCMI helper does not take into account HAS_ADDITIONAL_ATTACK
-				const auto attackEstimate = battle.battleEstimateDamage(attinfo, &retalEstimate);
+				ASSERT(state->unitId() == stack.unitId() && ostate->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
+
+				auto hpdiff_attacker = state->getTotalHealth() - stack.getTotalHealth();
+				auto hpdiff_defender = ostate->getTotalHealth() - ostack.getTotalHealth();
+				auto qtydiff_attacker = state->getCount() - stack.getCount();
+				auto qtydiff_defender = ostate->getCount() - ostack.getCount();
+				auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
+				auto vdiff_defender = other->valueOne * qtydiff_defender;
 
 				G.add(std::make_shared<E::Unit_MeleeDmg_Unit>(
 					unit,
 					other,
-					attackEstimate,
-					retalEstimate,
+					vdiff_attacker,
+					vdiff_defender,
+					hpdiff_attacker,
+					hpdiff_defender,
 					stats.totalValue,
 					stats.totalHp
 				));
@@ -575,19 +868,34 @@ namespace
 		for(const auto & edge : G.getAll<E::Unit_MeleeDmg_Unit>())
 		{
 			const auto & unit = edge->srcNode;
-			const auto & cstack = unit->cstack;
-			if(!cstack.canShoot())
+			const auto & stack = unit->cstack;
+			if(!stack.canShoot())
 				continue;
 
 			const auto & other = edge->dstNode;
 			const auto & ostack = other->cstack;
-			const auto attinfo = BattleAttackInfo(&cstack, &ostack, 0, true);
-			const auto estimate = battle.battleEstimateDamage(attinfo);
+
+			bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
+			const auto states = SimulateAttackAction(battle, stack, ostack, false, isOtherBlocked);
+			const auto & state = states.a.cstate;
+			const auto & ostate = states.b.cstate;
+
+			ASSERT(state->unitId() == stack.unitId() && ostate->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
+
+			auto hpdiff_attacker = state->getTotalHealth() - stack.getTotalHealth();
+			auto hpdiff_defender = ostate->getTotalHealth() - ostack.getTotalHealth();
+			auto qtydiff_attacker = state->getCount() - stack.getCount();
+			auto qtydiff_defender = ostate->getCount() - ostack.getCount();
+			auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
+			auto vdiff_defender = other->valueOne * qtydiff_defender;
 
 			G.add(std::make_shared<E::Unit_ShootDmg_Unit>(
 				unit,
 				other,
-				estimate,
+				vdiff_attacker,
+				vdiff_defender,
+				hpdiff_attacker,
+				hpdiff_defender,
 				stats.totalValue,
 				stats.totalHp
 			));
@@ -763,7 +1071,7 @@ namespace
 			else if (bstack.doubleWide() && a_head_adj.contains(b_tail))
 				amove = EU(dirmapHead.at(BattleHex::mutualPosition(a_head, b_tail)));
 			else if (astack.doubleWide() && bstack.doubleWide() && a_tail_adj.contains(b_tail))
-				amove = EU(dirmapHead.at(BattleHex::mutualPosition(a_tail, b_tail)));
+				amove = EU(dirmapTail.at(BattleHex::mutualPosition(a_tail, b_tail)));
 			else
 				throw std::runtime_error("mutual position mapping failed");
 
@@ -1276,8 +1584,8 @@ namespace
 			if (!inserted)
 				continue;
 
-			const auto & unit = move->by;
-			const auto & hex = move->endsAt.at(0);
+			// const auto & unit = move->by; already set
+			// const auto & hex = move->endsAt.at(0); already set
 			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
 			auto id = CalcActionId(AT::AMOVE, unit, ounit, hex);
@@ -1476,8 +1784,10 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		auto value = elem.killedAmount * N::Unit::GetValue(defender->unitType());
 
 		attackLogs.emplace_back(
-			attacker,
-			*defender,
+			// attacker and/or defender CStack may be missing in G
+			// (e.g. resurrected after G was constructed)
+			attacker ? G->getByExtraIndex<N::Unit>(attacker->unitId(), false) : nullptr,
+			G->getByExtraIndex<N::Unit>(defender->unitId(), false),
 			static_cast<int>(elem.damageAmount),
 			static_cast<int>(1000 * elem.damageAmount / bf_hpNow),
 			static_cast<int>(elem.killedAmount),
@@ -1557,6 +1867,7 @@ void State::onActiveStack(
 
 	ASSERT(G->getFlags().flags.all(), "etFlags check: " + G->getFlags().flags.to_string());
 	ASSERT(atFlags.flags.all(), "atFlags check: " + atFlags.flags.to_string());
+	G->verify();
 
 	supdata = std::make_unique<SupplementaryData>(
 		colorname,

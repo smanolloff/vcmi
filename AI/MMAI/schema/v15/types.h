@@ -113,12 +113,6 @@ enum class CorpseFlag : uint8_t
 class IAttackLog
 {
 public:
-	// NOTE: each of those can be "" if cstack was just resurrected/summoned
-	virtual std::string getAttackerColor() const = 0;
-	virtual std::string getAttackerAlias() const = 0;
-	virtual std::string getDefenderColor() const = 0;
-	virtual std::string getDefenderAlias() const = 0;
-
 	virtual int getDamageDealt() const = 0;
 	virtual int getDamageDealtPermille() const = 0;
 	virtual int getUnitsKilled() const = 0;

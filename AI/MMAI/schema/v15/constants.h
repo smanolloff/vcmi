@@ -38,33 +38,8 @@ constexpr int NULL_VALUE_UNENCODED = -1;
 // Convenience definitions which do not need to be exported
 namespace X
 {
-	inline constexpr auto AE = Encoding::ACCUMULATING_EXPLICIT_NULL;
-	inline constexpr auto AI = Encoding::ACCUMULATING_IMPLICIT_NULL;
-	inline constexpr auto AM = Encoding::ACCUMULATING_MASKING_NULL;
-	inline constexpr auto AS = Encoding::ACCUMULATING_STRICT_NULL;
-	inline constexpr auto AZ = Encoding::ACCUMULATING_ZERO_NULL;
-
-	inline constexpr auto BE = Encoding::BINARY_EXPLICIT_NULL;
-	inline constexpr auto BM = Encoding::BINARY_MASKING_NULL;
-	inline constexpr auto BS = Encoding::BINARY_STRICT_NULL;
-	inline constexpr auto BZ = Encoding::BINARY_ZERO_NULL;
-
-	inline constexpr auto CE = Encoding::CATEGORICAL_EXPLICIT_NULL;
-	inline constexpr auto CI = Encoding::CATEGORICAL_IMPLICIT_NULL;
-	inline constexpr auto CM = Encoding::CATEGORICAL_MASKING_NULL;
-	inline constexpr auto CS = Encoding::CATEGORICAL_STRICT_NULL;
-	inline constexpr auto CZ = Encoding::CATEGORICAL_ZERO_NULL;
-
-	inline constexpr auto EE = Encoding::EXPNORM_EXPLICIT_NULL;
-	inline constexpr auto EM = Encoding::EXPNORM_MASKING_NULL;
-	inline constexpr auto ES = Encoding::EXPNORM_STRICT_NULL;
-	inline constexpr auto EZ = Encoding::EXPNORM_ZERO_NULL;
-
-	inline constexpr auto LE = Encoding::LINNORM_EXPLICIT_NULL;
-	inline constexpr auto LM = Encoding::LINNORM_MASKING_NULL;
-	inline constexpr auto LS = Encoding::LINNORM_STRICT_NULL;
-	inline constexpr auto LZ = Encoding::LINNORM_ZERO_NULL;
-
+	inline constexpr auto CAT = Encoding::CATEGORICAL;
+	inline constexpr auto LIN = Encoding::LINNORM;
 	inline constexpr auto RAW = Encoding::RAW;
 }
 
@@ -73,61 +48,22 @@ namespace X
  * https://stackoverflow.com/a/23784921
  */
 template<typename T>
-constexpr std::tuple<T, Encoding, int, int, double> E5(T a, Encoding e, int vmax, double slope = -1, int bins = -1)
+constexpr std::tuple<T, Encoding, int, int, double> E5(T a, Encoding e, int vmax)
 {
 	switch(e)
 	{
-		// "0" is a value => vmax+1 values
-		case X::AE:
-			return {a, e, vmax + 2, vmax, -1};
-		case X::AI:
-		case X::AM:
-		case X::AS:
-		case X::AZ:
-			return {a, e, vmax + 1, vmax, -1};
-
-		// Log2(8)=3 (2^3), but if vmax=8 then 4 bits will be required
-		// => Log2(9)=4
-		case X::BE:
-		{
-			return {a, e, static_cast<int>(Log2(1 << vmax)) + 1, (1 << vmax) - 1, -1};
-		}
-		case X::BM:
-		case X::BS:
-		case X::BZ:
-		{
-			return {a, e, static_cast<int>(Log2(1 << vmax)), (1 << vmax) - 1, -1};
-		}
-
 		// "0" is a category => vmax+1 categories
-		case X::CE:
-			return {a, e, vmax + 2, vmax, -1};
-		case X::CI:
-		case X::CM:
-		case X::CS:
-		case X::CZ:
+		case X::CAT:
 			return {a, e, vmax + 1, vmax, -1};
-
-		case X::LE:
-			return {a, e, 2, vmax, -1};
-		case X::LM:
-		case X::LS:
-		case X::LZ:
-			return {a, e, 1, vmax, -1};
-
-		case X::EE:
-			return {a, e, 2, vmax, slope};
-		case X::EM:
-		case X::ES:
-		case X::EZ:
-			return {a, e, 1, vmax, slope};
-
+		case X::LIN:
 		case X::RAW:
 			return {a, e, 1, vmax, -1};
 		default:
 			throw std::runtime_error("Unexpected encoding: " + std::to_string(EI(e)));
 	}
 }
+
+// TODO: many of these constants may be redundant in v15
 
 // 0-6 regular; 7=war machines; 8=other (summoned, commander, etc.)
 constexpr int STACK_SLOT_WARMACHINES = 7;
@@ -220,13 +156,13 @@ struct EncodingTraits<Graph::NodeAttributes::Global>
     static constexpr encoding_type encoding = {
 		// LS is the correct encoding for BATTLE_ROUND, but since it replaces BATTLE_SIDE
 		// which had n=2 => use LE to keep the dimensions unchanged.
-		E5(A::BATTLE_WINNER, X::CE, 1), // NULL means ongoing battle
-		E5(A::BATTLE_ROUND, X::LE, MAX_ROUNDS + 1),
-		E5(A::HAS_UPPER_TOWER, X::BS, 1),
-		E5(A::HAS_MIDDLE_TOWER, X::BS, 1),
-		E5(A::HAS_BOTTOM_TOWER, X::BS, 1),
-		E5(A::HAS_GATE_CORPSE, X::BS, 1),
-		E5(A::HAS_BRIDGE_CORPSE, X::BS, 1),
+		E5(A::BATTLE_WINNER, X::CAT, 2), // 0=attacker, 1=defender, 2=no winner (e.g. ongonig battle)
+		E5(A::BATTLE_ROUND, X::LIN, MAX_ROUNDS + 1),
+		E5(A::HAS_UPPER_TOWER, X::RAW, 1),
+		E5(A::HAS_MIDDLE_TOWER, X::RAW, 1),
+		E5(A::HAS_BOTTOM_TOWER, X::RAW, 1),
+		E5(A::HAS_GATE_CORPSE, X::RAW, 1),
+		E5(A::HAS_BRIDGE_CORPSE, X::RAW, 1),
 	};
 };
 
@@ -237,14 +173,14 @@ struct EncodingTraits<Graph::NodeAttributes::Player>
     static constexpr auto element_type = Graph::ElementType::NODE_PLAYER;
     static constexpr std::string_view name = "Player";
     static constexpr encoding_type encoding = {
-		E5(A::BATTLE_SIDE, X::CS, 1),
-		E5(A::IS_ACTIVE, X::BS, 1),
-		E5(A::ARMY_VALUE_NOW_REL, X::LS, 1000), //     (army_value_now / global_value_now)
-		E5(A::ARMY_HP_NOW_REL, X::LS, 1000), //        (army_hp_now / global_hp_now)
-		E5(A::VALUE_KILLED_NOW_REL, X::LS, 1000), //   (value_killed_this_turn / global_value_last_turn)
-		E5(A::VALUE_LOST_NOW_REL, X::LS, 1000), //     (value_lost_this_turn / global_value_last_turn)
-		E5(A::DMG_DEALT_NOW_REL, X::LS, 1000), //      (dmg_dealt_this_turn / global_hp_last_turn)
-		E5(A::DMG_RECEIVED_NOW_REL, X::LS, 1000), //   (dmg_received_this_turn / global_hp_last_turn)
+		E5(A::BATTLE_SIDE, X::CAT, 1),
+		E5(A::IS_ACTIVE, X::RAW, 1),
+		E5(A::ARMY_VALUE_NOW_REL, X::LIN, 1000), //     (army_value_now / global_value_now)
+		E5(A::ARMY_HP_NOW_REL, X::LIN, 1000), //        (army_hp_now / global_hp_now)
+		E5(A::VALUE_KILLED_NOW_REL, X::LIN, 1000), //   (value_killed_this_turn / global_value_last_turn)
+		E5(A::VALUE_LOST_NOW_REL, X::LIN, 1000), //     (value_lost_this_turn / global_value_last_turn)
+		E5(A::DMG_DEALT_NOW_REL, X::LIN, 1000), //      (dmg_dealt_this_turn / global_hp_last_turn)
+		E5(A::DMG_RECEIVED_NOW_REL, X::LIN, 1000), //   (dmg_received_this_turn / global_hp_last_turn)
 	};
 };
 
@@ -255,40 +191,41 @@ struct EncodingTraits<Graph::NodeAttributes::Unit>
     static constexpr Graph::ElementType element_type = Graph::ElementType::NODE_UNIT;
     static constexpr std::string_view name = "Unit";
     static constexpr encoding_type encoding = {
-        E5(A::VALUE_REL, X::LS, 1000), // stack_value_now / global_value_now
-        E5(A::SHOTS, X::LS, 32), // sharpshooter is 32
-        E5(A::IS_ACTIVE, X::BS, 1),
-        E5(A::IS_ENEMY, X::BS, 1),
-        E5(A::IS_SLEEPING, X::BS, 1),
-        E5(A::IS_WAR_MACHINE, X::BS, 1),
-        E5(A::HAS_ADDITIONAL_ATTACK, X::BS, 1),
-        E5(A::HAS_ALL_AROUND_ATTACK, X::BS, 1),
-        E5(A::HAS_BLOCKS_RETALIATION, X::BS, 1),
-        E5(A::HAS_DEATH_CLOUD, X::BS, 1),
-        E5(A::HAS_DOUBLE_DAMAGE_CHANCE, X::LS, 1000), // v=chance
-        E5(A::HAS_FIREBALL, X::BS, 1),
-        E5(A::HAS_FLYING, X::BS, 1),
-        E5(A::HAS_LIFE_DRAIN, X::BS, 1),
-        E5(A::HAS_NON_LIVING, X::BS, 1),
-        E5(A::HAS_NO_MELEE_PENALTY, X::BS, 1),
-        E5(A::HAS_RETURN_AFTER_STRIKE, X::BS, 1),
-        E5(A::HAS_THREE_HEADED_ATTACK, X::BS, 1),
-        E5(A::HAS_TWO_HEX_ATTACK_BREATH, X::BS, 1),
-        E5(A::HAS_AGE, X::BS, 3), // 			 	v=rounds
-        E5(A::HAS_AGE_ATTACK, X::LS, 1000), //      v=chance
-        E5(A::HAS_BIND, X::BS, 3), //            	v=rounds
-        E5(A::HAS_BIND_ATTACK, X::LS, 1000), //     v=chance
-        E5(A::HAS_BLIND, X::BS, 3), //           	v=rounds
-        E5(A::HAS_BLIND_ATTACK, X::LS, 1000), //    v=chance
-        E5(A::HAS_CURSE, X::BS, 3), //           	v=rounds
-        E5(A::HAS_CURSE_ATTACK, X::LS, 1000), //    v=chance
-        E5(A::HAS_DISPEL_ATTACK, X::LS, 1000), //   v=chance
-        E5(A::HAS_PETRIFY, X::BS, 3), //         	v=rounds
-        E5(A::HAS_PETRIFY_ATTACK, X::LS, 1000), //  v=chance
-        E5(A::HAS_POISON, X::BS, 3), //          	v=rounds
-        E5(A::HAS_POISON_ATTACK, X::LS, 1000), //   v=chance
-        E5(A::HAS_WEAKNESS, X::BS, 3), //        	v=rounds
-        E5(A::HAS_WEAKNESS_ATTACK, X::LS, 1000), // v=chance
+        E5(A::VALUE_REL, X::LIN, 1000), // stack_value_now / global_value_now
+        E5(A::SHOTS, X::LIN, 32), // sharpshooter is 32
+        E5(A::DMG_UNCERTAINTY, X::LIN, 1),
+        E5(A::IS_ACTIVE, X::RAW, 1),
+        E5(A::IS_ENEMY, X::RAW, 1),
+        E5(A::IS_SLEEPING, X::RAW, 1),
+        E5(A::IS_WAR_MACHINE, X::RAW, 1),
+        E5(A::HAS_ADDITIONAL_ATTACK, X::RAW, 1),
+        E5(A::HAS_ALL_AROUND_ATTACK, X::RAW, 1),
+        E5(A::HAS_BLOCKS_RETALIATION, X::RAW, 1),
+        E5(A::HAS_DEATH_CLOUD, X::RAW, 1),
+        E5(A::HAS_DOUBLE_DAMAGE_CHANCE, X::LIN, 1000), // v=chance
+        E5(A::HAS_FIREBALL, X::RAW, 1),
+        E5(A::HAS_FLYING, X::RAW, 1),
+        E5(A::HAS_LIFE_DRAIN, X::RAW, 1),
+        E5(A::HAS_NON_LIVING, X::RAW, 1),
+        E5(A::HAS_NO_MELEE_PENALTY, X::RAW, 1),
+        E5(A::HAS_RETURN_AFTER_STRIKE, X::RAW, 1),
+        E5(A::HAS_THREE_HEADED_ATTACK, X::RAW, 1),
+        E5(A::HAS_TWO_HEX_ATTACK_BREATH, X::RAW, 1),
+        E5(A::HAS_AGE, X::RAW, 3), // 			 	v=rounds
+        E5(A::HAS_AGE_ATTACK, X::LIN, 1000), //      v=chance
+        E5(A::HAS_BIND, X::RAW, 3), //            	v=rounds
+        E5(A::HAS_BIND_ATTACK, X::LIN, 1000), //     v=chance
+        E5(A::HAS_BLIND, X::RAW, 3), //           	v=rounds
+        E5(A::HAS_BLIND_ATTACK, X::LIN, 1000), //    v=chance
+        E5(A::HAS_CURSE, X::RAW, 3), //           	v=rounds
+        E5(A::HAS_CURSE_ATTACK, X::LIN, 1000), //    v=chance
+        E5(A::HAS_DISPEL_ATTACK, X::LIN, 1000), //   v=chance
+        E5(A::HAS_PETRIFY, X::RAW, 3), //         	v=rounds
+        E5(A::HAS_PETRIFY_ATTACK, X::LIN, 1000), //  v=chance
+        E5(A::HAS_POISON, X::RAW, 3), //          	v=rounds
+        E5(A::HAS_POISON_ATTACK, X::LIN, 1000), //   v=chance
+        E5(A::HAS_WEAKNESS, X::RAW, 3), //        	v=rounds
+        E5(A::HAS_WEAKNESS_ATTACK, X::LIN, 1000), // v=chance
 	};
 };
 
@@ -299,10 +236,10 @@ struct EncodingTraits<Graph::NodeAttributes::Hex>
     static constexpr auto element_type = Graph::ElementType::NODE_HEX;
     static constexpr std::string_view name = "Hex";
 	static constexpr encoding_type encoding = {
-		E5(A::Y_COORD, X::CS, 10),
-		E5(A::X_COORD, X::CS, 14),
-		E5(A::STATE_MASK, X::BS, EI(HexState::_count)),
-		E5(A::WALL_HEALTH, X::LE, MAX_WALL_HEALTH),
+		E5(A::Y_COORD, X::CAT, 10),
+		E5(A::X_COORD, X::CAT, 14),
+		E5(A::STATE_MASK, X::RAW, EI(HexState::_count)),
+		E5(A::WALL_HEALTH, X::LIN, MAX_WALL_HEALTH),
 	};
 };
 
@@ -360,7 +297,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Hex_Adjacent_Hex>
 	static constexpr auto element_type = Graph::ElementType::EDGE_HEX_ADJACENT_HEX;
 	static constexpr std::string_view name = "Hex_Adjacent_Hex";
 	static constexpr encoding_type encoding = {
-		E5(A::DIRECTION, X::CS, 5),
+		E5(A::DIRECTION, X::CAT, 5),
 	};
 };
 
@@ -374,7 +311,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_ACTS_BEFORE_UNIT;
 	static constexpr std::string_view name = "Unit_ActsBefore_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::TIMES, X::LS, 2),
+		E5(A::TIMES, X::LIN, 2),
 	};
 };
 
@@ -386,18 +323,11 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>
     static constexpr std::string_view name = "Unit_MeleeDmg_Unit";
 
 	static constexpr encoding_type encoding = {
-		E5(A::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
-		E5(A::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
-		E5(A::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
-		E5(A::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
-		E5(A::ATTACK_VALUE_REL_BF, X::LS, 1000),
-		E5(A::RETAL_DMG_MEAN_REL_OTHER, X::LS, 1000),
-		E5(A::RETAL_DMG_MEAN_REL_BF, X::LS, 1000),
-		E5(A::RETAL_DMG_STD_REL_OTHER, X::LS, 1000),
-		E5(A::RETAL_DMG_STD_REL_BF, X::LS, 1000),
-		E5(A::RETAL_VALUE_REL_BF, X::LS, 1000),
-		E5(A::ATTACK_ONEKILL_CHANCE, X::LS, 1000),
-		E5(A::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
+		E5(A::ESTIMATED_ATTACKER_HPDIFF_REL_SELF, X::LIN, 1000),
+		E5(A::ESTIMATED_ATTACKER_HPDIFF_REL_BF, X::LIN, 1000),
+		E5(A::ESTIMATED_DEFENDER_HPDIFF_REL_SELF, X::LIN, 1000),
+		E5(A::ESTIMATED_DEFENDER_HPDIFF_REL_BF, X::LIN, 1000),
+		E5(A::ESTIMATED_NET_VALUE_REL_BF, X::LIN, 1000),
 	};
 };
 
@@ -408,13 +338,11 @@ struct EncodingTraits<Graph::EdgeAttributes::Unit_ShootDmg_Unit>
 	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_SHOOT_DMG_UNIT;
 	static constexpr std::string_view name = "Unit_ShootDmg_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::ATTACK_DMG_MEAN_REL_OTHER, X::LS, 1000),
-		E5(A::ATTACK_DMG_MEAN_REL_BF, X::LS, 1000),
-		E5(A::ATTACK_DMG_STD_REL_OTHER, X::LS, 1000),
-		E5(A::ATTACK_DMG_STD_REL_BF, X::LS, 1000),
-		E5(A::ATTACK_VALUE_REL_BF, X::LS, 1000),
-		E5(A::ATTACK_ONEKILL_CHANCE, X::LS, 1000),
-		E5(A::ATTACK_ALLKILL_CHANCE, X::LS, 1000),
+		E5(A::ESTIMATED_ATTACKER_HPDIFF_REL_SELF, X::LIN, 1000),
+		E5(A::ESTIMATED_ATTACKER_HPDIFF_REL_BF, X::LIN, 1000),
+		E5(A::ESTIMATED_DEFENDER_HPDIFF_REL_SELF, X::LIN, 1000),
+		E5(A::ESTIMATED_DEFENDER_HPDIFF_REL_BF, X::LIN, 1000),
+		E5(A::ESTIMATED_NET_VALUE_REL_BF, X::LIN, 1000),
 	};
 };
 
@@ -425,7 +353,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_EndsAt_Hex>
 	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENDS_AT_HEX;
 	static constexpr std::string_view name = "Action_EndsAt_Hex";
 	static constexpr encoding_type encoding = {
-		E5(A::IS_REAR, X::BS, 1),
+		E5(A::IS_REAR, X::RAW, 1),
 	};
 };
 
@@ -441,7 +369,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
 	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT;
 	static constexpr std::string_view name = "Action_ExposesToShootFrom_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::DMG_MULT, X::LS, 1000),
+		E5(A::DMG_MULT, X::LIN, 1000),
 	};
 };
 
@@ -452,7 +380,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_Melees_Unit>
 	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_MELEES_UNIT;
 	static constexpr std::string_view name = "Action_Melees_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::IS_PRIMARY_TARGET, X::CS, 1),
+		E5(A::IS_PRIMARY_TARGET, X::CAT, 1),
 	};
 };
 
@@ -463,7 +391,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_Shoots_Unit>
 	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_SHOOTS_UNIT;
 	static constexpr std::string_view name = "Action_Shoots_Unit";
 	static constexpr encoding_type encoding = {
-		E5(A::IS_PRIMARY_TARGET, X::CS, 1),
+		E5(A::IS_PRIMARY_TARGET, X::CAT, 1),
 	};
 };
 
@@ -481,11 +409,9 @@ consteval bool EncodingIsValid()
     // (a return value is still needed to flag the problematic attribute type)
 	static_assert(UninitializedEncodingAttributes(encoding) == 0, "Found uninitialized elements");
 	static_assert(DisarrayedEncodingAttributeIndex(encoding) == -1, "Found wrong element at this index");
-	static_assert(MisconfiguredExpnormSlopeIndex(encoding) == -1, "Found miscalculated binary vmax element at this index");
 
     return UninitializedEncodingAttributes(encoding) == 0
-        && DisarrayedEncodingAttributeIndex(encoding) == -1
-        && MisconfiguredExpnormSlopeIndex(encoding) == -1;
+        && DisarrayedEncodingAttributeIndex(encoding) == -1;
 }
 
 

@@ -50,34 +50,4 @@ namespace MMAI::BAI::V15::Encoder
 
 		return out;
 	}
-
-	void EncodeAccumulatingExplicitNull(int v, int n, BS & out);
-	void EncodeAccumulatingImplicitNull(int v, int n, BS & out);
-	void EncodeAccumulatingMaskingNull(int v, int n, BS & out);
-	void EncodeAccumulatingStrictNull(int v, int n, BS & out);
-	void EncodeAccumulatingZeroNull(int v, int n, BS & out);
-
-	void EncodeBinaryExplicitNull(int v, int n, BS & out);
-	void EncodeBinaryMaskingNull(int v, int n, BS & out);
-	void EncodeBinaryStrictNull(int v, int n, BS & out);
-	void EncodeBinaryZeroNull(int v, int n, BS & out);
-
-	void EncodeCategoricalExplicitNull(int v, int n, BS & out);
-	void EncodeCategoricalImplicitNull(int v, int n, BS & out);
-	void EncodeCategoricalMaskingNull(int v, int n, BS & out);
-	void EncodeCategoricalStrictNull(int v, int n, BS & out);
-	void EncodeCategoricalZeroNull(int v, int n, BS & out);
-
-	void EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out);
-	void EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out);
-	void EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out);
-	void EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out);
-
-	void EncodeLinnormExplicitNull(int v, int vmax, BS & out);
-	void EncodeLinnormMaskingNull(int v, int vmax, BS & out);
-	void EncodeLinnormStrictNull(int v, int vmax, BS & out);
-	void EncodeLinnormZeroNull(int v, int vmax, BS & out);
-
-	float CalcExpnorm(int v, int vmax, double slope);
-	float CalcLinnorm(int v, int vmax);
 };

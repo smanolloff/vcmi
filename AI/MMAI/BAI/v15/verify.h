@@ -10,10 +10,9 @@
 
 #pragma once
 
-#include "BAI/v15/graph/graph.h"
 #include "BAI/v15/state.h"
 
 namespace MMAI::BAI::V15
 {
-void Verify(const Graph::Graph & G, const State * state);
+void Verify(const State * state);
 }

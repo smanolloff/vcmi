@@ -11,19 +11,16 @@
 #include "StdInc.h"
 #include "AI/BattleAI/BattleEvaluator.h"
 #include "BAI/fallback/MLBot.h"
-#include "BAI/v15/graph/edges/generic.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleStateInfoForRetreat.h"
 #include "battle/CBattleInfoEssentials.h"
-#include "battle/ReachabilityInfo.h"
 #include "callback/CBattleCallback.h"
 #include "schema/v15/constants.h"
-#include "spells/CSpellHandler.h"
 
 #include "BAI/v15/BAI.h"
 #include "BAI/v15/action.h"
-#include "BAI/v15/hexaction.h"
 #include "BAI/v15/render.h"
+#include "BAI/v15/verify.h"
 #include "BAI/v15/supplementary_data.h"
 #include "common.h"
 #include "schema/base.h"
@@ -184,9 +181,9 @@ bool BAI::maybeCastSpell(const CStack * astack, const BattleID & bid)
 	if(battle->battleCanCastSpell(hero, spells::Mode::HERO) != ESpellCastProblem::OK)
 		return false;
 
-	auto lv = state->G->getByExtraIndex<N::Player>(BattleSide::LEFT_SIDE)->attr(PA::ARMY_VALUE_NOW_ABS);
-	auto rv = state->G->getByExtraIndex<N::Player>(BattleSide::RIGHT_SIDE)->attr(PA::ARMY_VALUE_NOW_ABS);
-	auto vratio = static_cast<float>(lv) / rv;
+	auto lv = state->G->getByExtraIndex<N::Player>(BattleSide::LEFT_SIDE)->attr(PA::ARMY_VALUE_NOW_REL);
+	auto rv = state->G->getByExtraIndex<N::Player>(BattleSide::RIGHT_SIDE)->attr(PA::ARMY_VALUE_NOW_REL);
+	auto vratio = static_cast<float>(lv) / static_cast<float>(rv);
 	if(battle->battleGetMySide() == BattleSide::RIGHT_SIDE)
 		vratio = 1 / vratio;
 

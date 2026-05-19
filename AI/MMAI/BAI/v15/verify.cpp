@@ -161,7 +161,7 @@ namespace
 }
 
 // This function used during model development and is never called otherwise
-void Verify(const Graph::Graph & G, const State * state) // NOSONAR - function used for debugging only
+void Verify(const State * state) // NOSONAR - function used for debugging only
 {
     const auto & battle = state->battle;
     const CStack * astack = nullptr;

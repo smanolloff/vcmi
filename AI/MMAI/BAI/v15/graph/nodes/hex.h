@@ -37,10 +37,10 @@ namespace detail
 
 class Hex : public detail::Hex_Base
 {
-	using HA = S15::Graph::NodeAttributes::Hex;
 	using HS = S15::HexState;
 	using HexAction = S15::HexAction;
 	using HexActMask = std::bitset<EI(HexAction::_count)>;
+	static_assert(EI(HexAction::_count) <= std::numeric_limits<int>::digits); // must fit into an int
 public:
 	using HexActionHex = std::array<BattleHex, 12>;
 
