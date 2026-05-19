@@ -293,6 +293,10 @@ namespace
 	 * 		* FEROCITY
 	 *
 	 * This is an attempt to reimplement it here.
+	 *
+	 * TODO: gather statistical data for simulated<>actual exchange
+	 *       to compare.
+	 *
 	 */
 	UnitStates SimulateAttackAction(
 		const CPlayerBattleCallback & battle,
@@ -1584,8 +1588,6 @@ namespace
 			if (!inserted)
 				continue;
 
-			// const auto & unit = move->by; already set
-			// const auto & hex = move->endsAt.at(0); already set
 			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
 			auto id = CalcActionId(AT::AMOVE, unit, ounit, hex);

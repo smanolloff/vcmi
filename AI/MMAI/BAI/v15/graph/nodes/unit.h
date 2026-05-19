@@ -61,7 +61,8 @@ public:
 
 	const CStack & cstack;
 	const std::string alias;
-	int valueOne;
+	const bool isActive;
+	const int valueOne;
 private:
 	void processBonuses();
 };
