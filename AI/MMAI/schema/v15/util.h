@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include "schema/v15/types.h"
-
 namespace MMAI::Schema::V15
 {
 /*
@@ -52,7 +50,7 @@ constexpr int UninitializedEncodingAttributes(T elems)
 	using E5Type = typename T::value_type;
 
 	// Stack Attribute / HexAttribute:
-	using EnumType = typename std::tuple_element<0, E5Type>::type;
+	using EnumType = std::tuple_element_t<0, E5Type>;
 
 	for(int i = 0; i < EI(EnumType::_count); i++)
 	{
@@ -75,103 +73,11 @@ constexpr int DisarrayedEncodingAttributeIndex(T elems)
 	using E5Type = typename T::value_type;
 
 	// Stack Attribute / HexAttribute:
-	using EnumType = typename std::tuple_element<0, E5Type>::type;
+	using EnumType = std::tuple_element_t<0, E5Type>;
 
 	for(int i = 0; i < EI(EnumType::_count); i++)
 	{
 		if(std::get<0>(elems.at(i)) != static_cast<EnumType>(i))
-			return i;
-	}
-
-	return -1;
-}
-
-/*
- * Compile-time calculator for the number of unused values
- * in a (potentially sub-optimal) BINARY encoding definition.
- * Thue number of unuxed values is returned.
- *
- * Example:
- * `vmax=130` means that 8 bits will be needed for the necoding (`n=8`).
- * The maximum number of values which can be encoded with 8 bits is 255
- * so there are 255-131=125 unused values => `125` is returned.
- */
-constexpr int BinaryAttributeUnusedValues(Encoding e, int n, int vmax)
-{
-	switch(e)
-	{
-		case Encoding::BINARY_EXPLICIT_NULL:
-			return ((1 << (n - 1)) - 1 - vmax);
-			break;
-		case Encoding::BINARY_MASKING_NULL:
-			return ((1 << n) - 1 - vmax);
-			break;
-		case Encoding::BINARY_STRICT_NULL:
-			return ((1 << n) - 1 - vmax);
-			break;
-		case Encoding::BINARY_ZERO_NULL:
-			return ((1 << n) - 1 - vmax);
-		default:
-			return 0;
-	}
-	return 0;
-}
-
-template<typename T>
-constexpr int MiscalculatedBinaryAttributeUnusedValues(T elems)
-{
-	int i = MiscalculatedBinaryAttributeIndex(elems);
-	if(i == -1)
-		return 0;
-	auto [_, e, n, vmax, _p] = elems.at(i);
-	return BinaryAttributeUnusedValues(e, n, vmax);
-}
-
-/*
- * Compile-time locator of misconfigured EXPNORM encodings:
- * * checks if p <= 0 (must be positive)
- */
-template<typename T>
-constexpr int MisconfiguredExpnormSlopeIndex(T elems)
-{
-	using E5Type = typename T::value_type;
-	using EnumType = typename std::tuple_element<0, E5Type>::type;
-
-	for(int i = 0; i < EI(EnumType::_count); i++)
-	{
-		auto [_, e, _n, vmax, p] = elems.at(i);
-		switch(e)
-		{
-			case Encoding::EXPNORM_EXPLICIT_NULL:
-			case Encoding::EXPNORM_MASKING_NULL:
-			case Encoding::EXPNORM_STRICT_NULL:
-			case Encoding::EXPNORM_ZERO_NULL:
-				if(p <= 0)
-					return i;
-				break;
-			default:
-				break;
-		}
-	}
-
-	return -1;
-}
-
-/*
- * Compile-time locator of sub-optimal BINARY encodings.
- * (see BinaryAttributeUnusedValues())
- * The index of the sub-optimal BINARY encoding is returned.
- */
-template<typename T>
-constexpr int MiscalculatedBinaryAttributeIndex(T elems)
-{
-	using E5Type = typename T::value_type;
-	using EnumType = typename std::tuple_element<0, E5Type>::type;
-
-	for(int i = 0; i < EI(EnumType::_count); i++)
-	{
-		auto [_, e, n, vmax, _p] = elems.at(i);
-		if(BinaryAttributeUnusedValues(e, n, vmax) > 0)
 			return i;
 	}
 
@@ -185,7 +91,7 @@ template<typename T>
 constexpr int EncodedSize(T elems)
 {
 	using E5Type = typename T::value_type;
-	using EnumType = typename std::tuple_element<0, E5Type>::type;
+	using EnumType = std::tuple_element_t<0, E5Type>;
 	int ret = 0;
 	for(int i = 0; i < EI(EnumType::_count); i++)
 	{

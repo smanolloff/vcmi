@@ -64,9 +64,9 @@ Hex::Hex(
 {
     auto [x, y] = CalcXY(bhex);
 
-    setattr(HA::Y_COORD, y);
-    setattr(HA::X_COORD, x);
-    setattr(HA::WALL_HEALTH, wallHP);
+    setattr(A::Y_COORD, y);
+    setattr(A::X_COORD, x);
+    setattr(A::WALL_HEALTH, wallHP);
     setStateMask(accessibility, obstacles, side, isGateOpen);
     finalize();
 }
@@ -75,13 +75,13 @@ Hex::Hex(
 std::string Hex::name() const
 {
     std::stringstream ss;
-    ss << detail::Hex_Base::name() << "(" << attr(HA::Y_COORD) << "," << attr(HA::X_COORD) << ")";
+    ss << detail::Hex_Base::name() << "(" << attr(A::Y_COORD) << "," << attr(A::X_COORD) << ")";
     return ss.str();
 }
 
 void Hex::finalize()
 {
-    attrs.at(EU(HA::STATE_MASK)) = static_cast<int>(statemask.to_ulong());
+    setattr(A::STATE_MASK, static_cast<int>(statemask.to_ulong()));
 }
 
 void Hex::setStateMask(

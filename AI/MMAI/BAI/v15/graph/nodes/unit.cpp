@@ -5,6 +5,7 @@
 #include "AI/MMAI/common.h"
 #include "bonuses/BonusEnum.h"
 #include "constants/EntityIdentifiers.h"
+#include "schema/v15/constants.h"
 
 #include <cmath>
 #include <iostream>
@@ -170,7 +171,7 @@ namespace
 }
 
 // static
-int Unit::GetValue(const CCreature* creature)
+int Unit::GetValue(const CCreature* creature, bool isClone, bool isSummon)
 {
     static const CreatureValues CREATURE_VALUES = InitCreatureValues();
 
@@ -185,7 +186,15 @@ int Unit::GetValue(const CCreature* creature)
             std::to_string(creature->getIndex())
         );
 
-    return it->second;
+    auto v = it->second;
+
+    if(isClone)
+        v *= 5;
+
+    if(isSummon)
+        v /= 5;
+
+    return v;
 }
 
 Unit::Unit(
@@ -195,23 +204,27 @@ Unit::Unit(
     int bfieldValue)
 : cstack(cstack)
 , alias(CalculateAlias(cstack))
+, valueOne(GetValue(cstack.unitType(), cstack.isClone(), cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER))
 {
 #ifdef ENABLE_ML
     if(cstack.creatureId().num > S15::CREATURE_ID_MAX)
         throw std::runtime_error("unknown creature id: " + std::to_string(cstack.creatureId().num));
 #endif
 
-    auto valueOne = GetValue(cstack.unitType());
-
-    if(cstack.isClone())
-        valueOne *= 5;
-    else if(cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER)
-        valueOne /= 5;
-
     auto value = valueOne * cstack.getCount();
 
+    // damage modifiers that care if attack is ranged (e.g. archery skill)
+    // would affect max and min proportionally which would have no effect
+    // on uncertainty calculations
+    auto dmgrange = cstack.getMaxDamage(false) - cstack.getMinDamage(false);
+    auto k = std::min(cstack.getCount(), 10); // see BattleInfo::getActualDamage()
+    auto dmgstd = std::sqrt((dmgrange * dmgrange) / (12.0 * k));
+    auto dmgmean = (cstack.getMaxDamage(false) + cstack.getMinDamage(false)) / 2.0;
+    auto dmgstdnorm = dmgstd / dmgmean; // relative uncertainty for the dmg dealt
+    std::cout << dmgrange << " " << k << " " << dmgstd << " " << dmgmean << " " << dmgstdnorm << " | " << permille(dmgstdnorm, 1) << "\n";
     setattr(UA::VALUE_REL, permille(value, bfieldValue));
     setattr(UA::SHOTS, cstack.shots.available());
+    setattr(UA::DMG_UNCERTAINTY, permille(dmgstdnorm, 1));
     setattr(UA::IS_ACTIVE, isActive);
     setattr(UA::IS_ENEMY, isEnemy);
 
@@ -344,7 +357,17 @@ Unit::Unit(
         }
     }
 
-    static_assert(EU(UA::_count) == 34, "whistleblower in case attributes change");
+    static_assert(EU(UA::_count) == 35, "whistleblower in case attributes change");
+
+    // Many remain unset, prevent validation errors for unset attributes
+    for (int i = 0; i < EU(A::_count); ++i)
+    {
+        if (guardflags.test(i))
+            continue;
+
+        attrs[i] = 0;
+        guardflags.set(i);
+    }
 }
 
 }

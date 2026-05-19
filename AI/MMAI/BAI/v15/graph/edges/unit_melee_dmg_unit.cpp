@@ -1,94 +1,31 @@
 #include "BAI/v15/graph/util.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
-#include <numbers>
 
 namespace MMAI::BAI::V15::Graph::Edges
 {
 
-namespace {
-    // chance to deal at least `target` dmg
-    double dmgChance(int target, int mindmg, int maxdmg, int k)
-    {
-        if (maxdmg < target || k <= 0)
-            return 0.0;
-        if (mindmg >= target)
-            return 1.0;
-
-        double mean = 0.5 * (mindmg + maxdmg);
-        double variance = ((maxdmg - mindmg) * (maxdmg - mindmg)) / (12.0 * k);
-        double stddev = std::sqrt(variance);
-        double z = (target - mean) / stddev;
-        double normalCdf = 0.5 * (1.0 + std::erf(z / std::numbers::sqrt2));
-        return 1.0 - normalCdf;
-    }
-}
-
 Unit_MeleeDmg_Unit::Unit_MeleeDmg_Unit(
     const std::shared_ptr<const Nodes::Unit> & srcNode,
     const std::shared_ptr<const Nodes::Unit> & dstNode,
-    const DamageEstimation & attackEstimate,
-    const DamageEstimation & retalEstimate,
+    int vdiffAttacker,
+    int vdiffDefender,
+    int hpdiffAttacker,
+    int hpdiffDefender,
     int battlefieldValue,
     int battlefieldHp
 ) : detail::Unit_MeleeDmg_Unit_Base(srcNode, dstNode)
 {
-    const auto & A_cstack = srcNode->cstack;
-    const auto & B_cstack = dstNode->cstack;
+    int netValue = vdiffAttacker - vdiffDefender;
+    int attackerHp = static_cast<int>(srcNode->cstack.getTotalHealth());
+    int defenderHp = static_cast<int>(dstNode->cstack.getTotalHealth());
 
-    auto A_dmg_min = static_cast<int>(attackEstimate.damage.min);
-    auto A_dmg_max = static_cast<int>(attackEstimate.damage.max);
-    auto A_dmg_range = A_dmg_max - A_dmg_min;
-    auto A_n = A_cstack.getCount();
-    auto A_k = std::min(A_n, 10); // see BattleInfo::getActualDamage()
-    auto A_dmg_mean = 0.5 * (A_dmg_min + A_dmg_max);
-    auto A_dmg_std = std::sqrt((A_dmg_range * A_dmg_range) / (12.0 * A_k));
-    auto A_hp = static_cast<int>(A_cstack.getAvailableHealth());
-    auto B_hp = static_cast<int>(B_cstack.getAvailableHealth());
-    auto B_firstHpLeft = static_cast<int>(B_cstack.getFirstHPleft());
+    setattr(A::ESTIMATED_NET_VALUE_REL_BF, permille(netValue, battlefieldValue));
+    setattr(A::ESTIMATED_ATTACKER_HPDIFF_REL_SELF, permille(hpdiffAttacker, attackerHp));
+    setattr(A::ESTIMATED_ATTACKER_HPDIFF_REL_BF, permille(hpdiffAttacker, battlefieldHp));
+    setattr(A::ESTIMATED_DEFENDER_HPDIFF_REL_SELF, permille(hpdiffDefender, defenderHp));
+    setattr(A::ESTIMATED_DEFENDER_HPDIFF_REL_BF, permille(hpdiffDefender, battlefieldHp));
 
-    // XXX: Calculating kills from mean dmg is more accurate
-    // than averaging `attack.kills`
-    auto A_kills_mean = A_dmg_mean / B_hp;
-    auto A_onekill_chance = dmgChance(B_firstHpLeft, A_dmg_min, A_dmg_max, A_k);
-    auto A_allkill_chance = dmgChance(B_hp, A_dmg_min, A_dmg_max, A_k);
-
-    // TODO: add death stare bonus here:
-    // - if qty<10  => add it to onekill chance (+0.1*N)
-    // - if qty>10  => add it directly as dmg (+HP*N/10)
-    // TODO2:
-    // - check out how death stare is handled in attack logs - maybe add it as dmg?
-    //
-
-    // For B_n, use A_kills_mean to simplify calculations.
-    // (otherwise we must calculate a mixture distribution)
-    // This has the following known issue:
-    // If B is 1 archangel which has 50% chance to die from A's attack
-    // B_damage min=0 max=50 mean=25 (which can be very misleading)
-
-
-    auto B_min = static_cast<int>(retalEstimate.damage.min);
-    auto B_max = static_cast<int>(retalEstimate.damage.max);
-    auto B_dmg_range = B_max - B_min;
-    auto B_n = std::max(B_cstack.getCount() - A_kills_mean, 0.0);
-    auto B_k = std::min(static_cast<int>(std::round(B_n)), 10); // see BattleInfo::getActualDamage()
-    auto B_dmg_mean = 0.5 * (B_min + B_max);
-    auto B_dmg_std = std::sqrt((B_dmg_range * B_dmg_range) / (12.0 * B_k));
-    auto B_kills_mean = B_dmg_mean / A_hp;
-
-    setattr(A::ATTACK_DMG_MEAN_REL_OTHER, permille(A_dmg_mean, B_hp));
-    setattr(A::ATTACK_DMG_MEAN_REL_BF, permille(A_dmg_mean, battlefieldHp));
-    setattr(A::ATTACK_DMG_STD_REL_OTHER, permille(A_dmg_std, B_hp));
-    setattr(A::ATTACK_DMG_STD_REL_BF, permille(A_dmg_std, battlefieldHp));
-    setattr(A::ATTACK_VALUE_REL_BF, permille(A_kills_mean * Nodes::Unit::GetValue(B_cstack.unitType()), battlefieldValue));
-    setattr(A::RETAL_DMG_MEAN_REL_OTHER, permille(B_dmg_mean, A_hp));
-    setattr(A::RETAL_DMG_MEAN_REL_BF, permille(B_dmg_mean, battlefieldHp));
-    setattr(A::RETAL_DMG_STD_REL_OTHER, permille(B_dmg_std, A_hp));
-    setattr(A::RETAL_DMG_STD_REL_BF, permille(B_dmg_std, battlefieldHp));
-    setattr(A::RETAL_VALUE_REL_BF, permille(B_kills_mean * Nodes::Unit::GetValue(A_cstack.unitType()), battlefieldValue));
-    setattr(A::ATTACK_ONEKILL_CHANCE, permille(A_onekill_chance, 1));
-    setattr(A::ATTACK_ALLKILL_CHANCE, permille(A_allkill_chance, 1));
-
-    static_assert(static_cast<size_t>(A::_count) == 12, "whistleblower in case attributes change");
+    static_assert(static_cast<size_t>(A::_count) == 5, "whistleblower in case attributes change");
 }
 
 }

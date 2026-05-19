@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include "BAI/v15/state.h"
 #include "BAI/v15/action.h"
-#include "schema/base.h"
 
 namespace MMAI::BAI::V15
 {
-std::string Render(const Schema::IState * istate, const Action * action);
+std::string Render(const State * state, const Action * action);
 }

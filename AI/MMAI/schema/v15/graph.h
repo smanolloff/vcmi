@@ -90,6 +90,7 @@ namespace MMAI::Schema::V15::Graph
         {
             VALUE_REL, // stack_value_now / global_value_now
             SHOTS,
+            DMG_UNCERTAINTY, // dmg uncertainty, e.g. naga=0, orc(1x)=0.25, orc(10x)=0.08
             IS_ACTIVE,
             IS_ENEMY,
             IS_SLEEPING,
@@ -166,32 +167,21 @@ namespace EdgeAttributes
 
         enum class Unit_MeleeDmg_Unit : uint8_t
         {
-            ATTACK_DMG_MEAN_REL_OTHER,
-            ATTACK_DMG_MEAN_REL_BF,
-            ATTACK_DMG_STD_REL_OTHER,
-            ATTACK_DMG_STD_REL_BF,
-            ATTACK_VALUE_REL_BF,
-            RETAL_DMG_MEAN_REL_OTHER,
-            RETAL_DMG_MEAN_REL_BF,
-            RETAL_DMG_STD_REL_OTHER,
-            RETAL_DMG_STD_REL_BF,
-            RETAL_VALUE_REL_BF,
-            ATTACK_ONEKILL_CHANCE,
-            ATTACK_ALLKILL_CHANCE,
-            // RETAL_ONEKILL_CHANCE,  // too hard to calculate
-            // RETAL_ALLKILL_CHANCE,  // too hard to calculate
+            ESTIMATED_ATTACKER_HPDIFF_REL_SELF,
+            ESTIMATED_ATTACKER_HPDIFF_REL_BF,
+            ESTIMATED_DEFENDER_HPDIFF_REL_SELF,
+            ESTIMATED_DEFENDER_HPDIFF_REL_BF,
+            ESTIMATED_NET_VALUE_REL_BF,  // value from attacker's POV
             _count
         };
 
         enum class Unit_ShootDmg_Unit : uint8_t
         {
-            ATTACK_DMG_MEAN_REL_OTHER,
-            ATTACK_DMG_MEAN_REL_BF,
-            ATTACK_DMG_STD_REL_OTHER,
-            ATTACK_DMG_STD_REL_BF,
-            ATTACK_VALUE_REL_BF,
-            ATTACK_ONEKILL_CHANCE,
-            ATTACK_ALLKILL_CHANCE,
+            ESTIMATED_ATTACKER_HPDIFF_REL_SELF,
+            ESTIMATED_ATTACKER_HPDIFF_REL_BF,
+            ESTIMATED_DEFENDER_HPDIFF_REL_SELF,
+            ESTIMATED_DEFENDER_HPDIFF_REL_BF,
+            ESTIMATED_NET_VALUE_REL_BF,  // value from attacker's POV
             _count
         };
 

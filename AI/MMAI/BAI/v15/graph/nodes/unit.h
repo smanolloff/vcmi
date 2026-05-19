@@ -53,10 +53,15 @@ public:
         return ss.str();
     }
 
-	static int GetValue(const CCreature* creature);
+	static int GetValue(
+		const CCreature* creature,
+		bool isClone = false,
+		bool isSummon = false
+	);
 
 	const CStack & cstack;
 	const std::string alias;
+	int valueOne;
 private:
 	void processBonuses();
 };

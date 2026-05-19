@@ -19,6 +19,7 @@
 #include "CMT.h"
 #include "AI/MMAI/schema/base.h"
 
+#include <boost/stacktrace/stacktrace.hpp>
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 #include <stdexcept>
@@ -66,6 +67,7 @@
 #include "render/IRenderHandler.h"
 #include "vstd/CLoggerBase.h"
 #include "windows/InfoWindows.h"
+
 
 static std::optional<std::string> criticalInitializationError;
 std::atomic<bool> headlessQuit = false;
@@ -513,9 +515,28 @@ namespace ML {
         }
     }
 
+    namespace {
+        void terminate_handler() {
+            if (auto eptr = std::current_exception()) {
+                try {
+                    std::rethrow_exception(eptr);
+                } catch (const std::exception& e) {
+                    logGlobal->error("Exception: " + std::string(e.what()));
+                } catch (...) {
+                    logGlobal->error("Exception: unknown");
+                }
+            }
+
+            std::cerr << boost::stacktrace::stacktrace() << "\n";
+            std::abort();
+        }
+    }
+
     void start_vcmi() {
         if (mapname == "")
             throw std::runtime_error("call init_vcmi first");
+
+        std::set_terminate(terminate_handler);
 
         logGlobal->info("friendlyAI -> " + settings["ai"]["combatAlliedAI"].String());
         logGlobal->info("playerAI -> " + settings["ai"]["adventureEnemyAI"].String());

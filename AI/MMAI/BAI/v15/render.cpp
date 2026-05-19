@@ -9,6 +9,8 @@
  */
 
 #include "BAI/v15/render.h"
+#include "BAI/v15/graph/edges/generic.h"
+#include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/state.h"
 
 #include "schema/v15/graph.h"
@@ -18,23 +20,25 @@
 namespace MMAI::BAI::V15
 {
 namespace S15 = Schema::V15;
-using ET = S15::Graph::ElementType;
-using GA = S15::Graph::NodeAttributes::Global;
-using PA = S15::Graph::NodeAttributes::Player;
-using UA = S15::Graph::NodeAttributes::Unit;
-using HA = S15::Graph::NodeAttributes::Hex;
-using AA = S15::Graph::NodeAttributes::Action;
+namespace N = Graph::Nodes;
+namespace E = Graph::Edges;
+
+using GA = N::Global::Attribute;
+using PA = N::Player::Attribute;
+using UA = N::Unit::Attribute;
+using HA = N::Hex::Attribute;
+using AA = N::Action::Attribute;
+
 namespace EA = S15::Graph::EdgeAttributes;
 
-using INode = S15::Graph::INode;
-using IEdge = S15::Graph::IEdge;
+using PlayerPtr = std::shared_ptr<const N::Player>;
+using UnitPtr = std::shared_ptr<const N::Unit>;
+using HexPtr = std::shared_ptr<const N::Hex>;
+using ActionPtr = std::shared_ptr<const N::Action>;
 
-// Just for code readability
-using IGlobal = INode;
-using IPlayer = INode;
-using IUnit = INode;
-using IHex = INode;
-using IAction = INode;
+template <typename E>
+using EdgePtr = std::shared_ptr<const E>;
+
 
 // This function used during model development and is never called otherwise
 void Verify(const State * state) // NOSONAR - function used for debugging only
@@ -45,36 +49,31 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 
 namespace
 {
-    std::string PadLeft(const std::string & input, size_t desiredLength, char paddingChar)
+    std::string PadLeft(const std::string & input, int desiredLength, char paddingChar)
     {
         std::ostringstream ss;
         ss << std::right << std::setfill(paddingChar) << std::setw(desiredLength) << input;
         return ss.str();
     }
 
-    template <typename T1, typename T2>
-    int attr(const T1 * elem, T2 attr)
+    std::map<UnitPtr, int> BuildQueue(const Graph::Graph * G)
     {
-        return elem->rawAttributes().at(EU(attr));
-    }
-
-    std::map<const IUnit*, int> BuildQueue(const std::vector<const IEdge *> & edges)
-    {
-
         struct OutEdge {
-            const IUnit* dst;
+            UnitPtr dst;
             int weight;
         };
 
-        std::map<const IUnit*, std::vector<OutEdge>> graph;
-        std::map<const IUnit*, int> indegree;
-        std::map<const IUnit*, int> position;
+        std::map<UnitPtr, std::vector<OutEdge>> graph;
+        std::map<UnitPtr, int> indegree;
+        std::map<UnitPtr, int> position;
 
         // Build graph
-        for (const auto& edge : edges)
+        for (const auto& edge : G->getAll<E::Unit_ActsBefore_Unit>())
         {
-            auto [src, dst] = edge->endpoints();
-            const int w = attr(edge, EA::Unit_ActsBefore_Unit::TIMES);
+            // auto [src, dst] = edge->endpoints();
+            const auto & src = edge->srcNode;
+            const auto & dst = edge->dstNode;
+            const int w = edge->attr(EA::Unit_ActsBefore_Unit::TIMES);
 
             if (w < 0)
                 throw std::runtime_error("ActsBefore::times() cannot be negative");
@@ -90,7 +89,7 @@ namespace
         }
 
         // Start with nodes that have no incoming constraints
-        std::queue<const IUnit*> q;
+        std::queue<UnitPtr> q;
 
         for (const auto& [unit, deg] : indegree)
         {
@@ -103,7 +102,7 @@ namespace
 
         while (!q.empty())
         {
-            const IUnit * src = q.front();
+            UnitPtr src = q.front();
             q.pop();
 
             ++visited;
@@ -132,24 +131,19 @@ namespace
 
 // This intentionally uses the IState interface to ensure that
 // the schema is properly exposing all needed informaton
-std::string Render(const Schema::IState * istate, const Action * action) // NOSONAR - function used for debugging only
+std::string Render(const State * state, const Action * action) // NOSONAR - function used for debugging only
 {
-    auto supdata_ = istate->getSupplementaryData();
-    ASSERT(supdata_.has_value(), "supdata_ holds no value");
-    ASSERT(supdata_.type() == typeid(const S15::ISupplementaryData *), "supdata_ of unexpected type");
-    const auto * sup = std::any_cast<const S15::ISupplementaryData *>(supdata_);
-    ASSERT(sup, "sup holds a nullptr");
-    const auto & alogs = sup->getAttackLogs();
-    const auto & G = sup->getGraph();
-    const auto * gnode = G->getNodes(ET::NODE_GLOBAL).at(0);
-    const auto & pnodes = G->getNodes(ET::NODE_PLAYER);
+    const auto & alogs = state->attackLogs;
+    const auto * G = state->G.get();
+    const auto & gnode = G->getAll<N::Global>().at(0);
+    const auto & pnodes = G->getAll<N::Player>();
 
-    const IPlayer * lplayer;
-    const IPlayer * rplayer;
+    PlayerPtr lplayer;
+    PlayerPtr rplayer;
 
     for (const auto & player : pnodes)
     {
-        switch(attr(player, PA::BATTLE_SIDE))
+        switch(player->attr(PA::BATTLE_SIDE))
         {
         case EU(BattleSide::LEFT_SIDE):
             lplayer = player;
@@ -162,41 +156,37 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
         }
     }
 
+    ASSERT(lplayer->attr(PA::BATTLE_SIDE) == EU(BattleSide::LEFT_SIDE), "invalid player side");
     ASSERT(lplayer && rplayer, "players not found");
 
-    const auto & myplayer = attr(lplayer, PA::IS_ACTIVE) ? lplayer : rplayer;
+    const auto & myplayer = lplayer->attr(PA::IS_ACTIVE) ? lplayer : rplayer;
 
-    ASSERT(attr(myplayer, PA::IS_ACTIVE), "active player not found");
+    ASSERT(myplayer->attr(PA::IS_ACTIVE), "active player not found");
 
-    const IUnit * aunit = nullptr;
+    UnitPtr aunit = nullptr;
 
-    for (const auto & e : G->getEdges(ET::EDGE_ACTION_BY_UNIT))
+    for (const auto & unit : G->getAll<N::Unit>())
     {
-        aunit = e->endpoints().second;
-        break;
+        if (unit->attr(UA::IS_ACTIVE))
+        {
+            aunit = unit;
+            break;
+        }
     }
 
-    auto ended = attr(gnode, GA::BATTLE_WINNER) != S15::NULL_VALUE_UNENCODED;
+    auto ended = gnode->attr(GA::BATTLE_WINNER) != S15::NULL_VALUE_UNENCODED;
 
     if(!aunit && !ended)
         logAi->error("could not find an active stack (battle has not ended).");
 
-    auto activeActionIds = std::unordered_map<const IAction*, int>{};
-
-    const auto & allActions = G->getNodes(ET::NODE_ACTION);
-    for (const auto & [nodeId, actionId] : G->getActiveNodeToActionIds())
-    {
-        const auto & [_, inserted] = activeActionIds.emplace(allActions.at(nodeId), actionId);
-        ASSERT(inserted, "duplicate action"); // should never happen
-    }
-
     // {hex -> [activeAction, ...]}
-    auto hexActiveActions = std::unordered_map<const IHex*, std::unordered_set<const IAction*>>{};
+    auto hexActiveActions = std::unordered_map<HexPtr, std::unordered_set<ActionPtr>>{};
 
-    for (const auto & e : G->getEdges(ET::EDGE_ACTION_ENDS_AT_HEX))
+    for (const auto & e : G->getAll<E::Action_EndsAt_Hex>())
     {
-        const auto & [action, hex] = e->endpoints();
-        if (!activeActionIds.contains(action))
+        const auto & action = e->srcNode;
+        const auto & hex = e->dstNode;
+        if (!action->isActive)
             continue;
         auto [_, inserted] = hexActiveActions[hex].insert(action);
         ASSERT(inserted, "duplicate active action on hex");
@@ -205,6 +195,8 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     std::string nocol = "\033[0m";
     std::string redcol = "\033[31m"; // red
     std::string bluecol = "\033[34m"; // blue
+    std::string allycol = lplayer->attr(PA::IS_ACTIVE) ? redcol : bluecol;
+    std::string enemycol = allycol == redcol ? bluecol : redcol;
     std::string darkcol = "\033[90m";
     std::string activemod = "\033[107m\033[7m"; // bold+reversed
     // std::string ukncol = "\033[7m"; // white
@@ -221,16 +213,28 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     for(const auto & alog : alogs)
     {
         auto row = std::stringstream();
-        auto attcol = alog->getAttackerColor();
-        auto attalias = alog->getAttackerAlias();
-        auto defcol = alog->getDefenderColor();
-        auto defalias = alog->getDefenderAlias();
+        std::string attcol;
+        std::string attalias = "?";
+        std::string defcol;
+        std::string defalias = "?";
+
+        if (alog.attacker)
+        {
+            attcol = alog.attacker->cstack.unitSide() == BattleSide::LEFT_SIDE ? "red" : "blue";
+            attalias = alog.attacker->alias;
+        }
+
+        if (alog.defender)
+        {
+            defcol = alog.defender->cstack.unitSide() == BattleSide::LEFT_SIDE ? "red" : "blue";
+            defalias = alog.defender->alias;
+        }
 
         row << attcol << "#" << attalias << nocol;
         row << " attacks ";
         row << defcol << "#" << defalias << nocol;
-        row << " for " << alog->getDamageDealt() << " dmg";
-        row << " (kills: " << alog->getUnitsKilled() << ", value: " << alog->getValueKilled() << " / " << alog->getValueKilledPermille() << "‰)";
+        row << " for " << alog.getDamageDealt() << " dmg";
+        row << " (kills: " << alog.getUnitsKilled() << ", value: " << alog.getValueKilled() << " / " << alog.getValueKilledPermille() << "‰)";
 
         lines.push_back(std::move(row));
     }
@@ -270,24 +274,17 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     bool addspace = true;
     bool divlines = true;
 
-    auto hexstacks = std::unordered_map<const IHex*, const IUnit*>{};
-    for (const auto & e : G->getEdges(ET::EDGE_UNIT_OCCUPIES_HEX))
-    {
-        const auto & [unit, hex] = e->endpoints();
-        auto [it, inserted] = hexstacks.try_emplace(hex, unit);
-        ASSERT(inserted, "multiple stacks on same hex");
-    }
     // y even "▏"
     // y odd "▕"
 
     // {unit -> hex}
-    auto seenunits = std::unordered_map<const IUnit*, const IHex*>{};
+    auto seenunits = std::unordered_map<UnitPtr, HexPtr>{};
 
-    const auto & hexes = G->getNodes(ET::NODE_HEX);
-    for(int i = 0; i < hexes.size(); ++i)
+    ASSERT(G->size<N::Hex>() == 165, "165 hexes expected");
+    for(int i = 0; i < 165; ++i)
     {
-        const auto * hex = hexes.at(i);
-        const auto * unit = hexstacks[hex]; // nullptr if missing
+        const auto & hex = G->getById<N::Hex>(i);
+        const auto & unit = G->getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(hex, false);
         auto sym = std::string("?");
 
         int y = i / 15;
@@ -310,7 +307,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 
         addspace = true;
 
-        auto smask = S15::HexStateMask(attr(hex, HA::STATE_MASK));
+        auto smask = S15::HexStateMask(hex->attr(HA::STATE_MASK));
         auto col = nocol;
 
         // First put symbols based on hex state.
@@ -342,15 +339,11 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
             }
         }
 
-        auto hasMoveAction = [&hexActiveActions, &activeActionIds](const IHex * hex)
-        {
-            return std::ranges::find_if(hexActiveActions[hex], [&activeActionIds](const IAction * act) {
-                int id = activeActionIds.at(act);
-                return (id - 2) % EU(S15::HexAction::_count) == EU(S15::HexAction::MOVE);
-            }) != hexActiveActions[hex].end();
-        };
+        bool hasMoveAction = std::ranges::find_if(hexActiveActions[hex], [](const ActionPtr & act) {
+            return act->actionType == S15::ActionType::MOVE;
+        }) != hexActiveActions[hex].end();
 
-        if (col == nocol && ! hasMoveAction(hex))
+        if (col == nocol && ! hasMoveAction)
         { // || supdata->getIsBattleEnded()
             col = darkcol;
             sym = sym == "○" ? "◌" : sym;
@@ -359,24 +352,21 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
         if(unit)
         {
             auto seen = seenunits.contains(unit);
-            // MSVC mandates constexpr `n` here
 
-            auto flags = S15::StackFlags1(attr(unit, UA::FLAGS1));
-            auto slot = attr(unit, UA::SLOT);
-            sym = std::string(1, Graph::Nodes::Unit::CalculateAlias(slot));
-            col = attr(unit, UA::SIDE) ? bluecol : redcol;
+            sym = unit->alias;
+            col = unit->attr(UA::IS_ENEMY) ? enemycol : allycol;
 
             if(unit == aunit)
                 col += activemod;
 
-            if(flags.test(EU(S15::StackFlag1::IS_WIDE)) && !seen)
+            if(unit->cstack.doubleWide() && !seen)
             {
-                if(attr(unit, UA::SIDE) == 0)
+                if(unit->cstack.unitSide() == BattleSide::LEFT_SIDE)
                 {
                     sym += "↠";
                     addspace = false;
                 }
-                else if(attr(unit, UA::SIDE) == 1 && attr(hex, HA::X_COORD) < 14)
+                else if(unit->cstack.unitSide() == BattleSide::RIGHT_SIDE && hex->attr(HA::X_COORD) < 14)
                 {
                     sym += "↞";
                     addspace = false;
@@ -412,7 +402,6 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     {
         std::string name;
         std::string value;
-        auto side = attr(gnode, GA::BATTLE_SIDE_ACTIVE_PLAYER);
 
         switch(i)
         {
@@ -421,61 +410,27 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
                 if(ended)
                     value = "";
                 else
-                    value = side ? bluecol + "BLUE" + nocol : redcol + "RED" + nocol;
+                    value = myplayer->side == BattleSide::LEFT_SIDE
+                        ? (redcol + "RED").append(nocol)
+                        : (bluecol + "BLUE").append(nocol);
                 break;
             case 2:
                 name = "Round";
-                value = std::to_string(attr(gnode, GA::BATTLE_ROUND));
+                value = std::to_string(gnode->attr(GA::BATTLE_ROUND));
                 break;
             case 3:
                 name = "Last action";
                 value = action ? action->name + " [" + std::to_string(action->id) + "]" : "";
                 break;
             case 4:
-                name = "DMG dealt";
-                value = boost::str(boost::format("%d (%d since start)") % attr(myplayer, PA::DMG_DEALT_NOW_ABS) % attr(myplayer, PA::DMG_DEALT_ACC_ABS));
-                break;
-            case 5:
-                name = "DMG received";
-                value =
-                    boost::str(boost::format("%d (%d since start)") % attr(myplayer, PA::DMG_RECEIVED_NOW_ABS) % attr(myplayer, PA::DMG_RECEIVED_ACC_ABS));
-                break;
-            case 6:
-                name = "Value killed";
-                value =
-                    boost::str(boost::format("%d (%d since start)") % attr(myplayer, PA::VALUE_KILLED_NOW_ABS) % attr(myplayer, PA::VALUE_KILLED_ACC_ABS));
-                break;
-            case 7:
-                name = "Value lost";
-                value = boost::str(boost::format("%d (%d since start)") % attr(myplayer, PA::VALUE_LOST_NOW_ABS) % attr(myplayer, PA::VALUE_LOST_ACC_ABS));
-                break;
-            case 8:
             {
                 // XXX: if there's a draw, this text will be incorrect
-                auto restext = attr(gnode, GA::BATTLE_WINNER) ? (bluecol + "BLUE WINS") : (redcol + "RED WINS");
+                auto restext = gnode->attr(GA::BATTLE_WINNER) ? (bluecol + "BLUE WINS") : (redcol + "RED WINS");
 
                 name = "Battle result";
                 value = ended ? (restext + nocol) : "";
             }
             break;
-            case 9:
-                name = "Army value (L)";
-                value = boost::str(
-                    boost::format("%d (%.0f‰ of current BF value)") % attr(lplayer, PA::ARMY_VALUE_NOW_ABS) % attr(lplayer, PA::ARMY_VALUE_NOW_REL)
-                );
-                break;
-            case 10:
-                name = "Army value (R)";
-                value = boost::str(
-                    boost::format("%d (%.0f‰ of current BF value)") % attr(rplayer, PA::ARMY_VALUE_NOW_ABS) % attr(rplayer, PA::ARMY_VALUE_NOW_REL)
-                );
-                break;
-            case 11:
-                name = "Current BF value";
-                value = boost::str(
-                    boost::format("%d (%.0f‰ of starting BF value)") % attr(gnode, GA::BFIELD_VALUE_NOW_ABS) % attr(gnode, GA::BFIELD_VALUE_NOW_REL0)
-                );
-                break;
             default:
                 continue;
         }
@@ -498,8 +453,6 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     // table with 24 columns (1 header, 3 dividers, 10 stacks per side)
     // Each row represents a separate attribute
 
-    using RowDef = std::tuple<UA, std::string>;
-
     // max to show
     constexpr int max_stacks_per_side = 10;
 
@@ -514,30 +467,25 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     for(int i : divcolids)
         colwidths.at(i) = 2; // divider col
 
+    enum class Col : uint8_t
+    {
+        ALIAS,
+        DIV,
+        SHOTS,
+        VALUE_PERMILLE,
+        DMG_UNCERTAINTY,
+        QUEUE
+    };
+
     // {Attribute, name, colwidth}
-    const auto rowdefs = std::vector<RowDef>{
-        RowDef{UA::FLAGS1,    "Stack #"         }, // stack alias (1..7, S or M)
-        RowDef{UA::SIDE,      ""                }, // divider row
-        RowDef{UA::QUANTITY,  "Qty"             },
-        RowDef{UA::ATTACK,    "Attack"          },
-        RowDef{UA::DEFENSE,   "Defense"         },
-        RowDef{UA::SHOTS,     "Shots"           },
-        RowDef{UA::DMG_MIN,   "Dmg (min)"       },
-        RowDef{UA::DMG_MAX,   "Dmg (max)"       },
-        RowDef{UA::HP,        "HP"              },
-        RowDef{UA::HP_LEFT,   "HP left"         },
-        RowDef{UA::SPEED,     "Speed"           },
-        RowDef{UA::_count,    "Queue"           }, // no actual enum value for this, use _count...
-        RowDef{UA::VALUE_ONE, "Value (one)"     },
-        RowDef{UA::VALUE_REL, "       Value (‰)"}, // manually pad to 16 (unicode length issue)
-        RowDef{UA::FLAGS1,    "State"           }, // "WAR" = CAN_WAIT, WILL_ACT, CAN_RETAL
-        RowDef{UA::FLAGS1,    "Attack mods"     }, // "DB" = Double, Blinding
-        // 2 values per column to avoid too long table
-        RowDef{UA::FLAGS1,    "Blocked/ing"     },
-        RowDef{UA::FLAGS1,    "Fly/Sleep"       },
-        RowDef{UA::FLAGS1,    "NoRetal/NoMelee" },
-        RowDef{UA::FLAGS1,    "Wide/Breath"     },
-        RowDef{UA::SIDE,      ""                }, // divider row
+    const auto rowdefs = std::vector<std::pair<Col, std::string>>{
+        {Col::ALIAS, "Stack #"},
+        {Col::DIV, ""},
+        {Col::SHOTS, "Shots"},
+        {Col::VALUE_PERMILLE, "       Value (‰)"}, // manually pad to 16 (unicode length issue)
+        {Col::DMG_UNCERTAINTY, "~?dmg?~"},
+        {Col::QUEUE, "Queue"},
+        {Col::DIV, ""},
     };
 
     // Table with nrows and ncells, each cell a 3-element tuple
@@ -554,22 +502,12 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
     for(int i : divcolids)
         divrow.at(i) = {nocol, colwidths.at(i), std::string(colwidths.at(i) - 1, '-') + "+"};
 
-    int specialcounter = 0;
-
-    auto queue = BuildQueue(G->getEdges(ET::EDGE_UNIT_ACTS_BEFORE_UNIT));
-
-    auto blockees = std::unordered_map<const IUnit *, const IUnit *>{};
-    auto blockers = std::unordered_map<const IUnit *, const IUnit *>{};
-    for (const auto & e : G->getEdges(ET::EDGE_UNIT_BLOCKS_UNIT))
-    {
-        blockers.try_emplace(e->endpoints().second, e->endpoints().first);
-        blockers.try_emplace(e->endpoints().first, e->endpoints().second);
-    }
+    auto queue = BuildQueue(G);
 
     // Attribute rows
-    for(const auto & [a, aname] : rowdefs)
+    for(const auto & [column, name] : rowdefs)
     {
-        if(a == UA::SIDE)
+        if(column == Col::DIV)
         { // divider row
             table.push_back(divrow);
             continue;
@@ -578,36 +516,49 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
         auto row = TableRow{};
 
         // Header col
-        row.at(0) = {nocol, colwidths.at(0), aname};
+        row.at(0) = {nocol, colwidths.at(0), name};
 
         // Div cols
         for(int i : {1, 2 + max_stacks_per_side, static_cast<int>(colwidths.size() - 1)})
             row.at(i) = {nocol, colwidths.at(i), "|"};
 
         // Stack cols
-        for(auto side : {0, 1})
+        for(auto side : {BattleSide::LEFT_SIDE, BattleSide::RIGHT_SIDE})
         {
-            auto sideunits = std::array<std::pair<const IUnit *, const IHex *>, max_stacks_per_side>{};
+            auto sideunits = std::array<std::pair<UnitPtr, HexPtr>, max_stacks_per_side>{};
+
             auto extracounter = 0;
             for(const auto & [unit, hex] : seenunits)
             {
-                if(attr(unit, UA::SIDE) == side)
+                if(unit->cstack.unitSide() == side)
                 {
-                    char alias = Graph::Nodes::Unit::CalculateAlias(attr(unit, UA::SLOT));
-                    int slot = alias >= '0' && alias <= '6' ? alias - '0' : 7 + extracounter;
+                    int slot;
+                    if (unit->alias == "0"
+                        || unit->alias == "1"
+                        || unit->alias == "2"
+                        || unit->alias == "3"
+                        || unit->alias == "4"
+                        || unit->alias == "5"
+                        || unit->alias == "6")
+                    {
+                        slot = std::stoi(unit->alias);
+                    }
+                    else
+                    {
+                        slot = 7 + extracounter;
+                        extracounter += 1;
+                    }
 
+                    // XXX: this needs to be reworked....
                     if(slot < max_stacks_per_side)
                         sideunits.at(slot) = {unit, hex};
-
-                    if(slot >= 7)
-                        extracounter += 1;
                 }
             }
 
             for(int i = 0; i < sideunits.size(); ++i)
             {
                 const auto & [unit, hex] = sideunits.at(i);
-                auto colid = 2 + i + side + (max_stacks_per_side * side);
+                auto colid = 2 + i + EU(side) + (max_stacks_per_side * EU(side));
 
                 if(!unit)
                 {
@@ -617,67 +568,27 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 
                 std::string value;
 
-                // MSVC mandates constexpr `n` here
-                auto flags1 = S15::StackFlags1(attr(unit, UA::FLAGS1));
-                auto flags2 = S15::StackFlags2(attr(unit, UA::FLAGS2));
-                auto color = attr(unit, UA::SIDE) ? bluecol : redcol;
+                auto color = unit->cstack.unitSide() == BattleSide::LEFT_SIDE ? bluecol : redcol;
 
-                if(a == UA::_count) // aka. QUEUE...
+                switch(column)
                 {
+                case Col::ALIAS:
+                    value = unit->alias;
+                    break;
+                case Col::SHOTS:
+                    value = std::to_string(unit->attr(UA::SHOTS));
+                    break;
+                case Col::VALUE_PERMILLE:
+                    value = std::to_string(unit->attr(UA::VALUE_REL));
+                    break;
+                case Col::DMG_UNCERTAINTY:
+                    value = std::to_string(unit->attr(UA::DMG_UNCERTAINTY));
+                    break;
+                case Col::QUEUE:
                     value = ended ? "" : std::to_string(queue.at(unit));
-                }
-                else if(a == UA::VALUE_ONE && attr(unit, a) >= 1000)
-                {
-                    std::ostringstream oss;
-                    oss << std::fixed << std::setprecision(1) << (attr(unit, a) / 1000.0);
-                    value = oss.str();
-                    value[value.size() - 2] = 'k';
-                    if(value.rfind("K0") == (value.size() - 2))
-                        value.resize(value.size() - 1);
-                }
-                else if(a == UA::FLAGS1)
-                {
-                    auto fmt = boost::format("%d/%d");
-
-                    switch(specialcounter)
-                    {
-                        case 0:
-                            value = std::string(1, Graph::Nodes::Unit::CalculateAlias(attr(unit, UA::SLOT)));
-                            break;
-                        case 1:
-                        {
-                            value = std::string("");
-                            value += flags1.test(EU(S15::StackFlag1::CAN_WAIT)) ? "W" : " ";
-                            value += flags1.test(EU(S15::StackFlag1::WILL_ACT)) ? "A" : " ";
-                            value += flags1.test(EU(S15::StackFlag1::CAN_RETALIATE)) ? "R" : " ";
-                        }
-                        break;
-                        case 2:
-                        {
-                            value = std::string("");
-                            value += flags1.test(EU(S15::StackFlag1::ADDITIONAL_ATTACK)) ? "D" : " ";
-                            value += flags2.test(EU(S15::StackFlag2::BLIND_ATTACK)) ? "B" : " ";
-                        }
-                        break;
-                        case 3:
-                            value = boost::str(fmt % blockees.contains(unit) % blockers.contains(unit));
-                            break;
-                        case 4:
-                            value = boost::str(fmt % flags1.test(EU(S15::StackFlag1::FLYING)) % flags1.test(EU(S15::StackFlag1::SLEEPING)));
-                            break;
-                        case 5:
-                            value = boost::str(fmt % flags1.test(EU(S15::StackFlag1::BLOCKS_RETALIATION)) % flags1.test(EU(S15::StackFlag1::NO_MELEE_PENALTY)));
-                            break;
-                        case 6:
-                            value = boost::str(fmt % flags1.test(EU(S15::StackFlag1::IS_WIDE)) % flags1.test(EU(S15::StackFlag1::TWO_HEX_ATTACK_BREATH)));
-                            break;
-                        default:
-                            THROW_FORMAT("Unexpected specialcounter: %d", specialcounter);
-                    }
-                }
-                else
-                {
-                    value = std::to_string(attr(unit, a));
+                    break;
+                default:
+                    break;
                 }
 
                 if(unit == aunit && !ended)
@@ -687,11 +598,17 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
             }
         }
 
-        if(a == UA::FLAGS1)
-            ++specialcounter;
-
         table.push_back(row);
     }
+
+    //
+    //  Exchange value  |   0        1          2          ...
+    // -----------------+-----------------------------------------
+    //                0 |   250      -51        74         ...
+    //                1 |   11       -1000      3          ...
+    //              ... | ...        ...        ...        ...
+    // -----------------+-----------------------------------------
+    //
 
     for(const auto & r : table)
     {

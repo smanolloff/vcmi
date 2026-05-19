@@ -135,6 +135,7 @@ public:
     requires detail::is_stored_element<T>
     void add(std::shared_ptr<T> elem)
     {
+        // constexpr if (std::is_)
         // std::cout << "DEBUG: Add: " << elem->name() << "\n";
         // if (!elem)
         //     throw std::runtime_error("add: nullptr given");
@@ -312,6 +313,8 @@ public:
         using U = std::remove_cvref_t<T>;
         return std::get<EdgeStore<U>>(edgeStores);
     }
+
+    void verify() const;
 
     std::vector<const S15::Graph::INode*>
     getNodes(S15::Graph::ElementType t) const override;

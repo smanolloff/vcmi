@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include "battle/IBattleInfoCallback.h"
 #include "BAI/v15/graph/edges/base.h"
 #include "BAI/v15/graph/nodes/unit.h"
 #include "schema/v15/constants.h"
@@ -31,8 +30,10 @@ public:
 	Unit_MeleeDmg_Unit(
 		const std::shared_ptr<const Nodes::Unit> & srcNode,
 		const std::shared_ptr<const Nodes::Unit> & dstNode,
-		const DamageEstimation & attackEstimate,
-		const DamageEstimation & retalEstimate,
+	    int vdiffAttacker,
+	    int vdiffDefender,
+	    int hpdiffAttacker,
+	    int hpdiffDefender,
 		int battlefieldValue,
 		int battlefieldHp
 	);

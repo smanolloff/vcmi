@@ -103,6 +103,102 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
     }
 }
 
+void Graph::verify() const
+{
+    auto _verify = [](const auto & entries)
+    {
+        for (const auto & e : entries)
+            e->verify();
+    };
+
+    for (int i = 0; i < EU(ET::_count); ++i)
+    {
+        switch (ET(i))
+        {
+            case ET::NODE_GLOBAL:
+                _verify(getAll<Nodes::Global>());
+                break;
+            case ET::NODE_PLAYER:
+                _verify(getAll<Nodes::Player>());
+                break;
+            case ET::NODE_UNIT:
+                _verify(getAll<Nodes::Unit>());
+                break;
+            case ET::NODE_HEX:
+                _verify(getAll<Nodes::Hex>());
+                break;
+            case ET::NODE_ACTION:
+                _verify(getAll<Nodes::Action>());
+                break;
+            case ET::EDGE_GLOBAL_HAS_PLAYER:
+                _verify(getAll<Edges::Global_Has_Player>());
+                break;
+            case ET::EDGE_GLOBAL_HAS_UNIT:
+                _verify(getAll<Edges::Global_Has_Unit>());
+                break;
+            case ET::EDGE_GLOBAL_HAS_HEX:
+                _verify(getAll<Edges::Global_Has_Hex>());
+                break;
+            case ET::EDGE_PLAYER_OWNS_UNIT:
+                _verify(getAll<Edges::Player_Owns_Unit>());
+                break;
+            case ET::EDGE_HEX_ADJACENT_HEX:
+                _verify(getAll<Edges::Hex_Adjacent_Hex>());
+                break;
+            case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
+                _verify(getAll<Edges::Unit_ActsBefore_Unit>());
+                break;
+            case ET::EDGE_UNIT_MELEE_DMG_UNIT:
+                _verify(getAll<Edges::Unit_MeleeDmg_Unit>());
+                break;
+            case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+                _verify(getAll<Edges::Unit_ShootDmg_Unit>());
+                break;
+            case ET::EDGE_UNIT_BLOCKS_UNIT:
+                _verify(getAll<Edges::Unit_Blocks_Unit>());
+                break;
+            case ET::EDGE_UNIT_OCCUPIES_HEX:
+                _verify(getAll<Edges::Unit_Occupies_Hex>());
+                break;
+            case ET::EDGE_ACTION_BY_UNIT:
+                _verify(getAll<Edges::Action_By_Unit>());
+                break;
+            case ET::EDGE_ACTION_ENDS_AT_HEX:
+                _verify(getAll<Edges::Action_EndsAt_Hex>());
+                break;
+            case ET::EDGE_ACTION_BLOCKS_UNIT:
+                _verify(getAll<Edges::Action_Blocks_Unit>());
+                break;
+            case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
+                _verify(getAll<Edges::Action_ExposesToMeleeFrom_Unit>());
+                break;
+            case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
+                _verify(getAll<Edges::Action_ExposesToShootFrom_Unit>());
+                break;
+            case ET::EDGE_ACTION_MELEES_UNIT:
+                _verify(getAll<Edges::Action_Melees_Unit>());
+                break;
+            case ET::EDGE_ACTION_SHOOTS_UNIT:
+                _verify(getAll<Edges::Action_Shoots_Unit>());
+                break;
+            case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
+                _verify(getAll<Edges::Action_EnablesMeleeAt_Unit>());
+                break;
+            case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
+                _verify(getAll<Edges::Action_EnablesShootAt_Unit>());
+                break;
+            case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
+                _verify(getAll<Edges::Action_EnablesMeleeAt_Hex>());
+                break;
+            case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
+                _verify(getAll<Edges::Action_EnablesShootAt_Hex>());
+                break;
+            default:
+                throw std::runtime_error("verify: unexpected edge element type: " + std::to_string(i));
+        }
+    }
+}
+
 std::vector<std::tuple<int, int>> Graph::getActiveNodeToActionIds() const
 {
     std::vector<std::tuple<int, int>> res{};

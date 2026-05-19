@@ -9,7 +9,6 @@
  */
 
 #include "StdInc.h"
-#include "schema/v15/constants.h"
 #include "schema/v15/types.h"
 
 #include "BAI/v15/encoder.h"
@@ -18,236 +17,9 @@
 namespace MMAI::BAI::V15::Encoder
 {
 
-namespace S15 = Schema::V15;
 using Encoding = Schema::V15::Encoding;
 using BS = Schema::BattlefieldState;
 using clock = std::chrono::system_clock;
-
-#define ADD_ZEROS_AND_RETURN(n, out) \
-	out.insert((out).end(), n, 0);   \
-	return
-
-#define MAYBE_ADD_ZEROS_AND_RETURN(v, n, out) \
-	if((v) <= 0)                              \
-	{                                         \
-		ADD_ZEROS_AND_RETURN(n, out);         \
-	}
-
-#define MAYBE_ADD_MASKED_AND_RETURN(v, n, out)                 \
-	if((v) == S15::NULL_VALUE_UNENCODED)                       \
-	{                                                          \
-		(out).insert((out).end(), n, S15::NULL_VALUE_ENCODED); \
-		return;                                                \
-	}
-
-#define MAYBE_THROW_STRICT_ERROR(v)      \
-	if((v) == S15::NULL_VALUE_UNENCODED) \
-	throw std::runtime_error("NULL values are not allowed for strict encoding")
-
-void Encode(const EncoderInput & in, BS & out)
-{
-	if(in.e == Encoding::RAW)
-	{
-		out.push_back(in.v);
-		return;
-	}
-
-	auto v = in.v;
-
-	if(in.v > in.vmax)
-	{
-		// THROW_FORMAT("Cannot encode value: %d (vmax=%d, a=%d, n=%d, e=%d)", v % vmax % EI(a) % n % EI(e));
-		// Can happen (e.g. DMG_*_ACC_REL0 > 1 if there were resurrected stacks)
-
-		// Warn at most once every 600s
-		auto now = clock::now();
-		static thread_local std::map<std::string, std::map<int, clock::time_point>> warns;
-		auto & warned_at = warns[std::string(in.attrname)][EI(in.a)];
-
-		if(std::chrono::duration_cast<std::chrono::seconds>(now - warned_at) > std::chrono::seconds(600))
-		{
-			// This is not critical; the value will be capped to vmax (should not occur often)
-			logAi->info(
-				"MMAI: Attribute value out of bounds: v=%d (vmax=%d, a=%d, e=%d, n=%d, attrname=%s)\n", in.v, in.vmax, EI(in.a), EI(in.e), in.n, in.attrname
-			);
-			warns[std::string(in.attrname)][EI(in.a)] = now;
-		}
-		v = in.vmax;
-	}
-
-	switch(in.e)
-	{
-		case Encoding::BINARY_EXPLICIT_NULL:
-			EncodeBinaryExplicitNull(v, in.n, out);
-			break;
-		case Encoding::BINARY_MASKING_NULL:
-			EncodeBinaryMaskingNull(v, in.n, out);
-			break;
-		case Encoding::BINARY_STRICT_NULL:
-			EncodeBinaryStrictNull(v, in.n, out);
-			break;
-		case Encoding::BINARY_ZERO_NULL:
-			EncodeBinaryZeroNull(v, in.n, out);
-			break;
-		case Encoding::EXPNORM_EXPLICIT_NULL:
-			EncodeExpnormExplicitNull(v, in.vmax, in.p, out);
-			break;
-		case Encoding::EXPNORM_MASKING_NULL:
-			EncodeExpnormMaskingNull(v, in.vmax, in.p, out);
-			break;
-		case Encoding::EXPNORM_STRICT_NULL:
-			EncodeExpnormStrictNull(v, in.vmax, in.p, out);
-			break;
-		case Encoding::EXPNORM_ZERO_NULL:
-			EncodeExpnormZeroNull(v, in.vmax, in.p, out);
-			break;
-		case Encoding::LINNORM_EXPLICIT_NULL:
-			EncodeLinnormExplicitNull(v, in.vmax, out);
-			break;
-		case Encoding::LINNORM_MASKING_NULL:
-			EncodeLinnormMaskingNull(v, in.vmax, out);
-			break;
-		case Encoding::LINNORM_STRICT_NULL:
-			EncodeLinnormStrictNull(v, in.vmax, out);
-			break;
-		case Encoding::LINNORM_ZERO_NULL:
-			EncodeLinnormZeroNull(v, in.vmax, out);
-			break;
-		case Encoding::CATEGORICAL_EXPLICIT_NULL:
-			EncodeCategoricalExplicitNull(v, in.n, out);
-			break;
-		case Encoding::CATEGORICAL_IMPLICIT_NULL:
-			EncodeCategoricalImplicitNull(v, in.n, out);
-			break;
-		case Encoding::CATEGORICAL_MASKING_NULL:
-			EncodeCategoricalMaskingNull(v, in.n, out);
-			break;
-		case Encoding::CATEGORICAL_STRICT_NULL:
-			EncodeCategoricalStrictNull(v, in.n, out);
-			break;
-		case Encoding::CATEGORICAL_ZERO_NULL:
-			EncodeCategoricalZeroNull(v, in.n, out);
-			break;
-		case Encoding::ACCUMULATING_EXPLICIT_NULL:
-			EncodeAccumulatingExplicitNull(v, in.n, out);
-			break;
-		case Encoding::ACCUMULATING_IMPLICIT_NULL:
-			EncodeAccumulatingImplicitNull(v, in.n, out);
-			break;
-		case Encoding::ACCUMULATING_MASKING_NULL:
-			EncodeAccumulatingMaskingNull(v, in.n, out);
-			break;
-		case Encoding::ACCUMULATING_STRICT_NULL:
-			EncodeAccumulatingStrictNull(v, in.n, out);
-			break;
-		case Encoding::ACCUMULATING_ZERO_NULL:
-			EncodeAccumulatingZeroNull(v, in.n, out);
-			break;
-		default:
-			THROW_FORMAT("Unexpected Encoding: %d", EI(in.e));
-	}
-}
-
-//
-// ACCUMULATING
-//
-
-namespace
-{
-	void EncodeAccumulating(int v, int n, BS & out)
-	{
-		out.insert(out.end(), v + 1, 1);
-		out.insert(out.end(), n - v - 1, 0);
-	}
-}
-
-void EncodeAccumulatingExplicitNull(int v, int n, BS & out)
-{
-	if(v == S15::NULL_VALUE_UNENCODED)
-	{
-		out.push_back(1);
-		ADD_ZEROS_AND_RETURN(n - 1, out);
-	}
-	out.push_back(0);
-	EncodeAccumulating(v, n - 1, out);
-}
-
-void EncodeAccumulatingImplicitNull(int v, int n, BS & out)
-{
-	if(v == S15::NULL_VALUE_UNENCODED)
-	{
-		ADD_ZEROS_AND_RETURN(n, out);
-	}
-	EncodeAccumulating(v, n, out);
-}
-
-void EncodeAccumulatingMaskingNull(int v, int n, BS & out)
-{
-	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
-	EncodeAccumulating(v, n, out);
-}
-
-void EncodeAccumulatingStrictNull(int v, int n, BS & out)
-{
-	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeAccumulating(v, n, out);
-}
-
-void EncodeAccumulatingZeroNull(int v, int n, BS & out)
-{
-	if(v <= 0)
-	{
-		out.push_back(1);
-		ADD_ZEROS_AND_RETURN(n - 1, out);
-	}
-	EncodeAccumulating(v, n, out);
-}
-
-//
-// BINARY
-//
-
-namespace
-{
-	void EncodeBinary(int v, int n, BS & out)
-	{
-		MAYBE_ADD_ZEROS_AND_RETURN(v, n, out);
-
-		int vtmp = v;
-		for(int i = 0; i < n; ++i)
-		{
-			out.push_back(vtmp % 2);
-			vtmp /= 2;
-		}
-	}
-}
-
-void EncodeBinaryExplicitNull(int v, int n, BS & out)
-{
-	out.push_back(v == S15::NULL_VALUE_UNENCODED);
-	EncodeBinary(v, n - 1, out);
-}
-
-void EncodeBinaryMaskingNull(int v, int n, BS & out)
-{
-	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
-	EncodeBinary(v, n, out);
-}
-
-void EncodeBinaryStrictNull(int v, int n, BS & out)
-{
-	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeBinary(v, n, out);
-}
-
-void EncodeBinaryZeroNull(int v, int n, BS & out)
-{
-	EncodeBinary(v, n, out);
-}
-
-//
-// CATEGORICAL
-//
 
 namespace
 {
@@ -256,7 +28,7 @@ namespace
 		if(v <= 0)
 		{
 			out.push_back(1);
-			ADD_ZEROS_AND_RETURN(n - 1, out);
+			out.insert((out).end(), n - 1, 0);
 		}
 
 		for(int i = 0; i < n; ++i)
@@ -264,7 +36,7 @@ namespace
 			if(i == v)
 			{
 				out.push_back(1);
-				ADD_ZEROS_AND_RETURN(n - i - 1, out);
+				out.insert((out).end(), n - i - 1, 0);
 			}
 			else
 			{
@@ -272,109 +44,7 @@ namespace
 			}
 		}
 	}
-}
 
-void EncodeCategoricalExplicitNull(int v, int n, BS & out)
-{
-	if(v == S15::NULL_VALUE_UNENCODED)
-	{
-		out.push_back(v == S15::NULL_VALUE_UNENCODED);
-		ADD_ZEROS_AND_RETURN(n - 1, out);
-	}
-	out.push_back(0);
-	EncodeCategorical(v, n - 1, out);
-}
-
-void EncodeCategoricalImplicitNull(int v, int n, BS & out)
-{
-	if(v == S15::NULL_VALUE_UNENCODED)
-	{
-		ADD_ZEROS_AND_RETURN(n, out);
-	}
-
-	EncodeCategorical(v, n, out);
-}
-
-void EncodeCategoricalMaskingNull(int v, int n, BS & out)
-{
-	MAYBE_ADD_MASKED_AND_RETURN(v, n, out);
-	EncodeCategorical(v, n, out);
-}
-
-void EncodeCategoricalStrictNull(int v, int n, BS & out)
-{
-	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeCategorical(v, n, out);
-}
-
-void EncodeCategoricalZeroNull(int v, int n, BS & out)
-{
-	EncodeCategorical(v, n, out);
-}
-
-//
-// EXPNORM
-//
-
-namespace
-{
-	// Visualise on https://www.desmos.com/calculator:
-	// ln(1 + (x/M) * (exp(S)-1))/S
-	// Add slider "S" (slope) and "M" (vmax).
-	// Play with the sliders to see the nonlinearity (use M=1 for best view)
-	// XXX: slope cannot be 0
-	float CalcExpnorm(int v, int vmax, double slope)
-	{
-		auto ratio = static_cast<double>(v) / vmax;
-		return std::log1p(ratio * (std::exp(slope) - 1.0)) / (slope + 1e-6);
-	}
-
-	void EncodeExpnorm(int v, int vmax, double slope, BS & out)
-	{
-		if(v <= 0)
-		{
-			out.push_back(0);
-			return;
-		}
-
-		out.push_back(CalcExpnorm(v, vmax, slope));
-	}
-}
-
-void EncodeExpnormExplicitNull(int v, int vmax, double slope, BS & out)
-{
-	out.push_back(v == S15::NULL_VALUE_UNENCODED);
-	EncodeExpnorm(v, vmax, slope, out);
-}
-
-void EncodeExpnormMaskingNull(int v, int vmax, double slope, BS & out)
-{
-	if(v == S15::NULL_VALUE_UNENCODED)
-	{
-		out.push_back(S15::NULL_VALUE_ENCODED);
-		return;
-	}
-	EncodeExpnorm(v, vmax, slope, out);
-}
-
-void EncodeExpnormStrictNull(int v, int vmax, double slope, BS & out)
-{
-	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeExpnorm(v, vmax, slope, out);
-}
-
-void EncodeExpnormZeroNull(int v, int vmax, double slope, BS & out)
-{
-	EncodeExpnorm(v, vmax, slope, out);
-}
-
-
-//
-// LINNORM
-//
-
-namespace
-{
 	float CalcLinnorm(int v, int vmax)
 	{
 		return static_cast<float>(v) / static_cast<float>(vmax);
@@ -393,31 +63,42 @@ namespace
 	}
 }
 
-void EncodeLinnormExplicitNull(int v, int vmax, BS & out)
+void Encode(const EncoderInput & in, BS & out)
 {
-	out.push_back(v == S15::NULL_VALUE_UNENCODED);
-	EncodeLinnorm(v, vmax, out);
-}
+	auto v = in.v;
 
-void EncodeLinnormMaskingNull(int v, int vmax, BS & out)
-{
-	if(v == S15::NULL_VALUE_UNENCODED)
+	if(in.v > in.vmax || in.v < -in.vmax)
 	{
-		out.push_back(S15::NULL_VALUE_ENCODED);
-		return;
+		// Warn at most once every 600s
+		auto now = clock::now();
+		static thread_local std::map<std::string, std::map<int, clock::time_point>> warns;
+		auto & warned_at = warns[std::string(in.attrname)][EI(in.a)];
+
+		if(std::chrono::duration_cast<std::chrono::seconds>(now - warned_at) > std::chrono::seconds(600))
+		{
+			// This is not critical; the value will be capped to vmax (should not occur often)
+			logAi->info(
+				"MMAI: Attribute value out of bounds: v=%d (vmax=|%d|, a=%d, e=%d, n=%d, attrname=%s)\n", in.v, in.vmax, EI(in.a), EI(in.e), in.n, in.attrname
+			);
+			warns[std::string(in.attrname)][EI(in.a)] = now;
+		}
+		v = v > 0 ? in.vmax : -in.vmax;
 	}
-	EncodeLinnorm(v, vmax, out);
-}
 
-void EncodeLinnormStrictNull(int v, int vmax, BS & out)
-{
-	MAYBE_THROW_STRICT_ERROR(v);
-	EncodeLinnorm(v, vmax, out);
-}
-
-void EncodeLinnormZeroNull(int v, int vmax, BS & out)
-{
-	EncodeLinnorm(v, vmax, out);
+	switch(in.e)
+	{
+		case Encoding::LINNORM:
+			EncodeLinnorm(v, in.vmax, out);
+			break;
+		case Encoding::CATEGORICAL:
+			EncodeCategorical(v, in.n, out);
+			break;
+		case Encoding::RAW:
+			out.push_back(static_cast<float>(in.v));
+			break;
+		default:
+			THROW_FORMAT("Unexpected Encoding: %d", EI(in.e));
+	}
 }
 
 }
