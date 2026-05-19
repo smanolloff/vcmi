@@ -204,6 +204,7 @@ Unit::Unit(
     int bfieldValue)
 : cstack(cstack)
 , alias(CalculateAlias(cstack))
+, isActive(isActive)
 , valueOne(GetValue(cstack.unitType(), cstack.isClone(), cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER))
 {
 #ifdef ENABLE_ML

@@ -10,12 +10,14 @@
 
 #include "BAI/v15/render.h"
 #include "BAI/v15/graph/edges/generic.h"
+#include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
 #include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/state.h"
 
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 #include <algorithm>
+#include <sstream>
 
 namespace MMAI::BAI::V15
 {
@@ -49,7 +51,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
 
 namespace
 {
-    std::string PadLeft(const std::string & input, int desiredLength, char paddingChar)
+    std::string PadLeft(const std::string & input, int desiredLength, char paddingChar = ' ')
     {
         std::ostringstream ss;
         ss << std::right << std::setfill(paddingChar) << std::setw(desiredLength) << input;
@@ -470,21 +472,38 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
     enum class Col : uint8_t
     {
         ALIAS,
-        DIV,
+        QUANTITY,
+        ATTACK,
+        DEFENSE,
         SHOTS,
-        VALUE_PERMILLE,
-        DMG_UNCERTAINTY,
-        QUEUE
+        DMG_MIN,
+        DMG_MAX,
+        HP,
+        HP_LEFT,
+        SPEED,
+        QUEUE,
+        VALUE_REL,
+        STATE,
+        DIV,
+        _count
     };
 
     // {Attribute, name, colwidth}
     const auto rowdefs = std::vector<std::pair<Col, std::string>>{
-        {Col::ALIAS, "Stack #"},
-        {Col::DIV, ""},
-        {Col::SHOTS, "Shots"},
-        {Col::VALUE_PERMILLE, "       Value (‰)"}, // manually pad to 16 (unicode length issue)
-        {Col::DMG_UNCERTAINTY, "~?dmg?~"},
-        {Col::QUEUE, "Queue"},
+        {Col::ALIAS,            "Stack #"},
+        {Col::DIV,              ""},
+        {Col::QUANTITY,         "Qty"},
+        {Col::ATTACK,           "Attack"},
+        {Col::DEFENSE,          "Defense"},
+        {Col::SHOTS,            "Shots"},
+        {Col::DMG_MIN,          "Dmg (min)"},
+        {Col::DMG_MAX,          "Dmg (max)"},
+        {Col::HP,               "HP"},
+        {Col::HP_LEFT,          "HP left"},
+        {Col::SPEED,            "Speed"},
+        {Col::QUEUE,            "Queue"},
+        {Col::VALUE_REL,        "       Value (‰)"}, // manually pad to 16 (unicode length issue)
+        {Col::STATE,            "State"}, // "WAR" = CAN_WAIT, WILL_ACT, CAN_RETAL
         {Col::DIV, ""},
     };
 
@@ -503,6 +522,8 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
         divrow.at(i) = {nocol, colwidths.at(i), std::string(colwidths.at(i) - 1, '-') + "+"};
 
     auto queue = BuildQueue(G);
+
+    auto sortedunits = std::array<std::array<std::pair<UnitPtr, HexPtr>, max_stacks_per_side>, 2>{};
 
     // Attribute rows
     for(const auto & [column, name] : rowdefs)
@@ -525,12 +546,12 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
         // Stack cols
         for(auto side : {BattleSide::LEFT_SIDE, BattleSide::RIGHT_SIDE})
         {
-            auto sideunits = std::array<std::pair<UnitPtr, HexPtr>, max_stacks_per_side>{};
-
+            auto & sideunits = sortedunits.at(EU(side));
             auto extracounter = 0;
             for(const auto & [unit, hex] : seenunits)
             {
-                if(unit->cstack.unitSide() == side)
+                const auto & cstack = unit->cstack;
+                if(cstack.unitSide() == side)
                 {
                     int slot;
                     if (unit->alias == "0"
@@ -568,27 +589,56 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
 
                 std::string value;
 
-                auto color = unit->cstack.unitSide() == BattleSide::LEFT_SIDE ? bluecol : redcol;
+                auto color = unit->cstack.unitSide() == BattleSide::LEFT_SIDE ? redcol : bluecol;
+                const auto & cstack = unit->cstack;
 
                 switch(column)
                 {
                 case Col::ALIAS:
                     value = unit->alias;
                     break;
+                case Col::QUANTITY:
+                    value = std::to_string(cstack.getCount());
+                    break;
+                case Col::ATTACK:
+                    value = std::to_string(cstack.getAttack(false));
+                    break;
+                case Col::DEFENSE:
+                    value = std::to_string(cstack.getDefense(false));
+                    break;
                 case Col::SHOTS:
                     value = std::to_string(unit->attr(UA::SHOTS));
                     break;
-                case Col::VALUE_PERMILLE:
-                    value = std::to_string(unit->attr(UA::VALUE_REL));
+                case Col::DMG_MIN:
+                    value = std::to_string(cstack.getMinDamage(false));
                     break;
-                case Col::DMG_UNCERTAINTY:
-                    value = std::to_string(unit->attr(UA::DMG_UNCERTAINTY));
+                case Col::DMG_MAX:
+                    value = std::to_string(cstack.getMaxDamage(false));
+                    break;
+                case Col::HP:
+                    value = std::to_string(cstack.unitType()->getMaxHealth());
+                    break;
+                case Col::HP_LEFT:
+                    value = std::to_string(cstack.getFirstHPleft());
+                    break;
+                case Col::SPEED:
+                    value = std::to_string(cstack.getMovementRange());
                     break;
                 case Col::QUEUE:
                     value = ended ? "" : std::to_string(queue.at(unit));
                     break;
-                default:
+                case Col::VALUE_REL:
+                    value = std::to_string(unit->attr(UA::VALUE_REL));
                     break;
+                case Col::STATE:
+                    value = cstack.waitedThisTurn ? "" : "W";
+                    value += cstack.willMove() ? "A" : "";
+                    value += cstack.ableToRetaliate() ? "R" : "";
+                    break;
+            case Col::DIV:
+                    break;
+                default:
+                    throw std::runtime_error("unexpected column: " + std::to_string(EU(column)));
                 }
 
                 if(unit == aunit && !ended)
@@ -601,15 +651,6 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
         table.push_back(row);
     }
 
-    //
-    //  Exchange value  |   0        1          2          ...
-    // -----------------+-----------------------------------------
-    //                0 |   250      -51        74         ...
-    //                1 |   11       -1000      3          ...
-    //              ... | ...        ...        ...        ...
-    // -----------------+-----------------------------------------
-    //
-
     for(const auto & r : table)
     {
         auto line = std::stringstream();
@@ -618,6 +659,96 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
 
         lines.push_back(std::move(line));
     }
+
+    // TODO: exchange table (my attacking units only)
+    //
+    //  Sim |      0      1      2    ...
+    // -----+----------------------------------------
+    //    0 |    250    -51     74    ...
+    //    1 |     11  -1000      3    ...
+    //  ... |    ...    ...    ...    ...
+    // -----+-----------------------------------------
+    //
+    int w = 7; // width
+
+    const auto& redunits = sortedunits.at(0);
+    const auto& blueunits = sortedunits.at(1);
+
+    std::vector<int> redidxs;
+    std::vector<int> blueidxs;
+
+    for (int i = 0; i < static_cast<int>(redunits.size()); ++i)
+    {
+        const auto& [unit, _hex] = redunits.at(i);
+        if (unit)
+            redidxs.push_back(i);
+    }
+
+    for (int i = 0; i < static_cast<int>(blueunits.size()); ++i)
+    {
+        const auto& [unit, _hex] = blueunits.at(i);
+        if (unit)
+            blueidxs.push_back(i);
+    }
+
+    {
+        std::stringstream line;
+        line << " Sim |" << bluecol;
+
+        for (int idx : blueidxs)
+            line << PadLeft(std::to_string(idx), w);
+
+        line << nocol;
+        lines.push_back(std::move(line));
+    }
+
+    const int table_width = w * static_cast<int>(blueidxs.size());
+
+    std::stringstream divline;
+    divline << "-----+" << PadLeft("", table_width, '-');
+    const std::string divlinestr = divline.str();
+
+    lines.emplace_back(divlinestr);
+
+    for (int redidx : redidxs)
+    {
+        const auto& [redunit, _1] = redunits.at(redidx);
+        std::stringstream line;
+        line << redcol;
+
+        if (redunit->isActive)
+            line << activemod;
+        else
+            line << nocol;
+
+        line << PadLeft(std::to_string(redidx), 4) << " |";
+
+        if (redunit->isActive)
+            line << activemod;
+        else
+            line << nocol;
+
+        for (int blueidx : blueidxs)
+        {
+            const auto& [blueunit, _2] = blueunits.at(blueidx);
+            const auto& edge = G->getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(redunit, blueunit, false);
+
+            if (!edge)
+            {
+                line << PadLeft("", w);
+                continue;
+            }
+
+            auto net = edge->attr(E::Unit_MeleeDmg_Unit::A::ESTIMATED_NET_VALUE_REL_BF);
+
+            line << PadLeft(std::to_string(net), w);
+        }
+
+        line << nocol;
+        lines.push_back(std::move(line));
+    }
+
+    lines.emplace_back(divlinestr);
 
     //
     // 7. Join rows into a single string
