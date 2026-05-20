@@ -135,7 +135,6 @@ public:
     requires detail::is_stored_element<T>
     void add(std::shared_ptr<T> elem)
     {
-        // constexpr if (std::is_)
         // std::cout << "DEBUG: Add: " << elem->name() << "\n";
         // if (!elem)
         //     throw std::runtime_error("add: nullptr given");

@@ -625,7 +625,10 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
                     value = std::to_string(cstack.getMovementRange());
                     break;
                 case Col::QUEUE:
-                    value = ended ? "" : std::to_string(queue.at(unit));
+                    if (ended || !queue.contains(unit))
+                        value = "-";
+                    else
+                        value = std::to_string(queue.at(unit));
                     break;
                 case Col::VALUE_REL:
                     value = std::to_string(unit->attr(UA::VALUE_REL));

@@ -183,12 +183,18 @@ namespace
     }
 
     struct CUnitStateWrapper {
-    	explicit CUnitStateWrapper(const CStack * cstack)
-    	: cstack(cstack), cstate(cstack->acquireState()) {}
+	   	explicit CUnitStateWrapper(const CStack * cstack, const std::shared_ptr<battle::CUnitState> & cstate)
+    	: cstack(cstack), cstate(cstate) {}
 
-    	CUnitStateWrapper fork() const
+		// XXX: many methods such as unitType() or getAvailableHealth() throw
+		// exceptions when called on a CUnitState => calculate health manually.
+    	int calcAvailableHealth() const
     	{
-    		return CUnitStateWrapper(cstack);
+			// excplicitly cast to int otherwise unsigned int arithmetic may cause UB
+			int n = static_cast<int>(cstate->getCount());
+			int hpOne = static_cast<int>(cstack->getMaxHealth());
+			int hp1st = static_cast<int>(cstate->getFirstHPleft());
+			return ((n - 1) * hpOne) + hp1st;
     	}
 
     	const CStack * cstack;
@@ -216,19 +222,20 @@ namespace
 	    auto A_dmg_min = static_cast<int>(estimation->damage.min);
 	    auto A_dmg_max = static_cast<int>(estimation->damage.max);
 	    auto A_dmg_mean = static_cast<int64_t>(0.5 * (A_dmg_min + A_dmg_max));
-    	auto B_hp = static_cast<int>(B_state->getAvailableHealth());
-    	auto A_kills_mean = A_dmg_mean / B_hp;
 
+    	int B_qty_old = B_state->getCount();
 		// CUnitState->damage() expects a *mutable* ref and can set it to 0 (?!?)
 		{
 			int64_t dmg = A_dmg_mean;
 			B_state->damage(dmg);
 		}
+    	auto A_kills_mean = B_qty_old - B_state->getCount();
 
 		// 1. Handle LIFE_DRAIN and SOUL_STEAL
 		// Stolen from BattleActionProcessor::applyBattleEffects
-		if(B_state->isLiving()) {
-			if(A_state->hasBonusOfType(BonusType::LIFE_DRAIN) && A_state->getTotalHealth() != A_state->getAvailableHealth())
+		bool B_isLiving = B_state->isLiving();
+		if(B_isLiving) {
+			if(A_state->hasBonusOfType(BonusType::LIFE_DRAIN) && states.a.cstack->getTotalHealth() != states.a.calcAvailableHealth())
 			{
 				int64_t toHeal = A_dmg_mean * A_state->valOfBonuses(BonusType::LIFE_DRAIN) / 100;
 				A_state->heal(toHeal, EHealLevel::RESURRECT, EHealPower::PERMANENT);
@@ -259,20 +266,28 @@ namespace
 			!A_state->hasBonusOfType(BonusType::SPELL_SCHOOL_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE)) &&
 			!A_state->hasBonusOfType(BonusType::NEGATIVE_EFFECTS_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE)) &&
 			A_state->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::FIRE)) < 100 &&
-			CStack::isMeleeAttackPossible(A_state.get(), B_state.get())) // attacked needs to be adjacent to defender for fire shield to trigger (e.g. Dragon Breath attack)
+			!B_state->isInvincible())
 		{
-			//TODO: use damage with bonus but without penalties
-			auto dmg = (std::min(B_state->getAvailableHealth(), A_dmg_mean) * B_state->valOfBonuses(BonusType::FIRE_SHIELD)) / 100;
+			auto dmg = (std::min(static_cast<int64_t>(states.b.calcAvailableHealth()), A_dmg_mean) * B_state->valOfBonuses(BonusType::FIRE_SHIELD)) / 100;
 			A_state->damage(dmg);
 		}
 
-		// 3. Handle DEATH_STARE (must come last)
-		if (B_state->alive())
+		// 3. Handle DEATH_STARE (must come last; uses attacker qty left after fire shield)
+		if (B_state->alive() && B_isLiving && A_state->hasBonusOfType(BonusType::DEATH_STARE))
 		{
 			int staredeaths = static_cast<int>(std::round(CalcDeathStare(battle, A_state.get(), B_state.get(), ranged)));
+
 			while (staredeaths > 0 && B_state->alive())
 			{
-				int64_t dmg = B_state->getFirstHPleft();
+				/*
+				 * VCMI's death stare has a bug:
+				 * The top "HP Left" of the remaining defender stack is not
+				 * reset to full HP after applying the effect
+				 * https://discord.com/channels/298106089885401090/1147259775420207256/1506701782011613356
+				 * Once that bug is fixed, change the calculation here to use:
+				 * int64_t dmg = B_state->getFirstHPleft();
+				 */
+				int64_t dmg = B_state->getMaxHealth();
 				B_state->damage(dmg);
 				--staredeaths;
 			}
@@ -282,15 +297,15 @@ namespace
     /*
      * VCMI's damage estimation helper does not take into account stuff such as:
 	 * 	- Base mechanics:
-	 * 	 	* HAS_ADDITIONAL_ATTACK
-	 * 	 	* DEATH_STARE
-	 * 	 	* FIRE_SHIELD
-	 * 	 	* LIFE_DRAIN
+	 * 	 	* HAS_ADDITIONAL_ATTACK // tested
+	 * 	 	* DEATH_STARE 			// tested
+	 * 	 	* FIRE_SHIELD 			// tested (incl. attacker dying from it)
+	 * 	 	* LIFE_DRAIN 			// tested
 	 *	- Mod mechanics:
-	 * 		* RANGED_RATALIATION
-	 * 		* FIRST_STRIKE
-	 * 		* SOUL_STEAL
-	 * 		* FEROCITY
+	 * 		* RANGED_RATALIATION 	// not tested
+	 * 		* FIRST_STRIKE 			// not tested
+	 * 		* SOUL_STEAL 			// not tested
+	 * 		* FEROCITY 				// not tested
 	 *
 	 * This is an attempt to reimplement it here.
 	 *
@@ -318,6 +333,9 @@ namespace
 		// but using different getBonus functions which use caching strs
 		auto checkFirstStrike = [&defender, isRangedAttack](bool canMeleeRetal, bool canRangedRetal)
 		{
+			if (defender.isInvincible())
+				return false;
+
 			if ((isRangedAttack && !canRangedRetal) || (!isRangedAttack && !canMeleeRetal))
 				return false;
 
@@ -369,9 +387,11 @@ namespace
 		else
 		{
 			positions.push_back(0); // no switch: initial strike is by attacker
-			if (canMeleeRetal || canRangedRetal)
+			if (!defender.isInvincible() && (canMeleeRetal || canRangedRetal))
+			{
 				positions.push_back(1); // switch: defender strikes (if able to retalate)
-			switchNext = true;
+				switchNext = true;
+			}
 		}
 
 		for (int i = 0; i < getAdditionalAttacks(); ++i)
@@ -380,22 +400,26 @@ namespace
 			switchNext = false; // further additional attacks keep the same position
 		}
 
-		const auto states0 = UnitStates{.a=CUnitStateWrapper(&attacker), .b=CUnitStateWrapper(&defender)};
+		const auto states0 = UnitStates{
+			.a=CUnitStateWrapper(&attacker, attacker.acquireState()),
+			.b=CUnitStateWrapper(&defender, defender.acquireState())
+		};
 		auto states = states0;
+
 
 		for (int i = 0; i < positions.size(); ++i)
 		{
-			if (!states.a.cstate->alive() || !states.b.cstate->alive())
-				break;
-
 			bool shouldSwitch = positions.at(i);
 			auto prevstates = states;
 			states = shouldSwitch
-				? UnitStates{.a=states.b.fork(), .b=states.a.fork()}
-				: UnitStates{.a=states.a.fork(), .b=states.b.fork()};
+				? UnitStates{.a=states.b, .b=states.a}
+				: UnitStates{.a=states.a, .b=states.b};
 
 			// mutates states
 			ApplyAttack(states, battle, isRangedAttack);
+
+			if (!states.a.cstate->alive() || !states.b.cstate->alive())
+				break;
 
 			if (i == ferocityCheckAfter)
 			{
@@ -818,10 +842,11 @@ namespace
 
 			for(const auto & other : units)
 			{
-				if(unit == other)
+				const auto & ostack = other->cstack;
+
+				if(unit == other || ostack.isInvincible())
 					continue;
 
-				const auto & ostack = other->cstack;
 				const auto pair = std::pair<int, int>{stack.unitId(), ostack.unitId()};
 				auto [_, inserted] = pairs.emplace(pair);
 
@@ -833,15 +858,15 @@ namespace
 
 				bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
 				const auto states = SimulateAttackAction(battle, stack, ostack, false, isOtherBlocked);
-				const auto & state = states.a.cstate;
-				const auto & ostate = states.b.cstate;
+				const auto & state = states.a;
+				const auto & ostate = states.b;
 
-				ASSERT(state->unitId() == stack.unitId() && ostate->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
+				ASSERT(state.cstack->unitId() == stack.unitId() && ostate.cstack->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
 
-				auto hpdiff_attacker = state->getTotalHealth() - stack.getTotalHealth();
-				auto hpdiff_defender = ostate->getTotalHealth() - ostack.getTotalHealth();
-				auto qtydiff_attacker = state->getCount() - stack.getCount();
-				auto qtydiff_defender = ostate->getCount() - ostack.getCount();
+				auto hpdiff_attacker = state.calcAvailableHealth() - stack.getAvailableHealth();
+				auto hpdiff_defender = ostate.calcAvailableHealth() - ostack.getAvailableHealth();
+				auto qtydiff_attacker = state.cstate->getCount() - stack.getCount();
+				auto qtydiff_defender = ostate.cstate->getCount() - ostack.getCount();
 				auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
 				auto vdiff_defender = other->valueOne * qtydiff_defender;
 
@@ -873,23 +898,23 @@ namespace
 		{
 			const auto & unit = edge->srcNode;
 			const auto & stack = unit->cstack;
-			if(!stack.canShoot())
-				continue;
-
 			const auto & other = edge->dstNode;
 			const auto & ostack = other->cstack;
 
+			if(!stack.canShoot() || ostack.isInvincible())
+				continue;
+
 			bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
 			const auto states = SimulateAttackAction(battle, stack, ostack, false, isOtherBlocked);
-			const auto & state = states.a.cstate;
-			const auto & ostate = states.b.cstate;
+			const auto & state = states.a;
+			const auto & ostate = states.b;
 
-			ASSERT(state->unitId() == stack.unitId() && ostate->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
+			ASSERT(states.a.cstack->unitId() == stack.unitId() && states.b.cstack->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
 
-			auto hpdiff_attacker = state->getTotalHealth() - stack.getTotalHealth();
-			auto hpdiff_defender = ostate->getTotalHealth() - ostack.getTotalHealth();
-			auto qtydiff_attacker = state->getCount() - stack.getCount();
-			auto qtydiff_defender = ostate->getCount() - ostack.getCount();
+			auto hpdiff_attacker = state.calcAvailableHealth() - stack.getAvailableHealth();
+			auto hpdiff_defender = ostate.calcAvailableHealth() - ostack.getAvailableHealth();
+			auto qtydiff_attacker = state.cstate->getCount() - stack.getCount();
+			auto qtydiff_defender = ostate.cstate->getCount() - ostack.getCount();
 			auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
 			auto vdiff_defender = other->valueOne * qtydiff_defender;
 
@@ -1768,6 +1793,10 @@ State::State(
 
 void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 {
+	if (!G)
+		// Ignore logs until our first turn starts
+		return;
+
 	auto cstacks = battle.battleGetStacks();
 
 	for(const auto & elem : bsa)

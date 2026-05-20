@@ -95,5 +95,12 @@ public:
 	const std::string colorname;
 	const BattleSide side;
 	bool isMorale = false;
+
+private:
+	void buildGraph(
+		const CStack * acstack,
+		int round,
+		S15::CombatResult result
+	);
 };
 }

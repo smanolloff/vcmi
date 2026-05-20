@@ -49,9 +49,16 @@ public:
     std::string name() const override
     {
         std::stringstream ss;
-        ss << detail::Unit_Base::name() << "(" << cstack.unitId() << ")";
+        ss << detail::Unit_Base::name() << "(" << cstack.unitId() << ", " << isActive << ")";
         return ss.str();
     }
+
+    // Many remain unset, prevent validation errors for unset attributes
+    // Unit state may change as a result of battle effects in-between rounds
+    // => no use of guardflags => override to not set any
+
+    int attr(Attribute a) const;
+    void setattr(Attribute a, int value);
 
 	static int GetValue(
 		const CCreature* creature,

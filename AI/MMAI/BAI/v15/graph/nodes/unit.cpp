@@ -4,8 +4,10 @@
 #include "GameLibrary.h"
 #include "AI/MMAI/common.h"
 #include "bonuses/BonusEnum.h"
+#include "bonuses/BonusParameters.h"
 #include "constants/EntityIdentifiers.h"
 #include "schema/v15/constants.h"
+#include "spells/CSpellHandler.h"
 
 #include <cmath>
 #include <iostream>
@@ -46,6 +48,24 @@ namespace
         auto shooter = cr->hasBonusOfType(BonusType::SHOOTER);
         auto bonuses = cr->getAllBonuses(Selector::all);
 
+        auto multihexAttackHexcount = [](const std::vector<int> & encodedPath)
+        {
+            // The bonus parameters vector contains encoded info about affected hexes.
+            // The encoding is not known, but also not relevant:
+            // we care only about the number of affected hexes and
+            // whether they are adjacent or remote
+            // (because remote hexes allow to hit "guarded" shooters)
+            // The assumption about this hex encoding is:
+            // "L"=1, "F"=2, "R"=3, "FL"=21, "FFF"=222, etc.
+            // (exact values don't matter, but the number of digits does)
+            int numAdjacentHexes = 0;
+            int numDistantHexes = 0;
+            for (int x : encodedPath)
+                x < 10 ? ++numAdjacentHexes : ++numDistantHexes;
+
+            return std::pair{numAdjacentHexes, numDistantHexes};
+        };
+
         auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
         auto b = hp / (1 - std::min(0.7, 0.025 * def));
         auto c = spd ? std::log(spd * 2) : 0.5;
@@ -73,11 +93,21 @@ namespace
                 case BonusType::DOUBLE_DAMAGE_CHANCE:
                     d += (bonus->val * 0.005);
                     break;
+                case BonusType::ENCHANTER:
+                    d += 0.5;
+                    break;
+                case BonusType::ENEMY_ATTACK_REDUCTION:
                 case BonusType::ENEMY_DEFENCE_REDUCTION:
                     d += (bonus->val * 0.0025);
                     break;
+                case BonusType::FEROCITY:
+                    d += (bonus->val * 0.25);
+                    break;
                 case BonusType::FIRE_SHIELD:
                     d += (bonus->val * 0.003);
+                    break;
+                case BonusType::FIRST_STRIKE:
+                    d += 0.3;
                     break;
                 case BonusType::FLYING:
                     d += 0.1;
@@ -85,17 +115,35 @@ namespace
                 case BonusType::LIFE_DRAIN:
                     d += (bonus->val * 0.003);
                     break;
+                case BonusType::MULTIHEX_ENEMY_ATTACK:
+                    {
+                        const auto & [adj, dist] = multihexAttackHexcount(bonus->parameters->toVector());
+                        d += (adj * 0.03);
+                        d += (dist * 0.8);
+                    }
+                    break;
+                case BonusType::MULTIHEX_UNIT_ATTACK:
+                    {
+                        const auto & [adj, dist] = multihexAttackHexcount(bonus->parameters->toVector());
+                        d += (adj * 0.05);
+                        d += (dist * 0.1);
+                    }
+                    break;
                 case BonusType::NO_DISTANCE_PENALTY:
                     d += 0.5;
                     break;
                 case BonusType::NO_MELEE_PENALTY:
                     d += 0.1;
                     break;
+                case BonusType::RANGED_RETALIATION:
+                    d += 0.2;
+                    break;
+                case BonusType::REVENGE:
                 case BonusType::THREE_HEADED_ATTACK:
-                    d += 0.05;
+                    d += 0.15; // deprecated by MULTIHEX_ENEMY_ATTACK
                     break;
                 case BonusType::TWO_HEX_ATTACK_BREATH:
-                    d += 0.1;
+                    d += 0.1;  // deprecated by MULTIHEX_UNIT_ATTACK
                     break;
                 case BonusType::UNLIMITED_RETALIATIONS:
                     d += 0.2;
@@ -121,6 +169,12 @@ namespace
                             break;
                         case SpellID::CURSE:
                             d += (bonus->val * 0.0025);
+                            break;
+                        case SpellID::DISRUPTING_RAY:
+                            d += (bonus->val * 0.002);
+                            break;
+                        case SpellID::POISON:
+                            d += (bonus->val * 0.001);
                             break;
                         default:
                             break;
@@ -207,10 +261,9 @@ Unit::Unit(
 , isActive(isActive)
 , valueOne(GetValue(cstack.unitType(), cstack.isClone(), cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER))
 {
-#ifdef ENABLE_ML
-    if(cstack.creatureId().num > S15::CREATURE_ID_MAX)
-        throw std::runtime_error("unknown creature id: " + std::to_string(cstack.creatureId().num));
-#endif
+    // XXX: see note for attr()/setattr() in Unit.h
+    attrs.fill(0);
+    guardflags.set();
 
     auto value = valueOne * cstack.getCount();
 
@@ -359,16 +412,16 @@ Unit::Unit(
     }
 
     static_assert(EU(UA::_count) == 35, "whistleblower in case attributes change");
+}
 
-    // Many remain unset, prevent validation errors for unset attributes
-    for (int i = 0; i < EU(A::_count); ++i)
-    {
-        if (guardflags.test(i))
-            continue;
+int Unit::attr(Attribute a) const
+{
+    return attrs.at(EU(a));
+}
 
-        attrs[i] = 0;
-        guardflags.set(i);
-    }
+void Unit::setattr(Attribute a, int value)
+{
+    attrs.at(EU(a)) = value;
 }
 
 }
