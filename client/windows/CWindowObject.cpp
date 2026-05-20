@@ -39,7 +39,7 @@ CWindowObject::CWindowObject(int options_, const ImagePath & imageName, Point ce
 	background(createBg(imageName, options_))
 {
 	if(!(options & NEEDS_ANIMATED_BACKGROUND)) //currently workaround for highscores (currently uses window as normal control, because otherwise videos are not played in background yet)
-		assert(parent == nullptr); //Safe to remove, but windows should not have parent
+		assert(IS_ML || parent == nullptr); //Safe to remove, but windows should not have parent
 
 	if (options & RCLICK_POPUP)
 		ENGINE->cursor().hide();
@@ -59,7 +59,7 @@ CWindowObject::CWindowObject(int options_, const ImagePath & imageName):
 	background(createBg(imageName, options_))
 {
 	if(!(options & NEEDS_ANIMATED_BACKGROUND)) //currently workaround for highscores (currently uses window as normal control, because otherwise videos are not played in background yet)
-		assert(parent == nullptr); //Safe to remove, but windows should not have parent
+		assert(IS_ML || parent == nullptr); //Safe to remove, but windows should not have parent
 
 	if(options & RCLICK_POPUP)
 		ENGINE->cursor().hide();
