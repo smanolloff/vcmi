@@ -233,6 +233,7 @@ namespace
 
 		// 1. Handle LIFE_DRAIN and SOUL_STEAL
 		// Stolen from BattleActionProcessor::applyBattleEffects
+		// (removed permanent / non-permanent logic for SOUL_STEAL here)
 		bool B_isLiving = B_state->isLiving();
 		if(B_isLiving) {
 			if(A_state->hasBonusOfType(BonusType::LIFE_DRAIN) && states.a.cstack->getTotalHealth() != states.a.calcAvailableHealth())
@@ -241,20 +242,10 @@ namespace
 				A_state->heal(toHeal, EHealLevel::RESURRECT, EHealPower::PERMANENT);
 			}
 
-			if(A_state->hasBonusOfType(BonusType::SOUL_STEAL))
+			if(int ss = A_state->valOfBonuses(BonusType::SOUL_STEAL))
 			{
-				//we can have two bonuses - one with subtype 0 and another with subtype 1
-				//try to use permanent first, use only one of two
-				for(const auto & subtype : { BonusCustomSubtype::soulStealBattle, BonusCustomSubtype::soulStealPermanent})
-				{
-					if(A_state->hasBonusOfType(BonusType::SOUL_STEAL, subtype))
-					{
-						int64_t toHeal = static_cast<int64_t>(A_kills_mean) * A_state->valOfBonuses(BonusType::SOUL_STEAL, subtype) * A_state->getMaxHealth();
-						bool permanent = subtype == BonusCustomSubtype::soulStealPermanent;
-						A_state->heal(toHeal, EHealLevel::OVERHEAL, (permanent ? EHealPower::PERMANENT : EHealPower::ONE_BATTLE));
-						break;
-					}
-				}
+				int64_t toHeal = static_cast<int64_t>(A_kills_mean) * ss * A_state->getMaxHealth();
+				A_state->heal(toHeal, EHealLevel::OVERHEAL, EHealPower::ONE_BATTLE);
 			}
 		}
 
@@ -302,15 +293,12 @@ namespace
 	 * 	 	* FIRE_SHIELD 			// tested (incl. attacker dying from it)
 	 * 	 	* LIFE_DRAIN 			// tested
 	 *	- Mod mechanics:
-	 * 		* RANGED_RATALIATION 	// not tested
-	 * 		* FIRST_STRIKE 			// not tested
+	 * 		* RANGED_RATALIATION 	// tested
+	 * 		* FIRST_STRIKE 			// tested
 	 * 		* SOUL_STEAL 			// not tested
-	 * 		* FEROCITY 				// not tested
+	 * 		* FEROCITY 				// tested
 	 *
 	 * This is an attempt to reimplement it here.
-	 *
-	 * TODO: gather statistical data for simulated<>actual exchange
-	 *       to compare.
 	 *
 	 */
 	UnitStates SimulateAttackAction(
@@ -320,23 +308,24 @@ namespace
 		bool isRangedAttack,
 		bool isDefenderBlocked)
 	{
+		bool isMeleeAttack = !isRangedAttack;
+
 		// Stolen from BattleActionProcessor::doShootAction
-		auto checkRangedRetal = [&attacker, isRangedAttack, isDefenderBlocked](bool canMeleeRetal)
+		auto checkRangedRetal = [&attacker, &defender, isDefenderBlocked]()
 		{
-			return (canMeleeRetal
-				&& isRangedAttack
-				&& !isDefenderBlocked
+			return (!isDefenderBlocked
+				&& defender.hasBonusOfType(BonusType::RANGED_RETALIATION)
 				&& !attacker.hasBonusOfType(BonusType::BLOCKS_RANGED_RETALIATION));
 		};
 
 		// Stolen from BattleActionProcessor::doAttackAction
 		// but using different getBonus functions which use caching strs
-		auto checkFirstStrike = [&defender, isRangedAttack](bool canMeleeRetal, bool canRangedRetal)
+		auto checkFirstStrike = [&defender, isRangedAttack](bool canRetal)
 		{
 			if (defender.isInvincible())
 				return false;
 
-			if ((isRangedAttack && !canRangedRetal) || (!isRangedAttack && !canMeleeRetal))
+			if (!canRetal)
 				return false;
 
 			static const auto selRanged = Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeAll).Or(Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeRanged));
@@ -372,13 +361,17 @@ namespace
 			return kills >= killThreshold ? bonuses->totalValue(0) : 0;
 		};
 
-		bool canMeleeRetal = defender.ableToRetaliate();
-		bool canRangedRetal = checkRangedRetal(canMeleeRetal);
-		bool switchNext = false;  // cache var to prevent unneeded ranged retal checks
+		bool canRetal = defender.ableToRetaliate() && (isMeleeAttack || checkRangedRetal());
 		int ferocityCheckAfter = 0;  // when to check for ferocity (depends on first strike)
 		auto positions = std::vector<int>{}; //  0=keep, 1=switch
 
-		if (checkFirstStrike(canMeleeRetal, canRangedRetal))
+		auto isSwapped = [&positions]()
+		{
+			// Even number of swaps means not swapped in the end
+			return std::ranges::count(positions, 1) % 2 == 1;
+		};
+
+		if (checkFirstStrike(canRetal))
 		{
 			positions.push_back(1); // switch: initial strike is by defender
 			positions.push_back(1); // switch: attacker strikes (this is not a retaliation)
@@ -387,17 +380,13 @@ namespace
 		else
 		{
 			positions.push_back(0); // no switch: initial strike is by attacker
-			if (!defender.isInvincible() && (canMeleeRetal || canRangedRetal))
-			{
+			if (canRetal && !defender.isInvincible())
 				positions.push_back(1); // switch: defender strikes (if able to retalate)
-				switchNext = true;
-			}
 		}
 
 		for (int i = 0; i < getAdditionalAttacks(); ++i)
 		{
-			positions.push_back(switchNext);
-			switchNext = false; // further additional attacks keep the same position
+			positions.push_back(isSwapped());
 		}
 
 		const auto states0 = UnitStates{
@@ -410,12 +399,12 @@ namespace
 		for (int i = 0; i < positions.size(); ++i)
 		{
 			bool shouldSwitch = positions.at(i);
-			auto prevstates = states;
 			states = shouldSwitch
 				? UnitStates{.a=states.b, .b=states.a}
 				: UnitStates{.a=states.a, .b=states.b};
 
 			// mutates states
+			int b_prevcount = states.b.cstate->getCount();
 			ApplyAttack(states, battle, isRangedAttack);
 
 			if (!states.a.cstate->alive() || !states.b.cstate->alive())
@@ -424,11 +413,10 @@ namespace
 			if (i == ferocityCheckAfter)
 			{
 				ASSERT(states.b.cstack->unitId() == defender.unitId(), "SimulateAttackAction: ferocity check: expected A=attacker B=defender");
-				const auto prevb = shouldSwitch ? prevstates.a : prevstates.b;
-				// ferocity check must always be when a=attacker, b=defender
-				int ferocityAttacks = getFerocityAttacks(states.b.cstate->getCount() - prevb.cstate->getCount());
+				// ferocity check must always be when a=attacker, b=defender => check if b count changed
+				int ferocityAttacks = getFerocityAttacks(b_prevcount - states.b.cstate->getCount());
 				for (int j = 0; j < ferocityAttacks; ++j)
-					positions.push_back(0);
+					positions.push_back(isSwapped());
 			}
 		}
 
@@ -523,7 +511,6 @@ namespace
 
 		for(const auto & al : attackLogs)
 		{
-		    // TODO: check out how death stare is handled. Maybe add it as dmg?
 			if(al.attacker)
 			{
 				if(al.attacker->cstack.unitSide() == BattleSide::LEFT_SIDE)
@@ -856,8 +843,7 @@ namespace
 				if(ostack.unitSide() == stack.unitSide() && !isBerserk && !checkBerserk(ostack))
 					continue;
 
-				bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
-				const auto states = SimulateAttackAction(battle, stack, ostack, false, isOtherBlocked);
+				const auto states = SimulateAttackAction(battle, stack, ostack, false, false);
 				const auto & state = states.a;
 				const auto & ostate = states.b;
 
@@ -905,7 +891,7 @@ namespace
 				continue;
 
 			bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
-			const auto states = SimulateAttackAction(battle, stack, ostack, false, isOtherBlocked);
+			const auto states = SimulateAttackAction(battle, stack, ostack, true, isOtherBlocked);
 			const auto & state = states.a;
 			const auto & ostate = states.b;
 
