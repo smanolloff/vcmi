@@ -1136,7 +1136,7 @@ namespace
 
 			for(const auto & hex : G.getAll<N::Hex>())
 			{
-				if(reachability.distances.at(hex->bhex.toInt()) > unit->cstack.getMovementRange())
+				if(reachability.distances.at(hex->bhex.toInt()) > unit->speed)
 					continue;
 
 				auto stackhexes = std::vector<HexPtr>{};
