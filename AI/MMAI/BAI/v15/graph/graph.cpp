@@ -1,6 +1,9 @@
 #include "BAI/v15/graph/graph.h"
 #include "BAI/v15/graph/edges/generic.h"
+#include "battle/ReachabilityInfo.h"
 #include "schema/v15/graph.h"
+
+#include "BAI/v15/fastbfs.h"
 
 namespace MMAI::BAI::V15::Graph
 {
@@ -262,9 +265,83 @@ void Graph::buildReachabilityCache()
 
     flags.require(ET::NODE_UNIT);
 
+    auto fastbfs = FastBFS(battle, getAccessibility());
+
     for (const auto & unit : getAll<Nodes::Unit>()) {
         const auto & cstack = unit->cstack;
         const auto & rinfo = battle.getReachability(&cstack);
+
+        // DEBUG
+        auto distances = fastbfs.run(
+            cstack.getPosition(),
+            cstack.getPosition(),
+            cstack.unitSide(),
+            unit->isFlying,
+            cstack.doubleWide(),
+            unit->speed
+        );
+
+        for (int i = 0; i < rinfo.distances.size(); ++i)
+        {
+            const auto a = rinfo.distances[i];
+            const auto b = distances.at(i);
+
+            if (unit->isFlying)
+            {
+                // full battlefield is computed for flyers
+                if (a == ReachabilityInfo::INFINITE_DIST)
+                {
+                    if (b != FastBFS::INFINITE_DIST)
+                    {
+                        battle.getReachability(&cstack);
+                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
+                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                    }
+                }
+                else
+                {
+                    if (a != b)
+                    {
+                        battle.getReachability(&cstack);
+                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
+                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                    }
+                }
+
+                // a == ReachabilityInfo::INFINITE_DIST
+                //     ? ASSERT(b == FastBFS::INFINITE_DIST, "bfs mismatch")
+                //     : ASSERT(a == b, "bfs mismatch");
+            }
+            else
+            {
+                if (a > unit->speed)
+                {
+                    if (b != FastBFS::INFINITE_DIST)
+                    {
+                        battle.getReachability(&cstack);
+                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
+                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                        std::cout << "y";
+                    }
+                }
+                else
+                {
+                    if (a != b)
+                    {
+                        battle.getReachability(&cstack);
+                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
+                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                        std::cout << "x";
+                    }
+                }
+
+                // a > unit->speed
+                //     ? ASSERT(b == FastBFS::INFINITE_DIST, "bfs mismatch")
+                //     : ASSERT(a == b, "bfs mismatch");
+            }
+        }
+        // /DEBUG
+
         rcache.try_emplace(cstack.unitId(), rinfo);
     }
 

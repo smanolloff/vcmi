@@ -69,6 +69,8 @@ public:
 	const CStack & cstack;
 	const std::string alias;
 	const bool isActive;
+	const bool isFlying;
+	const int speed;
 	const int valueOne;
 private:
 	void processBonuses();

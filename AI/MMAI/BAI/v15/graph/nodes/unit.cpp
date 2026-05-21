@@ -259,6 +259,8 @@ Unit::Unit(
 : cstack(cstack)
 , alias(CalculateAlias(cstack))
 , isActive(isActive)
+, isFlying(cstack.hasBonusOfType(BonusType::FLYING))
+, speed(static_cast<int>(cstack.getMovementRange()))
 , valueOne(GetValue(cstack.unitType(), cstack.isClone(), cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER))
 {
     // XXX: see note for attr()/setattr() in Unit.h
@@ -275,7 +277,7 @@ Unit::Unit(
     auto dmgstd = std::sqrt((dmgrange * dmgrange) / (12.0 * k));
     auto dmgmean = (cstack.getMaxDamage(false) + cstack.getMinDamage(false)) / 2.0;
     auto dmgstdnorm = dmgstd / dmgmean; // relative uncertainty for the dmg dealt
-    std::cout << dmgrange << " " << k << " " << dmgstd << " " << dmgmean << " " << dmgstdnorm << " | " << permille(dmgstdnorm, 1) << "\n";
+
     setattr(UA::VALUE_REL, permille(value, bfieldValue));
     setattr(UA::SHOTS, cstack.shots.available());
     setattr(UA::DMG_UNCERTAINTY, permille(dmgstdnorm, 1));
