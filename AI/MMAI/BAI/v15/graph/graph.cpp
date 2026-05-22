@@ -265,7 +265,12 @@ void Graph::buildReachabilityCache()
 
     flags.require(ET::NODE_UNIT);
 
-    auto fastbfs = FastBFS(battle, getAccessibility());
+    bool hasWideMoat = vstd::contains_if(battle.battleGetAllObstaclesOnPos(BattleHex(BattleHex::GATE_BRIDGE), false), [](const std::shared_ptr<const CObstacleInstance> & obst)
+    {
+        return obst->obstacleType == CObstacleInstance::MOAT;
+    });
+
+    auto fastbfs = FastBFS(battle, getAccessibility(), hasWideMoat);
 
     for (const auto & unit : getAll<Nodes::Unit>()) {
         const auto & cstack = unit->cstack;
@@ -295,7 +300,7 @@ void Graph::buildReachabilityCache()
                     {
                         battle.getReachability(&cstack);
                         fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
                     }
                 }
                 else
@@ -304,7 +309,7 @@ void Graph::buildReachabilityCache()
                     {
                         battle.getReachability(&cstack);
                         fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
                     }
                 }
 
@@ -320,7 +325,7 @@ void Graph::buildReachabilityCache()
                     {
                         battle.getReachability(&cstack);
                         fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
                         std::cout << "y";
                     }
                 }
@@ -330,7 +335,7 @@ void Graph::buildReachabilityCache()
                     {
                         battle.getReachability(&cstack);
                         fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility());
+                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
                         std::cout << "x";
                     }
                 }

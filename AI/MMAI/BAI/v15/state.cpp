@@ -433,21 +433,23 @@ namespace
 
 		// stats.count[A][B] = (number of actions A takes before B's first action)
 		struct ActsBeforeMatrix {
-			std::array<UnitId, MaxUnits> unique_units{};
+			std::array<UnitPtr, MaxUnits> unique_units{};
 			std::size_t unique_count = 0;
 			CountMatrix count{};
 		};
 
-		std::size_t GetOrAddUnitId(UnitId unitId, ActsBeforeMatrix & result) {
+		std::size_t GetOrAddUnitId(const UnitPtr & unit, ActsBeforeMatrix & result) {
 			for (std::size_t i = 0; i < result.unique_count; ++i)
-				if (result.unique_units[i] == unitId)
+				if (result.unique_units[i] == unit)
 					return i;
 			const std::size_t id = result.unique_count++;
-			result.unique_units[id] = unitId;
+			result.unique_units[id] = unit;
 			return id;
 		}
 
-		ActsBeforeMatrix BuildActsBeforeMatrix(const CPlayerBattleCallback & battle)
+		ActsBeforeMatrix BuildActsBeforeMatrix(
+			const Graph::Graph & G,
+			const CPlayerBattleCallback & battle)
 		{
 			// XXX: there is a bug in VCMI when high morale occurs:
 			//      - the stack acts as if it's already the next unit's turn
@@ -457,16 +459,21 @@ namespace
 			// As a workaround, a "isMorale" flag is passed whenever the astack is
 			// acting because of high morale and queue is "shifted" accordingly.
 
-			auto q = std::vector<UnitId>{};
+			auto q = std::vector<UnitPtr>{};
 			auto tmp = std::vector<battle::Units>{};
 			battle.battleGetTurnOrder(tmp, S15::STACK_QUEUE_SIZE, 0);
-			for(const auto & units : tmp)
+			for(const auto & cunits : tmp)
 			{
-				for(const auto & unit : units)
+				for(const auto & cunit : cunits)
 				{
 					if(q.size() >= S15::STACK_QUEUE_SIZE)
 						break;
-					q.push_back(unit->unitId());
+
+					// cunit may not be part of the graph (e.g. arrow towers)
+					// XXX: there is an assumption here that unit ID == CStack ID.
+					// This must be OK since as of 2026, battle::Unit is a superclass of CStack.
+					if(const auto & unit = G.getByExtraIndex<N::Unit>(cunit->unitId(), false))
+						q.push_back(unit);
 				}
 			}
 
@@ -474,8 +481,8 @@ namespace
 			std::array<Count, MaxUnits> seen_counts{};
 			std::array<bool, MaxUnits> first_seen{};
 
-			for (UnitId unitId : q) {
-				const std::size_t b = GetOrAddUnitId(unitId, result);
+			for (const auto & unit : q) {
+				const std::size_t b = GetOrAddUnitId(unit, result);
 
 				if (!first_seen[b]) {
 					first_seen[b] = true;
@@ -784,28 +791,21 @@ namespace
 		G.getFlags().require(ET::NODE_UNIT);
 		G.setFlag(ET::EDGE_UNIT_ACTS_BEFORE_UNIT);
 
-		const auto matrix = Q::BuildActsBeforeMatrix(battle);
+		const auto matrix = Q::BuildActsBeforeMatrix(G, battle);
 		const auto & nodes = G.getAll<N::Unit>();
 
 		ASSERT(matrix.unique_count <= nodes.size(), "unique_count exceeds size of graph nodes");
 
 		for(int i = 0; i < matrix.unique_count; ++i)
 		{
-			auto unitId = matrix.unique_units.at(i);
-			// XXX: assuming unit ID is the same as CStack ID. This must be OK
-			// since as of 2026, battle::Unit is just a superclass of CStack.
-			const auto & unit = G.getByExtraIndex<N::Unit>(unitId);
-			ASSERT(unit != nullptr, "unit not found: " + std::to_string(unitId));
-
+			const auto & unit = matrix.unique_units.at(i);
 			for(int j = 0; j < matrix.unique_count; ++j)
 			{
 				auto times = matrix.count[i][j];
 				if(times == 0)
 					continue;
 
-				auto otherId = matrix.unique_units.at(j);
-				const auto & other = G.getByExtraIndex<N::Unit>(otherId);
-				ASSERT(other != nullptr, "unit not found: " + std::to_string(otherId));
+				const auto & other = matrix.unique_units.at(j);
 				G.add(std::make_shared<E::Unit_ActsBefore_Unit>(unit, other, times));
 			}
 		}
@@ -1141,7 +1141,8 @@ namespace
 
 				auto stackhexes = std::vector<HexPtr>{};
 				for(const auto & stackbhex : stack.getHexes(hex->bhex))
-					stackhexes.emplace_back(G.getByExtraIndex<N::Hex>(stackbhex.toInt()));
+					if (stackbhex.isAvailable())
+						stackhexes.emplace_back(G.getByExtraIndex<N::Hex>(stackbhex.toInt()));
 
 				auto at = hex->bhex == stack.getPosition()
 					? AT::DEFEND
@@ -1566,14 +1567,15 @@ namespace
 		const auto & hex = move->endsAt.at(0);
 
 		// XXX: Special case when walking into moat/quicksand (see _notes/moats.txt)
-		bool willMoveIntoMoat = (
-			hex->bhex != unit->cstack.getPosition() &&
-			std::ranges::any_of(move->endsAt, [](const HexPtr & hex) {
+		bool willWalkIntoMoat = (
+			hex->bhex != unit->cstack.getPosition()
+			&& !unit->isFlying
+			&& std::ranges::any_of(move->endsAt, [](const HexPtr & hex) {
 				return hex->statemask.test(EU(S15::HexState::STOPPING));
 			})
 		);
 
-		if (willMoveIntoMoat)
+		if (willWalkIntoMoat)
 			return;
 
 		// A wide adjacent unit may have already been inserted
