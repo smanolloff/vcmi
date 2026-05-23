@@ -398,9 +398,30 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_Shoots_Unit>
 };
 
 GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Unit, EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Unit, EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT;
+	static constexpr std::string_view name = "Action_EnablesShootAt_Unit";
+	static constexpr encoding_type encoding = {
+		E5(A::DMG_MULT, X::LIN, 1000),
+	};
+};
+
 GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Hex, EDGE_ACTION_ENABLES_MELEE_AT_HEX);
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesShootAt_Hex, EDGE_ACTION_ENABLES_SHOOT_AT_HEX);
+
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT;
+	static constexpr std::string_view name = "Action_EnablesShootAt_Hex";
+	static constexpr encoding_type encoding = {
+		E5(A::DMG_MULT, X::LIN, 1000),
+	};
+};
 
 template <typename AttrType>
 consteval bool EncodingIsValid()

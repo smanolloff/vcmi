@@ -48,7 +48,7 @@ public:
 		const bool isFlying;
 		const int speed;
 		const int bfieldValue;
-		const FastBFS::TDistances & distances;
+		const FastBFS::Distances & distances;
 	};
 
     static std::shared_ptr<const Unit> Create(const Args & args)
@@ -80,7 +80,7 @@ public:
 
 	const CStack & cstack;
 	const std::string alias;
-	const FastBFS::TDistances distances;
+	const FastBFS::Distances distances;
 	const bool isActive;
 	const bool isFlying;
 	const int speed;

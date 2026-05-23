@@ -24,6 +24,7 @@ namespace ML {
     namespace UserAgents {
         namespace S15 = MMAI::Schema::V15;
         namespace Graph = S15::Graph;
+        using ET = S15::Graph::ElementType;
 
         std::string AgentV15::getName() { return "USER_AGENT"; };
         int AgentV15::getVersion() { return 15; };
@@ -41,6 +42,17 @@ namespace ML {
 
             const auto * sup = std::any_cast<const S15::ISupplementaryData*>(any);
             const auto * G = sup->getGraph();
+
+            size_t size = 0;
+            for (const auto nt : S15::Graph::EDGE_TYPES)
+                for (const auto * edge : G->getEdges(nt))
+                    size += edge->encodedAttributes().size();
+
+            for (const auto et : S15::Graph::NODE_TYPES)
+                for (const auto * node : G->getNodes(et))
+                    size += node->encodedAttributes().size();
+
+            // std::cout << " *** STATE SIZE: " << size << "\n";
 
             if (steps == 0 && benchmark) {
                 t0 = clock();

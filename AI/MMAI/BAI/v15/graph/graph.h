@@ -17,6 +17,8 @@
 #pragma once
 #include "StdInc.h" // IWYU pragma: keep
 
+#include "BAI/v15/graph/edges/action_enables_shoot_at_hex.h"
+#include "BAI/v15/graph/edges/action_enables_shoot_at_unit.h"
 #include "BAI/v15/graph/edges/action_melees_unit.h"
 #include "BAI/v15/graph/edges/action_shoots_unit.h"
 #include "battle/CPlayerBattleCallback.h"
@@ -325,8 +327,6 @@ public:
     const FastBFS & getFastBFS() const;
 private:
     EnumFlags<S15::Graph::ElementType> flags;
-
-    const CPlayerBattleCallback & battle;
 
     detail::TNodeStores nodeStores;
     detail::TEdgeStores edgeStores;

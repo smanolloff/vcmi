@@ -10,6 +10,7 @@
 
 #include "StdInc.h" // IWYU pragma: keep
 
+#include "BAI/v15/fastbfs.h"
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
 #include "BAI/v15/graph/edges/action_melees_unit.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
@@ -60,6 +61,130 @@ namespace
 	using CorpseFlags = N::Global::CorpseFlags;
 	using ET = S15::Graph::ElementType;
 	using AT = S15::ActionType;
+
+	void ReportCounts(const Graph::Graph & G)
+	{
+		size_t total = 0;
+		std::cout << "G:\n";
+		for (int i = 0; i < EU(ET::_count); ++i)
+		{
+			size_t tmp = 0;
+			std::cout << "  " << std::setw(5);
+		    switch (ET(i))
+		    {
+	        case ET::NODE_GLOBAL:
+	            tmp = G.size<N::Global>();
+	            std::cout << tmp << " NODE_GLOBAL\n";
+	            break;
+	        case ET::NODE_PLAYER:
+	            tmp = G.size<N::Player>();
+	            std::cout << tmp << " NODE_PLAYER\n";
+	            break;
+	        case ET::NODE_UNIT:
+	            tmp = G.size<N::Unit>();
+	            std::cout << tmp << " NODE_UNIT\n";
+	            break;
+	        case ET::NODE_HEX:
+	            tmp = G.size<N::Hex>();
+	            std::cout << tmp << " NODE_HEX\n";
+	            break;
+	        case ET::NODE_ACTION:
+	            tmp = G.size<N::Action>();
+	            std::cout << tmp << " NODE_ACTION\n";
+	            break;
+	        case ET::EDGE_GLOBAL_HAS_PLAYER:
+	            tmp = G.size<E::Global_Has_Player>();
+	            std::cout << tmp << " EDGE_GLOBAL_HAS_PLAYER\n";
+	            break;
+	        case ET::EDGE_GLOBAL_HAS_UNIT:
+	            tmp = G.size<E::Global_Has_Unit>();
+	            std::cout << tmp << " EDGE_GLOBAL_HAS_UNIT\n";
+	            break;
+	        case ET::EDGE_GLOBAL_HAS_HEX:
+	            tmp = G.size<E::Global_Has_Hex>();
+	            std::cout << tmp << " EDGE_GLOBAL_HAS_HEX\n";
+	            break;
+	        case ET::EDGE_PLAYER_OWNS_UNIT:
+	            tmp = G.size<E::Player_Owns_Unit>();
+	            std::cout << tmp << " EDGE_PLAYER_OWNS_UNIT\n";
+	            break;
+	        case ET::EDGE_HEX_ADJACENT_HEX:
+	            tmp = G.size<E::Hex_Adjacent_Hex>();
+	            std::cout << tmp << " EDGE_HEX_ADJACENT_HEX\n";
+	            break;
+	        case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
+	            tmp = G.size<E::Unit_ActsBefore_Unit>();
+	            std::cout << tmp << " EDGE_UNIT_ACTS_BEFORE_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_MELEE_DMG_UNIT:
+	            tmp = G.size<E::Unit_MeleeDmg_Unit>();
+	            std::cout << tmp << " EDGE_UNIT_MELEE_DMG_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+	            tmp = G.size<E::Unit_ShootDmg_Unit>();
+	            std::cout << tmp << " EDGE_UNIT_SHOOT_DMG_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_BLOCKS_UNIT:
+	            tmp = G.size<E::Unit_Blocks_Unit>();
+	            std::cout << tmp << " EDGE_UNIT_BLOCKS_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_OCCUPIES_HEX:
+	            tmp = G.size<E::Unit_Occupies_Hex>();
+	            std::cout << tmp << " EDGE_UNIT_OCCUPIES_HEX\n";
+	            break;
+	        case ET::EDGE_ACTION_BY_UNIT:
+	            tmp = G.size<E::Action_By_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_BY_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_ENDS_AT_HEX:
+	            tmp = G.size<E::Action_EndsAt_Hex>();
+	            std::cout << tmp << " EDGE_ACTION_ENDS_AT_HEX\n";
+	            break;
+	        case ET::EDGE_ACTION_BLOCKS_UNIT:
+	            tmp = G.size<E::Action_Blocks_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_BLOCKS_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
+	            tmp = G.size<E::Action_ExposesToMeleeFrom_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
+	            tmp = G.size<E::Action_ExposesToShootFrom_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_MELEES_UNIT:
+	            tmp = G.size<E::Action_Melees_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_MELEES_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_SHOOTS_UNIT:
+	            tmp = G.size<E::Action_Shoots_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_SHOOTS_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
+	            tmp = G.size<E::Action_EnablesMeleeAt_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_ENABLES_MELEE_AT_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
+	            tmp = G.size<E::Action_EnablesShootAt_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_ENABLES_SHOOT_AT_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
+	            tmp = G.size<E::Action_EnablesMeleeAt_Hex>();
+	            std::cout << tmp << " EDGE_ACTION_ENABLES_MELEE_AT_HEX\n";
+	            break;
+	        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
+	            tmp = G.size<E::Action_EnablesShootAt_Hex>();
+	            std::cout << tmp << " EDGE_ACTION_ENABLES_SHOOT_AT_HEX\n";
+	            break;
+	        default:
+	        	throw std::runtime_error("Unexpected element type: " + std::to_string(i));
+	        }
+	        total += tmp;
+		}
+		std::cout << "  ---\n";
+		std::cout << "  " << std::setw(5) << total << " TOTAL\n";
+		// On gym/generated/4096/4x1024.vmap: total max = 60K, mean = 10K
+	}
 
 	TowerFlags GetSiegeTowers(const CPlayerBattleCallback & battle) {
 		TowerFlags res; // {upper, middle, lower}
@@ -679,26 +804,27 @@ namespace
 		const CStack * acstack,
 		const State::GlobalStats & stats)
 	{
+		G.getFlags().require(ET::NODE_HEX);
 		G.setFlag(ET::NODE_UNIT);
 
-		for(auto & cstack : battle.battleGetStacks())
+		for(auto & stack : battle.battleGetStacks())
 		{
-			bool isActive = cstack == acstack;
-			bool isEnemy = cstack->unitSide() != battle.battleGetMySide();
-			bool isFlying = cstack->hasBonusOfType(BonusType::FLYING);
-			auto speed = static_cast<int>(cstack->getMovementRange());
+			bool isActive = stack == acstack;
+			bool isEnemy = stack->unitSide() != battle.battleGetMySide();
+			bool isFlying = stack->hasBonusOfType(BonusType::FLYING);
+			auto speed = static_cast<int>(stack->getMovementRange());
 
 			const auto distances = G.getFastBFS().run(
-				cstack->getPosition(),
-				cstack->getPosition(),
-				cstack->unitSide(),
+				stack->getPosition(),
+				stack->getPosition(),
+				stack->unitSide(),
 				isFlying,
-				cstack->doubleWide(),
+				stack->doubleWide(),
 				speed
 			);
 
 			G.add(N::Unit::Create({
-				.cstack=*cstack,
+				.cstack=*stack,
 				.isActive=isActive,
 				.isEnemy=isEnemy,
 				.isFlying=isFlying,
@@ -1179,16 +1305,15 @@ namespace
 
 	// This is copied from CBattleInfoCallback::battleHasDistancePenalty
 	// but it is changed to accept a hypothetical shooter position
+	// +a few optimizations to bonus calls
 	bool battleHasDistancePenalty_CUSTOM(const IBonusBearer * shooter, const BattleHex & shooterPosition, const BattleHexArray & targetHexes)
 	{
-		const std::string cachingStrNoDistancePenalty = "type_NO_DISTANCE_PENALTY";
-		static const auto selectorNoDistancePenalty = Selector::type()(BonusType::NO_DISTANCE_PENALTY);
-
-		if(shooter->hasBonus(selectorNoDistancePenalty, cachingStrNoDistancePenalty))
+		if(shooter->hasBonusOfType(BonusType::NO_DISTANCE_PENALTY))
 			return false;
 
 		int range = GameConstants::BATTLE_SHOOTING_PENALTY_DISTANCE;
-		auto bonus = shooter->getBonus(Selector::type()(BonusType::LIMITED_SHOOTING_RANGE));
+
+		auto bonus = shooter->getBonusesOfType(BonusType::LIMITED_SHOOTING_RANGE)->getFirst(Selector::all);
 		if(bonus != nullptr && bonus->parameters)
 			range = bonus->parameters->toNumber();
 
@@ -1199,6 +1324,23 @@ namespace
 
 		return true;
 	}
+
+	float CalcShootDmgMult(
+		const CPlayerBattleCallback & battle,
+		const CStack & attackerStack,
+		const BattleHex & attackerPos,
+		const BattleHexArray & targetHexes)
+	{
+		float mult = 1;
+
+		// XXX: using custom version of battleHasDistancePenalty where we can specify defender hex
+		if(battleHasDistancePenalty_CUSTOM(&attackerStack, attackerPos, targetHexes))
+			mult *= 0.5;
+		if(battle.battleHasWallPenalty(&attackerStack, attackerPos, targetHexes[0]))
+			mult *= 0.5;
+
+		return mult;
+	};
 
 	void AddMoveActionEdges_Action_ExposesToShootFrom_Unit(
 		Graph::Graph & G,
@@ -1229,7 +1371,6 @@ namespace
 			const auto & unit = action->by;
 			const auto & stack = unit->cstack;
 			const auto & hex = action->endsAt.at(0);
-			const auto & bhex = hex->bhex;
 
 			for (const auto & ounit : G.getAllEdgesSrcByDst<E::Unit_ShootDmg_Unit>(unit))
 			{
@@ -1248,49 +1389,93 @@ namespace
 					continue; // no threat (will become blocked after the move)
 
 				const auto & ostack = ounit->cstack;
-				float mult = 1;
 
-				// XXX: using custom version of battleHasDistancePenalty where we can specify defender hex
-				if(battleHasDistancePenalty_CUSTOM(&ostack, ostack.getPosition(), stack.getHexes(bhex)))
-					mult *= 0.5;
-				if(battle.battleHasWallPenalty(&ostack, ostack.getPosition(), hex->bhex))
-					mult *= 0.5;
-
+				float mult = CalcShootDmgMult(battle, ostack, ostack.getPosition(), stack.getHexes(hex->bhex));
 				G.add(E::Action_ExposesToShootFrom_Unit::Create(action, ounit, mult));
 			}
 		}
 	}
 
-	void AddMoveActionEdges_Action_EnablesMeleeAt_Unit(
+	void AddMoveActionEdges_Action_EnablesMeleeAt_UnitAndHex(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
 		const CStack * acstack)
 	{
-		// Plan:
-		// Find units which:
-		// 	1. Have "MeleeDmg" edge from us
-		//  2. we can move from our hypothetical new position
-		// 		to at least 1 hex around their current position
-
-		// XXX: 2. needs reachability for the (unit, hypothethicalNewPos) combo
-		// 	 	This means calculating up to 14 stacks * 151 hexes = 2114 reachabilities.
-		//
-		// https://trello.com/c/hRe8u4CX/233-reachability-notes
-
-		/*
-		 * TODO
-		 * 1. Compile v15 without this edge
-		 * 2. Then add it, calculating all reachabilities
-		 * 		(compare traditional makeBFS with optimized versions)
-		 */
-
-		// throw std::runtime_error("AddMoveActionEdges_Action_EnablesMeleeAt_Unit: not implemented");
-		// std::cout << "WARNING: AddMoveActionEdges_Action_EnablesMeleeAt_Unit: not implemented\n";
+		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
+		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
 		G.setFlag(ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
+		G.setFlag(ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX); // active actions only
+
+		// Several actions by the same unit may end on the same hex
+		// => can re-use previously calculated reachability
+		// Key: {unit_id, hex_id}
+		auto distcache = std::unordered_map<std::pair<int, int>, FastBFS::Distances, PairHash>{};
+
+		for (const auto & edge : G.getAll<E::Action_EndsAt_Hex>())
+		{
+			if (edge->isRear)
+				continue;
+
+			const auto & action = edge->srcNode;
+			const auto & hex = edge->dstNode;
+
+			assert(action->by);
+
+			const auto & unit = action->by;
+			const auto & stack = unit->cstack;
+			const auto & bhex = hex->bhex;
+			const auto & bhex0 = stack.getPosition();
+			const auto & cachekey = std::pair<int, int>(unit->cstack.unitId(), hex->bhex.toInt());
+
+			auto it = distcache.find(cachekey);
+			if (it == distcache.end())
+				it = distcache.try_emplace(cachekey, bhex == bhex0 ? unit->distances : G.getFastBFS().run(
+					bhex0,
+					bhex,
+					stack.unitSide(),
+					unit->isFlying,
+					stack.doubleWide(),
+					unit->speed
+				)).first;
+
+			const auto & distances = it->second;
+
+			for (const auto & ounit : G.getAllEdgesDstBySrc<E::Unit_MeleeDmg_Unit>(unit))
+			{
+				if (G.getEdgeBySrcDst<E::Action_EnablesMeleeAt_Unit>(action, ounit, false))
+					continue;
+
+				for (const auto & adjbhex : stack.getSurroundingHexes(hex->bhex))
+				{
+					if (distances.at(adjbhex.toInt()) > unit->speed)
+						continue;
+
+					G.add(E::Action_EnablesMeleeAt_Unit::Create(action, ounit));
+					break;
+				}
+			}
+
+			// EDGE_ENABLES_MELEE_AT_HEX is only added for active actions
+			// because the number of edges combinatorially explodes
+			if (!action->isActive)
+				continue;
+
+			for (const auto & ohex : G.getAll<N::Hex>())
+			{
+				for (const auto & adjbhex : ohex->bhex.getNeighbouringTiles())
+				{
+					if (distances.at(adjbhex.toInt()) > unit->speed)
+						continue;
+
+					G.add(E::Action_EnablesMeleeAt_Hex::Create(action, ohex));
+					break;
+				}
+			}
+		}
 	}
 
-	void AddMoveActionEdges_Action_EnablesShootAt_Unit(
+	void AddMoveActionEdges_Action_EnablesShootAt_UnitAndHex(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
@@ -1304,6 +1489,7 @@ namespace
 
 		// See note in AddMoveActions()
 		G.setFlag(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+		G.setFlag(ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX); // active actions only
 
 		// Plan:
 		// For each MOVE action:
@@ -1340,30 +1526,23 @@ namespace
 				continue;
 
 			for (const auto & ounit : G.getAllEdgesDstBySrc<E::Unit_ShootDmg_Unit>(unit))
-				G.add(E::Action_EnablesShootAt_Unit::Create(action, ounit));
+			{
+				const auto & ostack = ounit->cstack;
+				float mult = CalcShootDmgMult(battle, stack, hex->bhex, ostack.getHexes());
+				G.add(E::Action_EnablesShootAt_Unit::Create(action, ounit, mult));
+			}
+
+			// EDGE_ENABLES_SHOOT_AT_HEX is only added for active actions
+			// because the number of edges combinatorially explodes
+			if (!action->isActive)
+				continue;
+
+			for (const auto & ohex : G.getAll<N::Hex>())
+			{
+				float mult = CalcShootDmgMult(battle, stack, hex->bhex, {ohex->bhex});
+				G.add(E::Action_EnablesShootAt_Hex::Create(action, ohex, mult));
+			}
 		}
-	}
-
-	void AddMoveActionEdges_Action_EnablesMeleeAt_Hex(
-		Graph::Graph & G,
-		EnumFlags<AT> & atFlags,
-		const CPlayerBattleCallback & battle,
-		const CStack * acstack)
-	{
-		// throw std::runtime_error("AddMoveActionEdges_Action_EnablesMeleeAt_Hex: not implemented");
-		// std::cout << "WARNING: AddMoveActionEdges_Action_EnablesMeleeAt_Hex: not implemented\n";
-		G.setFlag(ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX);
-	}
-
-	void AddMoveActionEdges_Action_EnablesShootAt_Hex(
-		Graph::Graph & G,
-		EnumFlags<AT> & atFlags,
-		const CPlayerBattleCallback & battle,
-		const CStack * acstack)
-	{
-		// throw std::runtime_error("AddMoveActionEdges_Action_EnablesShootAt_Hex: not implemented");
-		// std::cout << "WARNING: AddMoveActionEdges_Action_EnablesShootAt_Hex: not implemented\n";
-		G.setFlag(ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX);
 	}
 
 	template <typename T>
@@ -1426,13 +1605,17 @@ namespace
 					cloneActionGenericEdges.template operator()<E::Action_EnablesMeleeAt_Unit>();
 					break;
 				case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
-					cloneActionGenericEdges.template operator()<E::Action_EnablesShootAt_Unit>();
+					iterateActionEdges.template operator()<E::Action_EnablesShootAt_Unit>([&G, &dst](const auto & e) {
+						G.add(E::Action_EnablesShootAt_Unit::Create(dst, e->dstNode, e->mult));
+					});
 					break;
 				case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
 					cloneActionGenericEdges.template operator()<E::Action_EnablesMeleeAt_Hex>();
 					break;
 				case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
-					cloneActionGenericEdges.template operator()<E::Action_EnablesShootAt_Hex>();
+					iterateActionEdges.template operator()<E::Action_EnablesShootAt_Hex>([&G, &dst](const auto & e) {
+						G.add(E::Action_EnablesShootAt_Hex::Create(dst, e->dstNode, e->mult));
+					});
 					break;
 				// Nothing to add for those
         		case ET::EDGE_GLOBAL_HAS_PLAYER:
@@ -1562,8 +1745,8 @@ namespace
 
 				for (const auto & hex : G.getAllEdgesDstBySrc<E::Unit_Occupies_Hex>(amove->by))
 				{
-					bool isPrimary = hex->bhex == amove->by->cstack.getPosition();
-					G.add(E::Action_EndsAt_Hex::Create(amove2, hex, isPrimary));
+					bool isRear = hex->bhex != amove->by->cstack.getPosition();
+					G.add(E::Action_EndsAt_Hex::Create(amove2, hex, isRear));
 				}
 			}
 		}
@@ -1611,7 +1794,7 @@ namespace
 			);
 
 			// Handle spell-like attacks
-			if (const auto & bonus = stack.getBonus(Selector::type()(BonusType::SPELL_LIKE_ATTACK)))
+			for (const auto & bonus : *stack.getBonusesOfType(BonusType::SPELL_LIKE_ATTACK))
 			{
 				// Stolen from CBattleInfoCallback::estimateSpellLikeAttackDamage
 				const auto * spell = bonus->subtype.as<SpellID>().toSpell();
@@ -1619,7 +1802,7 @@ namespace
 				const auto & params = spells::BattleCast(&battle, &proxy, spells::Mode::PASSIVE, spell);
 				const auto mech = std::unique_ptr<spells::Mechanics>(spell->battleMechanics(&params));
 				if(!mech)
-					return;
+					break;
 				auto aim = spells::Target{};
 				aim.emplace_back(ohex->bhex);
 				for (const auto & tstack : mech->getAffectedStacks(aim))
@@ -1793,8 +1976,8 @@ void State::onActiveStack(
 
 	AddGlobalNode(*G, battle, acstack, result, round, stats);
 	AddPlayerNodes(*G, battle, lastStats, stats, logdata);
-	AddUnitNodes(*G, battle, acstack, stats);
 	AddHexNodes(*G, battle, acstack);
+	AddUnitNodes(*G, battle, acstack, stats);
 
 	AddEdges_Global_Has_PlayerUnitHex(*G, battle);
 	AddEdges_Player_Owns_Unit(*G, battle);
@@ -1812,12 +1995,9 @@ void State::onActiveStack(
 	// AddMoveActionEdges_Action_EndsAt_Hex() // already added
 	AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(*G, atFlags);
 	AddMoveActionEdges_Action_ExposesToShootFrom_Unit(*G, atFlags, battle);
-	AddMoveActionEdges_Action_EnablesMeleeAt_Unit(*G, atFlags, battle, acstack);
-	AddMoveActionEdges_Action_EnablesShootAt_Unit(*G, atFlags, battle, acstack);
 
-	// active actions only
-	AddMoveActionEdges_Action_EnablesMeleeAt_Hex(*G, atFlags, battle, acstack);
-	AddMoveActionEdges_Action_EnablesShootAt_Hex(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_EnablesMeleeAt_UnitAndHex(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_EnablesShootAt_UnitAndHex(*G, atFlags, battle, acstack);
 
 	AddOtherActions(*G, atFlags, battle);
 	AddRetreatAction(*G, atFlags);
@@ -1837,5 +2017,8 @@ void State::onActiveStack(
 	attackLogs.clear(); // accumulate new logs until next turn
 	isMorale = false;
 	lastStats = stats;
+
+	if (isMMAIVerbose())
+		ReportCounts(*G);
 }
 };

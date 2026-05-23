@@ -103,10 +103,10 @@ public:
             return "Move to " + endhex->name();
         case S15::ActionType::AMOVE:
             ASSERT(target != nullptr, "AMOVE with no valid targets");
-            return "Attack stack(" + stackstr(target) + ") from " + endhex->name();
+            return "Attack Stack(" + stackstr(target) + ") from " + endhex->name();
         case S15::ActionType::SHOOT:
             ASSERT(target != nullptr, "SHOOT with no valid targets");
-            return "Attack stack(" + stackstr(target) + ") from " + endhex->name();
+            return "Attack Stack(" + stackstr(target) + ") from " + endhex->name();
         default:
             throw std::runtime_error("Unexpected action type: " + std::to_string(EU(actionType)));
         }
