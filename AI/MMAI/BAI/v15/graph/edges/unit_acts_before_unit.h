@@ -27,11 +27,20 @@ namespace detail
 class Unit_ActsBefore_Unit : public detail::Unit_ActsBefore_Unit_Base
 {
 public:
+    static std::shared_ptr<const Unit_ActsBefore_Unit> Create(
+		const std::shared_ptr<const Nodes::Unit> & srcNode,
+		const std::shared_ptr<const Nodes::Unit> & dstNode,
+		const int times)
+    {
+        return std::make_shared<const Unit_ActsBefore_Unit>(srcNode, dstNode, times);
+    };
+
 	Unit_ActsBefore_Unit(
 		const std::shared_ptr<const Nodes::Unit> & srcNode,
 		const std::shared_ptr<const Nodes::Unit> & dstNode,
-		int times
-	) : detail::Unit_ActsBefore_Unit_Base(srcNode, dstNode), times(times)
+		const int times)
+	: detail::Unit_ActsBefore_Unit_Base(srcNode, dstNode)
+	, times(times)
 	{
 		setattr(A::TIMES, times);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");

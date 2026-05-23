@@ -11,7 +11,6 @@
 #pragma once
 
 #include "BAI/logger.h"
-#include "BAI/v15/action.h"
 #include "BAI/v15/state.h"
 #include "callback/CBattleGameInterface.h"
 
@@ -23,6 +22,7 @@ namespace MMAI::BAI::V15
 {
 class BAI : public CBattleGameInterface
 {
+	using ActionPtr = std::shared_ptr<const Graph::Nodes::Action>;
 public:
 	BAI(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb, bool enableSpellsUsage);
 
@@ -54,7 +54,7 @@ public:
 	// Subsequent versions may override this with subclasses of State
 	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);
 	std::unique_ptr<State> state = nullptr;
-	std::unique_ptr<Action> lastAction = nullptr;
+	ActionPtr lastAction = nullptr;
 
 	Schema::IModel * model;
 	const int version;
@@ -77,9 +77,7 @@ public:
 	std::shared_ptr<CPlayerBattleCallback> battle = nullptr;
 
 	std::string renderANSI() const;
-	std::string debugInfo(Action * action, const CStack * astack, const BattleHex * nbh) const; // DEBUG ONLY
-	void handleUnexpectedAction(const CStack * acstack, const Graph::Nodes::Hex * hex, Action * action);
-	std::shared_ptr<BattleAction> buildBattleAction(Schema::Action a, const CStack * acstack) const;
+	std::shared_ptr<BattleAction> buildBattleAction(const ActionPtr & a, const CStack * acstack) const;
 	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack, const BattleID & bid) const;
 	bool maybeCastSpell(const CStack * stack, const BattleID & bid);
 	void _activeStack(const BattleID & bid, const CStack * stack);

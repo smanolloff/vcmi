@@ -87,7 +87,6 @@ public:
     NodeStore & operator=(NodeStore &&) = delete;
 
     // XXX: pass-by-value + move is preferred to pass-by-reference
-    //      => must accept non-const std::shared ptr
     // avoids the copying and incrementing the counter when the shared_ptr is rvalue.
     void add(std::shared_ptr<const NodeType> node)
     {

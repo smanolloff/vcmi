@@ -11,6 +11,7 @@
 #include "StdInc.h"
 #include "AI/BattleAI/BattleEvaluator.h"
 #include "BAI/fallback/MLBot.h"
+#include "BAI/v15/graph/nodes/action.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleStateInfoForRetreat.h"
 #include "battle/CBattleInfoEssentials.h"
@@ -18,7 +19,6 @@
 #include "schema/v15/constants.h"
 
 #include "BAI/v15/BAI.h"
-#include "BAI/v15/action.h"
 #include "BAI/v15/render.h"
 #include "BAI/v15/verify.h"
 #include "BAI/v15/supplementary_data.h"
@@ -29,14 +29,12 @@
 namespace MMAI::BAI::V15
 {
 
-namespace
-{
-	namespace N = Graph::Nodes;
-	namespace E = Graph::Edges;
-}
+namespace N = Graph::Nodes;
 
-using ErrorCode = Schema::V15::ErrorCode;
-using PA = Schema::V15::Graph::NodeAttributes::Player;
+using ErrorCode = S15::ErrorCode;
+using PA = S15::Graph::NodeAttributes::Player;
+using ActionPtr = std::shared_ptr<const N::Action>;
+using AT = S15::ActionType;
 
 BAI::BAI(Schema::IModel * model, int version, const std::shared_ptr<Environment> & env, const std::shared_ptr<CBattleCallback> & cb, bool enableSpellsUsage)
 	: model(model), version(version), logger(cb->getPlayerID()->toString()), env(env), cb(cb), enableSpellsUsage(enableSpellsUsage)
@@ -55,13 +53,13 @@ Schema::Action BAI::getNonRenderAction()
 		if(state->supdata->ansiRender.empty())
 		{
 			state->supdata->ansiRender = renderANSI();
-			state->supdata->type = Schema::V15::ISupplementaryData::Type::ANSI_RENDER;
+			state->supdata->type = S15::ISupplementaryData::Type::ANSI_RENDER;
 		}
 
 		action = model->getAction(state.get());
 	}
 	state->supdata->ansiRender.clear();
-	state->supdata->type = Schema::V15::ISupplementaryData::Type::REGULAR;
+	state->supdata->type = S15::ISupplementaryData::Type::REGULAR;
 	return action;
 }
 
@@ -116,7 +114,7 @@ void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 		// or if the enemy one-shots us (we lost)
 		logger.info("Battle ended without giving us a turn: nothing to do");
 	}
-	else if(lastAction->id == Schema::ACTION_RETREAT)
+	else if(lastAction->actionType == AT::RETREAT)
 	{
 		if(resetting)
 		{
@@ -203,7 +201,7 @@ std::shared_ptr<BattleAction> BAI::maybeBuildAutoAction(const CStack * astack, c
 			auto dmg = stack->getMaxHealth() - stack->getFirstHPleft();
 			if(dmg <= maxdmg)
 				continue;
-			maxdmg = dmg;
+			maxdmg = static_cast<int>(dmg);
 			target = stack;
 		}
 
@@ -304,6 +302,44 @@ std::optional<BattleAction> BAI::maybeFleeOrSurrender(const BattleID & bid)
 	return cb->makeSurrenderRetreatDecision(bid, bs);
 }
 
+namespace
+{
+	BattleAction ToBattleAction(
+		const CPlayerBattleCallback & battle,
+		const ActionPtr & a,
+		const CStack * acstack)
+	{
+		switch(a->actionType)
+		{
+		case AT::RETREAT:
+			assert(battle.battleCanFlee());
+			return BattleAction::makeRetreat(battle.battleGetMySide());
+		case AT::WAIT:
+			assert(a->by && &a->by->cstack == acstack);
+			assert(!acstack->waitedThisTurn);
+			return BattleAction::makeWait(acstack);
+		case AT::DEFEND:
+			assert(a->by && &a->by->cstack == acstack);
+			return BattleAction::makeDefend(acstack);
+		case AT::MOVE:
+			assert(a->by && &a->by->cstack == acstack);
+			assert(a->endsAt.size() > 0);
+			return BattleAction::makeMove(acstack, a->endsAt.at(0)->bhex);
+		case AT::AMOVE:
+			assert(a->by && &a->by->cstack == acstack);
+			assert(a->endsAt.size() > 0);
+			assert(a->target && CStack::isMeleeAttackPossible(acstack, &a->target->cstack, a->endsAt.front()->bhex));
+			return BattleAction::makeMeleeAttack(acstack, &a->target->cstack, a->endsAt.front()->bhex);
+		case AT::SHOOT:
+			assert(a->by && &a->by->cstack == acstack);
+			assert(a->target && battle.battleCanShoot(acstack, a->target->cstack.getPosition()));
+			return BattleAction::makeShotAttack(acstack, &a->target->cstack);
+		default:
+			throw std::runtime_error("Unexpected action type: " + std::to_string(EU(a->actionType)));
+		}
+	}
+}
+
 void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
 #ifdef ENABLE_ML
@@ -333,9 +369,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 
 void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 {
-	auto ba = maybeBuildAutoAction(astack, bid);
-
-	if(ba)
+	if(const auto ba = maybeBuildAutoAction(astack, bid))
 	{
 		logger.info("Making automatic action with %s", astack->getDescription());
 		cb->battleMakeUnitAction(bid, *ba);
@@ -343,8 +377,8 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 
 #ifdef ENABLE_ML
-	if (roundcounter > Schema::V15::MAX_ROUNDS) {
-		logger.warn("Max rounds (%d) exceeded, retreating...", Schema::V15::MAX_ROUNDS);
+	if (roundcounter > S15::MAX_ROUNDS) {
+		logger.warn("Max rounds (%d) exceeded, retreating...", S15::MAX_ROUNDS);
 		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
 		return;
 	}
@@ -384,93 +418,31 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	logger.debug("Not conceding.");
 #endif
 
-	while(true)
+	auto t0 = std::chrono::steady_clock::now();
+	int a = getNonRenderAction();
+	auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+	getActionTotalMs += static_cast<int>(dt);
+	getActionTotalCalls += 1;
+
+	allactions.push_back(a);
+
+	if(a == Schema::ACTION_RESET)
 	{
-		auto t0 = std::chrono::steady_clock::now();
-		auto a = getNonRenderAction();
-		auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
-		getActionTotalMs += dt;
-		getActionTotalCalls += 1;
-
-		allactions.push_back(a);
-
-		if(a == Schema::ACTION_RESET)
-		{
-			// XXX: retreat is always allowed for ML, limited by action mask only
-			logger.debug("Received ACTION_RESET, converting to ACTION_RETREAT in order to reset battle");
-			a = Schema::ACTION_RETREAT;
-			resetting = true;
-		}
-
-		lastAction = std::make_unique<Action>(a, astack, state->G, state->colorname);
-		ba = buildBattleAction(a, astack);
-
-		if(ba && (a != Schema::ACTION_RETREAT || resetting))
-		{
-			logger.debug("Action is VALID: %d: %s ", a, lastAction->name);
-			errcounter = 0;
-			cb->battleMakeUnitAction(bid, *ba);
-			break;
-		}
-		else
-		{
-			++errcounter;
-			logger.error("Action is INVALID: %d: %s ", a, lastAction->name);
-
-			if(errcounter > 10)
-			{
-#ifdef ENABLE_ML
-				throw std::runtime_error("Got 10 consecutive errors");
-#else
-				logger.warn("Got 10 consecutive errors, will fall back to BattleAI until this combat ends");
-				auto evaluator = BattleEvaluator(env, cb, astack, *cb->getPlayerID(), bid, battle->battleGetMySide(), 1.0f, 2);
-				cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
-				inFallback = true;
-				break;
-#endif
-			}
-		}
-	}
-}
-
-std::shared_ptr<BattleAction> BAI::buildBattleAction(Schema::Action a, const CStack * acstack) const
-{
-	ASSERT(state->G != nullptr, "Cannot build battle action if state->G is missing");
-
-	if(a == Schema::ACTION_RETREAT)
-	{
-		assert(battle->battleCanFlee());
-		return std::make_shared<BattleAction>(BattleAction::makeRetreat(battle->battleGetMySide()));
+		// XXX: retreat is always allowed for ML, limited by action mask only
+		logger.debug("Received ACTION_RESET, converting to ACTION_RETREAT in order to reset battle");
+		a = Schema::ACTION_RETREAT;
+		resetting = true;
 	}
 
-	const auto * G = state->G.get();
-	const auto & action = G->getByExtraIndex<N::Action>(std::pair<int, int>{lastAction->id, acstack->unitId()});
-	assert(&action->by->cstack == acstack);
-	const auto & endPos = action->endsAt.at(0)->bhex;
+	auto action = state->G->getById<N::Action>(a);
+	ASSERT(action->isActive, "expected active action");
 
-	switch(action->actionType)
-	{
-	case S15::ActionType::WAIT:
-		assert(!acstack->waitedThisTurn);
-		return std::make_shared<BattleAction>(BattleAction::makeDefend(acstack));
-	case S15::ActionType::DEFEND:
-		return std::make_shared<BattleAction>(BattleAction::makeWait(acstack));
-	case S15::ActionType::MOVE:
-		return std::make_shared<BattleAction>(BattleAction::makeMove(acstack, endPos));
-	case S15::ActionType::AMOVE:
-		for (const auto & edge : G->getAllEdgesBySrc<E::Action_Melees_Unit>(action))
-			if (edge->isPrimaryTarget)
-				return std::make_shared<BattleAction>(BattleAction::makeMeleeAttack(acstack, &edge->dstNode->cstack, endPos));
-		throw std::runtime_error("Got AMOVE but there are no valid targets");
-	case S15::ActionType::SHOOT:
-		for (const auto & edge : G->getAllEdgesBySrc<E::Action_Shoots_Unit>(action))
-			if (edge->isPrimaryTarget)
-				return std::make_shared<BattleAction>(BattleAction::makeShotAttack(acstack, &edge->dstNode->cstack));
-		throw std::runtime_error("Got SHOOT but there are no valid targets");
-	default:
-    	throw std::runtime_error("Unexpected action type: " + std::to_string(EU(action->actionType)));
-	}
+	lastAction = action;
 
+	auto ba = ToBattleAction(*battle, action, astack);
+	logger.warn(action->humanName(battle->battleGetMySide()));
+
+	cb->battleMakeUnitAction(bid, ba);
 }
 
 std::string BAI::renderANSI() const
@@ -485,7 +457,7 @@ std::string BAI::renderANSI() const
 		{
 			std::cout << e.what() << "\n";
 			std::cout << "Disaster render:\n";
-			std::cout << Render(state.get(), lastAction.get()) << "\n";
+			std::cout << Render(state.get(), lastAction) << "\n";
 		}
 		catch(std::exception & e2)
 		{
@@ -494,6 +466,6 @@ std::string BAI::renderANSI() const
 		throw;
 	}
 
-	return Render(state.get(), lastAction.get());
+	return Render(state.get(), lastAction);
 }
 }

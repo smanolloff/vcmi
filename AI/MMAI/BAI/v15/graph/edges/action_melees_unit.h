@@ -18,11 +18,20 @@ namespace detail
 class Action_Melees_Unit : public detail::Action_Melees_Unit_Base
 {
 public:
+    static std::shared_ptr<const Action_Melees_Unit> Create(
+        const std::shared_ptr<const Nodes::Action> & srcNode,
+        const std::shared_ptr<const Nodes::Unit> & dstNode,
+        bool isPrimaryTarget)
+    {
+        return std::make_shared<const Action_Melees_Unit>(srcNode, dstNode, isPrimaryTarget);
+    };
+
     Action_Melees_Unit(
         const std::shared_ptr<const Nodes::Action> & srcNode,
         const std::shared_ptr<const Nodes::Unit> & dstNode,
-        bool isPrimaryTarget
-    ) : detail::Action_Melees_Unit_Base(srcNode, dstNode), isPrimaryTarget(isPrimaryTarget)
+        bool isPrimaryTarget)
+    : detail::Action_Melees_Unit_Base(srcNode, dstNode)
+    , isPrimaryTarget(isPrimaryTarget)
     {
         setattr(A::IS_PRIMARY_TARGET, isPrimaryTarget);
         static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");

@@ -51,22 +51,19 @@ namespace ML {
             auto isEnded = [&sup]
             {
                 const auto * global = sup->getGraph()->getNodes(Graph::ElementType::NODE_GLOBAL).at(0);
-                return global->rawAttributes().at(EI(Graph::NodeAttributes::Global::BATTLE_WINNER)) == S15::NULL_VALUE_UNENCODED;
+                return global->rawAttributes().at(EI(Graph::NodeAttributes::Global::BATTLE_WINNER)) != S15::NULL_VALUE_UNENCODED;
             };
 
             if (sup->getType() == S15::ISupplementaryData::Type::ANSI_RENDER) {
-                std::cout << sup->getAnsiRender() << "\n";
-                // use stored mask from pre-render result
-                act = interactive
-                    ? promptAction(G)
-                    : (actions.empty() ? randomValidAction(G) : recordedAction());
-
                 render = false;
-            } else if (autorender && !benchmark && !render) {
+                std::cout << sup->getAnsiRender() << "\n";
+            }
+            else if (autorender && !benchmark && !render) {
                 render = true;
-                // store mask of this result for the next action
-                act = MMAI::Schema::ACTION_RENDER_ANSI;
-            } else if (isEnded()) {
+                return MMAI::Schema::ACTION_RENDER_ANSI;
+            }
+
+            if (isEnded()) {
                 resets++;
 
                 switch (resets % 4) {
@@ -107,8 +104,8 @@ namespace ML {
             int choice;
 
             std::unordered_set<int> validChoices;
-            for (const auto & [_, actionId] : G->getActiveNodeToActionIds())
-                validChoices.emplace(actionId);
+            for (const auto & id : G->getActiveActionIds())
+                validChoices.emplace(id);
 
             while (true) {
                 std::cout << "Enter an integer (blank or 0 for a random valid action): ";
@@ -142,29 +139,29 @@ namespace ML {
 
         MMAI::Schema::Action AgentV15::recordedAction() {
             if (recording_i >= actions.size()) throw std::runtime_error("\n\n*** No more recorded actions in actions.txt ***\n\n");
-            return MMAI::Schema::Action(actions[recording_i++]);
+            return actions[recording_i++];
         };
 
         MMAI::Schema::Action AgentV15::randomValidAction(const S15::Graph::IGraph * G) const
         {
-            auto validPairs = G->getActiveNodeToActionIds();
+            auto activeIds = G->getActiveActionIds();
 
-            if (validPairs.empty()) {
+            if (activeIds.empty()) {
                 logAi->info("No valid actions => reset");
                 return MMAI::Schema::ACTION_RESET;
             }
 
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dist(0, validPairs.size() - 1);
+            std::uniform_int_distribution<> dist(0, activeIds.size() - 1);
             int randomIndex = dist(gen);
-            const auto &[_, actionId] = validPairs[randomIndex];
-            return actionId;
+            const auto id = activeIds[randomIndex];
+            return id;
         }
 
         MMAI::Schema::Action AgentV15::firstValidAction(const S15::Graph::IGraph * G) const
         {
-            return std::get<1>(G->getActiveNodeToActionIds().at(0));
+            return G->getActiveActionIds().at(0);
         }
     }
 }

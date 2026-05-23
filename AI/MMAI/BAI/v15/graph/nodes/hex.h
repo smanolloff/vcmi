@@ -51,18 +51,26 @@ public:
 		}
 	};
 
+	struct Args
+	{
+		const BattleHex & bhex;
+		const EAccessibility accessibility;
+		const BattleSide side;
+		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles;
+		const int wallHP;
+		const bool isGateOpen;
+	};
+
+    static std::shared_ptr<const Hex> Create(const Args & args)
+    {
+        return std::make_shared<const Hex>(args);
+    }
+
 	static int CalcId(const BattleHex& bh);
 	static std::pair<int, int> CalcXY(const BattleHex& bh);
 	static HexActionHex NearbyBattleHexes(const BattleHex& bh);
 
-	Hex(
-		const BattleHex & bhex,
-		EAccessibility accessibility,
-		BattleSide side,
-		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
-		int wallHP,
-		bool isGateOpen
-	);
+	explicit Hex(const Args & args);
 
 	std::string name() const override;
 	void finalize();

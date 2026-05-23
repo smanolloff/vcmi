@@ -1,6 +1,5 @@
 #include "BAI/v15/graph/graph.h"
 #include "BAI/v15/graph/edges/generic.h"
-#include "battle/ReachabilityInfo.h"
 #include "schema/v15/graph.h"
 
 #include "BAI/v15/fastbfs.h"
@@ -109,6 +108,21 @@ Graph::getEdges(Schema::V15::Graph::ElementType t) const
     }
 }
 
+std::vector<int> Graph::getActiveActionIds() const
+{
+    auto res = std::vector<int>{};
+    int i = 0;
+    for (const auto & action : getAll<Nodes::Action>())
+    {
+        if (action->isActive)
+            res.push_back(i);
+        ++i;
+    }
+
+    return res;
+}
+
+
 void Graph::verify() const
 {
     auto _verify = [](const auto & entries)
@@ -205,22 +219,6 @@ void Graph::verify() const
     }
 }
 
-std::vector<std::tuple<int, int>> Graph::getActiveNodeToActionIds() const
-{
-    std::vector<std::tuple<int, int>> res{};
-    res.reserve(50); // educated guess for a unit's average number of actions
-
-    int i = 0;
-    for (const auto & action : getAll<Nodes::Action>())
-    {
-        if (action->isActive)
-            res.emplace_back(i, action->id);
-        ++i;
-    }
-
-    return res;
-}
-
 EnumFlags<S15::Graph::ElementType> Graph::getFlags() const
 {
     return flags;
@@ -231,136 +229,14 @@ void Graph::setFlag(S15::Graph::ElementType et)
     flags.set(et);
 }
 
-// XXX: the only difference between regular and per-stack accessibility
-// is that the stack's own hexes are ACCESSIBLE instead of ALIVE_STACK
-// For the purposes of MMAI observation we always want them as ALIVE_STACK
 const AccessibilityInfo & Graph::getAccessibility() const
 {
-    if (!acache)
-        throw std::runtime_error("getAccessibility: cache not built");
-
-    return *acache;
+    return accessibility;
 }
 
-void Graph::buildAccessibilityCache()
+const FastBFS & Graph::getFastBFS() const
 {
-    ASSERT(!haveAccessibilityCache, "getAccessibility: cache already built");
-    haveAccessibilityCache = true;
-    acache = std::make_unique<AccessibilityInfo>(battle.getAccessibility());
-}
-
-
-const ReachabilityInfo & Graph::getReachability(const CStack & cstack) const
-{
-    ASSERT(haveAccessibilityCache, "getReachability: cache not built");
-
-    const auto & it = rcache.find(cstack.unitId());
-    if(it == rcache.end())
-        throw std::runtime_error("getReachability: could not find entry for cstack");
-
-    return it->second;
-}
-
-void Graph::buildReachabilityCache()
-{
-    ASSERT(!haveReachabilityCache, "buildReachabilityCache: cache already built");
-    haveReachabilityCache = true;
-
-    flags.require(ET::NODE_UNIT);
-
-    bool hasWideMoat = vstd::contains_if(battle.battleGetAllObstaclesOnPos(BattleHex(BattleHex::GATE_BRIDGE), false), [](const std::shared_ptr<const CObstacleInstance> & obst)
-    {
-        return obst->obstacleType == CObstacleInstance::MOAT;
-    });
-
-    auto fastbfs = FastBFS(battle, getAccessibility(), hasWideMoat);
-
-    for (const auto & unit : getAll<Nodes::Unit>()) {
-        const auto & cstack = unit->cstack;
-        const auto & rinfo = battle.getReachability(&cstack);
-
-        // DEBUG
-        auto distances = fastbfs.run(
-            cstack.getPosition(),
-            cstack.getPosition(),
-            cstack.unitSide(),
-            unit->isFlying,
-            cstack.doubleWide(),
-            unit->speed
-        );
-
-        for (int i = 0; i < rinfo.distances.size(); ++i)
-        {
-            const auto a = rinfo.distances[i];
-            const auto b = distances.at(i);
-
-            if (unit->isFlying)
-            {
-                // full battlefield is computed for flyers
-                if (a == ReachabilityInfo::INFINITE_DIST)
-                {
-                    if (b != FastBFS::INFINITE_DIST)
-                    {
-                        battle.getReachability(&cstack);
-                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
-                    }
-                }
-                else
-                {
-                    if (a != b)
-                    {
-                        battle.getReachability(&cstack);
-                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
-                    }
-                }
-
-                // a == ReachabilityInfo::INFINITE_DIST
-                //     ? ASSERT(b == FastBFS::INFINITE_DIST, "bfs mismatch")
-                //     : ASSERT(a == b, "bfs mismatch");
-            }
-            else
-            {
-                if (a > unit->speed)
-                {
-                    if (b != FastBFS::INFINITE_DIST)
-                    {
-                        battle.getReachability(&cstack);
-                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
-                        std::cout << "y";
-                    }
-                }
-                else
-                {
-                    if (a != b)
-                    {
-                        battle.getReachability(&cstack);
-                        fastbfs.run(cstack.getPosition(), cstack.getPosition(), cstack.unitSide(), unit->isFlying, cstack.doubleWide(), unit->speed);
-                        auto fastbfs2 = FastBFS(battle, getAccessibility(), hasWideMoat);
-                        std::cout << "x";
-                    }
-                }
-
-                // a > unit->speed
-                //     ? ASSERT(b == FastBFS::INFINITE_DIST, "bfs mismatch")
-                //     : ASSERT(a == b, "bfs mismatch");
-            }
-        }
-        // /DEBUG
-
-        rcache.try_emplace(cstack.unitId(), rinfo);
-    }
-
-    if (rcache.empty())
-    {
-        // This should only happen on an empty battlefield (draw?)
-        // => throw only if there are units still alive
-        for (const auto * cstack : battle.battleGetAllStacks(false))
-            if (cstack->alive())
-                throw std::runtime_error("buildReachabilityCache: graph contains no units");
-    }
+    return fastbfs;
 }
 
 } // namespace

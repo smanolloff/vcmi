@@ -3,22 +3,15 @@
 namespace MMAI::BAI::V15::Graph::Nodes
 {
 
-Global::Global(
-    S15::CombatResult res,
-    int round,
-    int value,
-    int hp,
-    TowerFlags towers,
-    CorpseFlags corpses
-)
+Global::Global(const Args & args)
 {
-    setattr(A::BATTLE_WINNER, res == S15::CombatResult::NONE ? S15::NULL_VALUE_UNENCODED : EU(res));
-    setattr(A::BATTLE_ROUND, round);
-    setattr(A::HAS_UPPER_TOWER, towers.hasUpperTower);
-    setattr(A::HAS_MIDDLE_TOWER, towers.hasMiddleTower);
-    setattr(A::HAS_BOTTOM_TOWER, towers.hasBottomTower);
-    setattr(A::HAS_GATE_CORPSE, corpses.hasGateCorpse);
-    setattr(A::HAS_BRIDGE_CORPSE, corpses.hasBridgeCorpse);
+    setattr(A::BATTLE_WINNER, args.res == S15::CombatResult::NONE ? S15::NULL_VALUE_UNENCODED : EU(args.res));
+    setattr(A::BATTLE_ROUND, args.round);
+    setattr(A::HAS_UPPER_TOWER, args.towers.hasUpperTower);
+    setattr(A::HAS_MIDDLE_TOWER, args.towers.hasMiddleTower);
+    setattr(A::HAS_BOTTOM_TOWER, args.towers.hasBottomTower);
+    setattr(A::HAS_GATE_CORPSE, args.corpses.hasGateCorpse);
+    setattr(A::HAS_BRIDGE_CORPSE, args.corpses.hasBridgeCorpse);
 
     static_assert(EU(A::_count) == 7);
 }

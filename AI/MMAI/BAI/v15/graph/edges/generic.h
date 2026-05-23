@@ -46,6 +46,12 @@ class NodeA##_##Edge##_##NodeB : public detail::NodeA##_##Edge##_##NodeB##_Base 
 public: \
     using detail::NodeA##_##Edge##_##NodeB##_Base::NodeA##_##Edge##_##NodeB##_Base; \
     static_assert(EU(A::_count) == 0, "generic edges cannot have attributes"); \
+    static std::shared_ptr<const NodeA##_##Edge##_##NodeB> Create( \
+        const std::shared_ptr<const Nodes::NodeA> & srcNode, \
+        const std::shared_ptr<const Nodes::NodeB> & dstNode) \
+    { \
+        return std::make_shared<const NodeA##_##Edge##_##NodeB>(srcNode, dstNode); \
+    } \
 }
 
 GENERIC_EDGE_ELEMENT(Global, Has, Player);

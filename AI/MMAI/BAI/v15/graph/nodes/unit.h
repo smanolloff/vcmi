@@ -13,6 +13,7 @@
 #include "CCreatureHandler.h"
 #include "CStack.h"
 
+#include "BAI/v15/fastbfs.h"
 #include "BAI/v15/graph/nodes/base.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
@@ -39,12 +40,23 @@ public:
 		}
 	};
 
-	Unit(
-		const CStack & cstack,
-		bool isActive,
-		bool isEnemy,
-		int bfieldValue
-	);
+	struct Args
+	{
+		const CStack & cstack;
+		const bool isActive;
+		const bool isEnemy;
+		const bool isFlying;
+		const int speed;
+		const int bfieldValue;
+		const FastBFS::TDistances & distances;
+	};
+
+    static std::shared_ptr<const Unit> Create(const Args & args)
+    {
+        return std::make_shared<const Unit>(args);
+    }
+
+	explicit Unit(const Args & args);
 
     std::string name() const override
     {
@@ -68,6 +80,7 @@ public:
 
 	const CStack & cstack;
 	const std::string alias;
+	const FastBFS::TDistances distances;
 	const bool isActive;
 	const bool isFlying;
 	const int speed;

@@ -251,16 +251,13 @@ int Unit::GetValue(const CCreature* creature, bool isClone, bool isSummon)
     return v;
 }
 
-Unit::Unit(
-    const CStack & cstack,
-    bool isActive,
-    bool isEnemy,
-    int bfieldValue)
-: cstack(cstack)
-, alias(CalculateAlias(cstack))
-, isActive(isActive)
-, isFlying(cstack.hasBonusOfType(BonusType::FLYING))
-, speed(static_cast<int>(cstack.getMovementRange()))
+Unit::Unit(const Args & args)
+: cstack(args.cstack)
+, alias(CalculateAlias(args.cstack))
+, isActive(args.isActive)
+, distances(args.distances)
+, isFlying(args.isFlying) // cache to prevent repeated bonus checks
+, speed(args.speed) // cache to prevent repeated bonus checks
 , valueOne(GetValue(cstack.unitType(), cstack.isClone(), cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER))
 {
     // XXX: see note for attr()/setattr() in Unit.h
@@ -278,11 +275,11 @@ Unit::Unit(
     auto dmgmean = (cstack.getMaxDamage(false) + cstack.getMinDamage(false)) / 2.0;
     auto dmgstdnorm = dmgstd / dmgmean; // relative uncertainty for the dmg dealt
 
-    setattr(UA::VALUE_REL, permille(value, bfieldValue));
+    setattr(UA::VALUE_REL, permille(value, args.bfieldValue));
     setattr(UA::SHOTS, cstack.shots.available());
     setattr(UA::DMG_UNCERTAINTY, permille(dmgstdnorm, 1));
     setattr(UA::IS_ACTIVE, isActive);
-    setattr(UA::IS_ENEMY, isEnemy);
+    setattr(UA::IS_ENEMY, args.isEnemy);
 
     auto bonuses = cstack.getAllBonuses(Selector::all);
 

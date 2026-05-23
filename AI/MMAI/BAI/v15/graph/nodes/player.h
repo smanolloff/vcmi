@@ -36,28 +36,26 @@ public:
 		}
 	};
 
-	struct Stats
+	struct Args
 	{
-		int v = 0; // army value
-		int hp = 0; // army hp
-		int dd = 0; // damage dealt
-		int dr = 0; // damage received
-		int vk = 0; // value killed
-		int vl = 0; // value lost
+		const BattleSide side;
+		const bool isActive;
+		const int globalValuePrevRound;
+		const int globalHpPrevRound;
+		const int value;
+		const int hp;
+		const int dmgDealt;
+		const int dmgReceived;
+		const int valueKilled;
+		const int valueLost;
 	};
 
-	Player(
-		BattleSide side,
-		bool isActive,
-		int globalValuePrevRound,
-		int globalHpPrevRound,
-		int value,
-		int hp,
-		int dmgDealt,
-		int dmgReceived,
-		int valueKilled,
-		int valueLost
-	);
+    static std::shared_ptr<const Player> Create(const Args & args)
+    {
+        return std::make_shared<const Player>(args);
+    }
+
+	explicit Player(const Args & args);
 
     std::string name() const override
     {

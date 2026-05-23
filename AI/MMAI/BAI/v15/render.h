@@ -11,9 +11,10 @@
 #pragma once
 
 #include "BAI/v15/state.h"
-#include "BAI/v15/action.h"
 
 namespace MMAI::BAI::V15
 {
-std::string Render(const State * state, const Action * action);
+std::string Render(
+    const State * state,
+    const std::shared_ptr<const Graph::Nodes::Action> & action);
 }

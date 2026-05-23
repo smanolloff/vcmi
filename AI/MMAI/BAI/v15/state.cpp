@@ -18,12 +18,14 @@
 #include "BAI/v15/graph/edges/unit_shoot_dmg_unit.h"
 #include "BAI/v15/graph/graph.h"
 #include "BAI/v15/graph/edges/generic.h"
+#include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/graph/nodes/player.h"
 #include "BAI/v15/graph/nodes/unit.h"
 #include "BAI/v15/hexaction.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/DamageCalculator.h"
 #include "battle/CUnitState.h"
+#include "bonuses/BonusEnum.h"
 #include "bonuses/BonusParameters.h" // IWYU pragma: keep (needed for bonus->parameters)
 #include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -53,6 +55,7 @@ namespace
 	using UnitPtr = std::shared_ptr<const N::Unit>;
 	using HexPtr = std::shared_ptr<const N::Hex>;
 	using ActionPtr = std::shared_ptr<const N::Action>;
+	using ActionArgs = N::Action::Args;
 	using TowerFlags = N::Global::TowerFlags;
 	using CorpseFlags = N::Global::CorpseFlags;
 	using ET = S15::Graph::ElementType;
@@ -621,14 +624,14 @@ namespace
 	{
 		G.setFlag(ET::NODE_GLOBAL);
 
-		G.add(std::make_shared<N::Global>(
-			result,
-			round,
-			stats.totalValue,
-			stats.totalHp,
-			GetSiegeTowers(battle),
-			GetSiegeCorpses(battle)
-		));
+		G.add(N::Global::Create({
+			.res=result,
+			.round=round,
+			.value=stats.totalValue,
+			.hp=stats.totalHp,
+			.towers=GetSiegeTowers(battle),
+			.corpses=GetSiegeCorpses(battle)
+		}));
 	}
 
 	void AddPlayerNodes(
@@ -643,31 +646,31 @@ namespace
 		static_assert(EU(BattleSide::LEFT_SIDE) == 0);
 		static_assert(EU(BattleSide::RIGHT_SIDE) == 1);
 
-		G.add(std::make_shared<N::Player>(
-			BattleSide::LEFT_SIDE,
-			BattleSide::LEFT_SIDE == battle.battleGetMySide(),
-			lastStats.totalValue,
-			lastStats.totalHp,
-			stats.leftValue,
-			stats.leftHp,
-			logdata.ldd,
-			logdata.ldr,
-			logdata.lvk,
-			logdata.lvl
-		));
+		G.add(N::Player::Create({
+			.side=BattleSide::LEFT_SIDE,
+			.isActive=BattleSide::LEFT_SIDE == battle.battleGetMySide(),
+			.globalValuePrevRound=lastStats.totalValue,
+			.globalHpPrevRound=lastStats.totalHp,
+			.value=stats.leftValue,
+			.hp=stats.leftHp,
+			.dmgDealt=logdata.ldd,
+			.dmgReceived=logdata.ldr,
+			.valueKilled=logdata.lvk,
+			.valueLost=logdata.lvl
+		}));
 
-		G.add(std::make_shared<N::Player>(
-			BattleSide::RIGHT_SIDE,
-			BattleSide::RIGHT_SIDE == battle.battleGetMySide(),
-			lastStats.totalValue,
-			lastStats.totalHp,
-			stats.rightValue,
-			stats.rightHp,
-			logdata.rdd,
-			logdata.rdr,
-			logdata.rvk,
-			logdata.rvl
-		));
+		G.add(N::Player::Create({
+			.side=BattleSide::RIGHT_SIDE,
+			.isActive=BattleSide::RIGHT_SIDE == battle.battleGetMySide(),
+			.globalValuePrevRound=lastStats.totalValue,
+			.globalHpPrevRound=lastStats.totalHp,
+			.value=stats.rightValue,
+			.hp=stats.rightHp,
+			.dmgDealt=logdata.rdd,
+			.dmgReceived=logdata.rdr,
+			.valueKilled=logdata.rvk,
+			.valueLost=logdata.rvl
+		}));
 	}
 
 	void AddUnitNodes(
@@ -682,7 +685,27 @@ namespace
 		{
 			bool isActive = cstack == acstack;
 			bool isEnemy = cstack->unitSide() != battle.battleGetMySide();
-			G.add(std::make_shared<N::Unit>(*cstack, isActive, isEnemy, stats.totalValue));
+			bool isFlying = cstack->hasBonusOfType(BonusType::FLYING);
+			auto speed = static_cast<int>(cstack->getMovementRange());
+
+			const auto distances = G.getFastBFS().run(
+				cstack->getPosition(),
+				cstack->getPosition(),
+				cstack->unitSide(),
+				isFlying,
+				cstack->doubleWide(),
+				speed
+			);
+
+			G.add(N::Unit::Create({
+				.cstack=*cstack,
+				.isActive=isActive,
+				.isEnemy=isEnemy,
+				.isFlying=isFlying,
+				.speed=speed,
+				.bfieldValue=stats.totalValue,
+				.distances=distances
+			}));
 		}
 	}
 
@@ -712,14 +735,14 @@ namespace
 				auto bh = BattleHex(static_cast<int16_t>(x + 1), static_cast<int16_t>(y));
 				ASSERT(bh.isAvailable(), "invalid bhex");
 
-				G.add(std::make_shared<N::Hex>(
-					bh,
-					G.getAccessibility().at(bh.toInt()),
-					acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
-					hexobstacles.at(i),
-					WallHP(battle, bh),
-					isGateOpen
-				));
+				G.add(N::Hex::Create({
+					.bhex=bh,
+					.accessibility=G.getAccessibility().at(bh.toInt()),
+					.side=acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
+					.obstacles=hexobstacles.at(i),
+					.wallHP=WallHP(battle, bh),
+					.isGateOpen=isGateOpen
+				}));
 			}
 		}
 	}
@@ -739,13 +762,13 @@ namespace
 		const auto & global = G.getAll<N::Global>().at(0);
 
 		for (const auto & player : G.getAll<N::Player>())
-			G.add(std::make_shared<E::Global_Has_Player>(global, player));
+			G.add(E::Global_Has_Player::Create(global, player));
 
 		for (const auto & unit : G.getAll<N::Unit>())
-			G.add(std::make_shared<E::Global_Has_Unit>(global, unit));
+			G.add(E::Global_Has_Unit::Create(global, unit));
 
 		for (const auto & hex : G.getAll<N::Hex>())
-			G.add(std::make_shared<E::Global_Has_Hex>(global, hex));
+			G.add(E::Global_Has_Hex::Create(global, hex));
 	}
 
 	void AddEdges_Player_Owns_Unit(
@@ -759,7 +782,7 @@ namespace
 		for (const auto & unit : G.getAll<N::Unit>())
 		{
 			const auto & player = G.getByExtraIndex<N::Player>(unit->cstack.unitSide());
-			G.add(std::make_shared<E::Player_Owns_Unit>(player, unit));
+			G.add(E::Player_Owns_Unit::Create(player, unit));
 		}
 	}
 
@@ -779,7 +802,7 @@ namespace
 				auto it = adjmap.find({src->bhex.toInt(), dst->bhex.toInt()});
 				if(it == adjmap.end())
 					continue;
-				G.add(std::make_shared<E::Hex_Adjacent_Hex>(src, dst, it->second));
+				G.add(E::Hex_Adjacent_Hex::Create(src, dst, it->second));
 			}
 		}
 	}
@@ -806,7 +829,7 @@ namespace
 					continue;
 
 				const auto & other = matrix.unique_units.at(j);
-				G.add(std::make_shared<E::Unit_ActsBefore_Unit>(unit, other, times));
+				G.add(E::Unit_ActsBefore_Unit::Create(unit, other, times));
 			}
 		}
 	}
@@ -856,16 +879,14 @@ namespace
 				auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
 				auto vdiff_defender = other->valueOne * qtydiff_defender;
 
-				G.add(std::make_shared<E::Unit_MeleeDmg_Unit>(
-					unit,
-					other,
-					vdiff_attacker,
-					vdiff_defender,
-					hpdiff_attacker,
-					hpdiff_defender,
-					stats.totalValue,
-					stats.totalHp
-				));
+				G.add(E::Unit_MeleeDmg_Unit::Create(unit, other, {
+					.vdiffAttacker=vdiff_attacker,
+					.vdiffDefender=vdiff_defender,
+					.hpdiffAttacker=static_cast<int>(hpdiff_attacker),
+					.hpdiffDefender=static_cast<int>(hpdiff_defender),
+					.battlefieldValue=stats.totalValue,
+					.battlefieldHp=stats.totalHp
+				}));
 			}
 		}
 	}
@@ -904,16 +925,14 @@ namespace
 			auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
 			auto vdiff_defender = other->valueOne * qtydiff_defender;
 
-			G.add(std::make_shared<E::Unit_ShootDmg_Unit>(
-				unit,
-				other,
-				vdiff_attacker,
-				vdiff_defender,
-				hpdiff_attacker,
-				hpdiff_defender,
-				stats.totalValue,
-				stats.totalHp
-			));
+			G.add(E::Unit_ShootDmg_Unit::Create(unit, other, {
+				.vdiffAttacker=vdiff_attacker,
+				.vdiffDefender=vdiff_defender,
+				.hpdiffAttacker=static_cast<int>(hpdiff_attacker),
+				.hpdiffDefender=static_cast<int>(hpdiff_defender),
+				.battlefieldValue=stats.totalValue,
+				.battlefieldHp=stats.totalHp
+			}));
 		}
 	}
 
@@ -944,7 +963,7 @@ namespace
 			{
 				if(ostack.coversPos(bhex))
 				{
-					G.add(std::make_shared<E::Unit_Blocks_Unit>(unit, other));
+					G.add(E::Unit_Blocks_Unit::Create(unit, other));
 					break;
 				}
 			}
@@ -966,151 +985,31 @@ namespace
 					continue;
 				const auto & hex = G.getByExtraIndex<N::Hex>(bhex.toInt());
 				ASSERT(hex != nullptr, "hex not found: " + std::to_string(bhex.toInt()));
-				G.add(std::make_shared<E::Unit_Occupies_Hex>(unit, hex));
+				G.add(E::Unit_Occupies_Hex::Create(unit, hex));
 			}
 		}
 	}
 
-	int CalcActionId(
-		AT actionType,
-		const UnitPtr & actingUnit, // actor (N/A for WAIT)
-		const UnitPtr & targetUnit, // attacked unit (N/A for MOVE/WAIT)
-		const HexPtr & targetHex) // move destination (N/A for SHOOT/WAIT)
+	void AddRetreatAction(
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags)
 	{
-		static_assert(EI(S15::HexAction::AMOVE_TR) == 0);
-		static_assert(EI(S15::HexAction::AMOVE_R) == 1);
-		static_assert(EI(S15::HexAction::AMOVE_BR) == 2);
-		static_assert(EI(S15::HexAction::AMOVE_BL) == 3);
-		static_assert(EI(S15::HexAction::AMOVE_L) == 4);
-		static_assert(EI(S15::HexAction::AMOVE_TL) == 5);
-		static_assert(EI(S15::HexAction::AMOVE_2TR) == 6);
-		static_assert(EI(S15::HexAction::AMOVE_2R) == 7);
-		static_assert(EI(S15::HexAction::AMOVE_2BR) == 8);
-		static_assert(EI(S15::HexAction::AMOVE_2BL) == 9);
-		static_assert(EI(S15::HexAction::AMOVE_2L) == 10);
-		static_assert(EI(S15::HexAction::AMOVE_2TL) == 11);
+		// This must be the very last action added
+		// All other actions types must have been added by now
+		for (int i = 0; i < EU(AT::_count); ++i)
+			if (i != EU(AT::RETREAT))
+				atFlags.require(AT(i));
 
-		// Hack for mapping move target hex + attack target stack
-		// to the legacy action space.
+		atFlags.set(AT::RETREAT);
 
-		// POV: LEFT active unit
-		//
-		// x     = (small left stack)      | x        = (wide left stack head)
-		// [0-5] = (small right stack)     | [0-5A-F] = (small right stack)
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-		//  . . . . . . 5 0 . . . . . . . .|. . . . . . F 5 0 . . . . .
-		// . . . . . . 4 x 1 . . . . . . . | . . . . . E ~ x 1 . . . .
-		//  . . . . . . 3 2 . . . . . . . .|. . . . . . D 3 2 . . . . .
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-
-		// x     = (small left stack)      | x        = (wide left stack head)
-		// [0-5] = (wide right stack head) | [0-5A-F] = (wide right stack head)
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-		//  . . . . . 5 5 0 ~ . . . . . . .|. . . . . F F 5 0 ~ . . . .
-		// . . . . . 4 - x 1 ~ . . . . . . | . . . . E ~ ~ x 1 ~ . . .
-		//  . . . . . 3 3 2 ~ . . . . . . .|. . . . . D D 3 2 ~ . . . .
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-
-		// POV: RIGHT active unit
-
-		// x     = (small right stack)     | x        = (wide right stack head)
-		// [0-5] = (small left stack)      | [0-5A-F] = (small left stack)
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-		//  . . . . . . 5 0 . . . . . . . .|. . . . . . . 5 0 A . . . .
-		// . . . . . . 4 x 1 . . . . . . . | . . . . . . 4 x ~ B . . .
-		//  . . . . . . 3 2 . . . . . . . .|. . . . . . . 3 2 C . . . .
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-
-		// x     = (small right stack)     | x        = (wide right stack head)
-		// [0-5] = (wide left stack head)  | [0-5A-F] = (wide left stack head)
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-		//  . . . . . ~ 5 0 0 . . . . . . .|. . . . . . ~ 5 0 A A . . .
-		// . . . . . ~ 4 x - 1 . . . . . . | . . . . . ~ 4 x ~ ~ B . .
-		//  . . . . . ~ 3 2 2 . . . . . . .|. . . . . . ~ 3 2 C C . . .
-		// . . . . . . . . . . . . . . . . | . . . . . . . . . . . . .
-
-		switch(actionType)
-		{
-		case S15::ActionType::WAIT:
-			return 1;
-		case S15::ActionType::AMOVE:
-		{
-			// Plan:
-			// if (edir = mutualPosition(a_head, b_head); edir != EDIR::NONE)
-			// else if 	(a.wide() && edir = mutualPosition(a_tail, b_head); edir != EDIR::NONE)
-			// else if 	(b.wide() && edir = mutualPosition(a_head, b_tail); edir != EDIR::NONE)
-			// else if 	(a.wide() && b.wide() && edir = mutualPosition(a_tail, b_tail); edir != EDIR::NONE)
-			// else throw
-
-			ASSERT(actingUnit != nullptr, "actingUnit is required for AMOVE");
-			ASSERT(targetUnit != nullptr, "targetUnit is required for AMOVE");
-			ASSERT(targetHex != nullptr, "targetHex is required for AMOVE");
-
-			static const auto dirmapHead = std::map<BattleHex::EDir, S15::HexAction>
-			{
-				{BattleHex::EDir::TOP_RIGHT, S15::HexAction::AMOVE_TR},
-				{BattleHex::EDir::RIGHT, S15::HexAction::AMOVE_R},
-				{BattleHex::EDir::BOTTOM_RIGHT, S15::HexAction::AMOVE_BR},
-				{BattleHex::EDir::BOTTOM_LEFT, S15::HexAction::AMOVE_BL},
-				{BattleHex::EDir::LEFT, S15::HexAction::AMOVE_L},
-				{BattleHex::EDir::TOP_LEFT, S15::HexAction::AMOVE_TL}
-			};
-
-			static const auto dirmapTail = std::map<BattleHex::EDir, S15::HexAction>
-			{
-				{BattleHex::EDir::TOP_RIGHT, S15::HexAction::AMOVE_2TR},
-				{BattleHex::EDir::RIGHT, S15::HexAction::AMOVE_2R},
-				{BattleHex::EDir::BOTTOM_RIGHT, S15::HexAction::AMOVE_2BR},
-				{BattleHex::EDir::BOTTOM_LEFT, S15::HexAction::AMOVE_2BL},
-				{BattleHex::EDir::LEFT, S15::HexAction::AMOVE_2L},
-				{BattleHex::EDir::TOP_LEFT, S15::HexAction::AMOVE_2TL}
-			};
-
-			const auto & astack = actingUnit->cstack;
-			const auto & bstack = targetUnit->cstack;
-
-			int amove;
-
-			const auto & a_head = targetHex->bhex;
-			const auto & b_head = bstack.getPosition();
-			const auto & a_tail = astack.occupiedHex(targetHex->bhex);
-			const auto & b_tail = bstack.occupiedHex();
-
-			const auto & a_head_adj = a_head.getNeighbouringTiles();
-			const auto & a_tail_adj = a_tail.getNeighbouringTiles(); // OK if a_tail is invalid
-
-			if (a_head_adj.contains(b_head))
-				amove = EU(dirmapHead.at(BattleHex::mutualPosition(a_head, b_head)));
-			else if (astack.doubleWide() && a_tail_adj.contains(b_head))
-				amove = EU(dirmapTail.at(BattleHex::mutualPosition(a_tail, b_head)));
-			else if (bstack.doubleWide() && a_head_adj.contains(b_tail))
-				amove = EU(dirmapHead.at(BattleHex::mutualPosition(a_head, b_tail)));
-			else if (astack.doubleWide() && bstack.doubleWide() && a_tail_adj.contains(b_tail))
-				amove = EU(dirmapTail.at(BattleHex::mutualPosition(a_tail, b_tail)));
-			else
-				throw std::runtime_error("mutual position mapping failed");
-
-			return 2 + (targetHex->id * EU(S15::HexAction::_count)) + amove;
-		}
-		case S15::ActionType::DEFEND:
-		case S15::ActionType::MOVE:
-		{
-			ASSERT(actingUnit != nullptr, "actingUnit is required for AMOVE");
-			ASSERT(targetHex != nullptr, "targetHex is required for AMOVE");
-			return 2 + (targetHex->id * EU(S15::HexAction::_count)) + EU(S15::HexAction::MOVE);
-		}
-		case S15::ActionType::SHOOT:
-		{
-			ASSERT(actingUnit != nullptr, "actingUnit is required for AMOVE");
-			ASSERT(targetUnit != nullptr, "targetUnit is required for AMOVE");
-			// VCMI's BattleAction::makeShotAttack takes a target unit, not hex
-			int hexid = N::Hex::CalcId(targetUnit->cstack.getPosition());
-			return 2 + (hexid * EU(S15::HexAction::_count)) + EU(S15::HexAction::SHOOT);
-		}
-		default:
-			throw std::runtime_error("Unexpected action type: " + std::to_string(EU(actionType)));
-		}
-	};
+		G.add(N::Action::Create({
+			.actionType=AT::RETREAT,
+			.by=nullptr,
+			.target=nullptr,
+			.endsAt={},
+			.flags={}
+		}));
+	}
 
 	void AddMoveAndDefendActions(
 		Graph::Graph & G,
@@ -1131,12 +1030,10 @@ namespace
 		for(const auto & unit : G.getAll<N::Unit>())
 		{
 			const auto & stack = unit->cstack;
-			const auto & reachability = G.getReachability(stack);
-			bool isActive = &stack == acstack;
 
 			for(const auto & hex : G.getAll<N::Hex>())
 			{
-				if(reachability.distances.at(hex->bhex.toInt()) > unit->speed)
+				if(unit->distances.at(hex->bhex.toInt()) > unit->speed)
 					continue;
 
 				auto stackhexes = std::vector<HexPtr>{};
@@ -1144,21 +1041,21 @@ namespace
 					if (stackbhex.isAvailable())
 						stackhexes.emplace_back(G.getByExtraIndex<N::Hex>(stackbhex.toInt()));
 
-				auto at = hex->bhex == stack.getPosition()
-					? AT::DEFEND
-					: AT::MOVE;
-
-				int id = CalcActionId(at, unit, nullptr, hex);
-
-				const auto action = std::make_shared<N::Action>(at, id, unit, stackhexes, isActive);
+				const auto action = N::Action::Create({
+					.actionType=(hex->bhex == stack.getPosition() ? AT::DEFEND : AT::MOVE),
+					.by=unit,
+					.target=nullptr,
+					.endsAt=stackhexes,
+					.flags={}
+				});
 
 				G.add(action);
-				G.add(std::make_shared<E::Action_By_Unit>(action, unit));
+				G.add(E::Action_By_Unit::Create(action, unit));
 
 				bool isRear = false; // getHexes always returns primary hex first
 				for(const auto & stackhex : stackhexes)
 				{
-					G.add(std::make_shared<E::Action_EndsAt_Hex>(action, stackhex, isRear));
+					G.add(E::Action_EndsAt_Hex::Create(action, stackhex, isRear));
 					isRear = true;
 				}
 			}
@@ -1209,7 +1106,7 @@ namespace
 					continue;
 
 				adjunits.emplace(adjunit);
-				G.add(std::make_shared<E::Action_Blocks_Unit>(action, adjunit));
+				G.add(E::Action_Blocks_Unit::Create(action, adjunit));
 			}
 
 		}
@@ -1272,7 +1169,7 @@ namespace
 					}
 
 					if (candidate && !overlap) {
-						G.add(std::make_shared<E::Action_ExposesToMeleeFrom_Unit>(action, ounit));
+						G.add(E::Action_ExposesToMeleeFrom_Unit::Create(action, ounit));
 						break;
 					}
 				}
@@ -1359,7 +1256,7 @@ namespace
 				if(battle.battleHasWallPenalty(&ostack, ostack.getPosition(), hex->bhex))
 					mult *= 0.5;
 
-				G.add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(action, ounit, mult));
+				G.add(E::Action_ExposesToShootFrom_Unit::Create(action, ounit, mult));
 			}
 		}
 	}
@@ -1443,7 +1340,7 @@ namespace
 				continue;
 
 			for (const auto & ounit : G.getAllEdgesDstBySrc<E::Unit_ShootDmg_Unit>(unit))
-				G.add(std::make_shared<E::Action_EnablesShootAt_Unit>(action, ounit));
+				G.add(E::Action_EnablesShootAt_Unit::Create(action, ounit));
 		}
 	}
 
@@ -1480,7 +1377,8 @@ namespace
 	void CloneActionEdges(
 		Graph::Graph & G,
 		const ActionPtr & src,
-		const std::shared_ptr<N::Action> & dst)
+		const ActionPtr & dst,
+		const std::unordered_set<ET> & ignore = {})
 	{
 		// Iterator over a *copy* of the index result
 		auto iterateActionEdges = [&G, &src]<typename Edge>(const auto & func)
@@ -1494,12 +1392,15 @@ namespace
 		{
 			iterateActionEdges.template operator()<Edge>([&G, &dst](const auto & e)
 			{
-				G.add(std::make_shared<Edge>(dst, e->dstNode));
+				G.add(Edge::Create(dst, e->dstNode));
 			});
 		};
 
 		for(int i = 0; i < EU(ET::_count); ++i)
 		{
+			if (ignore.contains(ET(i)))
+				continue;
+
 			switch(ET(i))
 			{
 				case ET::EDGE_ACTION_BY_UNIT:
@@ -1507,7 +1408,7 @@ namespace
 					break;
 				case ET::EDGE_ACTION_ENDS_AT_HEX:
 					iterateActionEdges.template operator()<E::Action_EndsAt_Hex>([&G, &dst](const auto & e) {
-						G.add(std::make_shared<E::Action_EndsAt_Hex>(dst, e->dstNode, e->isRear));
+						G.add(E::Action_EndsAt_Hex::Create(dst, e->dstNode, e->isRear));
 					});
 					break;
 				case ET::EDGE_ACTION_BLOCKS_UNIT:
@@ -1518,7 +1419,7 @@ namespace
 					break;
 				case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
 					iterateActionEdges.template operator()<E::Action_ExposesToShootFrom_Unit>([&G, &dst](const auto & e) {
-						G.add(std::make_shared<E::Action_ExposesToShootFrom_Unit>(dst, e->dstNode, e->mult));
+						G.add(E::Action_ExposesToShootFrom_Unit::Create(dst, e->dstNode, e->mult));
 					});
 					break;
 				case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
@@ -1603,19 +1504,16 @@ namespace
 
 			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
-			auto id = CalcActionId(AT::AMOVE, unit, ounit, hex);
-
-			// TODO:
-			// If unit has RETURN_AFTER_STRIKE, there should be two *separate* AMOVE actions
-			// which are identical except in their endsAt.
-			// However, until the legacy integer-based Schema::Action is removed, this
-			// is not impossible (both would correspond to the same int Action)
-			// This is true for all other kinds of actions (e.g. spell casts)
-
-			auto amove = std::make_shared<N::Action>(AT::AMOVE, id, unit, move->endsAt, move->isActive);
+			const auto amove = N::Action::Create({
+				.actionType=AT::AMOVE,
+				.by=unit,
+				.target=ounit,
+				.endsAt=move->endsAt,
+				.flags={}
+			});
 
 			G.add(amove);
-			G.add(std::make_shared<E::Action_Melees_Unit>(amove, ounit, true));
+			G.add(E::Action_Melees_Unit::Create(amove, ounit, true));
 
 			// Melee AoE attacks, e.g. dragons, hydras
 			const auto & stack = unit->cstack;
@@ -1641,10 +1539,33 @@ namespace
 					continue;
 
 				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
-				G.add(std::make_shared<E::Action_Melees_Unit>(amove, tunit, false));
+				G.add(E::Action_Melees_Unit::Create(amove, tunit, false));
 			}
 
 			CloneActionEdges(G, move, amove);
+
+			if (stack.hasBonusOfType(BonusType::RETURN_AFTER_STRIKE))
+			{
+				// A duplicate action, with different flags and endsAt hexes
+				auto flags = N::Action::Flags{};
+				flags.set(EU(N::Action::Flag::RETURN_AFTER_STRIKE));
+
+				const auto amove2 = N::Action::Create({
+					.actionType=amove->actionType,
+					.by=amove->by,
+					.target=amove->target,
+					.endsAt=amove->endsAt,
+					.flags=flags
+				});
+
+				CloneActionEdges(G, amove, amove2, {ET::EDGE_ACTION_ENDS_AT_HEX});
+
+				for (const auto & hex : G.getAllEdgesDstBySrc<E::Unit_Occupies_Hex>(amove->by))
+				{
+					bool isPrimary = hex->bhex == amove->by->cstack.getPosition();
+					G.add(E::Action_EndsAt_Hex::Create(amove2, hex, isPrimary));
+				}
+			}
 		}
 	}
 
@@ -1659,13 +1580,18 @@ namespace
 
 		for (const auto & ounit : edges)
 		{
-			auto id = CalcActionId(AT::SHOOT, defend->by, ounit, nullptr);
-			auto shoot = std::make_shared<N::Action>(AT::SHOOT, id, defend->by, defend->endsAt, defend->isActive);
-			const auto & unit = shoot->by;
+			const auto & unit = defend->by;
+
+			const auto shoot = N::Action::Create({
+				.actionType=AT::SHOOT,
+				.by=unit,
+				.target=ounit,
+				.endsAt=defend->endsAt,
+				.flags={}
+			});
 
 			G.add(shoot);
-
-			G.add(std::make_shared<E::Action_Shoots_Unit>(shoot, ounit, true));
+			G.add(E::Action_Shoots_Unit::Create(shoot, ounit, true));
 
 			// AoE attacks - e.g. dragon breath
 			const auto & stack = unit->cstack;
@@ -1707,7 +1633,7 @@ namespace
 					continue;
 
 				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
-				G.add(std::make_shared<E::Action_Shoots_Unit>(shoot, tunit, false));
+				G.add(E::Action_Shoots_Unit::Create(shoot, tunit, false));
 			}
 
 			CloneActionEdges(G, defend, shoot);
@@ -1721,8 +1647,14 @@ namespace
 		if (defend->by->cstack.waitedThisTurn)
 			return;
 
-		auto id = CalcActionId(AT::WAIT, nullptr, nullptr, nullptr);
-		auto wait = std::make_shared<N::Action>(AT::WAIT, id, defend->by, defend->endsAt, defend->isActive);
+		const auto wait = N::Action::Create({
+			.actionType=AT::WAIT,
+			.by=defend->by,
+			.target=nullptr,
+			.endsAt=defend->endsAt,
+			.flags={}
+		});
+
 		G.add(wait);
 		CloneActionEdges(G, defend, wait);
 	}
@@ -1734,8 +1666,9 @@ namespace
 	{
 		// All MOVE actions with all their edges must be available here
 		// except for MELEES and SHOOTS edges which are for AMOVE only
-		G.getFlags().require(ET::NODE_ACTION);
 		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
+		G.getFlags().require(ET::NODE_ACTION);
+		G.getFlags().require(ET::EDGE_UNIT_OCCUPIES_HEX);
 		G.getFlags().require(ET::EDGE_ACTION_BY_UNIT);
 		G.getFlags().require(ET::EDGE_ACTION_BLOCKS_UNIT);
 		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
@@ -1858,14 +1791,10 @@ void State::onActiveStack(
 	const auto stats = CalcGlobalStats(battle);
 	const auto logdata = ProcessAttackLogs(attackLogs);
 
-	G->buildAccessibilityCache();
-
 	AddGlobalNode(*G, battle, acstack, result, round, stats);
 	AddPlayerNodes(*G, battle, lastStats, stats, logdata);
 	AddUnitNodes(*G, battle, acstack, stats);
 	AddHexNodes(*G, battle, acstack);
-
-	G->buildReachabilityCache(); // requires Units
 
 	AddEdges_Global_Has_PlayerUnitHex(*G, battle);
 	AddEdges_Player_Owns_Unit(*G, battle);
@@ -1891,6 +1820,7 @@ void State::onActiveStack(
 	AddMoveActionEdges_Action_EnablesShootAt_Hex(*G, atFlags, battle, acstack);
 
 	AddOtherActions(*G, atFlags, battle);
+	AddRetreatAction(*G, atFlags);
 
 	ASSERT(G->getFlags().flags.all(), "etFlags check: " + G->getFlags().flags.to_string());
 	ASSERT(atFlags.flags.all(), "atFlags check: " + atFlags.flags.to_string());

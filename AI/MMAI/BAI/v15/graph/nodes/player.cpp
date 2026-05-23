@@ -6,28 +6,18 @@
 namespace MMAI::BAI::V15::Graph::Nodes
 {
 
-Player::Player(
-    BattleSide side,
-    bool isActive,
-    int globalValuePrevRound,
-    int globalHpPrevRound,
-    int value,
-    int hp,
-    int dmgDealt,
-    int dmgReceived,
-    int valueKilled,
-    int valueLost
-) : side(side)
+Player::Player(const Args & args)
+: side(args.side)
 {
     setattr(A::BATTLE_SIDE, EU(side));
-    setattr(A::IS_ACTIVE, isActive);
+    setattr(A::IS_ACTIVE, args.isActive);
 
-    setattr(A::ARMY_VALUE_NOW_REL, permille(value, globalValuePrevRound));
-    setattr(A::ARMY_HP_NOW_REL, permille(hp, globalHpPrevRound));
-    setattr(A::VALUE_KILLED_NOW_REL, permille(valueKilled, globalValuePrevRound));
-    setattr(A::VALUE_LOST_NOW_REL, permille(valueLost, globalValuePrevRound));
-    setattr(A::DMG_DEALT_NOW_REL, permille(dmgDealt, globalHpPrevRound));
-    setattr(A::DMG_RECEIVED_NOW_REL, permille(dmgReceived, globalHpPrevRound));
+    setattr(A::ARMY_VALUE_NOW_REL, permille(args.value, args.globalValuePrevRound));
+    setattr(A::ARMY_HP_NOW_REL, permille(args.hp, args.globalHpPrevRound));
+    setattr(A::VALUE_KILLED_NOW_REL, permille(args.valueKilled, args.globalValuePrevRound));
+    setattr(A::VALUE_LOST_NOW_REL, permille(args.valueLost, args.globalValuePrevRound));
+    setattr(A::DMG_DEALT_NOW_REL, permille(args.dmgDealt, args.globalHpPrevRound));
+    setattr(A::DMG_RECEIVED_NOW_REL, permille(args.dmgReceived, args.globalHpPrevRound));
 
     static_assert(EU(A::_count) == 8, "whistleblower in case attributes change");
 }
