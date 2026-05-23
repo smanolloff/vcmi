@@ -133,7 +133,7 @@ namespace
 
 // This intentionally uses the IState interface to ensure that
 // the schema is properly exposing all needed informaton
-std::string Render(const State * state, const Action * action) // NOSONAR - function used for debugging only
+std::string Render(const State * state, const ActionPtr & action) // NOSONAR - function used for debugging only
 {
     const auto & alogs = state->attackLogs;
     const auto * G = state->G.get();
@@ -422,7 +422,7 @@ std::string Render(const State * state, const Action * action) // NOSONAR - func
                 break;
             case 3:
                 name = "Last action";
-                value = action ? action->name + " [" + std::to_string(action->id) + "]" : "";
+                value = action ? action->humanName(state->battle.battleGetMySide()) : "";
                 break;
             case 4:
             {

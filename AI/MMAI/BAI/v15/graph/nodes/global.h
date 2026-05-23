@@ -50,14 +50,22 @@ public:
 		}
 	};
 
-	Global(
-		S15::CombatResult res,
-		int round,
-		int value,
-		int hp,
-		TowerFlags towers,
-		CorpseFlags corpses
-    );
+	struct Args
+	{
+		const S15::CombatResult res;
+		const int round;
+		const int value;
+		const int hp;
+		const TowerFlags towers;
+		const CorpseFlags corpses;
+	};
+
+    static std::shared_ptr<const Global> Create(const Args & args)
+    {
+        return std::make_shared<const Global>(args);
+    }
+
+	explicit Global(const Args & args);
 };
 
 }

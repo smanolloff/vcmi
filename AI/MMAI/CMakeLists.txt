@@ -76,8 +76,6 @@ set(MMAI_FILES
 
   BAI/v15/BAI.cpp
   BAI/v15/BAI.h
-  BAI/v15/action.cpp
-  BAI/v15/action.h
   BAI/v15/attack_log.h
   BAI/v15/encoder.cpp
   BAI/v15/encoder.h

@@ -52,6 +52,7 @@ namespace MMAI::Schema::V15::Graph
         _count
     };
 
+    // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
     #define BLANK_ENUM_DEF(name)    \
     enum class name : uint8_t {     \
         _count                      \
@@ -139,7 +140,12 @@ namespace MMAI::Schema::V15::Graph
             _count
         };
 
-        BLANK_ENUM_DEF(Action);
+        enum class Action : uint8_t
+        {
+            ACTION_TYPE,
+
+            _count
+        };
     }
 
 namespace EdgeAttributes
@@ -251,12 +257,7 @@ namespace EdgeAttributes
     public:
         virtual std::vector<const INode*> getNodes(ElementType t) const = 0;
         virtual std::vector<const IEdge*> getEdges(ElementType t) const = 0;
-
-        // Tuples of {Node ID, Action ID}
-        // Node IDs are indexes in the result of getNodes(NodeType::ACTION)
-        // Action IDs are the legacy numeric action (0..2312) for those nodes
-        virtual std::vector<std::tuple<int, int>> getActiveNodeToActionIds() const = 0;
-
+        virtual std::vector<int> getActiveActionIds() const = 0;
         virtual ~IGraph() = default;
     };
 

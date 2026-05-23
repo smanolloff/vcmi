@@ -27,11 +27,19 @@ namespace detail
 class Hex_Adjacent_Hex : public detail::Hex_Adjacent_Hex_Base
 {
 public:
+    static std::shared_ptr<const Hex_Adjacent_Hex> Create(
+		const std::shared_ptr<const Nodes::Hex> & srcNode,
+		const std::shared_ptr<const Nodes::Hex> & dstNode,
+		int direction)
+    {
+        return std::make_shared<const Hex_Adjacent_Hex>(srcNode, dstNode, direction);
+    };
+
 	Hex_Adjacent_Hex(
 		const std::shared_ptr<const Nodes::Hex> & srcNode,
 		const std::shared_ptr<const Nodes::Hex> & dstNode,
-		int direction
-	) : detail::Hex_Adjacent_Hex_Base(srcNode, dstNode)
+		int direction)
+	: detail::Hex_Adjacent_Hex_Base(srcNode, dstNode)
 	{
 		setattr(A::DIRECTION, direction);
 		static_assert(static_cast<size_t>(A::_count) == 1, "whistleblower in case attributes change");

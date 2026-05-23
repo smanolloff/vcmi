@@ -51,23 +51,16 @@ Hex::HexActionHex Hex::NearbyBattleHexes(const BattleHex& bh)
     };
 }
 
-Hex::Hex(
-    const BattleHex & bhex,
-    const EAccessibility accessibility,
-    const BattleSide side,
-    const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles,
-    int wallHP,
-    bool isGateOpen
-)
-    : bhex(bhex)
-    , id(CalcId(bhex))
+Hex::Hex(const Args & args)
+: bhex(args.bhex)
+, id(CalcId(args.bhex))
 {
     auto [x, y] = CalcXY(bhex);
 
     setattr(A::Y_COORD, y);
     setattr(A::X_COORD, x);
-    setattr(A::WALL_HEALTH, wallHP);
-    setStateMask(accessibility, obstacles, side, isGateOpen);
+    setattr(A::WALL_HEALTH, args.wallHP);
+    setStateMask(args.accessibility, args.obstacles, args.side, args.isGateOpen);
     finalize();
 }
 

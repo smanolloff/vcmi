@@ -24,8 +24,8 @@ public:
 
     Base(
         const std::shared_ptr<const SrcNode> & srcNode,
-        const std::shared_ptr<const DstNode> & dstNode
-    ) : Base_Base(), srcNode(srcNode), dstNode(dstNode)
+        const std::shared_ptr<const DstNode> & dstNode)
+    : Base_Base(), srcNode(srcNode), dstNode(dstNode)
     {}
 
     Base(const Base &) = delete;

@@ -75,7 +75,7 @@ enum class GlobalAction : uint8_t
 
 enum class ActionType : uint8_t
 {
-	// RETREAT actions are not used by MMAI (they are only used through RESET)
+	RETREAT, // XXX: for legacy reasons, must always have id=0
 	WAIT,
 	DEFEND,
 	MOVE,

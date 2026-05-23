@@ -17,15 +17,27 @@ namespace detail
 class Unit_ShootDmg_Unit : public detail::Unit_ShootDmg_Unit_Base
 {
 public:
-	Unit_ShootDmg_Unit(
+	struct Args
+	{
+		const int vdiffAttacker;
+		const int vdiffDefender;
+		const int hpdiffAttacker;
+		const int hpdiffDefender;
+		const int battlefieldValue;
+		const int battlefieldHp;
+	};
+
+    static std::shared_ptr<const Unit_ShootDmg_Unit> Create(
 		const std::shared_ptr<const Nodes::Unit> & srcNode,
 		const std::shared_ptr<const Nodes::Unit> & dstNode,
-	    int vdiffAttacker,
-	    int vdiffDefender,
-	    int hpdiffAttacker,
-	    int hpdiffDefender,
-		int battlefieldValue,
-		int battlefieldHp
-	);
+		const Args & args)
+    {
+        return std::make_shared<const Unit_ShootDmg_Unit>(srcNode, dstNode, args);
+    };
+
+	explicit Unit_ShootDmg_Unit(
+		const std::shared_ptr<const Nodes::Unit> & srcNode,
+		const std::shared_ptr<const Nodes::Unit> & dstNode,
+		const Args & args);
 };
 }

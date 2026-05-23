@@ -27,15 +27,27 @@ namespace detail
 class Unit_MeleeDmg_Unit : public detail::Unit_MeleeDmg_Unit_Base
 {
 public:
-	Unit_MeleeDmg_Unit(
+	struct Args
+	{
+		const int vdiffAttacker;
+		const int vdiffDefender;
+		const int hpdiffAttacker;
+		const int hpdiffDefender;
+		const int battlefieldValue;
+		const int battlefieldHp;
+	};
+
+    static std::shared_ptr<const Unit_MeleeDmg_Unit> Create(
 		const std::shared_ptr<const Nodes::Unit> & srcNode,
 		const std::shared_ptr<const Nodes::Unit> & dstNode,
-	    int vdiffAttacker,
-	    int vdiffDefender,
-	    int hpdiffAttacker,
-	    int hpdiffDefender,
-		int battlefieldValue,
-		int battlefieldHp
-	);
+		const Args & args)
+    {
+        return std::make_shared<const Unit_MeleeDmg_Unit>(srcNode, dstNode, args);
+    };
+
+	Unit_MeleeDmg_Unit(
+	    const std::shared_ptr<const Nodes::Unit> & srcNode,
+	    const std::shared_ptr<const Nodes::Unit> & dstNode,
+	    const Args & args);
 };
 }

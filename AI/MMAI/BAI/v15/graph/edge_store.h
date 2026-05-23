@@ -83,7 +83,7 @@ public:
     EdgeStore & operator=(EdgeStore &&) = delete;
 
     // XXX: pass-by-value + move is preferred, see comment in NodeStore::add
-    void add(std::shared_ptr<EdgeType> edge)
+    void add(std::shared_ptr<const EdgeType> edge)
     {
         // Insertion fails when there is a duplicate in *any* unique index
         auto [_, inserted] = container.push_back(std::move(edge));

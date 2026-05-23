@@ -13,8 +13,11 @@
 #include "BAI/v15/graph/nodes/base.h"
 #include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/graph/nodes/unit.h"
+#include "battle/BattleSide.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/constants.h"
+#include "schema/v15/types.h"
+#include <cstdint>
 
 namespace MMAI::BAI::V15::Graph::Nodes
 {
@@ -29,34 +32,91 @@ namespace detail
 class Action : public detail::Action_Base
 {
 public:
-    struct extra_index_type {
-        using result_type = std::pair<int, int>;
-        result_type operator()(const std::shared_ptr<const Action> & action) const {
-            return {action->id, action->by->cstack.unitId()};
-        }
+    enum class Flag : uint8_t
+    {
+        RETURN_AFTER_STRIKE,
+        _count
     };
 
-    explicit Action(
-        S15::ActionType actionType,
-        int id,
-        const std::shared_ptr<const Nodes::Unit> & by,
-        const std::vector<std::shared_ptr<const Nodes::Hex>> & endsAt,
-        bool isActive)
-    : actionType(actionType), id(id), by(by), endsAt(endsAt), isActive(isActive)
-    {}
+    using Flags = std::bitset<EU(Flag::_count)>;
+
+    struct Args {
+        const S15::ActionType actionType;
+        const std::shared_ptr<const Nodes::Unit> & by;
+        const std::shared_ptr<const Nodes::Unit> & target;
+        const std::vector<std::shared_ptr<const Nodes::Hex>> & endsAt;
+        const Flags & flags;
+    };
+
+    static std::shared_ptr<const Action> Create(const Args & args)
+    {
+        return std::make_shared<const Action>(args);
+    }
+
+    explicit Action(const Args & args)
+    : actionType(args.actionType)
+    , by(args.by)
+    , target(args.target)
+    , endsAt(args.endsAt)
+    , isActive(args.by == nullptr || args.by->isActive)  // RETREAT has no `by`, but is still active
+    {
+        setattr(A::ACTION_TYPE, EU(actionType));
+    }
 
     std::string name() const override
     {
+        // XXX: for action type, prefer explicit cast to int over EU() because enum type is uint8_t (char)
+        int type = static_cast<int>(actionType);
+
         std::stringstream ss;
-        // XXX: don't use EU(actionType) as it results in a nonprintable char
-        ss << detail::Action_Base::name() << "(" << static_cast<int>(actionType) << "," << id << "," << by->cstack.unitId() << "," << isActive << ")";
+        ss << detail::Action_Base::name() << "(" << type << ",";
+
+        // RETREAT action has no `by`
+        if (by)
+            ss << by->cstack.unitId() << "," << isActive;
+        else
+            ss << "-,-";
+
+        ss << ")";
         return ss.str();
     }
 
+    std::string humanName(BattleSide side) const
+    {
+        if(actionType == S15::ActionType::RETREAT)
+            return "Retreat";
+
+        const auto & endhex = endsAt.at(0);
+
+        auto stackstr = [&side](const auto & unit) {
+            std::string targetside = (side == BattleSide::LEFT_SIDE) ? "L" : "R";
+            return targetside + "-" + unit->alias;
+        };
+
+        switch(actionType)
+        {
+        case S15::ActionType::WAIT:
+            return "Wait";
+        case S15::ActionType::DEFEND:
+            return "Defend";
+        case S15::ActionType::MOVE:
+            return "Move to " + endhex->name();
+        case S15::ActionType::AMOVE:
+            ASSERT(target != nullptr, "AMOVE with no valid targets");
+            return "Attack stack(" + stackstr(target) + ") from " + endhex->name();
+        case S15::ActionType::SHOOT:
+            ASSERT(target != nullptr, "SHOOT with no valid targets");
+            return "Attack stack(" + stackstr(target) + ") from " + endhex->name();
+        default:
+            throw std::runtime_error("Unexpected action type: " + std::to_string(EU(actionType)));
+        }
+    }
+
     const S15::ActionType actionType;
-    const int id;
     const std::shared_ptr<const Nodes::Unit> by;
+    const std::shared_ptr<const Nodes::Unit> target;
     const std::vector<std::shared_ptr<const Nodes::Hex>> endsAt; // primary hex is always first
+    const Flags flags;
     bool isActive;
 };
 }

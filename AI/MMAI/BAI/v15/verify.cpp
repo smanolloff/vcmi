@@ -351,7 +351,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
             if(cstack)
             {
                 expect(std::ranges::distance(occupants) == 1, "expected 1 occupant, got: %d", std::ranges::distance(occupants));
-                expect(&occupants.front()->cstack == cstack, "occupant cstack mismatch");
+                expect(&occupants.at(0)->cstack == cstack, "occupant cstack mismatch");
             }
             else
             {

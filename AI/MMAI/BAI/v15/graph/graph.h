@@ -20,7 +20,6 @@
 #include "BAI/v15/graph/edges/action_melees_unit.h"
 #include "BAI/v15/graph/edges/action_shoots_unit.h"
 #include "battle/CPlayerBattleCallback.h"
-#include "battle/ReachabilityInfo.h"
 #include "battle/AccessibilityInfo.h"
 
 #include "BAI/v15/enum_flags.h"
@@ -41,7 +40,6 @@
 
 #include "schema/v15/graph.h"
 #include <tuple>
-#include <unordered_map>
 
 namespace MMAI::BAI::V15::Graph
 {
@@ -128,12 +126,9 @@ public:
 
     // XXX: pass-by-value + move is preferred to pass-by-reference
     //      => must accept non-const std::shared ptr
-    // XXX: The stores hold pointers-to-const, but template deduction fails
-    //      => must accept pointer-to-non-const here, but specify it upstream
-    //          (to avoid having to specify it at the G->add call site)
     template <typename T>
     requires detail::is_stored_element<T>
-    void add(std::shared_ptr<T> elem)
+    void add(std::shared_ptr<const T> elem)
     {
         // std::cout << "DEBUG: Add: " << elem->name() << "\n";
         // if (!elem)
@@ -321,30 +316,23 @@ public:
     std::vector<const S15::Graph::IEdge*>
     getEdges(S15::Graph::ElementType t) const override;
 
-    std::vector<std::tuple<int, int>>
-    getActiveNodeToActionIds() const override;
+    std::vector<int> getActiveActionIds() const override;
 
     EnumFlags<S15::Graph::ElementType> getFlags() const;
     void setFlag(S15::Graph::ElementType et);
 
     const AccessibilityInfo & getAccessibility() const;
-    const ReachabilityInfo & getReachability(const CStack & cstack) const;
-
-    // Explicitly building caches allows to define getters as const.
-    void buildAccessibilityCache();
-    void buildReachabilityCache();
+    const FastBFS & getFastBFS() const;
 private:
     EnumFlags<S15::Graph::ElementType> flags;
-    bool haveAccessibilityCache = false;
-    bool haveReachabilityCache = false;
 
     const CPlayerBattleCallback & battle;
 
     detail::TNodeStores nodeStores;
     detail::TEdgeStores edgeStores;
 
-    std::unique_ptr<AccessibilityInfo> acache;
-    std::unordered_map<uint32_t, ReachabilityInfo> rcache;
+    const AccessibilityInfo accessibility;
+    const FastBFS fastbfs;
 
     // identical to getStore(), but returned type is non-const
     template <typename T>
