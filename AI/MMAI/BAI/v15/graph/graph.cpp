@@ -10,7 +10,10 @@ namespace MMAI::BAI::V15::Graph
 
 using ET = S15::Graph::ElementType;
 
-Graph::Graph(const CPlayerBattleCallback & battle) : battle(battle)
+Graph::Graph(const CPlayerBattleCallback & battle)
+: battle(battle)
+, accessibility(battle.getAccessibility())
+, fastbfs(FastBFS(battle, accessibility))
 {};
 
 

@@ -1,4 +1,5 @@
-#include "BAI/v15/graph/nodes/unit.h"
+#pragma once
+
 #include "CStack.h"
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
@@ -12,14 +13,13 @@ namespace MMAI::BAI::V15
 
 struct FastBFS
 {
-    static constexpr uint16_t INFINITE_DIST = std::numeric_limits<uint16_t>::max();
-    using UnitPtr = std::shared_ptr<const Graph::Nodes::Unit>;
-    using TDistances = std::array<uint16_t, GameConstants::BFIELD_SIZE>;
+    using dtype = uint8_t; // for debugging use uint16_t (vscode prints uint8_t as char)
+    static constexpr dtype INFINITE_DIST = std::numeric_limits<dtype>::max();
+    using TDistances = std::array<dtype, GameConstants::BFIELD_SIZE>;
 
     explicit FastBFS(
         const CPlayerBattleCallback &battle,
-        const AccessibilityInfo & accessibility,
-        bool isWideMoat)
+        const AccessibilityInfo & accessibility)
     : moat(FindMoat(battle))
     , isWideMoat(moat && moat->getAffectedTiles().contains(BattleHex::GATE_BRIDGE))
     , isNarrowMoat(moat && !isWideMoat)
@@ -200,7 +200,7 @@ private:
         {
             const BattleHex curHex = queue[head++];
             const int cur = curHex.toInt();
-            const uint16_t curDist = distances[cur];
+            const dtype curDist = distances[cur];
 
             if(curDist >= speed)
                 continue;
@@ -212,7 +212,7 @@ private:
             if(stoppers[cur])
                 continue;
 
-            const uint16_t nextDist = static_cast<uint16_t>(curDist + 1);
+            const dtype nextDist = static_cast<dtype>(curDist + 1);
 
             for(const BattleHex & neighbour : curHex.getNeighbouringTiles())
             {
@@ -239,6 +239,8 @@ private:
     const EGateState gatestate;
 
     // Can the unit stand on this hex?
+    // XXX: technically, accessL1 and accessR1 will always be the same
+    //      except in siege battles where bhex 95 & 96 are inaccessible in L1
     const Mask accessL1{};  // accessibility for single-wide left units
     const Mask accessL2{};  // accessibility for double-wide left units
     const Mask accessR1{};  // accessibility for single-wide right units

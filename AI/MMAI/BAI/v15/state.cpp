@@ -1604,6 +1604,14 @@ namespace
 			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
 			auto id = CalcActionId(AT::AMOVE, unit, ounit, hex);
+
+			// TODO:
+			// If unit has RETURN_AFTER_STRIKE, there should be two *separate* AMOVE actions
+			// which are identical except in their endsAt.
+			// However, until the legacy integer-based Schema::Action is removed, this
+			// is not impossible (both would correspond to the same int Action)
+			// This is true for all other kinds of actions (e.g. spell casts)
+
 			auto amove = std::make_shared<N::Action>(AT::AMOVE, id, unit, move->endsAt, move->isActive);
 
 			G.add(amove);
