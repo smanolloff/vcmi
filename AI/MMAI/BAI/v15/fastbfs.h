@@ -15,7 +15,7 @@ struct FastBFS
 {
     using dtype = uint8_t; // for debugging use uint16_t (vscode prints uint8_t as char)
     static constexpr dtype INFINITE_DIST = std::numeric_limits<dtype>::max();
-    using TDistances = std::array<dtype, GameConstants::BFIELD_SIZE>;
+    using Distances = std::array<dtype, GameConstants::BFIELD_SIZE>;
 
     explicit FastBFS(
         const CPlayerBattleCallback &battle,
@@ -34,7 +34,7 @@ struct FastBFS
     , stopR2(BuildStopMask(battle, BattleSide::RIGHT_SIDE, true, gatestate))
     {}
 
-    TDistances run(
+    Distances run(
         const BattleHex oldpos,
         const BattleHex newpos,
         const BattleSide side,
@@ -55,6 +55,11 @@ private:
     using TPredecessors = std::array<BattleHex, GameConstants::BFIELD_SIZE>;
     using ObstaclePtr = std::shared_ptr<const CObstacleInstance>;
 
+    static constexpr int16_t I16(int i)
+    {
+        return static_cast<int16_t>(i);
+    }
+
     static ObstaclePtr FindMoat(const CPlayerBattleCallback & battle)
     {
 
@@ -71,7 +76,7 @@ private:
     {
         auto mask = Mask{};
         for(int i = 0; i < GameConstants::BFIELD_SIZE; ++i)
-            mask[i] = accessibility.accessible(BattleHex(i), wide, side);
+            mask[i] = accessibility.accessible(BattleHex(I16(i)), wide, side);
         return mask;
     }
 
@@ -120,7 +125,7 @@ private:
 
         for(int i = 0; i < GameConstants::BFIELD_SIZE; ++i)
         {
-            BattleHex tile(i);
+            BattleHex tile(I16(i));
 
             if(!tile.isValid())
                 continue;
@@ -148,42 +153,42 @@ private:
         return mask;
     }
 
-    TDistances calcAirReachability(
+    Distances calcAirReachability(
         const BattleHex & oldpos, // actual stack position now
         const BattleHex & newpos, // hypothetical stack position to calculate reachability from
         BattleSide side,
         bool wide) const
     {
-        auto distances = TDistances{};
+        auto distances = Distances{};
         distances.fill(INFINITE_DIST);
 
-        const auto & accessible = accessMask(side, wide, oldpos, newpos);
+        const auto & accessible = accessMask(side, wide, oldpos);
 
         for(int i = 0; i < GameConstants::BFIELD_SIZE; i++)
         {
             if(!accessible[i])
                 continue;
 
-            distances[i] = BattleHex::getDistance(newpos, BattleHex(i));
+            distances[i] = BattleHex::getDistance(newpos, BattleHex(I16(i)));
         }
 
         return distances;
     }
 
-    TDistances calcLandReachability(
+    Distances calcLandReachability(
         const BattleHex & oldpos, // actual stack position now
         const BattleHex & newpos, // hypothetical stack position to calculate reachability from
         BattleSide side,
         bool wide,
         int speed) const
     {
-        auto distances = TDistances{};
+        auto distances = Distances{};
         auto predecessors = TPredecessors{};
         distances.fill(INFINITE_DIST);
         predecessors.fill(BattleHex::INVALID);
 
-        const auto & accessible = accessMask(side, wide, oldpos, newpos);
-        const auto & stoppers = stopMask(side, wide, oldpos, newpos);
+        const auto & accessible = accessMask(side, wide, oldpos);
+        const auto & stoppers = stopMask(side, wide, newpos);
         const auto start = newpos.toInt();
 
         // Start may be occupied by the moving unit itself, so do not require accessible[startIndex].
@@ -212,7 +217,7 @@ private:
             if(stoppers[cur])
                 continue;
 
-            const dtype nextDist = static_cast<dtype>(curDist + 1);
+            const auto nextDist = static_cast<dtype>(curDist + 1);
 
             for(const BattleHex & neighbour : curHex.getNeighbouringTiles())
             {
@@ -262,8 +267,7 @@ private:
     Mask accessMask(
         BattleSide side,
         bool wide,
-        const BattleHex & oldpos,
-        const BattleHex & newpos) const
+        const BattleHex & oldpos) const
     {
         auto mask = _accessMask(side, wide);
 
@@ -271,7 +275,6 @@ private:
         // stack position which must have been accessible in the first place
         // no need to mark newpos as accessible (it already is)
         mask[oldpos.toInt()] = true;
-        assert(mask[newpos.toInt()]);
 
         if (wide)
         {
@@ -328,7 +331,6 @@ private:
     Mask stopMask(
         BattleSide side,
         bool wide,
-        const BattleHex & oldpos,
         const BattleHex & newpos) const
     {
         auto mask = _stopMask(side, wide);

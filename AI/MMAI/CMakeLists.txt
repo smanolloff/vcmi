@@ -82,6 +82,8 @@ set(MMAI_FILES
   BAI/v15/enum_flags.h
   BAI/v15/fastbfs.h
   BAI/v15/graph/edge_store.h
+  BAI/v15/graph/edges/action_enables_shoot_at_hex.h
+  BAI/v15/graph/edges/action_enables_shoot_at_unit.h
   BAI/v15/graph/edges/action_ends_at_hex.h
   BAI/v15/graph/edges/action_exposes_to_shoot_from_unit.h
   BAI/v15/graph/edges/action_melees_unit.h

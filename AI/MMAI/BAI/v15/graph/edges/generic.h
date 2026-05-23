@@ -67,9 +67,7 @@ GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
 GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Unit);
-GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Unit);
 GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Hex);
-GENERIC_EDGE_ELEMENT(Action, EnablesShootAt, Hex);
 
 }
 

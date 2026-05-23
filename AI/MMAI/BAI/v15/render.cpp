@@ -663,7 +663,7 @@ std::string Render(const State * state, const ActionPtr & action) // NOSONAR - f
         lines.push_back(std::move(line));
     }
 
-    // TODO: exchange table (my attacking units only)
+    // Exchange simulation table (my attacking units only)
     //
     //  Sim |      0      1      2    ...
     // -----+----------------------------------------

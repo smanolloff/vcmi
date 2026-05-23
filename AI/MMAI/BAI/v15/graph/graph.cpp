@@ -10,8 +10,7 @@ namespace MMAI::BAI::V15::Graph
 using ET = S15::Graph::ElementType;
 
 Graph::Graph(const CPlayerBattleCallback & battle)
-: battle(battle)
-, accessibility(battle.getAccessibility())
+: accessibility(battle.getAccessibility())
 , fastbfs(FastBFS(battle, accessibility))
 {};
 
@@ -41,9 +40,7 @@ Graph::getNodes(Schema::V15::Graph::ElementType t) const
         case ET::NODE_ACTION:
             return convert(getAll<Nodes::Action>());
         default:
-            throw std::runtime_error(
-                "Unexpected node element type: " + std::to_string(EU(t))
-            );
+            throw std::runtime_error("Unexpected node element type: " + std::to_string(EU(t)));
     }
 }
 

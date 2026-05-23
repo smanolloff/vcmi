@@ -440,7 +440,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	lastAction = action;
 
 	auto ba = ToBattleAction(*battle, action, astack);
-	logger.warn(action->humanName(battle->battleGetMySide()));
+	logger.debug(action->humanName(battle->battleGetMySide()));
 
 	cb->battleMakeUnitAction(bid, ba);
 }

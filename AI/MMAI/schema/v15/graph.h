@@ -43,12 +43,12 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTION_MELEES_UNIT, // v=primary target (e.g. for dragon breath, 3-headed attack, etc.)
         EDGE_ACTION_SHOOTS_UNIT, // v=primary target (e.g. for fireball)
         EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
-        EDGE_ACTION_ENABLES_SHOOT_AT_UNIT,
+        EDGE_ACTION_ENABLES_SHOOT_AT_UNIT, // v=ranged penalty
 
         // can explode to 350K for 14 archangels
         // => present only for active action nodes
         EDGE_ACTION_ENABLES_MELEE_AT_HEX,
-        EDGE_ACTION_ENABLES_SHOOT_AT_HEX,
+        EDGE_ACTION_ENABLES_SHOOT_AT_HEX, // v=ranged penalty
         _count
     };
 
@@ -221,9 +221,20 @@ namespace EdgeAttributes
         };
 
         BLANK_ENUM_DEF(Action_EnablesMeleeAt_Unit);
-        BLANK_ENUM_DEF(Action_EnablesShootAt_Unit);
+
+        enum class Action_EnablesShootAt_Unit : uint8_t
+        {
+            DMG_MULT,  // 1=full dmg
+            _count
+        };
+
         BLANK_ENUM_DEF(Action_EnablesMeleeAt_Hex);
-        BLANK_ENUM_DEF(Action_EnablesShootAt_Hex);
+
+        enum class Action_EnablesShootAt_Hex : uint8_t
+        {
+            DMG_MULT,  // 1=full dmg
+            _count
+        };
 
         // 6 nodes, 26 edges
         static_assert(static_cast<int>(ElementType::_count) == 5 + 21);
