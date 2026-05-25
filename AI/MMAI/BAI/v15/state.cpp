@@ -762,6 +762,7 @@ namespace
 	void AddPlayerNodes(
 		Graph::Graph & G,
 		const CPlayerBattleCallback & battle,
+		const State::GlobalStats & startStats,
 		const State::GlobalStats & lastStats,
 		const State::GlobalStats & stats,
 		const AttackLogAggregateData & logdata)
@@ -774,6 +775,7 @@ namespace
 		G.add(N::Player::Create({
 			.side=BattleSide::LEFT_SIDE,
 			.isActive=BattleSide::LEFT_SIDE == battle.battleGetMySide(),
+			.globalValueStart=startStats.totalValue,
 			.globalValuePrevRound=lastStats.totalValue,
 			.globalHpPrevRound=lastStats.totalHp,
 			.value=stats.leftValue,
@@ -787,6 +789,7 @@ namespace
 		G.add(N::Player::Create({
 			.side=BattleSide::RIGHT_SIDE,
 			.isActive=BattleSide::RIGHT_SIDE == battle.battleGetMySide(),
+			.globalValueStart=startStats.totalValue,
 			.globalValuePrevRound=lastStats.totalValue,
 			.globalHpPrevRound=lastStats.totalHp,
 			.value=stats.rightValue,
@@ -1975,7 +1978,7 @@ void State::onActiveStack(
 	const auto logdata = ProcessAttackLogs(attackLogs);
 
 	AddGlobalNode(*G, battle, acstack, result, round, stats);
-	AddPlayerNodes(*G, battle, lastStats, stats, logdata);
+	AddPlayerNodes(*G, battle, startStats, lastStats, stats, logdata);
 	AddHexNodes(*G, battle, acstack);
 	AddUnitNodes(*G, battle, acstack, stats);
 

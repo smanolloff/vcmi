@@ -111,6 +111,7 @@ struct EncodingTraits<Graph::NodeAttributes::Player>
 	static constexpr encoding_type encoding = {
 		E4(A::BATTLE_SIDE, X::CAT, 1),
 		E4(A::IS_ACTIVE, X::RAW, 1),
+		E4(A::ARMY_VALUE_NOW_REL0, X::LIN, 1000), //    (army_value_now / global_value_at_start)
 		E4(A::ARMY_VALUE_NOW_REL, X::LIN, 1000), //     (army_value_now / global_value_now)
 		E4(A::ARMY_HP_NOW_REL, X::LIN, 1000), //        (army_hp_now / global_hp_now)
 		E4(A::VALUE_KILLED_NOW_REL, X::LIN, 1000), //   (value_killed_this_turn / global_value_last_turn)
