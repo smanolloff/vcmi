@@ -57,7 +57,7 @@ namespace ML {
             return MMAI::Schema::Side(666);
         }
 
-        void Path::warn(std::string m, int retval) {
+        void Path::warn(std::string m, int retval) const {
             printf("WARNING: method %s called on a ModelWrapper object; returning %d\n", m.c_str(), retval);
         }
     }

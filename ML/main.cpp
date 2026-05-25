@@ -49,7 +49,8 @@ namespace ML {
         return "Values: " + boost::algorithm::join(all, " | ");
     }
 
-    InitArgs parse_args(int argc, char * argv[]) {
+    std::tuple< MMAI::Schema::IModel *, MMAI::Schema::IModel *, InitArgs>
+    parse_args(int argc, char * argv[]) {
         int maxBattles = 0;
         int seed = 0;
         int randomHeroes = 0;
@@ -313,43 +314,41 @@ namespace ML {
             rightModel = new ModelWrappers::Scripted(rightAi, MMAI::Schema::Side::RIGHT);
         }
 
-        return InitArgs(
-            omap.at("map"),
-            leftModel,
-            rightModel,
-            leftAllowMlBot,
-            rightAllowMlBot,
-            maxBattles,
-            seed,
-            randomHeroes,
-            randomObstacles,
-            townChance,
-            warmachineChance,
-            randomStackChance,
-            tightFormationChance,
-            randomTerrainChance,
-            leftVipChance,
-            rightVipChance,
-            battlefieldPattern,
-            manaMin,
-            manaMax,
-            randomPrimarySkills,
-            swapSides,
-            omap.at("loglevel-global"),
-            omap.at("loglevel-ai"),
-            omap.at("loglevel-stats"),
-            omap.at("stats-mode"),
-            omap.at("stats-storage"),
-            statsTimeout,
-            statsPersistFreq,
-            headless
-        );
+        return {leftModel, rightModel, {
+            .mapname=omap.at("map"),
+            .leftAllowMlBot=leftAllowMlBot,
+            .rightAllowMlBot=rightAllowMlBot,
+            .maxBattles=maxBattles,
+            .seed=seed,
+            .randomHeroes=randomHeroes,
+            .randomObstacles=randomObstacles,
+            .townChance=townChance,
+            .warmachineChance=warmachineChance,
+            .randomStackChance=randomStackChance,
+            .tightFormationChance=tightFormationChance,
+            .randomTerrainChance=randomTerrainChance,
+            .leftVipChance=leftVipChance,
+            .rightVipChance=rightVipChance,
+            .battlefieldPattern=battlefieldPattern,
+            .manaMin=manaMin,
+            .manaMax=manaMax,
+            .randomPrimarySkills=randomPrimarySkills,
+            .swapSides=swapSides,
+            .loglevelGlobal=omap.at("loglevel-global"),
+            .loglevelAI=omap.at("loglevel-ai"),
+            .loglevelStats=omap.at("loglevel-stats"),
+            .statsMode=omap.at("stats-mode"),
+            .statsStorage=omap.at("stats-storage"),
+            .statsTimeout=statsTimeout,
+            .statsPersistFreq=statsPersistFreq,
+            .headless=headless
+        }};
     }
 }
 
 int main(int argc, char * argv[]) {
-    auto initargs = ML::parse_args(argc, argv);
-    ML::init_vcmi(initargs);
+    auto parsed = ML::parse_args(argc, argv);
+    ML::init_vcmi(std::get<0>(parsed), std::get<1>(parsed), std::get<2>(parsed));
     ML::start_vcmi();
     return 0;
 }

@@ -98,18 +98,6 @@ namespace
                      : expect(have == want, "%s: have: %d, want: %d (%s)", attrname, have, want, desc.c_str());
     };
 
-    // Return (attr == N/A), but after performing some checks
-    bool isNA(int v, const CStack * stack, const std::string_view attrname)
-    {
-        if(v == S15::NULL_VALUE_UNENCODED)
-        {
-            expect(!stack, "%s: N/A but stack != nullptr", attrname);
-            return true;
-        }
-        expect(stack, "%s: != N/A but stack = nullptr", attrname);
-        return false;
-    };
-
     bool checkReachable(const Context & ctx, BattleHex bh, bool v, const CStack * stack)
     {
         auto distance = ctx.rinfos.at(stack).distances.at(bh.toInt());
@@ -483,7 +471,7 @@ void Verify(const State * state) // NOSONAR - function used for debugging only
                         return;
                     auto ws = battle.battleGetWallState(wp);
                     if(ws == EWallState::NONE)
-                        ensureValueMatch(v, Schema::V15::NULL_VALUE_UNENCODED, "HEX.WALL_HEALTH");
+                        ensureValueMatch(v, EU(S15::WallHP::HP0), "HEX.WALL_HEALTH");
                     else
                         ensureValueMatch(v, EU(ws), "HEX.WALL_HEALTH");
                 }

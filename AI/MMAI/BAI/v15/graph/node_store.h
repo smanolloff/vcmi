@@ -20,6 +20,18 @@ namespace detail
     template <typename T>
     struct MultiIndexContainerHelper;
 
+    // The elements are stored as std::shared_ptr<T>, but we need
+    // to be able to look them up by raw T* address to (nedeed by IGraph)
+    // => define an extractor which converts stored shared_ptr<T> to T*
+    template <typename T>
+    struct RawNodePtrKey
+    {
+        using result_type = const T*;
+        const T* operator()(const std::shared_ptr<const T>& ptr) const noexcept {
+            return ptr.get();
+        }
+    };
+
     // Specialization without extra index (e.g. Global nodes)
     template <typename T>
         requires std::is_same_v<typename T::extra_index_type, void>
@@ -32,7 +44,7 @@ namespace detail
                 >,
                 boost::multi_index::hashed_unique<
                     boost::multi_index::tag<by_ptr_identity>,
-                    boost::multi_index::identity<std::shared_ptr<const T>>
+                    RawNodePtrKey<T>
                 >
             >
         >;
@@ -59,7 +71,7 @@ namespace detail
 
                 boost::multi_index::hashed_unique<
                     boost::multi_index::tag<by_ptr_identity>,
-                    boost::multi_index::identity<std::shared_ptr<const T>>
+                    RawNodePtrKey<T>
                 >,
 
                 boost::multi_index::hashed_unique<
@@ -79,6 +91,8 @@ template <typename NodeType>
 class NodeStore
 {
 public:
+    using node_type = NodeType;
+
     NodeStore() = default;
 
     NodeStore(const NodeStore &) = delete;
@@ -111,7 +125,7 @@ public:
     std::shared_ptr<const NodeType> getByIdentity(const std::shared_ptr<const NodeType> & node, bool strict) const
     {
         const auto & idx = container.template get<detail::by_ptr_identity>();
-        auto it = idx.find(node);
+        auto it = idx.find(node.get());
         if (it == idx.end())
         {
             if (strict)
@@ -150,7 +164,7 @@ public:
         return container.size();
     }
 
-    std::ptrdiff_t getId(const std::shared_ptr<const NodeType> & node) const
+    int64_t getId(const NodeType * node) const
     {
         const auto & identity_idx = container.template get<detail::by_ptr_identity>();
 
@@ -162,6 +176,12 @@ public:
         auto ordinal_it = container.template project<detail::by_ordinal_id>(identity_it);
         return std::distance(ordinal_idx.begin(), ordinal_it);
     }
+
+    int64_t getId(const std::shared_ptr<const NodeType> & node) const
+    {
+        return getId(node.get());
+    }
+
 private:
     detail::MultiIndexNodeContainer<NodeType> container;
 };

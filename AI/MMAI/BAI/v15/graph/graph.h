@@ -117,7 +117,7 @@ namespace S15 = Schema::V15;
 
 class Graph : public S15::Graph::IGraph
 {
-
+    using ET = S15::Graph::ElementType;
 public:
     explicit Graph(const CPlayerBattleCallback & battle);
 
@@ -313,20 +313,23 @@ public:
     void verify() const;
 
     std::vector<const S15::Graph::INode*>
-    getNodes(S15::Graph::ElementType t) const override;
+    getNodes(ET t) const override;
 
     std::vector<const S15::Graph::IEdge*>
-    getEdges(S15::Graph::ElementType t) const override;
+    getEdges(ET t) const override;
 
-    std::vector<int> getActiveActionIds() const override;
+    int64_t getNodeIndex(const S15::Graph::INode* node) const override;
+    int64_t getEdgeIndex(const S15::Graph::IEdge* edge) const override;
 
-    EnumFlags<S15::Graph::ElementType> getFlags() const;
-    void setFlag(S15::Graph::ElementType et);
+    std::vector<int64_t> getActiveActionIds() const override;
+
+    EnumFlags<ET> getFlags() const;
+    void setFlag(ET et);
 
     const AccessibilityInfo & getAccessibility() const;
     const FastBFS & getFastBFS() const;
 private:
-    EnumFlags<S15::Graph::ElementType> flags;
+    EnumFlags<ET> flags;
 
     detail::TNodeStores nodeStores;
     detail::TEdgeStores edgeStores;
@@ -349,6 +352,82 @@ private:
     {
         using U = std::remove_cvref_t<T>;
         return std::get<EdgeStore<U>>(edgeStores);
+    }
+
+    //
+    // Convenience for retrieving store by ElementType. Usage:
+    //      withNodeStore(ET::Player, [](const auto& store) { ... });
+    //
+    template <typename F>
+    decltype(auto) withNodeStore(ET t, F&& f) const
+    {
+        switch (t)
+        {
+        case ET::NODE_GLOBAL:
+            return std::forward<F>(f)(getStore<Nodes::Global>());
+        case ET::NODE_PLAYER:
+            return std::forward<F>(f)(getStore<Nodes::Player>());
+        case ET::NODE_UNIT:
+            return std::forward<F>(f)(getStore<Nodes::Unit>());
+        case ET::NODE_HEX:
+            return std::forward<F>(f)(getStore<Nodes::Hex>());
+        case ET::NODE_ACTION:
+            return std::forward<F>(f)(getStore<Nodes::Action>());
+        default:
+            throw std::runtime_error("Unexpected node element type: " + std::to_string(EU(t)));
+        }
+    }
+
+    template <typename F>
+    decltype(auto) withEdgeStore(ET t, F&& f) const
+    {
+        switch (t)
+        {
+        case ET::EDGE_GLOBAL_HAS_PLAYER:
+            return std::forward<F>(f)(getStore<Edges::Global_Has_Player>());
+        case ET::EDGE_GLOBAL_HAS_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Global_Has_Unit>());
+        case ET::EDGE_GLOBAL_HAS_HEX:
+            return std::forward<F>(f)(getStore<Edges::Global_Has_Hex>());
+        case ET::EDGE_PLAYER_OWNS_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Player_Owns_Unit>());
+        case ET::EDGE_HEX_ADJACENT_HEX:
+            return std::forward<F>(f)(getStore<Edges::Hex_Adjacent_Hex>());
+        case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Unit_ActsBefore_Unit>());
+        case ET::EDGE_UNIT_MELEE_DMG_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Unit_MeleeDmg_Unit>());
+        case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Unit_ShootDmg_Unit>());
+        case ET::EDGE_UNIT_BLOCKS_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Unit_Blocks_Unit>());
+        case ET::EDGE_UNIT_OCCUPIES_HEX:
+            return std::forward<F>(f)(getStore<Edges::Unit_Occupies_Hex>());
+        case ET::EDGE_ACTION_BY_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_By_Unit>());
+        case ET::EDGE_ACTION_ENDS_AT_HEX:
+            return std::forward<F>(f)(getStore<Edges::Action_EndsAt_Hex>());
+        case ET::EDGE_ACTION_BLOCKS_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_Blocks_Unit>());
+        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_ExposesToMeleeFrom_Unit>());
+        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_ExposesToShootFrom_Unit>());
+        case ET::EDGE_ACTION_MELEES_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_Melees_Unit>());
+        case ET::EDGE_ACTION_SHOOTS_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_Shoots_Unit>());
+        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_EnablesMeleeAt_Unit>());
+        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Action_EnablesShootAt_Unit>());
+        case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
+            return std::forward<F>(f)(getStore<Edges::Action_EnablesMeleeAt_Hex>());
+        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
+            return std::forward<F>(f)(getStore<Edges::Action_EnablesShootAt_Hex>());
+        default:
+            throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
+        }
     }
 };
 }

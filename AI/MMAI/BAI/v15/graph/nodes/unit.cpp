@@ -260,9 +260,7 @@ Unit::Unit(const Args & args)
 , speed(args.speed) // cache to prevent repeated bonus checks
 , valueOne(GetValue(cstack.unitType(), cstack.isClone(), cstack.unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER))
 {
-    // XXX: see note for attr()/setattr() in Unit.h
-    attrs.fill(0);
-    guardflags.set();
+    guardflags.set(); // See note for attr()/setattr() in Unit.h
 
     auto value = valueOne * cstack.getCount();
 

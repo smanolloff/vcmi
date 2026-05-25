@@ -176,7 +176,7 @@ std::string Render(const State * state, const ActionPtr & action) // NOSONAR - f
         }
     }
 
-    auto ended = gnode->attr(GA::BATTLE_WINNER) != S15::NULL_VALUE_UNENCODED;
+    auto ended = gnode->attr(GA::BATTLE_WINNER) != EU(S15::CombatResult::NONE);
 
     if(!aunit && !ended)
         logAi->error("could not find an active stack (battle has not ended).");
@@ -309,18 +309,29 @@ std::string Render(const State * state, const ActionPtr & action) // NOSONAR - f
 
         addspace = true;
 
-        auto smask = S15::HexStateMask(hex->attr(HA::STATE_MASK));
+        using HexStateMask = std::bitset<4>;
+
+        auto smask = HexStateMask();
+        if (hex->attr(N::Hex::A::IS_PASSABLE))
+            smask.set(0);
+        if (hex->attr(N::Hex::A::IS_STOPPING))
+            smask.set(1);
+        if (hex->attr(N::Hex::A::IS_DAMAGING_L))
+            smask.set(2);
+        if (hex->attr(N::Hex::A::IS_DAMAGING_R))
+            smask.set(3);
+
         auto col = nocol;
 
         // First put symbols based on hex state.
         // If there's a stack on this hex, symbol will be overriden.
-        S15::HexStateMask mpass = 1 << EI(S15::HexState::PASSABLE);
-        S15::HexStateMask mstop = 1 << EI(S15::HexState::STOPPING);
-        S15::HexStateMask mdmgl = 1 << EI(S15::HexState::DAMAGING_L);
-        S15::HexStateMask mdmgr = 1 << EI(S15::HexState::DAMAGING_R);
-        S15::HexStateMask mdefault = 0; // or mother :)
+        HexStateMask mpass = 1 << 0;
+        HexStateMask mstop = 1 << 1;
+        HexStateMask mdmgl = 1 << 2;
+        HexStateMask mdmgr = 1 << 3;
+        HexStateMask mdefault = 0;
 
-        std::vector<std::tuple<std::string, std::string, S15::HexStateMask>> symbols{
+        std::vector<std::tuple<std::string, std::string, HexStateMask>> symbols{
             {"⨻", bluecol, mpass | mstop | mdmgl},
             {"⨻", redcol,  mpass | mstop | mdmgr},
             {"✶", bluecol, mpass | mdmgl        },

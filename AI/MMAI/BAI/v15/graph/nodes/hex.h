@@ -14,13 +14,11 @@
 #include "battle/AccessibilityInfo.h"
 #include "battle/BattleHex.h"
 #include "battle/CObstacleInstance.h"
-#include "common.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "schema/v15/types.h"
 
 #include <array>
-#include <bitset>
 #include <memory>
 #include <string>
 #include <vector>
@@ -37,10 +35,6 @@ namespace detail
 
 class Hex : public detail::Hex_Base
 {
-	using HS = S15::HexState;
-	using HexAction = S15::HexAction;
-	using HexActMask = std::bitset<EI(HexAction::_count)>;
-	static_assert(EI(HexAction::_count) <= std::numeric_limits<int>::digits); // must fit into an int
 public:
 	using HexActionHex = std::array<BattleHex, 12>;
 
@@ -57,7 +51,7 @@ public:
 		const EAccessibility accessibility;
 		const BattleSide side;
 		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles;
-		const int wallHP;
+		const S15::WallHP wallHP;
 		const bool isGateOpen;
 	};
 
@@ -68,16 +62,17 @@ public:
 
 	static int CalcId(const BattleHex& bh);
 	static std::pair<int, int> CalcXY(const BattleHex& bh);
-	static HexActionHex NearbyBattleHexes(const BattleHex& bh);
 
 	explicit Hex(const Args & args);
 
 	std::string name() const override;
-	void finalize();
+
+	// Disable guardflags as some of the IS_* attributes may remain unset
+    int attr(Attribute a) const;
+    void setattr(Attribute a, int value);
 
 	const BattleHex bhex;
 	const int id;
-	S15::HexStateMask statemask = 0;
 
 private:
 	void setStateMask(
@@ -87,8 +82,8 @@ private:
 		bool isGateOpen
 	);
 
-	void processObstacles(
-	    const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,
+	void setMoatFlags(
+	    const CObstacleInstance * obstacle,
 	    bool isGateOpen,
 	    BattleSide side
     );
