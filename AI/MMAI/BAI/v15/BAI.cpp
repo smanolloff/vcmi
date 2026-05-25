@@ -31,7 +31,6 @@ namespace MMAI::BAI::V15
 
 namespace N = Graph::Nodes;
 
-using ErrorCode = S15::ErrorCode;
 using PA = S15::Graph::NodeAttributes::Player;
 using ActionPtr = std::shared_ptr<const N::Action>;
 using AT = S15::ActionType;
@@ -106,8 +105,12 @@ void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 
 	logger.debug("MMAI %s this battle.", (br->winner == battle->battleGetMySide() ? "won" : "lost"));
 
-	// Check if battle ended normally or was forced via a RETREAT action
-	if(lastAction == nullptr)
+	if(resetting)
+	{
+		logger.info("Battle ended due to ACTION_RESET: nothing to do");
+		return;
+	}
+	else if(lastAction == nullptr)
 	{
 		// no previous action means battle ended without giving us a turn (OK)
 		// Happens if the enemy immediately retreats (we won)
@@ -116,18 +119,9 @@ void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 	}
 	else if(lastAction->actionType == AT::RETREAT)
 	{
-		if(resetting)
-		{
-			// this is an intended restart (i.e. converted ACTION_RESTART)
-			logger.info("Battle ended due to ACTION_RESET: nothing to do");
-		}
-		else
-		{
-			// this is real retreat
-			logger.info("Battle ended due to ACTION_RETREAT: reporting terminal state, expecting ACTION_RESET");
-			auto a = getNonRenderAction();
-			ASSERT(a == Schema::ACTION_RESET, "expected ACTION_RESET, got: " + std::to_string(EI(a)));
-		}
+		logger.info("Battle ended due to ACTION_RETREAT: reporting terminal state, expecting ACTION_RESET");
+		auto a = getNonRenderAction();
+		ASSERT(a == Schema::ACTION_RESET, "expected ACTION_RESET, got: " + std::to_string(EI(a)));
 	}
 	else
 	{
@@ -426,16 +420,22 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 
 	allactions.push_back(a);
 
+	// battle should have ended instead
+	ASSERT(!resetting, "got activeStack(), but resetting was already true");
+
 	if(a == Schema::ACTION_RESET)
 	{
 		// XXX: retreat is always allowed for ML, limited by action mask only
-		logger.debug("Received ACTION_RESET, converting to ACTION_RETREAT in order to reset battle");
+		logger.debug("Received ACTION_RESET, will retreat in order to reset battle");
 		a = Schema::ACTION_RETREAT;
 		resetting = true;
+		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
+		return;
 	}
 
+	logger.debug("Received action: " + std::to_string(a));
 	auto action = state->G->getById<N::Action>(a);
-	ASSERT(action->isActive, "expected active action");
+	ASSERT(action->isActive || resetting, "expected active action");
 
 	lastAction = action;
 

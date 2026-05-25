@@ -68,6 +68,9 @@
 #include "vstd/CLoggerBase.h"
 #include "windows/InfoWindows.h"
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 static std::optional<std::string> criticalInitializationError;
 std::atomic<bool> headlessQuit = false;
@@ -181,7 +184,11 @@ namespace ML {
         exit(1);
     }
 
-    void validateArguments(InitArgs &a) {
+    void validateArguments(
+        MMAI::Schema::IModel * leftModel,
+        MMAI::Schema::IModel * rightModel,
+        const InitArgs & a)
+    {
         auto wd = boost::filesystem::current_path();
 
         if (a.statsMode != "disabled" && a.statsMode != "red" && a.statsMode != "blue") {
@@ -307,7 +314,7 @@ namespace ML {
         }
 
         // Prevent misconfigured paths at boot during ML training
-        for (auto &model : {a.leftModel, a.rightModel}) {
+        for (auto &model : {leftModel, rightModel}) {
             if (model->getType() != MMAI::Schema::ModelType::PATH)
                 continue;
 
@@ -321,11 +328,15 @@ namespace ML {
         }
     }
 
-    void processArguments(InitArgs &a) {
+    void processArguments(
+        MMAI::Schema::IModel * leftModel,
+        MMAI::Schema::IModel * rightModel,
+        const InitArgs & a)
+    {
         headless = a.headless;
         baggage = new MMAI::Schema::Baggage;
-        baggage->modelLeft = a.leftModel;
-        baggage->modelRight = a.rightModel;
+        baggage->modelLeft = leftModel;
+        baggage->modelRight = rightModel;
         baggage->allowMlBotLeft = a.leftAllowMlBot;
         baggage->allowMlBotRight = a.rightAllowMlBot;
 
@@ -432,7 +443,11 @@ namespace ML {
         conflog("bonus", loglevelBonus);
     }
 
-    void init_vcmi(InitArgs &a) {
+    void init_vcmi(
+        MMAI::Schema::IModel * leftModel,
+        MMAI::Schema::IModel * rightModel,
+        const InitArgs & a)
+    {
         // Store original shell workdir (as VCMI will chdir to VCMI_BIN_DIR)
         // The original workdir is used for loading models specified by relative paths
         // (then is again changed to VCMI_BIN_DIR to prevent VCMI errors)
@@ -452,8 +467,8 @@ namespace ML {
         LIBRARY->initializeFilesystem(false);
 
         // validating after preinitDLL as the VCMIDirs are not initialized before it
-        validateArguments(a);
-        processArguments(a);
+        validateArguments(leftModel, rightModel, a);
+        processArguments(leftModel, rightModel, a);
 
         // printf("map: %s\n", map.c_str());
         // printf("loglevelGlobal: %s\n", loglevelGlobal.c_str());

@@ -17,12 +17,9 @@
 #pragma once
 #include <string>
 #include <functional>
-#include <filesystem>
-#include "AI/MMAI/schema/schema.h"
+#include "AI/MMAI/schema/base.h"
 
 namespace ML {
-    namespace fs = std::filesystem;
-
     constexpr auto AI_STUPIDAI = "StupidAI";
     constexpr auto AI_BATTLEAI = "BattleAI";
     constexpr auto AI_MMAI_USER = "MMAI_USER"; // for user-provided getAction (gym)
@@ -51,72 +48,8 @@ namespace ML {
     );
 
     struct MMAI_DLL_LINKAGE InitArgs {
-        InitArgs() = delete;
-        InitArgs(
-            std::string mapname,
-            MMAI::Schema::IModel * leftModel,
-            MMAI::Schema::IModel * rightModel,
-            bool leftAllowMlBot,
-            bool rightAllowMlBot,
-            int maxBattles,
-            int seed,
-            int randomHeroes,
-            int randomObstacles,
-            int townChance,
-            int warmachineChance,
-            int randomStackChance,
-            int tightFormationChance,
-            int randomTerrainChance,
-            int leftVipChance,
-            int rightVipChance,
-            std::string battlefieldPattern,
-            int manaMin,
-            int manaMax,
-            int randomPrimarySkills,
-            int swapSides,
-            std::string loglevelGlobal,
-            std::string loglevelAI,
-            std::string loglevelStats,
-            std::string statsMode,
-            std::string statsStorage,
-            int statsTimeout,
-            int statsPersistFreq,
-            bool headless
-        ) : mapname(mapname)
-          , leftModel(leftModel)
-          , rightModel(rightModel)
-          , leftAllowMlBot(leftAllowMlBot)
-          , rightAllowMlBot(rightAllowMlBot)
-          , maxBattles(maxBattles)
-          , seed(seed)
-          , randomHeroes(randomHeroes)
-          , randomObstacles(randomObstacles)
-          , townChance(townChance)
-          , warmachineChance(warmachineChance)
-          , randomStackChance(randomStackChance)
-          , tightFormationChance(tightFormationChance)
-          , leftVipChance(leftVipChance)
-          , rightVipChance(rightVipChance)
-          , randomTerrainChance(randomTerrainChance)
-          , battlefieldPattern(battlefieldPattern)
-          , manaMin(manaMin)
-          , manaMax(manaMax)
-          , randomPrimarySkills(randomPrimarySkills)
-          , swapSides(swapSides)
-          , loglevelGlobal(loglevelGlobal)
-          , loglevelAI(loglevelAI)
-          , loglevelStats(loglevelStats)
-          , statsMode(statsMode)
-          , statsStorage(statsStorage == "-" ? statsStorage : fs::absolute(fs::path(statsStorage)).string())
-          , statsTimeout(statsTimeout)
-          , statsPersistFreq(statsPersistFreq)
-          , headless(headless) {};
-
-        MMAI::Schema::IModel * leftModel;
-        MMAI::Schema::IModel * rightModel;
         const bool leftAllowMlBot;
         const bool rightAllowMlBot;
-
         const std::string leftModelFile;
         const std::string rightModelFile;
         const std::string mapname;
@@ -146,7 +79,11 @@ namespace ML {
         const bool headless;
     };
 
-    void MMAI_DLL_LINKAGE init_vcmi(InitArgs &a);
+    void MMAI_DLL_LINKAGE init_vcmi(
+        MMAI::Schema::IModel * leftModel,
+        MMAI::Schema::IModel * rightModel,
+        const InitArgs & a);
+
     void MMAI_DLL_LINKAGE start_vcmi();
     void MMAI_DLL_LINKAGE shutdown_vcmi();
 }

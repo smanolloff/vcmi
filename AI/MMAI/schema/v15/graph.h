@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace MMAI::Schema::V15::Graph
@@ -134,8 +135,15 @@ namespace MMAI::Schema::V15::Graph
         {
             Y_COORD,
             X_COORD,
-            STATE_MASK,
-            WALL_HEALTH,
+
+            IS_PASSABLE, //      empty/mine/firewall/gate(open)/gate(closed,defender), ...
+            IS_STOPPING, //      moat/quicksand
+            IS_DAMAGING_L, //    moat/mine/firewall
+            IS_DAMAGING_R, //    moat/mine/firewall
+            IS_SIEGE_GATE, //    the two gate hexes
+            IS_SIEGE_BRIDGE, //  the bridge hex
+            IS_OBSTACLE, //      permanent obstacles/indestructible walls/space between boats, ...
+            WALL_HEALTH, //      v=1..3 (destructible walls only), v=0 (no wall, or destroyed)
 
             _count
         };
@@ -243,9 +251,9 @@ namespace EdgeAttributes
     class INode
     {
     public:
-        virtual ElementType elementType() const = 0;
+        virtual ElementType getType() const = 0;
         virtual std::vector<int> rawAttributes() const = 0;
-        virtual std::vector<float> encodedAttributes() const = 0;
+        virtual int encode(std::span<float> out) const = 0;
         virtual std::string name() const = 0;
         virtual ~INode() = default;
     };
@@ -255,9 +263,9 @@ namespace EdgeAttributes
     class IEdge
     {
     public:
-        virtual ElementType elementType() const = 0;
+        virtual ElementType getType() const = 0;
         virtual std::vector<int> rawAttributes() const = 0;
-        virtual std::vector<float> encodedAttributes() const = 0;
+        virtual int encode(std::span<float> out) const = 0;
         virtual std::string name() const = 0;
         virtual Endpoints endpoints() const = 0;
         virtual ~IEdge() = default;
@@ -268,48 +276,9 @@ namespace EdgeAttributes
     public:
         virtual std::vector<const INode*> getNodes(ElementType t) const = 0;
         virtual std::vector<const IEdge*> getEdges(ElementType t) const = 0;
-        virtual std::vector<int> getActiveActionIds() const = 0;
+        virtual int64_t getNodeIndex(const INode*) const = 0;
+        virtual int64_t getEdgeIndex(const IEdge*) const = 0;
+        virtual std::vector<int64_t> getActiveActionIds() const = 0;
         virtual ~IGraph() = default;
     };
-
-    inline constexpr std::array NODE_TYPES{
-        ElementType::NODE_GLOBAL,
-        ElementType::NODE_PLAYER,
-        ElementType::NODE_UNIT,
-        ElementType::NODE_HEX,
-        ElementType::NODE_ACTION,
-    };
-
-    inline constexpr std::array EDGE_TYPES{
-        ElementType::EDGE_GLOBAL_HAS_PLAYER,
-        ElementType::EDGE_GLOBAL_HAS_UNIT,
-        ElementType::EDGE_GLOBAL_HAS_HEX,
-        ElementType::EDGE_PLAYER_OWNS_UNIT,
-        ElementType::EDGE_HEX_ADJACENT_HEX,
-        ElementType::EDGE_UNIT_ACTS_BEFORE_UNIT,
-        ElementType::EDGE_UNIT_MELEE_DMG_UNIT,
-        ElementType::EDGE_UNIT_SHOOT_DMG_UNIT,
-        ElementType::EDGE_UNIT_BLOCKS_UNIT,
-        ElementType::EDGE_UNIT_OCCUPIES_HEX,
-        ElementType::EDGE_ACTION_BY_UNIT,
-        ElementType::EDGE_ACTION_ENDS_AT_HEX,
-        ElementType::EDGE_ACTION_BLOCKS_UNIT,
-        ElementType::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
-        ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,
-        ElementType::EDGE_ACTION_MELEES_UNIT,
-        ElementType::EDGE_ACTION_SHOOTS_UNIT,
-        ElementType::EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
-        ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT,
-    };
-
-    inline constexpr std::array ACTIVE_ACTION_EXCLUSIVE_EDGE_TYPES{
-        ElementType::EDGE_ACTION_ENABLES_MELEE_AT_HEX,
-        ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_HEX,
-    };
-
-    static_assert(
-        NODE_TYPES.size() +
-        EDGE_TYPES.size() +
-        ACTIVE_ACTION_EXCLUSIVE_EDGE_TYPES.size() == static_cast<int>(ElementType::_count));
-
 } // namespace

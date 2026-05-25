@@ -35,6 +35,15 @@ namespace detail
         }
     };
 
+    // See comment in NodeStore::RawNodePtrKey
+    template <typename T>
+    struct RawEdgePtrKey
+    {
+        using result_type = const T*;
+        const T* operator()(const std::shared_ptr<const T>& ptr) const noexcept {
+            return ptr.get();
+        }
+    };
 
     template <typename T>
     using MultiIndexEdgeContainer = boost::multi_index::multi_index_container<
@@ -46,7 +55,7 @@ namespace detail
 
             boost::multi_index::hashed_unique<
                 boost::multi_index::tag<by_ptr_identity>,
-                boost::multi_index::identity<std::shared_ptr<const T>>
+                RawEdgePtrKey<T>
             >,
 
             boost::multi_index::hashed_unique<
@@ -75,6 +84,8 @@ template <typename EdgeType>
 class EdgeStore
 {
 public:
+    using edge_type = EdgeType;
+
     EdgeStore() = default;
 
     EdgeStore(const EdgeStore &) = delete;
@@ -220,7 +231,7 @@ public:
         return container.size();
     }
 
-    std::ptrdiff_t getId(const std::shared_ptr<const EdgeType> & edge) const
+    int64_t getId(const EdgeType * edge) const
     {
         const auto & identity_idx = container.template get<detail::by_ptr_identity>();
 
@@ -231,6 +242,11 @@ public:
         const auto & ordinal_idx = container.template get<detail::by_ordinal_id>();
         auto ordinal_it = container.template project<detail::by_ordinal_id>(identity_it);
         return std::distance(ordinal_idx.begin(), ordinal_it);
+    }
+
+    int64_t getId(const std::shared_ptr<const EdgeType> & edge) const
+    {
+        return getId(edge.get());
     }
 
 private:

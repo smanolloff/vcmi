@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
 #include "BAI/v15/encoder.h"
 #include "common.h"
@@ -26,24 +25,26 @@ public:
     using encoding_traits = EncTraits;
     using Attribute = typename EncTraits::A;
 
-    S15::Graph::ElementType elementType() const override { return EncTraits::element_type; }
+    S15::Graph::ElementType getType() const override { return EncTraits::element_type; }
     std::vector<int> rawAttributes() const override { return std::vector(attrs.begin(), attrs.end()); }
-    std::vector<float> encodedAttributes() const override { return Encoder::Encode<EncTraits>(attrs); }
+    int encode(std::span<float> out) const override { return Encoder::Encode<EncTraits>(attrs, out); }
 
     Element()
     {
-        attrs.fill(S15::NULL_VALUE_UNENCODED);
+        attrs.fill(0);
     }
 
     int attr(Attribute a) const
     {
-        ASSERT(guardflags.test(EU(a)), std::string(EncTraits::name) + ": attribute not set: " + std::to_string(EU(a)));
+        // ASSERT(guardflags.test(EU(a)), std::string(EncTraits::name) + ": attribute not set: " + std::to_string(EU(a)));
+        assert(guardflags.test(EU(a)));
         return attrs.at(EU(a));
     }
 
     void setattr(Attribute a, int value)
     {
-        ASSERT(!guardflags.test(EU(a)), std::string(EncTraits::name) + ": attribute already set: " + std::to_string(EU(a)));
+        // ASSERT(!guardflags.test(EU(a)), std::string(EncTraits::name) + ": attribute already set: " + std::to_string(EU(a)));
+        assert(!guardflags.test(EU(a)));
         guardflags.set(EU(a));
         attrs.at(EU(a)) = value;
     }

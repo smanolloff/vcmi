@@ -22,7 +22,6 @@
 #include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/graph/nodes/player.h"
 #include "BAI/v15/graph/nodes/unit.h"
-#include "BAI/v15/hexaction.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/DamageCalculator.h"
 #include "battle/CUnitState.h"
@@ -322,7 +321,7 @@ namespace
 			int n = static_cast<int>(cstate->getCount());
 			int hpOne = static_cast<int>(cstack->getMaxHealth());
 			int hp1st = static_cast<int>(cstate->getFirstHPleft());
-			return ((n - 1) * hpOne) + hp1st;
+			return (std::max(0, (n - 1)) * hpOne) + hp1st;
     	}
 
     	const CStack * cstack;
@@ -675,7 +674,7 @@ namespace
 		return res;
 	}
 
-	int WallHP(const CPlayerBattleCallback & battle, const BattleHex & bhex) {
+	S15::WallHP GetWallHP(const CPlayerBattleCallback & battle, const BattleHex & bhex) {
 		auto part = battle.battleHexToWallPart(bhex);
 		switch(part)
 		{
@@ -687,21 +686,20 @@ namespace
 				switch(battle.battleGetWallState(part))
 				{
 					case EWallState::NONE:
-						return Schema::V15::NULL_VALUE_UNENCODED;
 					case EWallState::DESTROYED:
-						return 0;
+						return S15::WallHP::HP0;
 					case EWallState::DAMAGED:
-						return 1;
+						return S15::WallHP::HP1;
 					case EWallState::INTACT:
-						return 2;
+						return S15::WallHP::HP2;
 					case EWallState::REINFORCED:
-						return 3;
+						return S15::WallHP::HP3;
 					default:
 						logAi->warn("MMAI: unexpected wall state: %d", EI(battle.battleGetWallState(part)));
-						return Schema::V15::NULL_VALUE_UNENCODED;
+						return S15::WallHP::HP0;
 				}
 			default:
-				return Schema::V15::NULL_VALUE_UNENCODED;
+				return S15::WallHP::HP0;
 			break;
 		}
 	}
@@ -724,10 +722,12 @@ namespace
 		for(int id1 = 0; id1 < GameConstants::BFIELD_SIZE; id1++)
 		{
 			auto hex1 = BattleHex(static_cast<int16_t>(id1));
-			for(int i=0; i<6; ++i)
+			int i = 0;
+			for(const auto dir : hex1.hexagonalDirections())
 			{
-				auto hex2 = hex1.cloneInDirection(AMOVE_TO_EDIR[i], false);
+				auto hex2 = hex1.cloneInDirection(dir, false);
 				res[{hex1.toInt(), hex2.toInt()}] = i;
+				++i;
 			}
 		}
 
@@ -866,7 +866,7 @@ namespace
 					.accessibility=G.getAccessibility().at(bh.toInt()),
 					.side=acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
 					.obstacles=hexobstacles.at(i),
-					.wallHP=WallHP(battle, bh),
+					.wallHP=GetWallHP(battle, bh),
 					.isGateOpen=isGateOpen
 				}));
 			}
@@ -1655,7 +1655,7 @@ namespace
 			hex->bhex != unit->cstack.getPosition()
 			&& !unit->isFlying
 			&& std::ranges::any_of(move->endsAt, [](const HexPtr & hex) {
-				return hex->statemask.test(EU(S15::HexState::STOPPING));
+				return hex->attr(N::Hex::A::IS_STOPPING);
 			})
 		);
 

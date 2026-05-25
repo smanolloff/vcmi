@@ -512,7 +512,7 @@ double NNModel::getValue(const MMAI::Schema::IState * s)
 	return 0;
 }
 
-std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup)
+std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s, const MMAI::Schema::V13::ISupplementaryData * sup) const
 {
 	NestedLogTag _("prepareInputsV13");
 	auto lengths = std::vector<int>{};
@@ -580,7 +580,7 @@ std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s
 }
 
 template<typename T>
-Ort::Value NNModel::toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape)
+Ort::Value NNModel::toTensor(const std::string & name, std::vector<T> & vec, const std::vector<int64_t> & shape) const
 {
 	// Sanity check
 	int64_t numel = 1;

@@ -19,6 +19,7 @@
 #include "AI/MMAI/schema/v15/types.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
+#include <stdexcept>
 
 namespace ML {
     namespace UserAgents {
@@ -43,16 +44,45 @@ namespace ML {
             const auto * sup = std::any_cast<const S15::ISupplementaryData*>(any);
             const auto * G = sup->getGraph();
 
-            size_t size = 0;
-            for (const auto nt : S15::Graph::EDGE_TYPES)
-                for (const auto * edge : G->getEdges(nt))
-                    size += edge->encodedAttributes().size();
+            int totalsize = 0;
 
-            for (const auto et : S15::Graph::NODE_TYPES)
-                for (const auto * node : G->getNodes(et))
-                    size += node->encodedAttributes().size();
+            for (const auto &[type, name, size] : S15::NODE_TYPES)
+            {
+                const auto & nodes = G->getNodes(type);
+                auto buf = std::vector<float>(nodes.size() * size, 0.0f);
+                auto span = std::span<float>(buf);
+                auto encoded = 0;
+                for (const auto * node : nodes)
+                {
+                    encoded += node->encode(span);
+                    if (encoded > buf.size())
+                        throw std::runtime_error("encoded size is more than expected: " + std::to_string(encoded) + " / " + std::to_string(buf.size()));
+                }
+                if (encoded != buf.size())
+                    throw std::runtime_error("encoded size is less than expected: " + std::to_string(encoded) + " / " + std::to_string(buf.size()));
 
-            // std::cout << " *** STATE SIZE: " << size << "\n";
+                totalsize += encoded;
+            }
+
+            for (const auto &[type, name, endpointTypes, size] : S15::EDGE_TYPES)
+            {
+                const auto & edges = G->getEdges(type);
+                auto buf = std::vector<float>(edges.size() * size, 0.0f);
+                auto span = std::span<float>(buf);
+                auto encoded = 0;
+                for (const auto * edge : edges)
+                {
+                    encoded += edge->encode(span);
+                    if (encoded > buf.size())
+                        throw std::runtime_error("encoded size is more than expected: " + std::to_string(encoded) + " / " + std::to_string(buf.size()));
+                }
+                if (encoded != buf.size())
+                    throw std::runtime_error("encoded size is less than expected: " + std::to_string(encoded) + " / " + std::to_string(buf.size()));
+
+                totalsize += encoded;
+            }
+
+            // std::cout << " *** STATE SIZE: " << totalsize << "\n";
 
             if (steps == 0 && benchmark) {
                 t0 = clock();
@@ -63,7 +93,7 @@ namespace ML {
             auto isEnded = [&sup]
             {
                 const auto * global = sup->getGraph()->getNodes(Graph::ElementType::NODE_GLOBAL).at(0);
-                return global->rawAttributes().at(EI(Graph::NodeAttributes::Global::BATTLE_WINNER)) != S15::NULL_VALUE_UNENCODED;
+                return global->rawAttributes().at(EI(Graph::NodeAttributes::Global::BATTLE_WINNER)) != EI(S15::CombatResult::NONE);
             };
 
             if (sup->getType() == S15::ISupplementaryData::Type::ANSI_RENDER) {

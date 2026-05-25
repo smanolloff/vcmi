@@ -23,8 +23,8 @@ set(MMAI_FILES
   BAI/v13/attack_log.h
   BAI/v13/battlefield.cpp
   BAI/v13/battlefield.h
-  BAI/v13/encoder.cpp
   BAI/v13/encoder.h
+  BAI/v13/encoder.cpp
   BAI/v13/global_stats.cpp
   BAI/v13/global_stats.h
   BAI/v13/hex.cpp
@@ -77,7 +77,6 @@ set(MMAI_FILES
   BAI/v15/BAI.cpp
   BAI/v15/BAI.h
   BAI/v15/attack_log.h
-  BAI/v15/encoder.cpp
   BAI/v15/encoder.h
   BAI/v15/enum_flags.h
   BAI/v15/fastbfs.h
@@ -111,7 +110,6 @@ set(MMAI_FILES
   BAI/v15/graph/nodes/unit.cpp
   BAI/v15/graph/nodes/unit.h
   BAI/v15/graph/util.h
-  BAI/v15/hexaction.h
   BAI/v15/render.cpp
   BAI/v15/render.h
   BAI/v15/state.cpp

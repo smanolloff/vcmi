@@ -17,7 +17,6 @@ namespace MMAI::BAI::V15
 {
 namespace S15 = Schema::V15;
 using Side = Schema::Side;
-using ErrorCode = S15::ErrorCode;
 
 // match sides for convenience when determining winner (see `victory`)
 static_assert(EI(S15::CombatResult::LEFT_WINS) == EI(Side::LEFT));
@@ -47,10 +46,6 @@ public:
 	Type getType() const override
 	{
 		return type;
-	};
-	ErrorCode getErrorCode() const override
-	{
-		return errcode;
 	};
 
 	const S15::Graph::IGraph * getGraph() const override
@@ -88,9 +83,6 @@ public:
 	const std::vector<AttackLog> & attackLogs;
 	const bool ended = false;
 	const bool victory = false;
-
-	// Optionally modified (during activeStack if action was invalid)
-	ErrorCode errcode = ErrorCode::OK;
 
 	// Optionally modified (during activeStack if action was RENDER)
 	Type type = Type::REGULAR;

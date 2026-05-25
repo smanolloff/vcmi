@@ -32,7 +32,7 @@ namespace ML {
             double getValue(const MMAI::Schema::IState * s) override;
         private:
             std::string path;
-            void warn(std::string m, int retval);
+            void warn(std::string m, int retval) const;
         };
     }
 }
