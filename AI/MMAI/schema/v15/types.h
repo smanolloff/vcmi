@@ -44,7 +44,7 @@ enum class WallHP : uint8_t
 
 enum class ActionType : uint8_t
 {
-	RETREAT, // XXX: for legacy reasons, must always have id=0
+	RETREAT,
 	WAIT,
 	DEFEND,
 	MOVE,

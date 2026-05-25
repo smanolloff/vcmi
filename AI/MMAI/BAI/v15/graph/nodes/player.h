@@ -40,6 +40,7 @@ public:
 	{
 		const BattleSide side;
 		const bool isActive;
+		const int globalValueStart;
 		const int globalValuePrevRound;
 		const int globalHpPrevRound;
 		const int value;

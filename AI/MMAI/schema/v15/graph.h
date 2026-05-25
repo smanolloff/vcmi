@@ -78,6 +78,7 @@ namespace MMAI::Schema::V15::Graph
         {
             BATTLE_SIDE, //           0=left, 1=right
             IS_ACTIVE,
+            ARMY_VALUE_NOW_REL0, //   side_army_value_now / global_value_at_start
             ARMY_VALUE_NOW_REL, //    side_army_value_now / global_value_now
             ARMY_HP_NOW_REL, //       side_army_hp_now / global_hp_now
             VALUE_KILLED_NOW_REL, //  left_value_killed_this_turn / global_value_last_turn
