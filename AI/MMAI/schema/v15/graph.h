@@ -27,8 +27,7 @@ namespace MMAI::Schema::V15::Graph
         EDGE_GLOBAL_HAS_PLAYER,
         EDGE_GLOBAL_HAS_UNIT,
         EDGE_GLOBAL_HAS_HEX,
-        EDGE_GLOBAL_HAS_ACTION, // uni-directional
-        EDGE_GLOBAL_ALLOWS_ACTION,
+        EDGE_GLOBAL_HAS_ACTION,
 
         EDGE_PLAYER_OWNS_UNIT,
         EDGE_HEX_ADJACENT_HEX,
@@ -188,8 +187,7 @@ namespace EdgeAttributes
         BLANK_ENUM_DEF(Global_Has_Player);
         BLANK_ENUM_DEF(Global_Has_Unit);
         BLANK_ENUM_DEF(Global_Has_Hex);
-        BLANK_ENUM_DEF(Global_Has_Action); // XXX: this should be the only uni-directional edge!
-        BLANK_ENUM_DEF(Global_Allows_Action);
+        BLANK_ENUM_DEF(Global_Has_Action);
 
         BLANK_ENUM_DEF(Player_Owns_Unit);
 
@@ -274,7 +272,7 @@ namespace EdgeAttributes
         };
 
         // 6 nodes, 26 edges
-        static_assert(static_cast<int>(ElementType::_count) == 5 + 23);
+        static_assert(static_cast<int>(ElementType::_count) == 5 + 22);
     };
 
     class INode

@@ -61,7 +61,6 @@ namespace detail
         EdgeStore<Edges::Global_Has_Unit>,
         EdgeStore<Edges::Global_Has_Hex>,
         EdgeStore<Edges::Global_Has_Action>,
-        EdgeStore<Edges::Global_Allows_Action>,
         EdgeStore<Edges::Player_Owns_Unit>,
         EdgeStore<Edges::Hex_Adjacent_Hex>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,
@@ -393,8 +392,6 @@ private:
             return std::forward<F>(f)(getStore<Edges::Global_Has_Hex>());
         case ET::EDGE_GLOBAL_HAS_ACTION:
             return std::forward<F>(f)(getStore<Edges::Global_Has_Action>());
-        case ET::EDGE_GLOBAL_ALLOWS_ACTION:
-            return std::forward<F>(f)(getStore<Edges::Global_Allows_Action>());
         case ET::EDGE_PLAYER_OWNS_UNIT:
             return std::forward<F>(f)(getStore<Edges::Player_Owns_Unit>());
         case ET::EDGE_HEX_ADJACENT_HEX:

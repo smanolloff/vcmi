@@ -58,7 +58,6 @@ GENERIC_EDGE_ELEMENT(Global, Has, Player);
 GENERIC_EDGE_ELEMENT(Global, Has, Unit);
 GENERIC_EDGE_ELEMENT(Global, Has, Hex);
 GENERIC_EDGE_ELEMENT(Global, Has, Action);
-GENERIC_EDGE_ELEMENT(Global, Allows, Action);
 
 GENERIC_EDGE_ELEMENT(Player, Owns, Unit);
 

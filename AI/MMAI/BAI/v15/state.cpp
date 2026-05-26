@@ -900,7 +900,7 @@ namespace
 			G.add(E::Global_Has_Hex::Create(global, hex));
 	}
 
-	void AddEdges_Global_HasAllows_Action(
+	void AddEdges_Global_Has_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle)
@@ -910,16 +910,11 @@ namespace
 			atFlags.require(AT(i));
 
 		G.setFlag(ET::EDGE_GLOBAL_HAS_ACTION);
-		G.setFlag(ET::EDGE_GLOBAL_ALLOWS_ACTION);
 
 		const auto & global = G.getAll<N::Global>().at(0);
 
 		for (const auto & action : G.getAll<N::Action>())
-		{
 			G.add(E::Global_Has_Action::Create(global, action));
-			if (action->isActive)
-				G.add(E::Global_Allows_Action::Create(global, action));
-		}
 	}
 
 	void AddEdges_Player_Owns_Unit(
@@ -1662,7 +1657,6 @@ namespace
         		case ET::EDGE_GLOBAL_HAS_UNIT:
         		case ET::EDGE_GLOBAL_HAS_HEX:
         		case ET::EDGE_GLOBAL_HAS_ACTION:
-        		case ET::EDGE_GLOBAL_ALLOWS_ACTION:
         		case ET::EDGE_PLAYER_OWNS_UNIT:
 				case ET::NODE_GLOBAL:
 				case ET::NODE_PLAYER:
@@ -2044,7 +2038,7 @@ void State::onActiveStack(
 	AddOtherActions(*G, atFlags, battle);
 	AddRetreatAction(*G, atFlags);
 
-	AddEdges_Global_HasAllows_Action(*G, atFlags, battle);
+	AddEdges_Global_Has_Action(*G, atFlags, battle);
 
 	ASSERT(G->getFlags().flags.all(), "etFlags check: " + G->getFlags().flags.to_string());
 	ASSERT(atFlags.flags.all(), "atFlags check: " + atFlags.flags.to_string());
