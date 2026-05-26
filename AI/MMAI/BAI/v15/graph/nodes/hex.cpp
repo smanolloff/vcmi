@@ -1,7 +1,6 @@
 #include "BAI/v15/graph/nodes/hex.h"
 
 #include "AI/MMAI/common.h"
-#include "schema/v15/types.h"
 #include "vcmi/spells/Spell.h"
 
 namespace MMAI::BAI::V15::Graph::Nodes

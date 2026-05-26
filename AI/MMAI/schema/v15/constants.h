@@ -194,6 +194,7 @@ struct EncodingTraits<Graph::NodeAttributes::Action>
 	static constexpr std::string_view name = "Action";
 	static constexpr encoding_type encoding = {
 		E4(A::ACTION_TYPE, X::CAT, EI(ActionType::_count)),
+		E4(A::IS_ACTIVE, X::RAW, 1),
 	};
 };
 
@@ -233,6 +234,8 @@ struct EncodingTraits<Graph::EdgeAttributes::attr_type> \
 GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Player, EDGE_GLOBAL_HAS_PLAYER);
 GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Unit, EDGE_GLOBAL_HAS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Hex, EDGE_GLOBAL_HAS_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Action, EDGE_GLOBAL_HAS_ACTION);
+GENERIC_EDGE_ENCODING_TRAITS(Global_Allows_Action, EDGE_GLOBAL_ALLOWS_ACTION);
 GENERIC_EDGE_ENCODING_TRAITS(Player_Owns_Unit, EDGE_PLAYER_OWNS_UNIT);
 
 template <>
@@ -305,62 +308,62 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_EndsAt_Hex>
 
 GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Action_ExposesToMeleeFrom_Unit, EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Unit_BecomesMeleeThreatAfter_Action, EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION);
 
 template <>
-struct EncodingTraits<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT;
-	static constexpr std::string_view name = "Action_ExposesToShootFrom_Unit";
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION;
+	static constexpr std::string_view name = "Unit_BecomesShootThreatAfter_Action";
 	static constexpr encoding_type encoding = {
 		E4(A::DMG_MULT, X::LIN, 1000),
 	};
 };
 
 template <>
-struct EncodingTraits<Graph::EdgeAttributes::Action_Melees_Unit>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_Melees_Unit>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_IsMeleedBy_Action>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_IsMeleedBy_Action>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_MELEES_UNIT;
-	static constexpr std::string_view name = "Action_Melees_Unit";
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_IS_MELEED_BY_ACTION;
+	static constexpr std::string_view name = "Unit_IsMeleedBy_Action";
 	static constexpr encoding_type encoding = {
 		E4(A::IS_PRIMARY_TARGET, X::CAT, 1),
 	};
 };
 
 template <>
-struct EncodingTraits<Graph::EdgeAttributes::Action_Shoots_Unit>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_Shoots_Unit>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_IsShotBy_Action>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_IsShotBy_Action>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_SHOOTS_UNIT;
-	static constexpr std::string_view name = "Action_Shoots_Unit";
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_IS_SHOT_BY_ACTION;
+	static constexpr std::string_view name = "Unit_IsShotBy_Action";
 	static constexpr encoding_type encoding = {
 		E4(A::IS_PRIMARY_TARGET, X::CAT, 1),
 	};
 };
 
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Unit, EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Unit_BecomesMeleeTargetAfter_Action, EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION);
 
 template <>
-struct EncodingTraits<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>
+struct EncodingTraits<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT;
-	static constexpr std::string_view name = "Action_EnablesShootAt_Unit";
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION;
+	static constexpr std::string_view name = "Unit_BecomesShootTargetAfter_Action";
 	static constexpr encoding_type encoding = {
 		E4(A::DMG_MULT, X::LIN, 1000),
 	};
 };
 
-GENERIC_EDGE_ENCODING_TRAITS(Action_EnablesMeleeAt_Hex, EDGE_ACTION_ENABLES_MELEE_AT_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Hex_BecomesMeleeTargetAfter_Action, EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION);
 
 template <>
-struct EncodingTraits<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>
-: detail::EncodingTraitsBase<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>
+struct EncodingTraits<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT;
-	static constexpr std::string_view name = "Action_EnablesShootAt_Hex";
+	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION;
+	static constexpr std::string_view name = "Hex_BecomesShootTargetAfter_Action";
 	static constexpr encoding_type encoding = {
 		E4(A::DMG_MULT, X::LIN, 1000),
 	};
@@ -389,6 +392,8 @@ static_assert(EncodingIsValid<Graph::NodeAttributes::Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Player>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Allows_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Player_Owns_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_Adjacent_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ActsBefore_Unit>());
@@ -399,15 +404,15 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Occupies_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_By_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EndsAt_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Blocks_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_ExposesToMeleeFrom_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Melees_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Shoots_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>());
-static_assert(static_cast<int>(Graph::ElementType::_count) == 26);
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeThreatAfter_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_IsMeleedBy_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_IsShotBy_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeTargetAfter_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesMeleeTargetAfter_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>());
+static_assert(static_cast<int>(Graph::ElementType::_count) == 28);
 
 using NodeType = std::tuple<
 	Graph::ElementType,
@@ -462,6 +467,16 @@ inline constexpr std::array EDGE_TYPES{
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_HEX},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Hex>::encoding)},
 	EdgeType{
+		Graph::ElementType::EDGE_GLOBAL_HAS_ACTION,
+		"Has",
+		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_ACTION},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Action>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_GLOBAL_ALLOWS_ACTION,
+		"Has",
+		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_ACTION},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Allows_Action>::encoding)},
+	EdgeType{
 		Graph::ElementType::EDGE_PLAYER_OWNS_UNIT,
 		"Owns",
 		{Graph::ElementType::NODE_PLAYER, Graph::ElementType::NODE_UNIT},
@@ -512,52 +527,52 @@ inline constexpr std::array EDGE_TYPES{
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_Blocks_Unit>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
-		"ExposesToMeleeFrom",
+		Graph::ElementType::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION,
+		"BecomesMeleeThreatAfter",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_ExposesToMeleeFrom_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesMeleeThreatAfter_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,
-		"ExposesToShootFrom",
+		Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION,
+		"BecomesShootThreatAfter",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_ExposesToShootFrom_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_MELEES_UNIT,
-		"Melees",
+		Graph::ElementType::EDGE_UNIT_IS_MELEED_BY_ACTION,
+		"IsMeleedBy",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_Melees_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_IsMeleedBy_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_SHOOTS_UNIT,
-		"Shoots",
+		Graph::ElementType::EDGE_UNIT_IS_SHOT_BY_ACTION,
+		"IsShotBy",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_Shoots_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_IsShotBy_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
-		"EnablesMeleeAt",
+		Graph::ElementType::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION,
+		"BecomesMeleeTargetAfter",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_EnablesMeleeAt_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesMeleeTargetAfter_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT,
-		"EnablesShootAt",
+		Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION,
+		"BecomesShootTargetAfter",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_EnablesShootAt_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_ENABLES_MELEE_AT_HEX,
-		"EnablesMeleeAt",
+		Graph::ElementType::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION,
+		"BecomesMeleeTargetAfter",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_HEX},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_EnablesMeleeAt_Hex>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_BecomesMeleeTargetAfter_Action>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_HEX,
-		"EnablesShootAt",
+		Graph::ElementType::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION,
+		"BecomesShootTargetAfter",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_HEX},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_EnablesShootAt_Hex>::encoding)}
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>::encoding)}
 };
 
 static_assert(NODE_TYPES.size() + EDGE_TYPES.size() == static_cast<int>(Graph::ElementType::_count));
 
 inline constexpr std::array ACTIVE_ACTION_EXCLUSIVE_EDGE_TYPES{
-	Graph::ElementType::EDGE_ACTION_ENABLES_MELEE_AT_HEX,
-	Graph::ElementType::EDGE_ACTION_ENABLES_SHOOT_AT_HEX,
+	Graph::ElementType::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION,
+	Graph::ElementType::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION,
 };
 
 }

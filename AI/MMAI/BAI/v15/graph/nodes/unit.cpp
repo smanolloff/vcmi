@@ -4,9 +4,11 @@
 #include "GameLibrary.h"
 #include "AI/MMAI/common.h"
 #include "bonuses/BonusEnum.h"
-#include "bonuses/BonusParameters.h"
 #include "constants/EntityIdentifiers.h"
 #include "schema/v15/constants.h"
+
+// XXX: clangd warns these are unused, but they are in fact required
+#include "bonuses/BonusParameters.h"
 #include "spells/CSpellHandler.h"
 
 #include <cmath>

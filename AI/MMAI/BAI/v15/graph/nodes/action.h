@@ -61,6 +61,7 @@ public:
     , isActive(args.by == nullptr || args.by->isActive)  // RETREAT has no `by`, but is still active
     {
         setattr(A::ACTION_TYPE, EU(actionType));
+        setattr(A::IS_ACTIVE, isActive);
     }
 
     std::string name() const override
