@@ -27,6 +27,8 @@ namespace MMAI::Schema::V15::Graph
         EDGE_GLOBAL_HAS_PLAYER,
         EDGE_GLOBAL_HAS_UNIT,
         EDGE_GLOBAL_HAS_HEX,
+        EDGE_GLOBAL_HAS_ACTION, // uni-directional
+        EDGE_GLOBAL_ALLOWS_ACTION,
 
         EDGE_PLAYER_OWNS_UNIT,
         EDGE_HEX_ADJACENT_HEX,
@@ -39,17 +41,40 @@ namespace MMAI::Schema::V15::Graph
         EDGE_ACTION_BY_UNIT,
         EDGE_ACTION_ENDS_AT_HEX,
         EDGE_ACTION_BLOCKS_UNIT,
-        EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
-        EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
-        EDGE_ACTION_MELEES_UNIT, // v=primary target (e.g. for dragon breath, 3-headed attack, etc.)
-        EDGE_ACTION_SHOOTS_UNIT, // v=primary target (e.g. for fireball)
-        EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
-        EDGE_ACTION_ENABLES_SHOOT_AT_UNIT, // v=ranged penalty
 
-        // can explode to 350K for 14 archangels
-        // => present only for active action nodes
-        EDGE_ACTION_ENABLES_MELEE_AT_HEX,
-        EDGE_ACTION_ENABLES_SHOOT_AT_HEX, // v=ranged penalty
+        // XXX: the below were originally reversed
+        // However, these edges are quite dense (can be thousands)
+        // and should be uni-directional
+        // The direction should be towards the action => rename them
+
+        // EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT,
+        EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION,
+
+        // EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT,    // v=ranged penalty
+        EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION,
+
+        // EDGE_ACTION_MELEES_UNIT, // v=primary target (e.g. for dragon breath, 3-headed attack, etc.)
+        EDGE_UNIT_IS_MELEED_BY_ACTION,
+
+        // EDGE_ACTION_SHOOTS_UNIT, // v=primary target (e.g. for fireball)
+        EDGE_UNIT_IS_SHOT_BY_ACTION,
+
+        // EDGE_ACTION_ENABLES_MELEE_AT_UNIT,
+        EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION,
+
+        // EDGE_ACTION_ENABLES_SHOOT_AT_UNIT, // v=ranged penalty
+        EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION,
+
+        // // can explode to 350K for 14 archangels
+        // // => present only for active action nodes
+        // EDGE_ACTION_ENABLES_MELEE_AT_HEX,
+        EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION,
+
+        // EDGE_ACTION_ENABLES_SHOOT_AT_HEX, // v=ranged penalty
+        EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION,
+
+
+
         _count
     };
 
@@ -152,6 +177,7 @@ namespace MMAI::Schema::V15::Graph
         enum class Action : uint8_t
         {
             ACTION_TYPE,
+            IS_ACTIVE,
 
             _count
         };
@@ -162,6 +188,8 @@ namespace EdgeAttributes
         BLANK_ENUM_DEF(Global_Has_Player);
         BLANK_ENUM_DEF(Global_Has_Unit);
         BLANK_ENUM_DEF(Global_Has_Hex);
+        BLANK_ENUM_DEF(Global_Has_Action); // XXX: this should be the only uni-directional edge!
+        BLANK_ENUM_DEF(Global_Allows_Action);
 
         BLANK_ENUM_DEF(Player_Owns_Unit);
 
@@ -209,44 +237,44 @@ namespace EdgeAttributes
             _count
         };
 
-        BLANK_ENUM_DEF(Action_ExposesToMeleeFrom_Unit);
+        BLANK_ENUM_DEF(Unit_BecomesMeleeThreatAfter_Action);
 
-        enum class Action_ExposesToShootFrom_Unit : uint8_t
+        enum class Unit_BecomesShootThreatAfter_Action : uint8_t
         {
             DMG_MULT,  // 1=full dmg
             _count
         };
 
-        enum class Action_Melees_Unit : uint8_t
+        enum class Unit_IsMeleedBy_Action : uint8_t
         {
             IS_PRIMARY_TARGET,  // e.g. for dragons
             _count
         };
 
-        enum class Action_Shoots_Unit : uint8_t
+        enum class Unit_IsShotBy_Action : uint8_t
         {
             IS_PRIMARY_TARGET,  // e.g. for magogs
             _count
         };
 
-        BLANK_ENUM_DEF(Action_EnablesMeleeAt_Unit);
+        BLANK_ENUM_DEF(Unit_BecomesMeleeTargetAfter_Action);
 
-        enum class Action_EnablesShootAt_Unit : uint8_t
+        enum class Unit_BecomesShootTargetAfter_Action : uint8_t
         {
             DMG_MULT,  // 1=full dmg
             _count
         };
 
-        BLANK_ENUM_DEF(Action_EnablesMeleeAt_Hex);
+        BLANK_ENUM_DEF(Hex_BecomesMeleeTargetAfter_Action);
 
-        enum class Action_EnablesShootAt_Hex : uint8_t
+        enum class Hex_BecomesShootTargetAfter_Action : uint8_t
         {
             DMG_MULT,  // 1=full dmg
             _count
         };
 
         // 6 nodes, 26 edges
-        static_assert(static_cast<int>(ElementType::_count) == 5 + 21);
+        static_assert(static_cast<int>(ElementType::_count) == 5 + 23);
     };
 
     class INode

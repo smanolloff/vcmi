@@ -57,6 +57,8 @@ public: \
 GENERIC_EDGE_ELEMENT(Global, Has, Player);
 GENERIC_EDGE_ELEMENT(Global, Has, Unit);
 GENERIC_EDGE_ELEMENT(Global, Has, Hex);
+GENERIC_EDGE_ELEMENT(Global, Has, Action);
+GENERIC_EDGE_ELEMENT(Global, Allows, Action);
 
 GENERIC_EDGE_ELEMENT(Player, Owns, Unit);
 
@@ -65,9 +67,9 @@ GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
 
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
-GENERIC_EDGE_ELEMENT(Action, ExposesToMeleeFrom, Unit);
-GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Unit);
-GENERIC_EDGE_ELEMENT(Action, EnablesMeleeAt, Hex);
+GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeThreatAfter, Action);
+GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeTargetAfter, Action);
+GENERIC_EDGE_ELEMENT(Hex, BecomesMeleeTargetAfter, Action);
 
 }
 

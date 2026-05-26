@@ -12,7 +12,7 @@
 
 #include "BAI/v15/fastbfs.h"
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
-#include "BAI/v15/graph/edges/action_melees_unit.h"
+#include "BAI/v15/graph/edges/unit_is_meleed_by_action.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
@@ -143,37 +143,37 @@ namespace
 	            tmp = G.size<E::Action_Blocks_Unit>();
 	            std::cout << tmp << " EDGE_ACTION_BLOCKS_UNIT\n";
 	            break;
-	        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-	            tmp = G.size<E::Action_ExposesToMeleeFrom_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT\n";
+	        case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
+	            tmp = G.size<E::Unit_BecomesMeleeThreatAfter_Action>();
+	            std::cout << tmp << " EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-	            tmp = G.size<E::Action_ExposesToShootFrom_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT\n";
+	        case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
+	            tmp = G.size<E::Unit_BecomesShootThreatAfter_Action>();
+	            std::cout << tmp << " EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_MELEES_UNIT:
-	            tmp = G.size<E::Action_Melees_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_MELEES_UNIT\n";
+	        case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
+	            tmp = G.size<E::Unit_IsMeleedBy_Action>();
+	            std::cout << tmp << " EDGE_UNIT_IS_MELEED_BY_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_SHOOTS_UNIT:
-	            tmp = G.size<E::Action_Shoots_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_SHOOTS_UNIT\n";
+	        case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
+	            tmp = G.size<E::Unit_IsShotBy_Action>();
+	            std::cout << tmp << " EDGE_UNIT_IS_SHOT_BY_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
-	            tmp = G.size<E::Action_EnablesMeleeAt_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_ENABLES_MELEE_AT_UNIT\n";
+	        case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:
+	            tmp = G.size<E::Unit_BecomesMeleeTargetAfter_Action>();
+	            std::cout << tmp << " EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
-	            tmp = G.size<E::Action_EnablesShootAt_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_ENABLES_SHOOT_AT_UNIT\n";
+	        case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+	            tmp = G.size<E::Unit_BecomesShootTargetAfter_Action>();
+	            std::cout << tmp << " EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
-	            tmp = G.size<E::Action_EnablesMeleeAt_Hex>();
-	            std::cout << tmp << " EDGE_ACTION_ENABLES_MELEE_AT_HEX\n";
+	        case ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION:
+	            tmp = G.size<E::Hex_BecomesMeleeTargetAfter_Action>();
+	            std::cout << tmp << " EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION\n";
 	            break;
-	        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
-	            tmp = G.size<E::Action_EnablesShootAt_Hex>();
-	            std::cout << tmp << " EDGE_ACTION_ENABLES_SHOOT_AT_HEX\n";
+	        case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+	            tmp = G.size<E::Hex_BecomesShootTargetAfter_Action>();
+	            std::cout << tmp << " EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION\n";
 	            break;
 	        default:
 	        	throw std::runtime_error("Unexpected element type: " + std::to_string(i));
@@ -900,6 +900,28 @@ namespace
 			G.add(E::Global_Has_Hex::Create(global, hex));
 	}
 
+	void AddEdges_Global_HasAllows_Action(
+		Graph::Graph & G,
+		EnumFlags<AT> & atFlags,
+		const CPlayerBattleCallback & battle)
+	{
+		G.getFlags().require(ET::NODE_ACTION);
+		for (int i = 0; i < EU(AT::_count); ++i)
+			atFlags.require(AT(i));
+
+		G.setFlag(ET::EDGE_GLOBAL_HAS_ACTION);
+		G.setFlag(ET::EDGE_GLOBAL_ALLOWS_ACTION);
+
+		const auto & global = G.getAll<N::Global>().at(0);
+
+		for (const auto & action : G.getAll<N::Action>())
+		{
+			G.add(E::Global_Has_Action::Create(global, action));
+			if (action->isActive)
+				G.add(E::Global_Allows_Action::Create(global, action));
+		}
+	}
+
 	void AddEdges_Player_Owns_Unit(
 		Graph::Graph & G,
 		const CPlayerBattleCallback & battle)
@@ -1241,7 +1263,7 @@ namespace
 		}
 	}
 
-	void AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(
+	void AddMoveActionEdges_Unit_BecomesMeleeThreatAfter_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags)
 	{
@@ -1253,7 +1275,7 @@ namespace
 
 
 		// See note in AddMoveActions()
-		G.setFlag(ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
+		G.setFlag(ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION);
 
 		// Plan:
 		// For each MOVE action, find units which:
@@ -1298,7 +1320,7 @@ namespace
 					}
 
 					if (candidate && !overlap) {
-						G.add(E::Action_ExposesToMeleeFrom_Unit::Create(action, ounit));
+						G.add(E::Unit_BecomesMeleeThreatAfter_Action::Create(ounit, action));
 						break;
 					}
 				}
@@ -1345,7 +1367,7 @@ namespace
 		return mult;
 	};
 
-	void AddMoveActionEdges_Action_ExposesToShootFrom_Unit(
+	void AddMoveActionEdges_Unit_BecomesShootThreatAfter_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle)
@@ -1358,7 +1380,7 @@ namespace
 		G.getFlags().require(ET::EDGE_ACTION_BLOCKS_UNIT);
 
 		// See note in AddMoveActions()
-		G.setFlag(ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
+		G.setFlag(ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION);
 
 		// Plan:
 		// For each MOVE action, find units which:
@@ -1394,12 +1416,12 @@ namespace
 				const auto & ostack = ounit->cstack;
 
 				float mult = CalcShootDmgMult(battle, ostack, ostack.getPosition(), stack.getHexes(hex->bhex));
-				G.add(E::Action_ExposesToShootFrom_Unit::Create(action, ounit, mult));
+				G.add(E::Unit_BecomesShootThreatAfter_Action::Create(ounit, action, mult));
 			}
 		}
 	}
 
-	void AddMoveActionEdges_Action_EnablesMeleeAt_UnitAndHex(
+	void AddMoveActionEdges_Unit_BecomesMeleeTargetAfter_ActionAndHex(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
@@ -1407,8 +1429,8 @@ namespace
 	{
 		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
 		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
-		G.setFlag(ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
-		G.setFlag(ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX); // active actions only
+		G.setFlag(ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION);
+		G.setFlag(ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION); // active actions only
 
 		// Several actions by the same unit may end on the same hex
 		// => can re-use previously calculated reachability
@@ -1446,7 +1468,7 @@ namespace
 
 			for (const auto & ounit : G.getAllEdgesDstBySrc<E::Unit_MeleeDmg_Unit>(unit))
 			{
-				if (G.getEdgeBySrcDst<E::Action_EnablesMeleeAt_Unit>(action, ounit, false))
+				if (G.getEdgeBySrcDst<E::Unit_BecomesMeleeTargetAfter_Action>(ounit, action, false))
 					continue;
 
 				for (const auto & adjbhex : stack.getSurroundingHexes(hex->bhex))
@@ -1454,7 +1476,7 @@ namespace
 					if (distances.at(adjbhex.toInt()) > unit->speed)
 						continue;
 
-					G.add(E::Action_EnablesMeleeAt_Unit::Create(action, ounit));
+					G.add(E::Unit_BecomesMeleeTargetAfter_Action::Create(ounit, action));
 					break;
 				}
 			}
@@ -1471,14 +1493,14 @@ namespace
 					if (distances.at(adjbhex.toInt()) > unit->speed)
 						continue;
 
-					G.add(E::Action_EnablesMeleeAt_Hex::Create(action, ohex));
+					G.add(E::Hex_BecomesMeleeTargetAfter_Action::Create(ohex, action));
 					break;
 				}
 			}
 		}
 	}
 
-	void AddMoveActionEdges_Action_EnablesShootAt_UnitAndHex(
+	void AddMoveActionEdges_Unit_BecomesShootTargetAfter_ActionAndHex(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
@@ -1491,8 +1513,8 @@ namespace
 		G.getFlags().require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
 
 		// See note in AddMoveActions()
-		G.setFlag(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
-		G.setFlag(ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX); // active actions only
+		G.setFlag(ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION);
+		G.setFlag(ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION); // active actions only
 
 		// Plan:
 		// For each MOVE action:
@@ -1532,7 +1554,7 @@ namespace
 			{
 				const auto & ostack = ounit->cstack;
 				float mult = CalcShootDmgMult(battle, stack, hex->bhex, ostack.getHexes());
-				G.add(E::Action_EnablesShootAt_Unit::Create(action, ounit, mult));
+				G.add(E::Unit_BecomesShootTargetAfter_Action::Create(ounit, action, mult));
 			}
 
 			// EDGE_ENABLES_SHOOT_AT_HEX is only added for active actions
@@ -1543,7 +1565,7 @@ namespace
 			for (const auto & ohex : G.getAll<N::Hex>())
 			{
 				float mult = CalcShootDmgMult(battle, stack, hex->bhex, {ohex->bhex});
-				G.add(E::Action_EnablesShootAt_Hex::Create(action, ohex, mult));
+				G.add(E::Hex_BecomesShootTargetAfter_Action::Create(ohex, action, mult));
 			}
 		}
 	}
@@ -1558,23 +1580,38 @@ namespace
 
 	void CloneActionEdges(
 		Graph::Graph & G,
-		const ActionPtr & src,
-		const ActionPtr & dst,
+		const ActionPtr & oldAction,
+		const ActionPtr & newAction,
 		const std::unordered_set<ET> & ignore = {})
 	{
 		// Iterator over a *copy* of the index result
-		auto iterateActionEdges = [&G, &src]<typename Edge>(const auto & func)
+		auto iterateEdgesWithByAction = [&G, &oldAction]<typename Edge>(const auto & func)
 		{
-			WithSnapshot<Edge>(G.getAllEdgesBySrc<Edge>(src), func);
+			WithSnapshot<Edge>(G.getAllEdgesBySrc<Edge>(oldAction), func);
 		};
 
-		// Most edges are simple edges with just a src and dst
-		// => convenience function for cloning those
-		auto cloneActionGenericEdges = [&G, &dst, &iterateActionEdges]<typename Edge>()
+		auto iterateEdgesByDstAction = [&G, &oldAction]<typename Edge>(const auto & func)
 		{
-			iterateActionEdges.template operator()<Edge>([&G, &dst](const auto & e)
+			WithSnapshot<Edge>(G.getAllEdgesByDst<Edge>(oldAction), func);
+		};
+
+		// Most edges are simple edges with just a oldAction and newAction
+		// => convenience function for cloning those
+		auto cloneEdgesWithSrcAction = [&G, &newAction, &iterateEdgesWithByAction]<typename Edge>()
+		{
+			iterateEdgesWithByAction.template operator()<Edge>([&G, &newAction](const auto & e)
 			{
-				G.add(Edge::Create(dst, e->dstNode));
+				G.add(Edge::Create(newAction, e->dstNode));
+			});
+		};
+
+		// Most edges are simple edges with just a oldAction and newAction
+		// => convenience function for cloning those
+		auto cloneEdgesWithDstAction = [&G, &newAction, &iterateEdgesByDstAction]<typename Edge>()
+		{
+			iterateEdgesByDstAction.template operator()<Edge>([&G, &newAction](const auto & e)
+			{
+				G.add(Edge::Create(e->srcNode, newAction));
 			});
 		};
 
@@ -1586,44 +1623,46 @@ namespace
 			switch(ET(i))
 			{
 				case ET::EDGE_ACTION_BY_UNIT:
-					cloneActionGenericEdges.template operator()<E::Action_By_Unit>();
+					cloneEdgesWithSrcAction.template operator()<E::Action_By_Unit>();
 					break;
 				case ET::EDGE_ACTION_ENDS_AT_HEX:
-					iterateActionEdges.template operator()<E::Action_EndsAt_Hex>([&G, &dst](const auto & e) {
-						G.add(E::Action_EndsAt_Hex::Create(dst, e->dstNode, e->isRear));
+					iterateEdgesWithByAction.template operator()<E::Action_EndsAt_Hex>([&G, &newAction](const auto & e) {
+						G.add(E::Action_EndsAt_Hex::Create(newAction, e->dstNode, e->isRear));
 					});
 					break;
 				case ET::EDGE_ACTION_BLOCKS_UNIT:
-					cloneActionGenericEdges.template operator()<E::Action_Blocks_Unit>();
+					cloneEdgesWithSrcAction.template operator()<E::Action_Blocks_Unit>();
 					break;
-				case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-					cloneActionGenericEdges.template operator()<E::Action_ExposesToMeleeFrom_Unit>();
+				case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
+					cloneEdgesWithDstAction.template operator()<E::Unit_BecomesMeleeThreatAfter_Action>();
 					break;
-				case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-					iterateActionEdges.template operator()<E::Action_ExposesToShootFrom_Unit>([&G, &dst](const auto & e) {
-						G.add(E::Action_ExposesToShootFrom_Unit::Create(dst, e->dstNode, e->mult));
+				case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
+					iterateEdgesByDstAction.template operator()<E::Unit_BecomesShootThreatAfter_Action>([&G, &newAction](const auto & e) {
+						G.add(E::Unit_BecomesShootThreatAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
-				case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
-					cloneActionGenericEdges.template operator()<E::Action_EnablesMeleeAt_Unit>();
+				case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:
+					cloneEdgesWithDstAction.template operator()<E::Unit_BecomesMeleeTargetAfter_Action>();
 					break;
-				case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
-					iterateActionEdges.template operator()<E::Action_EnablesShootAt_Unit>([&G, &dst](const auto & e) {
-						G.add(E::Action_EnablesShootAt_Unit::Create(dst, e->dstNode, e->mult));
+				case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+					iterateEdgesByDstAction.template operator()<E::Unit_BecomesShootTargetAfter_Action>([&G, &newAction](const auto & e) {
+						G.add(E::Unit_BecomesShootTargetAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
-				case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
-					cloneActionGenericEdges.template operator()<E::Action_EnablesMeleeAt_Hex>();
+				case ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION:
+					cloneEdgesWithDstAction.template operator()<E::Hex_BecomesMeleeTargetAfter_Action>();
 					break;
-				case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
-					iterateActionEdges.template operator()<E::Action_EnablesShootAt_Hex>([&G, &dst](const auto & e) {
-						G.add(E::Action_EnablesShootAt_Hex::Create(dst, e->dstNode, e->mult));
+				case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+					iterateEdgesByDstAction.template operator()<E::Hex_BecomesShootTargetAfter_Action>([&G, &newAction](const auto & e) {
+						G.add(E::Hex_BecomesShootTargetAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
 				// Nothing to add for those
         		case ET::EDGE_GLOBAL_HAS_PLAYER:
         		case ET::EDGE_GLOBAL_HAS_UNIT:
         		case ET::EDGE_GLOBAL_HAS_HEX:
+        		case ET::EDGE_GLOBAL_HAS_ACTION:
+        		case ET::EDGE_GLOBAL_ALLOWS_ACTION:
         		case ET::EDGE_PLAYER_OWNS_UNIT:
 				case ET::NODE_GLOBAL:
 				case ET::NODE_PLAYER:
@@ -1636,8 +1675,8 @@ namespace
 				case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
 				case ET::EDGE_UNIT_BLOCKS_UNIT:
 				case ET::EDGE_UNIT_OCCUPIES_HEX:
-				case ET::EDGE_ACTION_MELEES_UNIT:
-				case ET::EDGE_ACTION_SHOOTS_UNIT:
+				case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
+				case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
 					break;
 				default:
 					throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
@@ -1666,7 +1705,7 @@ namespace
 			return;
 
 		// A wide adjacent unit may have already been inserted
-		// The edge is action-melees-unit (and not action-melees-hex)
+		// The edge is action-IsMeleedBy-unit (and not action-IsMeleedBy-hex)
 		// => don't add it twice
 		auto ounits = std::unordered_set<UnitPtr>{};
 
@@ -1699,7 +1738,7 @@ namespace
 			});
 
 			G.add(amove);
-			G.add(E::Action_Melees_Unit::Create(amove, ounit, true));
+			G.add(E::Unit_IsMeleedBy_Action::Create(ounit, amove, true));
 
 			// Melee AoE attacks, e.g. dragons, hydras
 			const auto & stack = unit->cstack;
@@ -1725,7 +1764,7 @@ namespace
 					continue;
 
 				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
-				G.add(E::Action_Melees_Unit::Create(amove, tunit, false));
+				G.add(E::Unit_IsMeleedBy_Action::Create(tunit, amove, false));
 			}
 
 			CloneActionEdges(G, move, amove);
@@ -1761,7 +1800,7 @@ namespace
 		const CPlayerBattleCallback & battle)
 	{
 		// Iterate from a snapshot as new nodes will be added to the index (via clone)
-		const auto & range = G.getAllEdgesDstBySrc<E::Action_EnablesShootAt_Unit>(defend);
+		const auto & range = G.getAllEdgesSrcByDst<E::Unit_BecomesShootTargetAfter_Action>(defend);
 		const auto edges = std::vector(range.begin(), range.end());
 
 		for (const auto & ounit : edges)
@@ -1777,7 +1816,7 @@ namespace
 			});
 
 			G.add(shoot);
-			G.add(E::Action_Shoots_Unit::Create(shoot, ounit, true));
+			G.add(E::Unit_IsShotBy_Action::Create(ounit, shoot, true));
 
 			// AoE attacks - e.g. dragon breath
 			const auto & stack = unit->cstack;
@@ -1819,7 +1858,7 @@ namespace
 					continue;
 
 				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
-				G.add(E::Action_Shoots_Unit::Create(shoot, tunit, false));
+				G.add(E::Unit_IsShotBy_Action::Create(tunit, shoot, false));
 			}
 
 			CloneActionEdges(G, defend, shoot);
@@ -1851,20 +1890,20 @@ namespace
 		const CPlayerBattleCallback & battle)
 	{
 		// All MOVE actions with all their edges must be available here
-		// except for MELEES and SHOOTS edges which are for AMOVE only
+		// except for IsMeleedBy and IsShotBy edges which are for AMOVE only
 		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
 		G.getFlags().require(ET::NODE_ACTION);
 		G.getFlags().require(ET::EDGE_UNIT_OCCUPIES_HEX);
 		G.getFlags().require(ET::EDGE_ACTION_BY_UNIT);
 		G.getFlags().require(ET::EDGE_ACTION_BLOCKS_UNIT);
 		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
-		G.getFlags().require(ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT);
-		G.getFlags().require(ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT);
-		G.getFlags().require(ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT);
-		G.getFlags().require(ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT);
+		G.getFlags().require(ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION);
+		G.getFlags().require(ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION);
+		G.getFlags().require(ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION);
+		G.getFlags().require(ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION);
 
-		G.setFlag(ET::EDGE_ACTION_MELEES_UNIT);
-		G.setFlag(ET::EDGE_ACTION_SHOOTS_UNIT);
+		G.setFlag(ET::EDGE_UNIT_IS_MELEED_BY_ACTION);
+		G.setFlag(ET::EDGE_UNIT_IS_SHOT_BY_ACTION);
 		atFlags.set(AT::AMOVE);
 		atFlags.set(AT::SHOOT);
 		atFlags.set(AT::WAIT);
@@ -1996,14 +2035,16 @@ void State::onActiveStack(
 	// AddMoveActionEdges_Action_By_Unit() // already added
 	AddMoveActionEdges_Action_Blocks_Unit(*G, atFlags, battle, acstack);
 	// AddMoveActionEdges_Action_EndsAt_Hex() // already added
-	AddMoveActionEdges_Action_ExposesToMeleeFrom_Unit(*G, atFlags);
-	AddMoveActionEdges_Action_ExposesToShootFrom_Unit(*G, atFlags, battle);
+	AddMoveActionEdges_Unit_BecomesMeleeThreatAfter_Action(*G, atFlags);
+	AddMoveActionEdges_Unit_BecomesShootThreatAfter_Action(*G, atFlags, battle);
 
-	AddMoveActionEdges_Action_EnablesMeleeAt_UnitAndHex(*G, atFlags, battle, acstack);
-	AddMoveActionEdges_Action_EnablesShootAt_UnitAndHex(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Unit_BecomesMeleeTargetAfter_ActionAndHex(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Unit_BecomesShootTargetAfter_ActionAndHex(*G, atFlags, battle, acstack);
 
 	AddOtherActions(*G, atFlags, battle);
 	AddRetreatAction(*G, atFlags);
+
+	AddEdges_Global_HasAllows_Action(*G, atFlags, battle);
 
 	ASSERT(G->getFlags().flags.all(), "etFlags check: " + G->getFlags().flags.to_string());
 	ASSERT(atFlags.flags.all(), "atFlags check: " + atFlags.flags.to_string());

@@ -17,10 +17,10 @@
 #pragma once
 #include "StdInc.h" // IWYU pragma: keep
 
-#include "BAI/v15/graph/edges/action_enables_shoot_at_hex.h"
-#include "BAI/v15/graph/edges/action_enables_shoot_at_unit.h"
-#include "BAI/v15/graph/edges/action_melees_unit.h"
-#include "BAI/v15/graph/edges/action_shoots_unit.h"
+#include "BAI/v15/graph/edges/unit_becomes_shoot_target_after_action.h"
+#include "BAI/v15/graph/edges/hex_becomes_shoot_target_after_action.h"
+#include "BAI/v15/graph/edges/unit_is_meleed_by_action.h"
+#include "BAI/v15/graph/edges/unit_is_shot_by_action.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/AccessibilityInfo.h"
 
@@ -29,7 +29,7 @@
 #include "BAI/v15/graph/edge_store.h"
 #include "BAI/v15/graph/edges/generic.h"
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
-#include "BAI/v15/graph/edges/action_exposes_to_shoot_from_unit.h"
+#include "BAI/v15/graph/edges/unit_becomes_shoot_threat_after_action.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
@@ -60,6 +60,8 @@ namespace detail
         EdgeStore<Edges::Global_Has_Player>,
         EdgeStore<Edges::Global_Has_Unit>,
         EdgeStore<Edges::Global_Has_Hex>,
+        EdgeStore<Edges::Global_Has_Action>,
+        EdgeStore<Edges::Global_Allows_Action>,
         EdgeStore<Edges::Player_Owns_Unit>,
         EdgeStore<Edges::Hex_Adjacent_Hex>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,
@@ -70,14 +72,14 @@ namespace detail
         EdgeStore<Edges::Action_By_Unit>,
         EdgeStore<Edges::Action_Blocks_Unit>,
         EdgeStore<Edges::Action_EndsAt_Hex>,
-        EdgeStore<Edges::Action_ExposesToMeleeFrom_Unit>,
-        EdgeStore<Edges::Action_ExposesToShootFrom_Unit>,
-        EdgeStore<Edges::Action_Melees_Unit>,
-        EdgeStore<Edges::Action_Shoots_Unit>,
-        EdgeStore<Edges::Action_EnablesMeleeAt_Unit>,
-        EdgeStore<Edges::Action_EnablesShootAt_Unit>,
-        EdgeStore<Edges::Action_EnablesMeleeAt_Hex>,
-        EdgeStore<Edges::Action_EnablesShootAt_Hex>
+        EdgeStore<Edges::Unit_BecomesMeleeThreatAfter_Action>,
+        EdgeStore<Edges::Unit_BecomesShootThreatAfter_Action>,
+        EdgeStore<Edges::Unit_IsMeleedBy_Action>,
+        EdgeStore<Edges::Unit_IsShotBy_Action>,
+        EdgeStore<Edges::Unit_BecomesMeleeTargetAfter_Action>,
+        EdgeStore<Edges::Unit_BecomesShootTargetAfter_Action>,
+        EdgeStore<Edges::Hex_BecomesMeleeTargetAfter_Action>,
+        EdgeStore<Edges::Hex_BecomesShootTargetAfter_Action>
     >;
 
     static_assert(
@@ -389,6 +391,10 @@ private:
             return std::forward<F>(f)(getStore<Edges::Global_Has_Unit>());
         case ET::EDGE_GLOBAL_HAS_HEX:
             return std::forward<F>(f)(getStore<Edges::Global_Has_Hex>());
+        case ET::EDGE_GLOBAL_HAS_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Global_Has_Action>());
+        case ET::EDGE_GLOBAL_ALLOWS_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Global_Allows_Action>());
         case ET::EDGE_PLAYER_OWNS_UNIT:
             return std::forward<F>(f)(getStore<Edges::Player_Owns_Unit>());
         case ET::EDGE_HEX_ADJACENT_HEX:
@@ -409,22 +415,22 @@ private:
             return std::forward<F>(f)(getStore<Edges::Action_EndsAt_Hex>());
         case ET::EDGE_ACTION_BLOCKS_UNIT:
             return std::forward<F>(f)(getStore<Edges::Action_Blocks_Unit>());
-        case ET::EDGE_ACTION_EXPOSES_TO_MELEE_FROM_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Action_ExposesToMeleeFrom_Unit>());
-        case ET::EDGE_ACTION_EXPOSES_TO_SHOOT_FROM_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Action_ExposesToShootFrom_Unit>());
-        case ET::EDGE_ACTION_MELEES_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Action_Melees_Unit>());
-        case ET::EDGE_ACTION_SHOOTS_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Action_Shoots_Unit>());
-        case ET::EDGE_ACTION_ENABLES_MELEE_AT_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Action_EnablesMeleeAt_Unit>());
-        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Action_EnablesShootAt_Unit>());
-        case ET::EDGE_ACTION_ENABLES_MELEE_AT_HEX:
-            return std::forward<F>(f)(getStore<Edges::Action_EnablesMeleeAt_Hex>());
-        case ET::EDGE_ACTION_ENABLES_SHOOT_AT_HEX:
-            return std::forward<F>(f)(getStore<Edges::Action_EnablesShootAt_Hex>());
+        case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_BecomesMeleeThreatAfter_Action>());
+        case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_BecomesShootThreatAfter_Action>());
+        case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_IsMeleedBy_Action>());
+        case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_IsShotBy_Action>());
+        case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_BecomesMeleeTargetAfter_Action>());
+        case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_BecomesShootTargetAfter_Action>());
+        case ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Hex_BecomesMeleeTargetAfter_Action>());
+        case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Hex_BecomesShootTargetAfter_Action>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
         }
