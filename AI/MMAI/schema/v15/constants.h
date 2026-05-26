@@ -235,7 +235,6 @@ GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Player, EDGE_GLOBAL_HAS_PLAYER);
 GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Unit, EDGE_GLOBAL_HAS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Hex, EDGE_GLOBAL_HAS_HEX);
 GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Action, EDGE_GLOBAL_HAS_ACTION);
-GENERIC_EDGE_ENCODING_TRAITS(Global_Allows_Action, EDGE_GLOBAL_ALLOWS_ACTION);
 GENERIC_EDGE_ENCODING_TRAITS(Player_Owns_Unit, EDGE_PLAYER_OWNS_UNIT);
 
 template <>
@@ -393,7 +392,6 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Player>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Action>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Allows_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Player_Owns_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_Adjacent_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ActsBefore_Unit>());
@@ -412,7 +410,7 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeTargetAfte
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesMeleeTargetAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>());
-static_assert(static_cast<int>(Graph::ElementType::_count) == 28);
+static_assert(static_cast<int>(Graph::ElementType::_count) == 27);
 
 using NodeType = std::tuple<
 	Graph::ElementType,
@@ -471,11 +469,6 @@ inline constexpr std::array EDGE_TYPES{
 		"Has",
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Action>::encoding)},
-	EdgeType{
-		Graph::ElementType::EDGE_GLOBAL_ALLOWS_ACTION,
-		"Has",
-		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_ACTION},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Allows_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_PLAYER_OWNS_UNIT,
 		"Owns",
