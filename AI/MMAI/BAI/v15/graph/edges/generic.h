@@ -54,17 +54,23 @@ public: \
     } \
 }
 
-GENERIC_EDGE_ELEMENT(Global, Has, Player);
-GENERIC_EDGE_ELEMENT(Global, Has, Unit);
-GENERIC_EDGE_ELEMENT(Global, Has, Hex);
-GENERIC_EDGE_ELEMENT(Global, Has, Action);
+GENERIC_EDGE_ELEMENT(Global, To, Player);
+GENERIC_EDGE_ELEMENT(Player, To, Global);
+GENERIC_EDGE_ELEMENT(Global, To, Unit);
+GENERIC_EDGE_ELEMENT(Unit, To, Global);
+GENERIC_EDGE_ELEMENT(Global, To, Hex);
+GENERIC_EDGE_ELEMENT(Hex, To, Global);
+GENERIC_EDGE_ELEMENT(Global, To, Action);
 
 GENERIC_EDGE_ELEMENT(Player, Owns, Unit);
+GENERIC_EDGE_ELEMENT(Unit, OwnedBy, Player);
 
 GENERIC_EDGE_ELEMENT(Unit, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Unit, Occupies, Hex);
+GENERIC_EDGE_ELEMENT(Hex, OccupiedBy, Unit);
 
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
+GENERIC_EDGE_ELEMENT(Unit, Has, Action);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
 GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeThreatAfter, Action);
 GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeTargetAfter, Action);

@@ -31,6 +31,7 @@
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
 #include "BAI/v15/graph/edges/unit_becomes_shoot_threat_after_action.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
+#include "BAI/v15/graph/edges/hex_is_end_of_action.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
 #include "BAI/v15/graph/edges/unit_shoot_dmg_unit.h"
@@ -57,20 +58,27 @@ namespace detail
     >;
 
     using TEdgeStores = std::tuple<
-        EdgeStore<Edges::Global_Has_Player>,
-        EdgeStore<Edges::Global_Has_Unit>,
-        EdgeStore<Edges::Global_Has_Hex>,
-        EdgeStore<Edges::Global_Has_Action>,
+        EdgeStore<Edges::Global_To_Player>,
+        EdgeStore<Edges::Player_To_Global>,
+        EdgeStore<Edges::Global_To_Unit>,
+        EdgeStore<Edges::Unit_To_Global>,
+        EdgeStore<Edges::Global_To_Hex>,
+        EdgeStore<Edges::Hex_To_Global>,
+        EdgeStore<Edges::Global_To_Action>,
         EdgeStore<Edges::Player_Owns_Unit>,
+        EdgeStore<Edges::Unit_OwnedBy_Player>,
         EdgeStore<Edges::Hex_Adjacent_Hex>,
         EdgeStore<Edges::Unit_ActsBefore_Unit>,
         EdgeStore<Edges::Unit_MeleeDmg_Unit>,
         EdgeStore<Edges::Unit_ShootDmg_Unit>,
         EdgeStore<Edges::Unit_Blocks_Unit>,
         EdgeStore<Edges::Unit_Occupies_Hex>,
+        EdgeStore<Edges::Hex_OccupiedBy_Unit>,
         EdgeStore<Edges::Action_By_Unit>,
-        EdgeStore<Edges::Action_Blocks_Unit>,
+        EdgeStore<Edges::Unit_Has_Action>,
         EdgeStore<Edges::Action_EndsAt_Hex>,
+        EdgeStore<Edges::Hex_IsEndOf_Action>,
+        EdgeStore<Edges::Action_Blocks_Unit>,
         EdgeStore<Edges::Unit_BecomesMeleeThreatAfter_Action>,
         EdgeStore<Edges::Unit_BecomesShootThreatAfter_Action>,
         EdgeStore<Edges::Unit_IsMeleedBy_Action>,
@@ -384,16 +392,24 @@ private:
     {
         switch (t)
         {
-        case ET::EDGE_GLOBAL_HAS_PLAYER:
-            return std::forward<F>(f)(getStore<Edges::Global_Has_Player>());
-        case ET::EDGE_GLOBAL_HAS_UNIT:
-            return std::forward<F>(f)(getStore<Edges::Global_Has_Unit>());
-        case ET::EDGE_GLOBAL_HAS_HEX:
-            return std::forward<F>(f)(getStore<Edges::Global_Has_Hex>());
-        case ET::EDGE_GLOBAL_HAS_ACTION:
-            return std::forward<F>(f)(getStore<Edges::Global_Has_Action>());
+        case ET::EDGE_GLOBAL_TO_PLAYER:
+            return std::forward<F>(f)(getStore<Edges::Global_To_Player>());
+        case ET::EDGE_PLAYER_TO_GLOBAL:
+            return std::forward<F>(f)(getStore<Edges::Player_To_Global>());
+        case ET::EDGE_GLOBAL_TO_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Global_To_Unit>());
+        case ET::EDGE_UNIT_TO_GLOBAL:
+            return std::forward<F>(f)(getStore<Edges::Unit_To_Global>());
+        case ET::EDGE_GLOBAL_TO_HEX:
+            return std::forward<F>(f)(getStore<Edges::Global_To_Hex>());
+        case ET::EDGE_HEX_TO_GLOBAL:
+            return std::forward<F>(f)(getStore<Edges::Hex_To_Global>());
+        case ET::EDGE_GLOBAL_TO_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Global_To_Action>());
         case ET::EDGE_PLAYER_OWNS_UNIT:
             return std::forward<F>(f)(getStore<Edges::Player_Owns_Unit>());
+        case ET::EDGE_UNIT_OWNED_BY_PLAYER:
+            return std::forward<F>(f)(getStore<Edges::Unit_OwnedBy_Player>());
         case ET::EDGE_HEX_ADJACENT_HEX:
             return std::forward<F>(f)(getStore<Edges::Hex_Adjacent_Hex>());
         case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
@@ -406,10 +422,16 @@ private:
             return std::forward<F>(f)(getStore<Edges::Unit_Blocks_Unit>());
         case ET::EDGE_UNIT_OCCUPIES_HEX:
             return std::forward<F>(f)(getStore<Edges::Unit_Occupies_Hex>());
+        case ET::EDGE_HEX_OCCUPIED_BY_UNIT:
+            return std::forward<F>(f)(getStore<Edges::Hex_OccupiedBy_Unit>());
         case ET::EDGE_ACTION_BY_UNIT:
             return std::forward<F>(f)(getStore<Edges::Action_By_Unit>());
+        case ET::EDGE_UNIT_HAS_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Unit_Has_Action>());
         case ET::EDGE_ACTION_ENDS_AT_HEX:
             return std::forward<F>(f)(getStore<Edges::Action_EndsAt_Hex>());
+        case ET::EDGE_HEX_IS_END_OF_ACTION:
+            return std::forward<F>(f)(getStore<Edges::Hex_IsEndOf_Action>());
         case ET::EDGE_ACTION_BLOCKS_UNIT:
             return std::forward<F>(f)(getStore<Edges::Action_Blocks_Unit>());
         case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
