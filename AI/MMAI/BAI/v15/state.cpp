@@ -12,9 +12,11 @@
 
 #include "BAI/v15/fastbfs.h"
 #include "BAI/v15/graph/edges/action_ends_at_hex.h"
+#include "BAI/v15/graph/edges/hex_is_end_of_action.h"
 #include "BAI/v15/graph/edges/unit_is_meleed_by_action.h"
 #include "BAI/v15/graph/edges/hex_adjacent_hex.h"
 #include "BAI/v15/graph/edges/unit_acts_before_unit.h"
+#include "BAI/v15/graph/edges/unit_is_shot_by_action.h"
 #include "BAI/v15/graph/edges/unit_melee_dmg_unit.h"
 #include "BAI/v15/graph/edges/unit_shoot_dmg_unit.h"
 #include "BAI/v15/graph/graph.h"
@@ -91,17 +93,17 @@ namespace
 	            tmp = G.size<N::Action>();
 	            std::cout << tmp << " NODE_ACTION\n";
 	            break;
-	        case ET::EDGE_GLOBAL_HAS_PLAYER:
-	            tmp = G.size<E::Global_Has_Player>();
-	            std::cout << tmp << " EDGE_GLOBAL_HAS_PLAYER\n";
+	        case ET::EDGE_GLOBAL_TO_PLAYER:
+	            tmp = G.size<E::Global_To_Player>();
+	            std::cout << tmp << " EDGE_GLOBAL_TO_PLAYER\n";
 	            break;
-	        case ET::EDGE_GLOBAL_HAS_UNIT:
-	            tmp = G.size<E::Global_Has_Unit>();
-	            std::cout << tmp << " EDGE_GLOBAL_HAS_UNIT\n";
+	        case ET::EDGE_GLOBAL_TO_UNIT:
+	            tmp = G.size<E::Global_To_Unit>();
+	            std::cout << tmp << " EDGE_GLOBAL_TO_UNIT\n";
 	            break;
-	        case ET::EDGE_GLOBAL_HAS_HEX:
-	            tmp = G.size<E::Global_Has_Hex>();
-	            std::cout << tmp << " EDGE_GLOBAL_HAS_HEX\n";
+	        case ET::EDGE_GLOBAL_TO_HEX:
+	            tmp = G.size<E::Global_To_Hex>();
+	            std::cout << tmp << " EDGE_GLOBAL_TO_HEX\n";
 	            break;
 	        case ET::EDGE_PLAYER_OWNS_UNIT:
 	            tmp = G.size<E::Player_Owns_Unit>();
@@ -884,20 +886,32 @@ namespace
 		G.getFlags().require(ET::NODE_PLAYER);
 		G.getFlags().require(ET::NODE_UNIT);
 		G.getFlags().require(ET::NODE_HEX);
-		G.setFlag(ET::EDGE_GLOBAL_HAS_PLAYER);
-		G.setFlag(ET::EDGE_GLOBAL_HAS_UNIT);
-		G.setFlag(ET::EDGE_GLOBAL_HAS_HEX);
+		G.setFlag(ET::EDGE_PLAYER_TO_GLOBAL);
+		G.setFlag(ET::EDGE_GLOBAL_TO_PLAYER);
+		G.setFlag(ET::EDGE_UNIT_TO_GLOBAL);
+		G.setFlag(ET::EDGE_GLOBAL_TO_UNIT);
+		G.setFlag(ET::EDGE_HEX_TO_GLOBAL);
+		G.setFlag(ET::EDGE_GLOBAL_TO_HEX);
 
 		const auto & global = G.getAll<N::Global>().at(0);
 
 		for (const auto & player : G.getAll<N::Player>())
-			G.add(E::Global_Has_Player::Create(global, player));
+		{
+			G.add(E::Global_To_Player::Create(global, player));
+			G.add(E::Player_To_Global::Create(player, global));
+		}
 
 		for (const auto & unit : G.getAll<N::Unit>())
-			G.add(E::Global_Has_Unit::Create(global, unit));
+		{
+			G.add(E::Global_To_Unit::Create(global, unit));
+			G.add(E::Unit_To_Global::Create(unit, global));
+		}
 
 		for (const auto & hex : G.getAll<N::Hex>())
-			G.add(E::Global_Has_Hex::Create(global, hex));
+		{
+			G.add(E::Global_To_Hex::Create(global, hex));
+			G.add(E::Hex_To_Global::Create(hex, global));
+		}
 	}
 
 	void AddEdges_Global_Has_Action(
@@ -909,12 +923,12 @@ namespace
 		for (int i = 0; i < EU(AT::_count); ++i)
 			atFlags.require(AT(i));
 
-		G.setFlag(ET::EDGE_GLOBAL_HAS_ACTION);
+		G.setFlag(ET::EDGE_GLOBAL_TO_ACTION);
 
 		const auto & global = G.getAll<N::Global>().at(0);
 
 		for (const auto & action : G.getAll<N::Action>())
-			G.add(E::Global_Has_Action::Create(global, action));
+			G.add(E::Global_To_Action::Create(global, action));
 	}
 
 	void AddEdges_Player_Owns_Unit(
@@ -924,11 +938,13 @@ namespace
 		G.getFlags().require(ET::NODE_PLAYER);
 		G.getFlags().require(ET::NODE_UNIT);
 		G.setFlag(ET::EDGE_PLAYER_OWNS_UNIT);
+		G.setFlag(ET::EDGE_UNIT_OWNED_BY_PLAYER);
 
 		for (const auto & unit : G.getAll<N::Unit>())
 		{
 			const auto & player = G.getByExtraIndex<N::Player>(unit->cstack.unitSide());
 			G.add(E::Player_Owns_Unit::Create(player, unit));
+			G.add(E::Unit_OwnedBy_Player::Create(unit, player));
 		}
 	}
 
@@ -1121,6 +1137,7 @@ namespace
 		G.getFlags().require(ET::NODE_UNIT);
 		G.getFlags().require(ET::NODE_HEX);
 		G.setFlag(ET::EDGE_UNIT_OCCUPIES_HEX);
+		G.setFlag(ET::EDGE_HEX_OCCUPIED_BY_UNIT);
 
 		for(const auto & unit : G.getAll<N::Unit>())
 		{
@@ -1132,6 +1149,7 @@ namespace
 				const auto & hex = G.getByExtraIndex<N::Hex>(bhex.toInt());
 				ASSERT(hex != nullptr, "hex not found: " + std::to_string(bhex.toInt()));
 				G.add(E::Unit_Occupies_Hex::Create(unit, hex));
+				G.add(E::Hex_OccupiedBy_Unit::Create(hex, unit));
 			}
 		}
 	}
@@ -1171,7 +1189,9 @@ namespace
 		atFlags.set(AT::DEFEND);
 		G.setFlag(ET::NODE_ACTION);
 		G.setFlag(ET::EDGE_ACTION_BY_UNIT);
+		G.setFlag(ET::EDGE_UNIT_HAS_ACTION);
 		G.setFlag(ET::EDGE_ACTION_ENDS_AT_HEX);
+		G.setFlag(ET::EDGE_HEX_IS_END_OF_ACTION);
 
 		for(const auto & unit : G.getAll<N::Unit>())
 		{
@@ -1197,11 +1217,13 @@ namespace
 
 				G.add(action);
 				G.add(E::Action_By_Unit::Create(action, unit));
+				G.add(E::Unit_Has_Action::Create(unit, action));
 
 				bool isRear = false; // getHexes always returns primary hex first
 				for(const auto & stackhex : stackhexes)
 				{
 					G.add(E::Action_EndsAt_Hex::Create(action, stackhex, isRear));
+					G.add(E::Hex_IsEndOf_Action::Create(stackhex, action, isRear));
 					isRear = true;
 				}
 			}
@@ -1580,21 +1602,21 @@ namespace
 		const std::unordered_set<ET> & ignore = {})
 	{
 		// Iterator over a *copy* of the index result
-		auto iterateEdgesWithByAction = [&G, &oldAction]<typename Edge>(const auto & func)
+		auto iterateEdgesWithSrcAction = [&G, &oldAction]<typename Edge>(const auto & func)
 		{
 			WithSnapshot<Edge>(G.getAllEdgesBySrc<Edge>(oldAction), func);
 		};
 
-		auto iterateEdgesByDstAction = [&G, &oldAction]<typename Edge>(const auto & func)
+		auto iterateEdgesWithDstAction = [&G, &oldAction]<typename Edge>(const auto & func)
 		{
 			WithSnapshot<Edge>(G.getAllEdgesByDst<Edge>(oldAction), func);
 		};
 
 		// Most edges are simple edges with just a oldAction and newAction
 		// => convenience function for cloning those
-		auto cloneEdgesWithSrcAction = [&G, &newAction, &iterateEdgesWithByAction]<typename Edge>()
+		auto cloneEdgesWithSrcAction = [&G, &newAction, &iterateEdgesWithSrcAction]<typename Edge>()
 		{
-			iterateEdgesWithByAction.template operator()<Edge>([&G, &newAction](const auto & e)
+			iterateEdgesWithSrcAction.template operator()<Edge>([&G, &newAction](const auto & e)
 			{
 				G.add(Edge::Create(newAction, e->dstNode));
 			});
@@ -1602,9 +1624,9 @@ namespace
 
 		// Most edges are simple edges with just a oldAction and newAction
 		// => convenience function for cloning those
-		auto cloneEdgesWithDstAction = [&G, &newAction, &iterateEdgesByDstAction]<typename Edge>()
+		auto cloneEdgesWithDstAction = [&G, &newAction, &iterateEdgesWithDstAction]<typename Edge>()
 		{
-			iterateEdgesByDstAction.template operator()<Edge>([&G, &newAction](const auto & e)
+			iterateEdgesWithDstAction.template operator()<Edge>([&G, &newAction](const auto & e)
 			{
 				G.add(Edge::Create(e->srcNode, newAction));
 			});
@@ -1620,9 +1642,17 @@ namespace
 				case ET::EDGE_ACTION_BY_UNIT:
 					cloneEdgesWithSrcAction.template operator()<E::Action_By_Unit>();
 					break;
+				case ET::EDGE_UNIT_HAS_ACTION:
+					cloneEdgesWithDstAction.template operator()<E::Unit_Has_Action>();
+					break;
 				case ET::EDGE_ACTION_ENDS_AT_HEX:
-					iterateEdgesWithByAction.template operator()<E::Action_EndsAt_Hex>([&G, &newAction](const auto & e) {
+					iterateEdgesWithSrcAction.template operator()<E::Action_EndsAt_Hex>([&G, &newAction](const auto & e) {
 						G.add(E::Action_EndsAt_Hex::Create(newAction, e->dstNode, e->isRear));
+					});
+					break;
+				case ET::EDGE_HEX_IS_END_OF_ACTION:
+					iterateEdgesWithDstAction.template operator()<E::Hex_IsEndOf_Action>([&G, &newAction](const auto & e) {
+						G.add(E::Hex_IsEndOf_Action::Create(e->srcNode, newAction, e->isRear));
 					});
 					break;
 				case ET::EDGE_ACTION_BLOCKS_UNIT:
@@ -1632,7 +1662,7 @@ namespace
 					cloneEdgesWithDstAction.template operator()<E::Unit_BecomesMeleeThreatAfter_Action>();
 					break;
 				case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
-					iterateEdgesByDstAction.template operator()<E::Unit_BecomesShootThreatAfter_Action>([&G, &newAction](const auto & e) {
+					iterateEdgesWithDstAction.template operator()<E::Unit_BecomesShootThreatAfter_Action>([&G, &newAction](const auto & e) {
 						G.add(E::Unit_BecomesShootThreatAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
@@ -1640,7 +1670,7 @@ namespace
 					cloneEdgesWithDstAction.template operator()<E::Unit_BecomesMeleeTargetAfter_Action>();
 					break;
 				case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
-					iterateEdgesByDstAction.template operator()<E::Unit_BecomesShootTargetAfter_Action>([&G, &newAction](const auto & e) {
+					iterateEdgesWithDstAction.template operator()<E::Unit_BecomesShootTargetAfter_Action>([&G, &newAction](const auto & e) {
 						G.add(E::Unit_BecomesShootTargetAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
@@ -1648,29 +1678,45 @@ namespace
 					cloneEdgesWithDstAction.template operator()<E::Hex_BecomesMeleeTargetAfter_Action>();
 					break;
 				case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
-					iterateEdgesByDstAction.template operator()<E::Hex_BecomesShootTargetAfter_Action>([&G, &newAction](const auto & e) {
+					iterateEdgesWithDstAction.template operator()<E::Hex_BecomesShootTargetAfter_Action>([&G, &newAction](const auto & e) {
 						G.add(E::Hex_BecomesShootTargetAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
+        		case ET::EDGE_GLOBAL_TO_ACTION:
+					cloneEdgesWithDstAction.template operator()<E::Global_To_Action>();
+					break;
+				case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
+					iterateEdgesWithDstAction.template operator()<E::Unit_IsMeleedBy_Action>([&G, &newAction](const auto & e) {
+						G.add(E::Unit_IsMeleedBy_Action::Create(e->srcNode, newAction, e->isPrimaryTarget));
+					});
+					break;
+				case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
+					iterateEdgesWithDstAction.template operator()<E::Unit_IsShotBy_Action>([&G, &newAction](const auto & e) {
+						G.add(E::Unit_IsShotBy_Action::Create(e->srcNode, newAction, e->isPrimaryTarget));
+					});
+					break;
+
 				// Nothing to add for those
-        		case ET::EDGE_GLOBAL_HAS_PLAYER:
-        		case ET::EDGE_GLOBAL_HAS_UNIT:
-        		case ET::EDGE_GLOBAL_HAS_HEX:
-        		case ET::EDGE_GLOBAL_HAS_ACTION:
-        		case ET::EDGE_PLAYER_OWNS_UNIT:
 				case ET::NODE_GLOBAL:
 				case ET::NODE_PLAYER:
 				case ET::NODE_UNIT:
 				case ET::NODE_HEX:
 				case ET::NODE_ACTION:
+        		case ET::EDGE_GLOBAL_TO_PLAYER:
+    			case ET::EDGE_PLAYER_TO_GLOBAL:
+        		case ET::EDGE_GLOBAL_TO_UNIT:
+    			case ET::EDGE_UNIT_TO_GLOBAL:
+        		case ET::EDGE_GLOBAL_TO_HEX:
+    			case ET::EDGE_HEX_TO_GLOBAL:
+        		case ET::EDGE_PLAYER_OWNS_UNIT:
+        		case ET::EDGE_UNIT_OWNED_BY_PLAYER:
 				case ET::EDGE_HEX_ADJACENT_HEX:
 				case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
 				case ET::EDGE_UNIT_MELEE_DMG_UNIT:
 				case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
 				case ET::EDGE_UNIT_BLOCKS_UNIT:
 				case ET::EDGE_UNIT_OCCUPIES_HEX:
-				case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
-				case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
+				case ET::EDGE_HEX_OCCUPIED_BY_UNIT:
 					break;
 				default:
 					throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
@@ -2039,6 +2085,9 @@ void State::onActiveStack(
 	AddRetreatAction(*G, atFlags);
 
 	AddEdges_Global_Has_Action(*G, atFlags, battle);
+
+	for (int i = 0; i < G->getFlags().flags.size(); ++i)
+		ASSERT(G->getFlags().flags.test(i), "etFlags check: " + std::to_string(i) + ": " + G->getFlags().flags.to_string());
 
 	ASSERT(G->getFlags().flags.all(), "etFlags check: " + G->getFlags().flags.to_string());
 	ASSERT(atFlags.flags.all(), "atFlags check: " + atFlags.flags.to_string());

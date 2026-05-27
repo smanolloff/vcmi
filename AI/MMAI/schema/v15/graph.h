@@ -24,21 +24,36 @@ namespace MMAI::Schema::V15::Graph
         NODE_HEX,
         NODE_ACTION,
 
-        EDGE_GLOBAL_HAS_PLAYER,
-        EDGE_GLOBAL_HAS_UNIT,
-        EDGE_GLOBAL_HAS_HEX,
-        EDGE_GLOBAL_HAS_ACTION,
+        EDGE_GLOBAL_TO_PLAYER,
+        EDGE_PLAYER_TO_GLOBAL,
+
+        EDGE_GLOBAL_TO_UNIT,
+        EDGE_UNIT_TO_GLOBAL,
+
+        EDGE_GLOBAL_TO_HEX,
+        EDGE_HEX_TO_GLOBAL,
+
+        EDGE_GLOBAL_TO_ACTION,
+        // EDGE_ACTION_TO_GLOBAL,
 
         EDGE_PLAYER_OWNS_UNIT,
+        EDGE_UNIT_OWNED_BY_PLAYER,
+
+        EDGE_UNIT_OCCUPIES_HEX,
+        EDGE_HEX_OCCUPIED_BY_UNIT,
+
+        EDGE_ACTION_BY_UNIT,
+        EDGE_UNIT_HAS_ACTION,
+
         EDGE_HEX_ADJACENT_HEX,
         EDGE_UNIT_ACTS_BEFORE_UNIT,
         EDGE_UNIT_MELEE_DMG_UNIT,      // regardless if reachable
         EDGE_UNIT_SHOOT_DMG_UNIT,      // regardless if blocked
         EDGE_UNIT_BLOCKS_UNIT,
-        EDGE_UNIT_OCCUPIES_HEX,
 
-        EDGE_ACTION_BY_UNIT,
         EDGE_ACTION_ENDS_AT_HEX,
+        EDGE_HEX_IS_END_OF_ACTION,
+
         EDGE_ACTION_BLOCKS_UNIT,
 
         // XXX: the below were originally reversed
@@ -184,12 +199,19 @@ namespace MMAI::Schema::V15::Graph
 
 namespace EdgeAttributes
     {
-        BLANK_ENUM_DEF(Global_Has_Player);
-        BLANK_ENUM_DEF(Global_Has_Unit);
-        BLANK_ENUM_DEF(Global_Has_Hex);
-        BLANK_ENUM_DEF(Global_Has_Action);
+        BLANK_ENUM_DEF(Global_To_Player);
+        BLANK_ENUM_DEF(Player_To_Global);
+
+        BLANK_ENUM_DEF(Global_To_Unit);
+        BLANK_ENUM_DEF(Unit_To_Global);
+
+        BLANK_ENUM_DEF(Global_To_Hex);
+        BLANK_ENUM_DEF(Hex_To_Global);
+
+        BLANK_ENUM_DEF(Global_To_Action);
 
         BLANK_ENUM_DEF(Player_Owns_Unit);
+        BLANK_ENUM_DEF(Unit_OwnedBy_Player);
 
         enum class Hex_Adjacent_Hex : uint8_t
         {
@@ -199,6 +221,7 @@ namespace EdgeAttributes
 
         BLANK_ENUM_DEF(Unit_Blocks_Unit);
         BLANK_ENUM_DEF(Unit_Occupies_Hex);
+        BLANK_ENUM_DEF(Hex_OccupiedBy_Unit);
 
         enum class Unit_ActsBefore_Unit : uint8_t
         {
@@ -227,9 +250,16 @@ namespace EdgeAttributes
         };
 
         BLANK_ENUM_DEF(Action_By_Unit);
+        BLANK_ENUM_DEF(Unit_Has_Action);
         BLANK_ENUM_DEF(Action_Blocks_Unit);
 
         enum class Action_EndsAt_Hex : uint8_t
+        {
+            IS_REAR,
+            _count
+        };
+
+        enum class Hex_IsEndOf_Action : uint8_t
         {
             IS_REAR,
             _count
@@ -272,7 +302,7 @@ namespace EdgeAttributes
         };
 
         // 6 nodes, 26 edges
-        static_assert(static_cast<int>(ElementType::_count) == 5 + 22);
+        static_assert(static_cast<int>(ElementType::_count) == 5 + 29);
     };
 
     class INode

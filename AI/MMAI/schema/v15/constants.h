@@ -231,11 +231,15 @@ struct EncodingTraits<Graph::EdgeAttributes::attr_type> \
 	static constexpr encoding_type encoding = {}; \
 }
 
-GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Player, EDGE_GLOBAL_HAS_PLAYER);
-GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Unit, EDGE_GLOBAL_HAS_UNIT);
-GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Hex, EDGE_GLOBAL_HAS_HEX);
-GENERIC_EDGE_ENCODING_TRAITS(Global_Has_Action, EDGE_GLOBAL_HAS_ACTION);
+GENERIC_EDGE_ENCODING_TRAITS(Global_To_Player, EDGE_GLOBAL_TO_PLAYER);
+GENERIC_EDGE_ENCODING_TRAITS(Player_To_Global, EDGE_PLAYER_TO_GLOBAL);
+GENERIC_EDGE_ENCODING_TRAITS(Global_To_Unit, EDGE_GLOBAL_TO_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Unit_To_Global, EDGE_UNIT_TO_GLOBAL);
+GENERIC_EDGE_ENCODING_TRAITS(Global_To_Hex, EDGE_GLOBAL_TO_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Hex_To_Global, EDGE_HEX_TO_GLOBAL);
+GENERIC_EDGE_ENCODING_TRAITS(Global_To_Action, EDGE_GLOBAL_TO_ACTION);
 GENERIC_EDGE_ENCODING_TRAITS(Player_Owns_Unit, EDGE_PLAYER_OWNS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Unit_OwnedBy_Player, EDGE_UNIT_OWNED_BY_PLAYER);
 
 template <>
 struct EncodingTraits<Graph::EdgeAttributes::Hex_Adjacent_Hex>
@@ -250,6 +254,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Hex_Adjacent_Hex>
 
 GENERIC_EDGE_ENCODING_TRAITS(Unit_Blocks_Unit, EDGE_UNIT_BLOCKS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Unit_Occupies_Hex, EDGE_UNIT_OCCUPIES_HEX);
+GENERIC_EDGE_ENCODING_TRAITS(Hex_OccupiedBy_Unit, EDGE_HEX_OCCUPIED_BY_UNIT);
 
 template <>
 struct EncodingTraits<Graph::EdgeAttributes::Unit_ActsBefore_Unit>
@@ -304,8 +309,19 @@ struct EncodingTraits<Graph::EdgeAttributes::Action_EndsAt_Hex>
 	};
 };
 
+template <>
+struct EncodingTraits<Graph::EdgeAttributes::Hex_IsEndOf_Action>
+: detail::EncodingTraitsBase<Graph::EdgeAttributes::Hex_IsEndOf_Action>
+{
+	static constexpr auto element_type = Graph::ElementType::EDGE_HEX_IS_END_OF_ACTION;
+	static constexpr std::string_view name = "Hex_IsEndOf_Action";
+	static constexpr encoding_type encoding = {
+		E4(A::IS_REAR, X::RAW, 1),
+	};
+};
 
 GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Unit_Has_Action, EDGE_UNIT_HAS_ACTION);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Unit_BecomesMeleeThreatAfter_Action, EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION);
 
@@ -388,19 +404,26 @@ static_assert(EncodingIsValid<Graph::NodeAttributes::Player>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Unit>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Hex>());
 static_assert(EncodingIsValid<Graph::NodeAttributes::Action>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Player>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Unit>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Hex>());
-static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_Has_Action>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_To_Player>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Player_To_Global>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_To_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_To_Global>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_To_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_To_Global>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Global_To_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Player_Owns_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_OwnedBy_Player>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_Adjacent_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ActsBefore_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_MeleeDmg_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_ShootDmg_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Blocks_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Occupies_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_OccupiedBy_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_By_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Has_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EndsAt_Hex>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_IsEndOf_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Blocks_Unit>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeThreatAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>());
@@ -410,7 +433,7 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeTargetAfte
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesMeleeTargetAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>());
-static_assert(static_cast<int>(Graph::ElementType::_count) == 27);
+static_assert(static_cast<int>(Graph::ElementType::_count) == 34);
 
 using NodeType = std::tuple<
 	Graph::ElementType,
@@ -450,30 +473,50 @@ using EdgeType = std::tuple<
 
 inline constexpr std::array EDGE_TYPES{
 	EdgeType{
-		Graph::ElementType::EDGE_GLOBAL_HAS_PLAYER,
-		"Has",
+		Graph::ElementType::EDGE_GLOBAL_TO_PLAYER,
+		"To",
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_PLAYER},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Player>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_To_Player>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_GLOBAL_HAS_UNIT,
-		"Has",
+		Graph::ElementType::EDGE_PLAYER_TO_GLOBAL,
+		"To",
+		{Graph::ElementType::NODE_PLAYER, Graph::ElementType::NODE_GLOBAL},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Player_To_Global>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_GLOBAL_TO_UNIT,
+		"To",
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_UNIT},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Unit>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_To_Unit>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_GLOBAL_HAS_HEX,
-		"Has",
+		Graph::ElementType::EDGE_UNIT_TO_GLOBAL,
+		"To",
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_GLOBAL},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_To_Global>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_GLOBAL_TO_HEX,
+		"To",
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_HEX},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Hex>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_To_Hex>::encoding)},
 	EdgeType{
-		Graph::ElementType::EDGE_GLOBAL_HAS_ACTION,
+		Graph::ElementType::EDGE_HEX_TO_GLOBAL,
+		"To",
+		{Graph::ElementType::NODE_HEX, Graph::ElementType::NODE_GLOBAL},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_To_Global>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_GLOBAL_TO_ACTION,
 		"Has",
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_ACTION},
-		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_Has_Action>::encoding)},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_To_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_PLAYER_OWNS_UNIT,
 		"Owns",
 		{Graph::ElementType::NODE_PLAYER, Graph::ElementType::NODE_UNIT},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Player_Owns_Unit>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_UNIT_OWNED_BY_PLAYER,
+		"OwnedBy",
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_PLAYER},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_OwnedBy_Player>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_HEX_ADJACENT_HEX,
 		"Adjacent",
@@ -505,15 +548,30 @@ inline constexpr std::array EDGE_TYPES{
 		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_HEX},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_Occupies_Hex>::encoding)},
 	EdgeType{
+		Graph::ElementType::EDGE_HEX_OCCUPIED_BY_UNIT,
+		"OccupiedBy",
+		{Graph::ElementType::NODE_HEX, Graph::ElementType::NODE_UNIT},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_OccupiedBy_Unit>::encoding)},
+	EdgeType{
 		Graph::ElementType::EDGE_ACTION_BY_UNIT,
 		"By",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_By_Unit>::encoding)},
 	EdgeType{
+		Graph::ElementType::EDGE_UNIT_HAS_ACTION,
+		"By",
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_Has_Action>::encoding)},
+	EdgeType{
 		Graph::ElementType::EDGE_ACTION_ENDS_AT_HEX,
 		"EndsAt",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_HEX},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_EndsAt_Hex>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_HEX_IS_END_OF_ACTION,
+		"IsEndOf",
+		{Graph::ElementType::NODE_HEX, Graph::ElementType::NODE_ACTION},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_IsEndOf_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_ACTION_BLOCKS_UNIT,
 		"Blocks",
