@@ -580,42 +580,42 @@ inline constexpr std::array EDGE_TYPES{
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION,
 		"BecomesMeleeThreatAfter",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesMeleeThreatAfter_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION,
 		"BecomesShootThreatAfter",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_IS_MELEED_BY_ACTION,
 		"IsMeleedBy",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_IsMeleedBy_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_IS_SHOT_BY_ACTION,
 		"IsShotBy",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_IsShotBy_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION,
 		"BecomesMeleeTargetAfter",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesMeleeTargetAfter_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION,
 		"BecomesShootTargetAfter",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION,
 		"BecomesMeleeTargetAfter",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_HEX},
+		{Graph::ElementType::NODE_HEX, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_BecomesMeleeTargetAfter_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION,
 		"BecomesShootTargetAfter",
-		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_HEX},
+		{Graph::ElementType::NODE_HEX, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>::encoding)}
 };
 

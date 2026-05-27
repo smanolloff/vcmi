@@ -49,6 +49,17 @@ namespace MMAI::BAI::V15::Graph
 
 namespace detail
 {
+    // Compile-time check for mistyped entries in EDGE_TYPES
+    constexpr const S15::EdgeType & GetEdgeType(S15::Graph::ElementType type) {
+        for (const auto& edge_type : S15::EDGE_TYPES) {
+            if (std::get<0>(edge_type) == type) {
+                return edge_type;
+            }
+        }
+
+        throw std::out_of_range("Unknown edge type");
+    }
+
     using TNodeStores = std::tuple<
         NodeStore<Nodes::Global>,
         NodeStore<Nodes::Player>,
@@ -387,72 +398,133 @@ private:
         }
     }
 
+    // XXX: static assertions are here for EDGE_TYPES because as
+    //      the loop over all edge types is convenient
     template <typename F>
     decltype(auto) withEdgeStore(ET t, F&& f) const
     {
         switch (t)
         {
         case ET::EDGE_GLOBAL_TO_PLAYER:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_PLAYER)).first == ET::NODE_GLOBAL);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_PLAYER)).second == ET::NODE_PLAYER);
             return std::forward<F>(f)(getStore<Edges::Global_To_Player>());
         case ET::EDGE_PLAYER_TO_GLOBAL:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_PLAYER_TO_GLOBAL)).first == ET::NODE_PLAYER);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_PLAYER_TO_GLOBAL)).second == ET::NODE_GLOBAL);
             return std::forward<F>(f)(getStore<Edges::Player_To_Global>());
         case ET::EDGE_GLOBAL_TO_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_UNIT)).first == ET::NODE_GLOBAL);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Global_To_Unit>());
         case ET::EDGE_UNIT_TO_GLOBAL:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_TO_GLOBAL)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_TO_GLOBAL)).second == ET::NODE_GLOBAL);
             return std::forward<F>(f)(getStore<Edges::Unit_To_Global>());
         case ET::EDGE_GLOBAL_TO_HEX:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_HEX)).first == ET::NODE_GLOBAL);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_HEX)).second == ET::NODE_HEX);
             return std::forward<F>(f)(getStore<Edges::Global_To_Hex>());
         case ET::EDGE_HEX_TO_GLOBAL:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_TO_GLOBAL)).first == ET::NODE_HEX);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_TO_GLOBAL)).second == ET::NODE_GLOBAL);
             return std::forward<F>(f)(getStore<Edges::Hex_To_Global>());
         case ET::EDGE_GLOBAL_TO_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_ACTION)).first == ET::NODE_GLOBAL);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_GLOBAL_TO_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Global_To_Action>());
         case ET::EDGE_PLAYER_OWNS_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_PLAYER_OWNS_UNIT)).first == ET::NODE_PLAYER);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_PLAYER_OWNS_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Player_Owns_Unit>());
         case ET::EDGE_UNIT_OWNED_BY_PLAYER:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_OWNED_BY_PLAYER)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_OWNED_BY_PLAYER)).second == ET::NODE_PLAYER);
             return std::forward<F>(f)(getStore<Edges::Unit_OwnedBy_Player>());
         case ET::EDGE_HEX_ADJACENT_HEX:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_ADJACENT_HEX)).first == ET::NODE_HEX);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_ADJACENT_HEX)).second == ET::NODE_HEX);
             return std::forward<F>(f)(getStore<Edges::Hex_Adjacent_Hex>());
         case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_ACTS_BEFORE_UNIT)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_ACTS_BEFORE_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Unit_ActsBefore_Unit>());
         case ET::EDGE_UNIT_MELEE_DMG_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_MELEE_DMG_UNIT)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_MELEE_DMG_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Unit_MeleeDmg_Unit>());
         case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_SHOOT_DMG_UNIT)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_SHOOT_DMG_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Unit_ShootDmg_Unit>());
         case ET::EDGE_UNIT_BLOCKS_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BLOCKS_UNIT)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BLOCKS_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Unit_Blocks_Unit>());
         case ET::EDGE_UNIT_OCCUPIES_HEX:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_OCCUPIES_HEX)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_OCCUPIES_HEX)).second == ET::NODE_HEX);
             return std::forward<F>(f)(getStore<Edges::Unit_Occupies_Hex>());
         case ET::EDGE_HEX_OCCUPIED_BY_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_OCCUPIED_BY_UNIT)).first == ET::NODE_HEX);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_OCCUPIED_BY_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Hex_OccupiedBy_Unit>());
         case ET::EDGE_ACTION_BY_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_BY_UNIT)).first == ET::NODE_ACTION);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_BY_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Action_By_Unit>());
         case ET::EDGE_UNIT_HAS_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_HAS_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_HAS_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_Has_Action>());
         case ET::EDGE_ACTION_ENDS_AT_HEX:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_ENDS_AT_HEX)).first == ET::NODE_ACTION);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_ENDS_AT_HEX)).second == ET::NODE_HEX);
             return std::forward<F>(f)(getStore<Edges::Action_EndsAt_Hex>());
         case ET::EDGE_HEX_IS_END_OF_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_IS_END_OF_ACTION)).first == ET::NODE_HEX);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_IS_END_OF_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Hex_IsEndOf_Action>());
         case ET::EDGE_ACTION_BLOCKS_UNIT:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_BLOCKS_UNIT)).first == ET::NODE_ACTION);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_BLOCKS_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Action_Blocks_Unit>());
         case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_BecomesMeleeThreatAfter_Action>());
         case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_BecomesShootThreatAfter_Action>());
         case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_IS_MELEED_BY_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_IS_MELEED_BY_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_IsMeleedBy_Action>());
         case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_IS_SHOT_BY_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_IS_SHOT_BY_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_IsShotBy_Action>());
         case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_BecomesMeleeTargetAfter_Action>());
         case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Unit_BecomesShootTargetAfter_Action>());
         case ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION)).first == ET::NODE_HEX);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Hex_BecomesMeleeTargetAfter_Action>());
         case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION)).first == ET::NODE_HEX);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION)).second == ET::NODE_ACTION);
             return std::forward<F>(f)(getStore<Edges::Hex_BecomesShootTargetAfter_Action>());
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
         }
     }
+
 };
 }
