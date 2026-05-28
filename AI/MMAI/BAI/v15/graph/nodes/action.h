@@ -58,6 +58,7 @@ public:
     , by(args.by)
     , target(args.target)
     , endsAt(args.endsAt)
+    , flags(args.flags)
     , isActive(args.by == nullptr || args.by->isActive)  // RETREAT has no `by`, but is still active
     {
         setattr(A::ACTION_TYPE, EU(actionType));
@@ -70,13 +71,27 @@ public:
         int type = static_cast<int>(actionType);
 
         std::stringstream ss;
-        ss << detail::Action_Base::name() << "(" << type << ",";
+        ss << detail::Action_Base::name() << "(" << type;
 
         // RETREAT action has no `by`
         if (by)
-            ss << by->cstack.unitId() << "," << isActive;
+            ss << "," << by->cstack.unitId();
         else
-            ss << "-,-";
+            ss << "-,";
+
+        ss << "," << isActive;
+
+        if (target)
+            ss << "," << target->cstack.unitId();
+        else
+            ss << ",-";
+
+        if (!endsAt.empty())
+            ss << "," << endsAt.front()->bhex.toInt();
+        else
+            ss << ",-";
+
+        ss << "," << flags.to_string();
 
         ss << ")";
         return ss.str();

@@ -75,6 +75,13 @@ namespace ML {
                     encoded += edge->encode(span);
                     if (encoded > buf.size())
                         throw std::runtime_error("encoded size is more than expected: " + std::to_string(encoded) + " / " + std::to_string(buf.size()));
+
+                    const auto & [srcNode, dstNode] = edge->endpoints();
+                    // std::cout << "pre-get index... edget: " << EI(type) << ", nodet: " << EI(srcNode->getType()) << "\n";
+                    int64_t isrc = G->getNodeIndex(srcNode);
+                    // std::cout << "post-get 1 index...\n";
+                    int64_t idst = G->getNodeIndex(dstNode);
+                    // std::cout << "post-get 2 index...\n";
                 }
                 if (encoded != buf.size())
                     throw std::runtime_error("encoded size is less than expected: " + std::to_string(encoded) + " / " + std::to_string(buf.size()));
