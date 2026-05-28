@@ -61,7 +61,7 @@ public:
     std::string name() const override
     {
         std::stringstream ss;
-        ss << detail::Player_Base::name() << "(" << EU(side) << ")";
+        ss << detail::Player_Base::name() << "(" << static_cast<int>(side) << ")";
         return ss.str();
     }
 

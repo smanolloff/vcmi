@@ -152,7 +152,7 @@ public:
     requires detail::is_stored_element<T>
     void add(std::shared_ptr<const T> elem)
     {
-        // std::cout << "DEBUG: Add: " << elem->name() << "\n";
+        // std::cout << "DEBUG: Add: " << elem->name() << " " << elem.get() << "\n";
         // if (!elem)
         //     throw std::runtime_error("add: nullptr given");
         assert(elem);

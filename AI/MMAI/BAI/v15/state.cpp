@@ -1823,6 +1823,7 @@ namespace
 					.flags=flags
 				});
 
+				G.add(amove2);
 				CloneActionEdges(G, amove, amove2, {ET::EDGE_ACTION_ENDS_AT_HEX});
 
 				for (const auto & hex : G.getAllEdgesDstBySrc<E::Unit_Occupies_Hex>(amove->by))
