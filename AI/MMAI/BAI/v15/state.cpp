@@ -1166,13 +1166,14 @@ namespace
 
 		atFlags.set(AT::RETREAT);
 
-		G.add(N::Action::Create({
-			.actionType=AT::RETREAT,
-			.by=nullptr,
-			.target=nullptr,
-			.endsAt={},
-			.flags={}
-		}));
+		// XXX: uncomment to allow retreats as regular actions (disabled for now)
+		// G.add(N::Action::Create({
+		// 	.actionType=AT::RETREAT,
+		// 	.by=nullptr,
+		// 	.target=nullptr,
+		// 	.endsAt={},
+		// 	.flags={}
+		// }));
 	}
 
 	void AddMoveAndDefendActions(
@@ -2083,6 +2084,8 @@ void State::onActiveStack(
 	AddMoveActionEdges_Unit_BecomesShootTargetAfter_ActionAndHex(*G, atFlags, battle, acstack);
 
 	AddOtherActions(*G, atFlags, battle);
+
+	// NOTE: this is a no-op (retreats as regular actions are not allowed for now)
 	AddRetreatAction(*G, atFlags);
 
 	AddEdges_Global_Has_Action(*G, atFlags, battle);
