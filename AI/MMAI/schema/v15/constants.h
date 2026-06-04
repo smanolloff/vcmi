@@ -142,7 +142,7 @@ struct EncodingTraits<Graph::NodeAttributes::Unit>
 		E4(A::HAS_DOUBLE_DAMAGE_CHANCE, X::LIN, 1000), // v=chance
 		E4(A::HAS_FIREBALL, X::RAW, 1),
 		E4(A::HAS_FLYING, X::RAW, 1),
-		E4(A::HAS_LIFE_DRAIN, X::RAW, 1),
+		E4(A::HAS_LIFE_DRAIN, X::LIN, 1000),
 		E4(A::HAS_NON_LIVING, X::RAW, 1),
 		E4(A::HAS_NO_MELEE_PENALTY, X::RAW, 1),
 		E4(A::HAS_RETURN_AFTER_STRIKE, X::RAW, 1),

@@ -25,31 +25,24 @@ Hex::Hex(const Args & args)
 
     guardflags.set(); // See note for attr()/setattr() in Hex.h
 
+    for(const auto& obstacle : args.obstacles)
+        setMoatFlags(obstacle.get(), args.isGateOpen, args.side);
+
     setattr(A::Y_COORD, y);
     setattr(A::X_COORD, x);
     setattr(A::WALL_HEALTH, EU(args.wallHP));
-    setStateMask(args.accessibility, args.obstacles, args.side, args.isGateOpen);
-}
 
+    if (!args.isSiege)
+    {
+        setattr(A::IS_SIEGE_GATE, 0);
+        setattr(A::IS_SIEGE_BRIDGE, 0);
+    }
+    else if (bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)
+            setattr(A::IS_SIEGE_GATE, 1);
+    else if(bhex == BattleHex::GATE_BRIDGE)
+        setattr(A::IS_SIEGE_BRIDGE, 1);
 
-std::string Hex::name() const
-{
-    std::stringstream ss;
-    ss << detail::Hex_Base::name() << "(" << attr(A::Y_COORD) << "," << attr(A::X_COORD) << ")";
-    return ss.str();
-}
-
-void Hex::setStateMask(
-    EAccessibility accessibility,
-    const std::vector<std::shared_ptr<const CObstacleInstance>>& obstacles,
-    BattleSide side,
-    bool isGateOpen
-)
-{
-    for(const auto& obstacle : obstacles)
-        setMoatFlags(obstacle.get(), isGateOpen, side);
-
-    switch(accessibility)
+    switch(args.accessibility)
     {
         case EAccessibility::ACCESSIBLE:
             setattr(A::IS_PASSABLE, 1);
@@ -59,19 +52,22 @@ void Hex::setStateMask(
             setattr(A::IS_OBSTACLE, 1);
             break;
         case EAccessibility::GATE:
-            setattr(A::IS_PASSABLE, side == BattleSide::DEFENDER);
+            setattr(A::IS_PASSABLE, args.side == BattleSide::DEFENDER);
             break;
         case EAccessibility::ALIVE_STACK:
         case EAccessibility::DESTRUCTIBLE_WALL:
             break; // nothing to set
         default:
-            THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EU(accessibility));
+            THROW_FORMAT("Unexpected hex accessibility for bhex %d: %d", bhex.toInt() % EU(args.accessibility));
     }
+}
 
-    if(bhex == BattleHex::GATE_INNER || bhex == BattleHex::GATE_OUTER)
-        setattr(A::IS_SIEGE_GATE, 1);
-    else if(bhex == BattleHex::GATE_BRIDGE)
-        setattr(A::IS_SIEGE_BRIDGE, 1);
+
+std::string Hex::name() const
+{
+    std::stringstream ss;
+    ss << detail::Hex_Base::name() << "(" << attr(A::Y_COORD) << "," << attr(A::X_COORD) << ")";
+    return ss.str();
 }
 
 void Hex::setMoatFlags(

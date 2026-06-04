@@ -727,6 +727,12 @@ namespace
 			int i = 0;
 			for(const auto dir : hex1.hexagonalDirections())
 			{
+				static_assert(EU(BattleHex::EDir::TOP_LEFT) == 0);
+				static_assert(EU(BattleHex::EDir::TOP_RIGHT) == 1);
+				static_assert(EU(BattleHex::EDir::RIGHT) == 2);
+				static_assert(EU(BattleHex::EDir::BOTTOM_RIGHT) == 3);
+				static_assert(EU(BattleHex::EDir::BOTTOM_LEFT) == 4);
+				static_assert(EU(BattleHex::EDir::LEFT) == 5);
 				auto hex2 = hex1.cloneInDirection(dir, false);
 				res[{hex1.toInt(), hex2.toInt()}] = i;
 				++i;
@@ -872,13 +878,14 @@ namespace
 					.side=acstack ? acstack->unitSide() : BattleSide::LEFT_SIDE,
 					.obstacles=hexobstacles.at(i),
 					.wallHP=GetWallHP(battle, bh),
-					.isGateOpen=isGateOpen
+					.isGateOpen=isGateOpen,
+					.isSiege=(battle.battleGetFortifications().wallsHealth > 0)
 				}));
 			}
 		}
 	}
 
-	void AddEdges_Global_Has_PlayerUnitHex(
+	void AddEdges_Global_To_PlayerUnitHex(
 		Graph::Graph & G,
 		const CPlayerBattleCallback & battle)
 	{
@@ -914,7 +921,7 @@ namespace
 		}
 	}
 
-	void AddEdges_Global_Has_Action(
+	void AddEdges_Global_To_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle)
@@ -1117,6 +1124,8 @@ namespace
 			const auto & ostack = other->cstack;
 
 			// ATTACKS_NEAREST_CREATURE == berserk
+			// XXX: VCMI considers a shooter blocked by an ally only if the shooter (not the ally) is berserk
+			// 		It makes sense to become blocked if the ally is berserk, but not sure what original H3 behaviour is.
 			// XXX: what about hypnotize?
 			if(cstack.unitSide() == ostack.unitSide() && !cstack.hasBonusOfType(BonusType::ATTACKS_NEAREST_CREATURE))
 				continue;
@@ -1154,27 +1163,32 @@ namespace
 		}
 	}
 
-	void AddRetreatAction(
-		Graph::Graph & G,
-		EnumFlags<AT> & atFlags)
-	{
-		// This must be the very last action added
-		// All other actions types must have been added by now
-		for (int i = 0; i < EU(AT::_count); ++i)
-			if (i != EU(AT::RETREAT))
-				atFlags.require(AT(i));
-
-		atFlags.set(AT::RETREAT);
-
-		// XXX: uncomment to allow retreats as regular actions (disabled for now)
-		// G.add(N::Action::Create({
-		// 	.actionType=AT::RETREAT,
-		// 	.by=nullptr,
-		// 	.target=nullptr,
-		// 	.endsAt={},
-		// 	.flags={}
-		// }));
-	}
+	/*
+	 * XXX: RETREAT is not handled for now
+	 *      It has no `by` nor `endHex` which violates many assumptions in
+	 * 		the code (which were intentionally made for the sake of simplicity).
+	 *
+	 * void AddRetreatAction(
+	 * 	Graph::Graph & G,
+	 * 	EnumFlags<AT> & atFlags)
+	 * {
+	 * 	// This must be the very last action added
+	 * 	// All other actions types must have been added by now
+	 * 	for (int i = 0; i < EU(AT::_count); ++i)
+	 * 		if (i != EU(AT::RETREAT))
+	 * 			atFlags.require(AT(i));
+	 *
+	 * 	atFlags.set(AT::RETREAT);
+	 *
+	 * 	G.add(N::Action::Create({
+	 * 		.actionType=AT::RETREAT,
+	 * 		.by=nullptr,
+	 * 		.target=nullptr,
+	 * 		.endsAt={},
+	 * 		.flags={}
+	 * 	}));
+	 * }
+	 */
 
 	void AddMoveAndDefendActions(
 		Graph::Graph & G,
@@ -2063,7 +2077,7 @@ void State::onActiveStack(
 	AddHexNodes(*G, battle, acstack);
 	AddUnitNodes(*G, battle, acstack, stats);
 
-	AddEdges_Global_Has_PlayerUnitHex(*G, battle);
+	AddEdges_Global_To_PlayerUnitHex(*G, battle);
 	AddEdges_Player_Owns_Unit(*G, battle);
 	AddEdges_Hex_Adjacent_Hex(*G);
 	AddEdges_Unit_ActsBefore_Unit(*G, battle);
@@ -2084,11 +2098,9 @@ void State::onActiveStack(
 	AddMoveActionEdges_Unit_BecomesShootTargetAfter_ActionAndHex(*G, atFlags, battle, acstack);
 
 	AddOtherActions(*G, atFlags, battle);
+	// AddRetreatAction(*G, atFlags); // XXX: retreats intentionally disabled
 
-	// NOTE: this is a no-op (retreats as regular actions are not allowed for now)
-	AddRetreatAction(*G, atFlags);
-
-	AddEdges_Global_Has_Action(*G, atFlags, battle);
+	AddEdges_Global_To_Action(*G, atFlags, battle);
 
 	for (int i = 0; i < G->getFlags().flags.size(); ++i)
 		ASSERT(G->getFlags().flags.test(i), "etFlags check: " + std::to_string(i) + ": " + G->getFlags().flags.to_string());
