@@ -398,7 +398,7 @@ private:
         }
     }
 
-    // XXX: static assertions are here for EDGE_TYPES because as
+    // XXX: static assertions are here for EDGE_TYPES because
     //      the loop over all edge types is convenient
     template <typename F>
     decltype(auto) withEdgeStore(ET t, F&& f) const

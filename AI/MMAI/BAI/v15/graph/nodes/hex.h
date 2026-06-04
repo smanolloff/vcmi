@@ -53,6 +53,7 @@ public:
 		const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles;
 		const S15::WallHP wallHP;
 		const bool isGateOpen;
+		const bool isSiege;
 	};
 
     static std::shared_ptr<const Hex> Create(const Args & args)

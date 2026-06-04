@@ -365,7 +365,7 @@ Unit::Unit(const Args & args)
                 setattr(UA::HAS_RETURN_AFTER_STRIKE, 1);
                 break;
             case BonusType::LIFE_DRAIN:
-                setattr(UA::HAS_LIFE_DRAIN, 1);
+                setattr(UA::HAS_LIFE_DRAIN, permille(bonus->val, 100));
                 break;
             case BonusType::DOUBLE_DAMAGE_CHANCE:
                 setattr(UA::HAS_DOUBLE_DAMAGE_CHANCE, permille(bonus->val, 100));

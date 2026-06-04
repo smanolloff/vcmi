@@ -43,7 +43,7 @@ enum class WallHP : uint8_t
 
 enum class ActionType : uint8_t
 {
-	RETREAT,
+	// RETREAT,  // prevent retreats for now
 	WAIT,
 	DEFEND,
 	MOVE,

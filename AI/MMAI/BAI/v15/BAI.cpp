@@ -117,12 +117,12 @@ void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 		// or if the enemy one-shots us (we lost)
 		logger.info("Battle ended without giving us a turn: nothing to do");
 	}
-	else if(lastAction->actionType == AT::RETREAT)
-	{
-		logger.info("Battle ended due to ACTION_RETREAT: reporting terminal state, expecting ACTION_RESET");
-		auto a = getNonRenderAction();
-		ASSERT(a == Schema::ACTION_RESET, "expected ACTION_RESET, got: " + std::to_string(EI(a)));
-	}
+	// else if(lastAction->actionType == AT::RETREAT)
+	// {
+	// 	logger.info("Battle ended due to ACTION_RETREAT: reporting terminal state, expecting ACTION_RESET");
+	// 	auto a = getNonRenderAction();
+	// 	ASSERT(a == Schema::ACTION_RESET, "expected ACTION_RESET, got: " + std::to_string(EI(a)));
+	// }
 	else
 	{
 		logger.debug("Battle ended normally: reporting terminal state, expecting ACTION_RESET");
@@ -305,9 +305,9 @@ namespace
 	{
 		switch(a->actionType)
 		{
-		case AT::RETREAT:
-			assert(battle.battleCanFlee());
-			return BattleAction::makeRetreat(battle.battleGetMySide());
+		// case AT::RETREAT:
+		// 	assert(battle.battleCanFlee());
+		// 	return BattleAction::makeRetreat(battle.battleGetMySide());
 		case AT::WAIT:
 			assert(a->by && &a->by->cstack == acstack);
 			assert(!acstack->waitedThisTurn);
@@ -427,7 +427,6 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	{
 		// XXX: retreat is always allowed for ML, limited by action mask only
 		logger.debug("Received ACTION_RESET, will retreat in order to reset battle");
-		a = Schema::ACTION_RETREAT;
 		resetting = true;
 		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
 		return;

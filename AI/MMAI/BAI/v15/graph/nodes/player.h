@@ -27,7 +27,6 @@ namespace detail
 
 class Player : public detail::Player_Base
 {
-	using A = S15::Graph::NodeAttributes::Player;
 public:
 	struct extra_index_type {
 		using result_type = BattleSide;

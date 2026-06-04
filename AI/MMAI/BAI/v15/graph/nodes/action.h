@@ -99,8 +99,8 @@ public:
 
     std::string humanName(BattleSide side) const
     {
-        if(actionType == S15::ActionType::RETREAT)
-            return "Retreat";
+        // if(actionType == S15::ActionType::RETREAT)
+        //     return "Retreat";
 
         const auto & endhex = endsAt.at(0);
 
