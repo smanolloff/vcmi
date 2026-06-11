@@ -430,6 +430,7 @@ namespace
 	 * This is an attempt to reimplement it here.
 	 *
 	 */
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 	UnitStates SimulateAttackAction(
 		const CPlayerBattleCallback & battle,
 		const CStack & attacker,
@@ -1212,6 +1213,13 @@ namespace
 		{
 			const auto & stack = unit->cstack;
 
+			// XXX: disabling this check as blinded/paralyzed/etc. units should
+			// 		still have their actions in the graph.
+			// 		Whether the unit can actually perform this action can be
+			// 		inferred from the IS_SLEEPING attribute or ACTS_BEFORE edge.
+			// if (!stack.canMove())
+			// 	continue;
+
 			for(const auto & hex : G.getAll<N::Hex>())
 			{
 				if(unit->distances.at(hex->bhex.toInt()) > unit->speed)
@@ -1258,6 +1266,7 @@ namespace
 		G.getFlags().require(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
 
 		G.setFlag(ET::EDGE_ACTION_BLOCKS_UNIT);
+		G.setFlag(ET::EDGE_UNIT_BLOCKED_BY_ACTION);
 
 		for (const auto & action : G.getAll<N::Action>())
 		{
@@ -1290,6 +1299,7 @@ namespace
 
 				adjunits.emplace(adjunit);
 				G.add(E::Action_Blocks_Unit::Create(action, adjunit));
+				G.add(E::Unit_BlockedBy_Action::Create(adjunit, action));
 			}
 
 		}
@@ -1453,7 +1463,8 @@ namespace
 		}
 	}
 
-	void AddMoveActionEdges_Unit_BecomesMeleeTargetAfter_ActionAndHex(
+	// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+	void AddMoveActionEdges_UnitAndHex_BecomesMeleeTargetAfter_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
@@ -1503,7 +1514,9 @@ namespace
 				if (G.getEdgeBySrcDst<E::Unit_BecomesMeleeTargetAfter_Action>(ounit, action, false))
 					continue;
 
-				for (const auto & adjbhex : stack.getSurroundingHexes(hex->bhex))
+				const auto & ostack = ounit->cstack;
+
+				for (const auto & adjbhex : ostack.getAttackableHexes(&stack))
 				{
 					if (distances.at(adjbhex.toInt()) > unit->speed)
 						continue;
@@ -1532,7 +1545,7 @@ namespace
 		}
 	}
 
-	void AddMoveActionEdges_Unit_BecomesShootTargetAfter_ActionAndHex(
+	void AddMoveActionEdges_UnitAndHex_BecomesShootTargetAfter_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
 		const CPlayerBattleCallback & battle,
@@ -1673,6 +1686,9 @@ namespace
 				case ET::EDGE_ACTION_BLOCKS_UNIT:
 					cloneEdgesWithSrcAction.template operator()<E::Action_Blocks_Unit>();
 					break;
+				case ET::EDGE_UNIT_BLOCKED_BY_ACTION:
+					cloneEdgesWithDstAction.template operator()<E::Unit_BlockedBy_Action>();
+					break;
 				case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
 					cloneEdgesWithDstAction.template operator()<E::Unit_BecomesMeleeThreatAfter_Action>();
 					break;
@@ -1736,6 +1752,7 @@ namespace
 				default:
 					throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
 			}
+	        static_assert(static_cast<int>(S15::Graph::ElementType::_count) == 35);
 		}
 	};
 
@@ -2094,8 +2111,8 @@ void State::onActiveStack(
 	AddMoveActionEdges_Unit_BecomesMeleeThreatAfter_Action(*G, atFlags);
 	AddMoveActionEdges_Unit_BecomesShootThreatAfter_Action(*G, atFlags, battle);
 
-	AddMoveActionEdges_Unit_BecomesMeleeTargetAfter_ActionAndHex(*G, atFlags, battle, acstack);
-	AddMoveActionEdges_Unit_BecomesShootTargetAfter_ActionAndHex(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_UnitAndHex_BecomesMeleeTargetAfter_Action(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_UnitAndHex_BecomesShootTargetAfter_Action(*G, atFlags, battle, acstack);
 
 	AddOtherActions(*G, atFlags, battle);
 	// AddRetreatAction(*G, atFlags); // XXX: retreats intentionally disabled

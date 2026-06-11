@@ -81,16 +81,17 @@ set(MMAI_FILES
   BAI/v15/enum_flags.h
   BAI/v15/fastbfs.h
   BAI/v15/graph/edge_store.h
-  BAI/v15/graph/edges/unit_becomes_shoot_target_after_action.h
-  BAI/v15/graph/edges/hex_becomes_shoot_target_after_action.h
   BAI/v15/graph/edges/action_ends_at_hex.h
-  BAI/v15/graph/edges/unit_becomes_shoot_threat_after_action.h
-  BAI/v15/graph/edges/unit_is_meleed_by_action.h
-  BAI/v15/graph/edges/unit_is_shot_by_action.h
   BAI/v15/graph/edges/base.h
   BAI/v15/graph/edges/generic.h
   BAI/v15/graph/edges/hex_adjacent_hex.h
+  BAI/v15/graph/edges/hex_becomes_shoot_target_after_action.h
+  BAI/v15/graph/edges/hex_is_end_of_action.h
   BAI/v15/graph/edges/unit_acts_before_unit.h
+  BAI/v15/graph/edges/unit_becomes_shoot_target_after_action.h
+  BAI/v15/graph/edges/unit_becomes_shoot_threat_after_action.h
+  BAI/v15/graph/edges/unit_is_meleed_by_action.h
+  BAI/v15/graph/edges/unit_is_shot_by_action.h
   BAI/v15/graph/edges/unit_melee_dmg_unit.cpp
   BAI/v15/graph/edges/unit_melee_dmg_unit.h
   BAI/v15/graph/edges/unit_shoot_dmg_unit.cpp
@@ -116,7 +117,8 @@ set(MMAI_FILES
   BAI/v15/state.h
   BAI/v15/supplementary_data.cpp
   BAI/v15/supplementary_data.h
-
+  BAI/v15/verify.cpp
+  BAI/v15/verify.h
 
   schema/schema.h
   schema/v13/constants.h

@@ -503,7 +503,7 @@ namespace ML {
         if (!headless)
             ENGINE->setEngineUser(GAME.get());
 
-        boost::thread loading([]() {
+        std::thread loading([]() {
             try
             {
                 CStopWatch tmh;
@@ -563,7 +563,7 @@ namespace ML {
         auto &si = GAME->server();
         if (headless) {
             auto l = std::unique_lock(mutex_shutdown);
-            auto t = boost::thread([&si]() {
+            auto t = std::thread([&si]() {
                 si.debugStartTest(mapname, false);
             });
             cond_shutdown.wait(l);

@@ -323,6 +323,7 @@ struct EncodingTraits<Graph::EdgeAttributes::Hex_IsEndOf_Action>
 GENERIC_EDGE_ENCODING_TRAITS(Action_By_Unit, EDGE_ACTION_BY_UNIT);
 GENERIC_EDGE_ENCODING_TRAITS(Unit_Has_Action, EDGE_UNIT_HAS_ACTION);
 GENERIC_EDGE_ENCODING_TRAITS(Action_Blocks_Unit, EDGE_ACTION_BLOCKS_UNIT);
+GENERIC_EDGE_ENCODING_TRAITS(Unit_BlockedBy_Action, EDGE_UNIT_BLOCKED_BY_ACTION);
 GENERIC_EDGE_ENCODING_TRAITS(Unit_BecomesMeleeThreatAfter_Action, EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION);
 
 template <>
@@ -425,6 +426,7 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_Has_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_EndsAt_Hex>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_IsEndOf_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Action_Blocks_Unit>());
+static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BlockedBy_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeThreatAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootThreatAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_IsMeleedBy_Action>());
@@ -433,7 +435,7 @@ static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesMeleeTargetAfte
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Unit_BecomesShootTargetAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesMeleeTargetAfter_Action>());
 static_assert(EncodingIsValid<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>());
-static_assert(static_cast<int>(Graph::ElementType::_count) == 34);
+static_assert(static_cast<int>(Graph::ElementType::_count) == 35);
 
 using NodeType = std::tuple<
 	Graph::ElementType,
@@ -577,6 +579,11 @@ inline constexpr std::array EDGE_TYPES{
 		"Blocks",
 		{Graph::ElementType::NODE_ACTION, Graph::ElementType::NODE_UNIT},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_Blocks_Unit>::encoding)},
+	EdgeType{
+		Graph::ElementType::EDGE_UNIT_BLOCKED_BY_ACTION,
+		"BlockedBy",
+		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
+		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_BlockedBy_Action>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION,
 		"BecomesMeleeThreatAfter",

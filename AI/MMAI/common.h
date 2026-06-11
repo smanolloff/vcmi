@@ -59,6 +59,26 @@ inline bool isMMAIVerbose()
 	return value;
 }
 
+inline bool isMMAIAutoRender()
+{
+	static const bool value = []
+	{
+		const char * envvar = std::getenv("MMAI_AUTO_RENDER");
+		return envvar != nullptr && std::strcmp(envvar, "1") == 0;
+	}();
+	return value;
+}
+
+inline bool isMMAIAutoVerify()
+{
+	static const bool value = []
+	{
+		const char * envvar = std::getenv("MMAI_AUTO_VERIFY");
+		return envvar != nullptr && std::strcmp(envvar, "1") == 0;
+	}();
+	return value;
+}
+
 /*
  * RAII for temporarily setting a new name for the current thread.
  * The thread name appears in messages logged through VCMI's logger.

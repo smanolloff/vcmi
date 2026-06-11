@@ -90,6 +90,7 @@ namespace detail
         EdgeStore<Edges::Action_EndsAt_Hex>,
         EdgeStore<Edges::Hex_IsEndOf_Action>,
         EdgeStore<Edges::Action_Blocks_Unit>,
+        EdgeStore<Edges::Unit_BlockedBy_Action>,
         EdgeStore<Edges::Unit_BecomesMeleeThreatAfter_Action>,
         EdgeStore<Edges::Unit_BecomesShootThreatAfter_Action>,
         EdgeStore<Edges::Unit_IsMeleedBy_Action>,
@@ -398,8 +399,10 @@ private:
         }
     }
 
-    // XXX: static assertions are here for EDGE_TYPES because
-    //      the loop over all edge types is convenient
+    // XXX: these static assertions can be placed anywhere, but are here because
+    //      the loop over all edge types is a convenient place to put them.
+    //      The surrounding code provides context and it's harder to forget to
+    //      add a check.
     template <typename F>
     decltype(auto) withEdgeStore(ET t, F&& f) const
     {
@@ -489,6 +492,10 @@ private:
             static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_BLOCKS_UNIT)).first == ET::NODE_ACTION);
             static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_ACTION_BLOCKS_UNIT)).second == ET::NODE_UNIT);
             return std::forward<F>(f)(getStore<Edges::Action_Blocks_Unit>());
+        case ET::EDGE_UNIT_BLOCKED_BY_ACTION:
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BLOCKED_BY_ACTION)).first == ET::NODE_UNIT);
+            static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BLOCKED_BY_ACTION)).second == ET::NODE_ACTION);
+            return std::forward<F>(f)(getStore<Edges::Unit_BlockedBy_Action>());
         case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
             static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION)).first == ET::NODE_UNIT);
             static_assert(std::get<2>(detail::GetEdgeType(ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION)).second == ET::NODE_ACTION);
@@ -524,6 +531,7 @@ private:
         default:
             throw std::runtime_error("Unexpected edge element type: " + std::to_string(EU(t)));
         }
+        static_assert(static_cast<int>(S15::Graph::ElementType::_count) == 35);
     }
 
 };

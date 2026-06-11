@@ -55,6 +55,7 @@ namespace MMAI::Schema::V15::Graph
         EDGE_HEX_IS_END_OF_ACTION,
 
         EDGE_ACTION_BLOCKS_UNIT,
+        EDGE_UNIT_BLOCKED_BY_ACTION,
 
         // XXX: the below were originally reversed
         // However, these edges are quite dense (can be thousands)
@@ -252,6 +253,7 @@ namespace EdgeAttributes
         BLANK_ENUM_DEF(Action_By_Unit);
         BLANK_ENUM_DEF(Unit_Has_Action);
         BLANK_ENUM_DEF(Action_Blocks_Unit);
+        BLANK_ENUM_DEF(Unit_BlockedBy_Action);
 
         enum class Action_EndsAt_Hex : uint8_t
         {
@@ -301,8 +303,8 @@ namespace EdgeAttributes
             _count
         };
 
-        // 6 nodes, 26 edges
-        static_assert(static_cast<int>(ElementType::_count) == 5 + 29);
+        // # of nodes + # of edges
+        static_assert(static_cast<int>(ElementType::_count) == 5 + 30);
     };
 
     class INode

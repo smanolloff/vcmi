@@ -76,4 +76,6 @@ compile_commands.json
 *.db
 rel/
 actions.txt
-data/
+
+data/*
+!data/config/

@@ -72,9 +72,12 @@ GENERIC_EDGE_ELEMENT(Hex, OccupiedBy, Unit);
 GENERIC_EDGE_ELEMENT(Action, By, Unit);
 GENERIC_EDGE_ELEMENT(Unit, Has, Action);
 GENERIC_EDGE_ELEMENT(Action, Blocks, Unit);
+GENERIC_EDGE_ELEMENT(Unit, BlockedBy, Action);
 GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeThreatAfter, Action);
 GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeTargetAfter, Action);
 GENERIC_EDGE_ELEMENT(Hex, BecomesMeleeTargetAfter, Action);
+
+static_assert(static_cast<int>(S15::Graph::ElementType::_count) == 35);
 
 }
 

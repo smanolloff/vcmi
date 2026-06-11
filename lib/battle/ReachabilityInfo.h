@@ -43,6 +43,7 @@ struct DLL_LINKAGE ReachabilityInfo
 			destructibleEnemyTurns.fill(-1);
 		}
 		Parameters(const battle::Unit * Stack, const BattleHex & StartPosition);
+		Parameters(const battle::Unit * Stack, const BattleHex & StartPosition, const BattleHexArray & knownAccessible);
 	};
 
 	Parameters params;
