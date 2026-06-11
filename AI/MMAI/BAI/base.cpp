@@ -10,6 +10,7 @@
 
 #include "StdInc.h"
 #include "callback/CBattleCallback.h"
+#include "common.h"
 #include "networkPacks/PacksForClientBattle.h"
 #include "networkPacks/SetStackEffect.h"
 #include "spells/CSpellHandler.h"
@@ -45,9 +46,6 @@ Base::Base(Schema::IModel * model, int version, const std::shared_ptr<Environmen
 	const auto * ptr = static_cast<const void *>(this);
 	oss << ptr;
 	addrstr = oss.str();
-
-	const char * envvar = std::getenv("MMAI_VERBOSE");
-	verbose = envvar != nullptr && strcmp(envvar, "1") == 0;
 }
 
 /*
@@ -111,7 +109,7 @@ void Base::battleGateStateChanged(const BattleID & bid, const EGateState state)
 void Base::battleLogMessage(const BattleID & bid, const std::vector<MetaString> & lines)
 {
 	debug("*** battleLogMessage ***");
-	if(verbose)
+	if(isMMAIVerbose())
 	{
 		std::string res = "Messages:";
 		for(const auto & line : lines)
@@ -142,7 +140,7 @@ void Base::battleObstaclesChanged(const BattleID & bid, const std::vector<Obstac
 void Base::battleSpellCast(const BattleID & bid, const BattleSpellCast * sc)
 {
 	debug("*** battleSpellCast ***");
-	if(verbose)
+	if(isMMAIVerbose())
 	{
 		std::string res = "Spellcast info:";
 		auto battle = cb->getBattle(bid);
@@ -174,7 +172,7 @@ void Base::battleSpellCast(const BattleID & bid, const BattleSpellCast * sc)
 void Base::battleStackMoved(const BattleID & bid, const CStack * stack, const BattleHexArray & dest, int distance, bool teleport)
 {
 	debug("*** battleStackMoved ***");
-	if(verbose)
+	if(isMMAIVerbose())
 	{
 		auto battle = cb->getBattle(bid);
 		std::string fmt = "Movement info:";
@@ -204,7 +202,7 @@ void Base::battleStacksAttacked(const BattleID & bid, const std::vector<BattleSt
 void Base::battleStacksEffectsSet(const BattleID & bid, const SetStackEffect & sse)
 {
 	debug("*** battleStacksEffectsSet ***");
-	if(verbose)
+	if(isMMAIVerbose())
 	{
 		auto battle = cb->getBattle(bid);
 
@@ -273,7 +271,7 @@ void Base::battleStart(
 void Base::battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & bte)
 {
 	debug("*** battleTriggerEffect ***");
-	if(verbose)
+	if(isMMAIVerbose())
 	{
 		auto battle = cb->getBattle(bid);
 		const auto * cstack = battle->battleGetStackByID(bte.stackID);
@@ -288,7 +286,7 @@ void Base::battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect &
 void Base::battleUnitsChanged(const BattleID & bid, const std::vector<UnitChanges> & changes)
 {
 	debug("*** battleUnitsChanged ***");
-	if(verbose)
+	if(isMMAIVerbose())
 	{
 		std::string res = "Changes:";
 		for(const auto & change : changes)

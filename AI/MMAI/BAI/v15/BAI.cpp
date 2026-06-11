@@ -441,11 +441,19 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	auto ba = ToBattleAction(*battle, action, astack);
 	logger.debug(action->humanName(battle->battleGetMySide()));
 
+	if (isMMAIAutoRender())
+		std::cout << "\n" << Render(state.get(), action) << "\n";
+
+	if (isMMAIAutoVerify())
+		Verify(state.get());
+
 	cb->battleMakeUnitAction(bid, ba);
 }
 
 std::string BAI::renderANSI() const
 {
+	const auto str = Render(state.get(), lastAction);
+
 	try
 	{
 		Verify(state.get());
@@ -465,6 +473,6 @@ std::string BAI::renderANSI() const
 		throw;
 	}
 
-	return Render(state.get(), lastAction);
+	return str;
 }
 }

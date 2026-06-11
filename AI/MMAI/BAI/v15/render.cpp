@@ -41,14 +41,6 @@ using ActionPtr = std::shared_ptr<const N::Action>;
 template <typename E>
 using EdgePtr = std::shared_ptr<const E>;
 
-
-// This function used during model development and is never called otherwise
-void Verify(const State * state) // NOSONAR - function used for debugging only
-{
-    // throw std::runtime_error("not implemented");
-    std::cout << "XXX: Verify(): not implemented\n";
-}
-
 namespace
 {
     std::string PadLeft(const std::string & input, int desiredLength, char paddingChar = ' ')
@@ -133,7 +125,8 @@ namespace
 
 // This intentionally uses the IState interface to ensure that
 // the schema is properly exposing all needed informaton
-std::string Render(const State * state, const ActionPtr & action) // NOSONAR - function used for debugging only
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+std::string Render(const State * state, const ActionPtr & action)
 {
     const auto & alogs = state->attackLogs;
     const auto * G = state->G.get();

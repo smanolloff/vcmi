@@ -4,6 +4,7 @@
 #include "GameLibrary.h"
 #include "AI/MMAI/common.h"
 #include "bonuses/BonusEnum.h"
+#include "bonuses/Propagators.h"
 #include "constants/EntityIdentifiers.h"
 #include "schema/v15/constants.h"
 
@@ -369,6 +370,17 @@ Unit::Unit(const Args & args)
                 break;
             case BonusType::DOUBLE_DAMAGE_CHANCE:
                 setattr(UA::HAS_DOUBLE_DAMAGE_CHANCE, permille(bonus->val, 100));
+                break;
+            case BonusType::FEARFUL:
+                 // Can't figure out how to properly check if this stack is inducing fear
+                 // In VCMI the FEARFUL bonus of azure dragons is applied ALL stacks
+                 // incl. the azure dragons have a second FEARFUL bonus that overrides
+                 // the value to 0 (i.e. "fearless" is FEARFUL with independentMin=0...)
+                 // This means it's not really possible to identify the source stack.
+                 // One workaround is to see check:
+                 //     propagator == BATTLE_WIDE
+                 //     && source == CREATURE_ABILITY
+                 //     && sid.as<CreatureID> == cstack.creatureID
                 break;
             case BonusType::NOT_ACTIVE:
                 if(cstack.unitType()->getId() != CreatureID::AMMO_CART)

@@ -129,7 +129,8 @@ public:
 		const CArmedInstance * up,
 		const CGHeroInstance * down,
 		bool removableUnits,
-		QueryID queryID
+		QueryID queryID,
+		const MetaString & customTitle
 	) override; //all stacks operations between these objects become allowed, interface has to call onEnd when done
 	void showHillFortWindow(const CGObjectInstance * object, const CGHeroInstance * visitor) override;
 	void showInfoDialog(EInfoWindowMode type, const std::string & text, const std::vector<Component> & components, int soundID) override;

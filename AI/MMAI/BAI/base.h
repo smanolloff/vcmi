@@ -96,9 +96,6 @@ public:
 
 	std::string addrstr = "?";
 
-	// Set via VCMI_BAI_VERBOSE env var ("1" to enable)
-	bool verbose = false;
-
 	bool enableSpellsUsage = false;
 
 #ifdef ENABLE_ML

@@ -286,7 +286,10 @@ namespace {
         LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
             if (cr->getLevel() > 0)
+            {
+                // std::cout << "CREATURE: " << cr->getNamePluralTextID() << "\n";
                 res.push_back(cr->getId());
+            }
         });
 
         return res;
@@ -605,6 +608,7 @@ void ServerPlugin::handleRandomStacks(const CGHeroInstance * hero1, const CGHero
 
         const auto * cr = allcreatures.at(distCreatures(rng)).toCreature();
         auto qty = distQuantity(rng);
+        // std::cout << "added " << cr->getDescriptionTextID() << "\n";
         // Crude guard against absurd stacks such as 1K azure dragons
         qty = std::max(1, qty / cr->getLevel());
         // printf("Adding %d %s to slot %d for hero %s\n", qty, cr->getNamePluralTranslated().c_str(), slot, hero->nameCustomTextId.c_str());
