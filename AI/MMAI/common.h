@@ -12,6 +12,7 @@
 
 #include "StdInc.h"
 #include "CThreadHelper.h"
+#include <filesystem>
 
 namespace MMAI
 {

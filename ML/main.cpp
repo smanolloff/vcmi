@@ -315,9 +315,11 @@ namespace ML {
         }
 
         return {leftModel, rightModel, {
-            .mapname=omap.at("map"),
             .leftAllowMlBot=leftAllowMlBot,
             .rightAllowMlBot=rightAllowMlBot,
+            .leftModelFile="",
+            .rightModelFile="",
+            .mapname=omap.at("map"),
             .maxBattles=maxBattles,
             .seed=seed,
             .randomHeroes=randomHeroes,
