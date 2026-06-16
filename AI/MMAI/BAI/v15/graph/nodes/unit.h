@@ -61,7 +61,7 @@ public:
     std::string name() const override
     {
         std::stringstream ss;
-        ss << detail::Unit_Base::name() << "(" << cstack.unitId() << ", " << isActive << "," << cstack.getDescription() << ")";
+        ss << detail::Unit_Base::name() << "(isActive=" << isActive << ",desc=" << cstack.getDescription() << ")";
         return ss.str();
     }
 

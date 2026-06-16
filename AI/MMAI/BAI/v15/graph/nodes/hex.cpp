@@ -66,7 +66,7 @@ Hex::Hex(const Args & args)
 std::string Hex::name() const
 {
     std::stringstream ss;
-    ss << detail::Hex_Base::name() << "(" << attr(A::Y_COORD) << "," << attr(A::X_COORD) << ")";
+    ss << detail::Hex_Base::name() << "(y=" << attr(A::Y_COORD) << ",x=" << attr(A::X_COORD) << ")";
     return ss.str();
 }
 
