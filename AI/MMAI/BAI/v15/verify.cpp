@@ -918,11 +918,6 @@ void Verify(const State * state) // NOLINT(readability-function-cognitive-comple
 
 	expect(ctx.astack || ctx.ended, "astack is NULL, but ended is not true");
 
-	if(ctx.astack->unitType()->getMaxHealth() == 2000)
-	{
-		printf("");
-	}
-
 	for (int i = 0; i < EU(S15::Graph::ElementType::_count); ++i)
 	{
 		using ET = S15::Graph::ElementType;
