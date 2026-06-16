@@ -24,6 +24,8 @@
 #include "BAI/v15/graph/nodes/hex.h"
 #include "BAI/v15/graph/nodes/player.h"
 #include "BAI/v15/graph/nodes/unit.h"
+#include "battle/BattleHex.h"
+#include "battle/BattleSide.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/DamageCalculator.h"
 #include "battle/CUnitState.h"
@@ -1533,7 +1535,12 @@ namespace
 
 			for (const auto & ohex : G.getAll<N::Hex>())
 			{
-				for (const auto & adjbhex : ohex->bhex.getNeighbouringTiles())
+				// XXX: this is WRONG in case attacker is wide
+				// Will need to use meleeAttackHexes or similar logic
+				// auto x1 = bhex.getNeighbouringTilesDoubleWide(BattleSide::LEFT_SIDE);
+				// auto x2 = bhex.getNeighbouringTilesDoubleWide(BattleSide::RIGHT_SIDE);
+				auto otherside = stack.unitSide() == BattleSide::LEFT_SIDE ? BattleSide::RIGHT_SIDE : BattleSide::LEFT_SIDE;
+				for (const auto & adjbhex : G.getNearbyPositions().get(ohex->bhex, stack.unitSide(), otherside, stack.doubleWide(), false))
 				{
 					if (distances.at(adjbhex.toInt()) > unit->speed)
 						continue;

@@ -132,6 +132,25 @@ namespace detail
 
     template <typename>
     inline constexpr bool always_false = false;
+
+    struct PrecalculatedNearbyPositions
+    {
+        const std::vector<BattleHex> & get(
+            const BattleHex & bhex,
+            BattleSide attackerSide,
+            BattleSide defenderSide,
+            bool isAttackerWide,
+            bool isDefenderWide) const
+        {
+            return ary
+                .at(static_cast<int>(attackerSide))
+                .at(static_cast<int>(defenderSide))[isAttackerWide][isDefenderWide]
+                .at(bhex.toInt());
+        }
+
+        // dims: [attackerSide, defenderSide, isAttackerWide, isDefenderWide, bhex]
+        std::array<std::array<std::array<std::array<std::array<std::vector<BattleHex>, GameConstants::BFIELD_SIZE>, 2>, 2>, 2>, 2> ary;
+    };
 }
 
 namespace S15 = Schema::V15;
@@ -349,6 +368,7 @@ public:
 
     const AccessibilityInfo & getAccessibility() const;
     const FastBFS & getFastBFS() const;
+    const detail::PrecalculatedNearbyPositions & getNearbyPositions() const;
 private:
     EnumFlags<ET> flags;
 
@@ -357,6 +377,7 @@ private:
 
     const AccessibilityInfo accessibility;
     const FastBFS fastbfs;
+    const detail::PrecalculatedNearbyPositions nearbyPositions;
 
     // identical to getStore(), but returned type is non-const
     template <typename T>

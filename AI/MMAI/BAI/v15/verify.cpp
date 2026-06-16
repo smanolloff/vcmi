@@ -678,10 +678,10 @@ namespace
 			const bool unblockable = blocked.canShootBlocked() || blocked.hasBonusOfType(BonusType::SIEGE_WEAPON);
 			expect(!unblockable, "EDGE_UNIT_BLOCKED_BY_ACTION: blocked unit is unblockable");
 
-			bool willBeBlocked = CStack::meleeAttackHexes(&actor, &blocked, action->endsAt.at(0)->bhex, blocked.getPosition()).empty();
+			const auto & attackHexes = CStack::meleeAttackHexes(&actor, &blocked, action->endsAt.at(0)->bhex, blocked.getPosition());
 
 			// NOTE: this will be incorrect if either stack is berserk
-			expect(willBeBlocked, "EDGE_UNIT_BLOCKED_BY_ACTION: actor will not block the unit");
+			expect(!attackHexes.empty(), "EDGE_UNIT_BLOCKED_BY_ACTION: actor will not block the unit: " + action->name() + " :: " + action->by->name() + "::" + edge->srcNode->name());
 		}
 	}
 
@@ -837,15 +837,47 @@ namespace
 		{
 			const auto & targetHex = edge->srcNode->bhex;
 			const auto & action = edge->dstNode;
+			const auto & moveDest = action->endsAt.at(0)->bhex;
 			const auto & actor = action->by->cstack;
 
-			const auto & neigh = targetHex.getNeighbouringTilesDoubleWide(actor.unitSide());
-			const bool attackable = std::ranges::any_of(neigh, [&ctx, &actor](const BattleHex & bh) {
-				return ctx.distances.at(&actor).at(bh.toInt()) <= actor.getMovementRange();
+			/*
+			 * Returned hexes for x.getNeighbouringTilesDoubleWide(LEFT_SIDE):
+			 *  . . . . . . . . . . . .
+			 * . . . . o o o . . . . . .  Defender=wide LEFT defender
+			 *  . . . o ~ x o . . . . .   Attacker=small attacker
+			 * . . . . o o o . . . . . .
+			 *  . . . . . . . . . . . .
+			 * 		^^^^^
+			 * this is the same as the attack positions for wide *RIGHT attacker*.
+			 */
+
+			const auto otherside = actor.unitSide() == BattleSide::LEFT_SIDE
+				? BattleSide::RIGHT_SIDE
+				: BattleSide::LEFT_SIDE;
+
+			const auto attackPositions_ = actor.doubleWide()
+				? targetHex.getNeighbouringTilesDoubleWide(otherside)
+				: targetHex.getNeighbouringTiles();
+
+			const auto attackPositions = std::vector<BattleHex>(attackPositions_.begin(), attackPositions_.end());
+
+			// From the actor's POV, accessible hexes are:
+			// 1. its own/current hexes
+			// 2. its new/hypothetical hexes (where the actor will move to)
+			auto knownAccessible = actor.getHexes();
+			for (const auto & bhex : actor.getHexes(moveDest))
+				knownAccessible.checkAndPush(bhex);
+
+			const auto & params = ReachabilityInfo::Parameters(&actor, moveDest, knownAccessible);
+			const auto & reachability = ctx.battle.getReachability(params);
+
+			const bool attackable = std::ranges::any_of(attackPositions, [&reachability, &actor](const BattleHex & bh) {
+				return reachability.distances.at(bh.toInt()) <= actor.getMovementRange();
 			});
 
-			// NOTE: this will be incorrect if either stack is berserk
-			expect(attackable, "EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION: cannot reach any neighbouring hex");
+			if (!attackable)
+				// NOTE: this will be incorrect if either stack is berserk
+				expect(attackable, "EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION: cannot reach any neighbouring hex: " + edge->name());
 		}
 	}
 
@@ -876,7 +908,6 @@ namespace
 			expect(!willBeBlocked, "EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION: actor will be blocked");
 		}
 	}
-
 }
 
 // This function used during model development and is never called otherwise
@@ -886,6 +917,11 @@ void Verify(const State * state) // NOLINT(readability-function-cognitive-comple
 	const auto ctx = BuildContext(state);
 
 	expect(ctx.astack || ctx.ended, "astack is NULL, but ended is not true");
+
+	if(ctx.astack->unitType()->getMaxHealth() == 2000)
+	{
+		printf("");
+	}
 
 	for (int i = 0; i < EU(S15::Graph::ElementType::_count); ++i)
 	{
@@ -986,9 +1022,12 @@ void Verify(const State * state) // NOLINT(readability-function-cognitive-comple
 		case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
 			for (const auto & edge : ctx.G.getAll<E::Unit_IsMeleedBy_Action>())
 			{
-				expect(edge->srcNode == edge->dstNode->target, "target mismatch");
-				if (edge->isPrimaryTarget)
-					expect(CStack::isMeleeAttackPossible(&edge->dstNode->by->cstack, &edge->srcNode->cstack, edge->dstNode->endsAt.at(0)->bhex), "EDGE_UNIT_IS_MELEED_BY_ACTION: attack not possible");
+				if (!edge->isPrimaryTarget)
+					// TODO: verify non-primary targets (e.g. dragon breath 2nd hex)
+					continue;
+
+				expect(edge->srcNode == edge->dstNode->target, "EDGE_UNIT_IS_MELEED_BY_ACTION: target mismatch: " + edge->name());
+				expect(CStack::isMeleeAttackPossible(&edge->dstNode->by->cstack, &edge->srcNode->cstack, edge->dstNode->endsAt.at(0)->bhex), "EDGE_UNIT_IS_MELEED_BY_ACTION: attack not possible: " + edge->name());
 			}
 			break;
 		case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
@@ -999,7 +1038,12 @@ void Verify(const State * state) // NOLINT(readability-function-cognitive-comple
 				expect(shooter.canShootBlocked()
 					|| shooter.hasBonusOfType(BonusType::SIEGE_WEAPON)
 					|| !ctx.battle.battleIsUnitBlocked(&shooter), "EDGE_UNIT_IS_SHOT_BY_ACTION: shooter is blocked");
-				expect(edge->srcNode == edge->dstNode->target, "target mismatch");
+
+				if (!edge->isPrimaryTarget)
+					// TODO: verify non-primary targets (e.g. magog fireball)
+					continue;
+
+				expect(edge->srcNode == edge->dstNode->target, "EDGE_UNIT_IS_SHOT_BY_ACTION: target mismatch: " + edge->name());
 			}
 			break;
 		case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:

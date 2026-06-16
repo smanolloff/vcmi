@@ -71,29 +71,15 @@ public:
         int type = static_cast<int>(actionType);
 
         std::stringstream ss;
-        ss << detail::Action_Base::name() << "(" << type;
+        ss << detail::Action_Base::name() << "(type=" << type;
 
-        // RETREAT action has no `by`
-        if (by)
-            ss << "," << by->cstack.unitId();
-        else
-            ss << "-,";
-
-        ss << "," << isActive;
-
-        if (target)
-            ss << "," << target->cstack.unitId();
-        else
-            ss << ",-";
-
-        if (!endsAt.empty())
-            ss << "," << endsAt.front()->bhex.toInt();
-        else
-            ss << ",-";
-
-        ss << "," << flags.to_string();
-
+        ss << ",by=" << by->name();
+        ss << ",isActive=" << isActive;
+        ss << ",endsAt=" << endsAt.front()->name();
+        ss << ",flags=" << flags.to_string();
+        ss << ",target=" << (target ? target->name() : "-");
         ss << ")";
+
         return ss.str();
     }
 
