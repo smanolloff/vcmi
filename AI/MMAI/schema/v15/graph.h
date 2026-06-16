@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include <string>
 
 namespace MMAI::Schema::V15::Graph
 {
