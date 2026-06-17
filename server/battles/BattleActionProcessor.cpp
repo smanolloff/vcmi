@@ -247,7 +247,7 @@ bool BattleActionProcessor::doAttackAction(const CBattleInfoCallback & battle, c
 
 	if (movementResult.invalidRequest)
 	{
-		gameHandler->complain("Stack failed attack - unable to reach target!");
+		gameHandler->complain("Stack failed attack - unable to reach target!: dest=" + std::to_string(destinationTile.toInt()) + ", attackPos=" + std::to_string(attackPos.toInt()) + ", stack=" + stack->getDescription() + ", destinationStack=" + (destinationStack ? destinationStack->getDescription() : "nullptr"));
 		return false;
 	}
 
@@ -265,7 +265,7 @@ bool BattleActionProcessor::doAttackAction(const CBattleInfoCallback & battle, c
 
 	if(!destinationStack)
 	{
-		gameHandler->complain("Unit can not attack itself");
+		gameHandler->complain("Unit can not attack itself: dest=" + std::to_string(destinationTile.toInt()) + ", attackPos=" + std::to_string(attackPos.toInt()) + ", stack=" + stack->getDescription() + ", destinationStack=" + (destinationStack ? destinationStack->getDescription() : "nullptr"));
 		return false;
 	}
 
@@ -798,7 +798,8 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 
 	if (pathDistance > unitMovementRange)
 	{
-		gameHandler->complain("Given destination is not reachable!");
+		gameHandler->complain("Given destination is not reachable!: " + std::to_string(start.toInt()) + " -> " + std::to_string(dest.toInt()) + " by " + currentUnit->getDescription());
+		auto [unitPath, pathDistance] = battle.getPath(start, dest, currentUnit);
 		return { 0, false, true };
 	}
 

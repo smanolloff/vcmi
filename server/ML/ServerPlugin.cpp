@@ -166,34 +166,45 @@ namespace {
      * Format: "hero_<INT>_pool_<STR>"
      * Example: "hero_5123_pool_150k"
      */
-    std::map<std::string, HeroPool> InitHeroPools(CGameState* gs) {
+    HeroPools InitHeroPools(CGameState* gs) {
         auto pattern = std::regex(R"(^hero_\d+_pool_([0-9A-Za-z]+)$)");
-        auto res = std::map<std::string, HeroPool> {};
+        auto res = HeroPools{};
         int poolid = 0;
+        int counter = 0;
 
         for (const auto &heroid : gs->getMap().getHeroesOnMap()) {
-            auto *hero = gs->getHero(heroid);
+            auto * hero = gs->getHero(heroid);
+
+            const auto poolowner = hero->tempOwner.num;
+
+            if (poolowner != 0 && poolowner != 1)
+                throw std::runtime_error("Expected hero tempOwner 0 or 1, got: " + std::to_string(poolowner));
+
             std::string poolname = "default";  // fallback poolname
             std::smatch matches;
+
+            auto & ownedPools = res.at(poolowner);
 
             // Check if the entire string matches the pattern
             if (std::regex_match(hero->nameCustomTextId, matches, pattern))
                 poolname = matches[1].str();
 
-            if (!res.contains(poolname))
-                res.insert({poolname, HeroPool(poolid++, poolname)});
-
-            auto it = res.find(poolname);
-            if (it == res.end()) {
-                res.insert({poolname, HeroPool(poolid++, poolname)});
-                it = res.find(poolname);
-            }
-
-            auto &pool = it->second;
+            auto & pool = ownedPools.try_emplace(poolname, HeroPool(poolid++, poolname)).first->second;
             pool.heroes.push_back(hero);
+            ++counter;
         }
 
-        std::cout << "Grouped heroes into " << res.size() << " pools\n";
+        for (const auto & [name1, pool1] : res.at(0))
+        {
+            if (res.at(1).find(name1) == res.at(1).end())
+                throw std::runtime_error("Owners have different pools");
+            auto x = (*res.at(1).find(name1)).second;
+            if (pool1.heroes.size() != (*res.at(1).find(name1)).second.heroes.size())
+                throw std::runtime_error("Owners have differently sized pools");
+        }
+        // for (const auto & pool : ownedPools)
+
+        std::cout << "Grouped " << counter << " heroes into " << res.size() << "x" << res.at(0).size() << " pools\n";
         return res;
     }
 
@@ -357,23 +368,25 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 , allcreatures(InitCreatures())
 , allshooters(InitShootingCreatures())
 , allguards(InitGuardingCreatures())
-, stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
+// , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
 , rng(std::mt19937(config.rngSeed ? config.rngSeed : gh->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
 , creatureValues(InitCreatureValues())
 {
     // XXX: Take out the first two heroes from the first heropool
     if (config.leftVipChance > 0 || config.rightVipChance > 0) {
-        auto & p = heropools.begin()->second.heroes;
+        auto & p1 = heropools.at(0).begin()->second.heroes;
+        auto & p2 = heropools.at(1).begin()->second.heroes;
 
-        if (p.size() < 4) {
-            std::cout << "WARNING: VipChance > 0, but there are less than 4 total on this map. Will not enable VIP shooters.\n";
+        if (p1.size() < 2 || p2.size() < 2) {
+            std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
             config.leftVipChance = 0;
             config.rightVipChance = 0;
         } else {
-            vipHero1 = p[0];
-            vipHero2 = p[1];
+            vipHero1 = p1[0];
+            vipHero2 = p2[0];
 
-            p.erase(p.begin(), p.begin() + 2);
+            p1.erase(p1.begin(), p1.begin() + 2);
+            p2.erase(p2.begin(), p2.begin() + 2);
 
             // Mark heres with "VIP shooter" armies via grail in backpack
             auto grailId = ArtifactID::GRAIL;
@@ -391,10 +404,13 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 
 
     if (config.randomHeroes > 0) {
-        for (auto &[poolname, pool] : heropools) {
-            // std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
-            if (pool.heroes.size() % 2 != 0) {
-                throw std::runtime_error("An even number of heroes is required in each hero pool.");
+        for (int owner : {0, 1})
+        {
+            for (auto &[poolname, pool] : heropools.at(owner)) {
+                // std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
+                if (pool.heroes.size() % 2 != 0) {
+                    throw std::runtime_error("randomHeroes requires an even number of heroes is required in each hero pool.");
+                }
             }
         }
     }
@@ -479,32 +495,38 @@ void ServerPlugin::handleRandomHeroes(
     if (config.randomHeroes == 0)
         return;
 
-    if (poolcounter % heropools.size() == 0)
+    if (poolcounter % heropools.at(0).size() == 0)
         poolcounter = 0; // no shuffling for std::map
 
-    auto it = heropools.begin();
-    std::advance(it, poolcounter);
-    auto &pool = it->second;
+    auto it1 = heropools.at(0).begin();
+    auto it2 = heropools.at(1).begin();
+    std::advance(it1, poolcounter);
+    std::advance(it2, poolcounter);
+    auto &pool1 = it1->second;
+    auto &pool2 = it2->second;
 
-    if (pool.counter % pool.heroes.size() == 0) {
-        pool.counter = 0;
-        std::shuffle(pool.heroes.begin(), pool.heroes.end(), rng);
-
-        // for (int i=0; i<allheroes.size(); i++)
-        //  printf("allheroes[%d] = %s\n", i, allheroes.at(i)->getNameTextID().c_str());
+    if (pool1.counter % pool1.heroes.size() == 0) {
+        pool1.counter = 0;
+        std::shuffle(pool1.heroes.begin(), pool1.heroes.end(), rng);
     }
+
+    if (pool2.counter % pool2.heroes.size() == 0) {
+        pool2.counter = 0;
+        std::shuffle(pool2.heroes.begin(), pool2.heroes.end(), rng);
+    }
+
     // printf("poolcounter = %d\n", poolcounter);
 
-    // XXX: heroes must be different (objects must have different tempOwner)
     // modification by reference
-    hero1 = pool.heroes.at(pool.counter);
-    hero2 = pool.heroes.at(pool.counter+1);
+    hero1 = pool1.heroes.at(pool1.counter);
+    hero2 = pool2.heroes.at(pool2.counter);
 
     // printf("Pool: %s, hero0: %s, hero1: %s\n", pool.name.c_str(), hero1->nameCustomTextId.c_str(), hero2->nameCustomTextId.c_str());
 
     if (battlecounter % config.randomHeroes == 0) {
         poolcounter += 1;
-        pool.counter += 2;
+        pool1.counter += 1;
+        pool2.counter += 1;
     }
 
     // modification by reference
@@ -704,6 +726,8 @@ void ServerPlugin::handleRandomSecondarySkills(const CGHeroInstance * hero1, con
     auto dist = std::uniform_int_distribution<>(MasteryLevel::NONE, MasteryLevel::EXPERT);
     gh->changeSecSkill(hero1, SecondarySkill::BALLISTICS, dist(rng), ChangeValueMode::ABSOLUTE);
     gh->changeSecSkill(hero2, SecondarySkill::BALLISTICS, dist(rng), ChangeValueMode::ABSOLUTE);
+    gh->changeSecSkill(hero1, SecondarySkill::ARTILLERY, dist(rng), ChangeValueMode::ABSOLUTE);
+    gh->changeSecSkill(hero2, SecondarySkill::ARTILLERY, dist(rng), ChangeValueMode::ABSOLUTE);
 }
 
 void ServerPlugin::startBattleHook(
@@ -725,7 +749,7 @@ void ServerPlugin::startBattleHook(
     handleWarmachines(hero1, hero2);
     handleTightFormation(hero1, hero2);
     handleMinMaxMana(hero1, hero2);
-    handleSwapSides(hero1, hero2);
+    // handleSwapSides(hero1, hero2);  // DO NOT USE (causes nasty bugs)
     handleRandomPrimarySkills(hero1, hero2);
     handleRandomSecondarySkills(hero1, hero2);
 }
@@ -735,44 +759,57 @@ void ServerPlugin::endBattleHook(
     const CGHeroInstance * heroAttacker,
     const CGHeroInstance * heroDefender
 ) {
-    // don't record stats for retreats (i.e. env resets)
-    if (stats && br->result == EBattleResult::NORMAL) {
-        auto extractHeroID = [](const std::string& name) {
-            std::regex pattern(R"(^hero_(\d+)_pool_([0-9A-Za-z]+)$)");
+    // // don't record stats for retreats (i.e. env resets)
+    //     // XXX: stats not updated with owner-based hero pools
+    // if (stats && br->result == EBattleResult::NORMAL) {
+    //     auto extractHeroID = [](const std::string& name) {
+    //         std::regex pattern(R"(^hero_(\d+)_pool_([0-9A-Za-z]+)$)");
 
-            int hero_id = -1;
-            std::string pool_name = "default";
-            std::smatch match;
+    //         int hero_id = -1;
+    //         std::string pool_name = "default";
+    //         std::smatch match;
 
-            if (std::regex_match(name, match, pattern)) {
-                pool_name = match[2].str();
-            } else {
-                // assert old hero name format (no pools)
-                std::regex pattern2(R"(^hero_(\d+)$)");
-                if (!std::regex_match(name, match, pattern2))
-                    throw std::runtime_error("invalid hero name: " + name);
-            }
+    //         if (std::regex_match(name, match, pattern)) {
+    //             pool_name = match[2].str();
+    //         } else {
+    //             // assert old hero name format (no pools)
+    //             std::regex pattern2(R"(^hero_(\d+)$)");
+    //             if (!std::regex_match(name, match, pattern2))
+    //                 throw std::runtime_error("invalid hero name: " + name);
+    //         }
 
-            hero_id = std::stoi(match[1].str());
+    //         hero_id = std::stoi(match[1].str());
 
-            return std::pair<int, std::string>(hero_id, pool_name);
-        };
+    //         return std::pair<int, std::string>(hero_id, pool_name);
+    //     };
 
-        auto [attackerID, poolname] = extractHeroID(heroAttacker->nameCustomTextId);
-        auto [defenderID, poolname2] = extractHeroID(heroDefender->nameCustomTextId);
+    //     auto [attackerID, poolname] = extractHeroID(heroAttacker->nameCustomTextId);
+    //     auto [defenderID, poolname2] = extractHeroID(heroDefender->nameCustomTextId);
 
-        if (poolname != poolname2)
-            throw std::runtime_error("Pools do not match: " + poolname + " <> " + poolname2);
+    //     if (poolname != poolname2)
+    //         throw std::runtime_error("Pools do not match: " + poolname + " <> " + poolname2);
 
-        auto it = heropools.find(poolname);
-        if (it == heropools.end())
-            throw std::runtime_error("Could not pool with name: " + poolname);
+    //     if(heroAttacker->tempOwner == heroDefender->tempOwner)
+    //         throw std::runtime_error("temp owners must differ");
 
-        auto poolid = it->second.id;
-        auto statside = (config.statsMode == "red") ? redside : !redside;
-        auto victory = br->winner == BattleSide(statside);
-        stats->dataadd(victory, poolid, attackerID, defenderID);
-    }
+    //     auto itAttacker = heropools.at(heroAttacker->tempOwner).find(poolname);
+    //     if (itAttacker == heropools.at(heroAttacker->tempOwner).end())
+    //         throw std::runtime_error("Could not pool with name: " + poolname);
+
+    //     auto itDefender = heropools.at(heroDefender->tempOwner).find(poolname);
+    //     if (itDefender == heropools.at(heroDefender->tempOwner).end())
+    //         throw std::runtime_error("Could not pool with name: " + poolname);
+
+    //     if (itAttacker->second.id != itDefender->second.id)
+    //         throw std::runtime_error("Attacker and defender pools are different");
+
+    //     auto poolid = itAttacker->second.id;
+
+    //     // XXX: stats not updated with owner-based hero pools
+    //     auto statside = (config.statsMode == "red") ? redside : !redside;
+    //     auto victory = br->winner == BattleSide(statside);
+    //     stats->dataadd(victory, poolid, attackerID, defenderID);
+    // }
 
     if (config.maxBattles && battlecounter >= config.maxBattles) {
         std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";
