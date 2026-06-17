@@ -510,6 +510,12 @@ void CClient::reinitScripting()
 #endif
 }
 
+void CClient::onNewSystemMessageReceived(const std::string & msg)
+{
+	for (const auto & [_, battleint] : battleints)
+		battleint->onNewSystemMessageReceived(msg);
+}
+
 void CClient::removeGUI() const
 {
 	// CClient::endGame

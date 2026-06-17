@@ -30,6 +30,8 @@ public:
 	void battleNewRound(const BattleID & bid) override;
 	void yourTacticPhase(const BattleID & bid, int distance) override;
 
+	void onNewSystemMessageReceived(const std::string & msg) const override;
+
 	void battleStacksAttacked(
 		const BattleID & bid,
 		const std::vector<BattleStackAttacked> & bsa,

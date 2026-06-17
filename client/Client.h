@@ -180,6 +180,7 @@ public:
 	void battleStarted(const BattleID & battle);
 	void battleFinished(const BattleID & battleID);
 	void startPlayerBattleAction(const BattleID & battleID, PlayerColor color);
+	void onNewSystemMessageReceived(const std::string & msg);
 
 	friend class CCallback; //handling players actions
 	friend class CBattleCallback; //handling players actions

@@ -334,6 +334,27 @@ namespace
 	}
 }
 
+void BAI::onNewSystemMessageReceived(const std::string & msg) const
+{
+	logger.warn("*** SYSTEM MESSAGE ***");
+
+	logger.warn("RENDER STALE STATE");
+	if (state->G && state->supdata)
+		std::cout << "\n" << Render(state.get(), lastAction) << "\n";
+	else
+		std::cout << "\n(no old state)\n";
+
+	const auto & astack = dynamic_cast<const CStack*>(battle->battleActiveUnit());
+	logger.warn("ATTEMPT TO REBUILD STATE");
+	state->onActiveStack(astack, roundcounter);
+	std::cout << "\n" << Render(state.get(), lastAction) << "\n";
+
+	const auto p = battle->getPath(astack->getPosition(), lastAction->endsAt.at(0)->bhex, astack);
+	auto speed = astack->getMovementRange(0);
+	// p *currentUnit->stackSpeedPerTurn.bonusList->bonuses.m_holder.m_start[0].__ptr_
+	logger.warn("*** END SYSTEM MESSAGE ***");
+}
+
 void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
 #ifdef ENABLE_ML

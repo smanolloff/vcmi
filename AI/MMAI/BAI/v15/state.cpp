@@ -714,8 +714,8 @@ namespace
 	{
 		std::size_t operator()(const std::pair<si16, si16> & t) const
 		{
-			auto h0 = std::hash<int>{}(std::get<0>(t));
-			auto h1 = std::hash<int>{}(std::get<1>(t));
+	        std::size_t h0 = std::hash<si16>{}(t.first);
+	        std::size_t h1 = std::hash<si16>{}(t.second);
 			return h0 ^ (h1 << 1);
 		}
 	};

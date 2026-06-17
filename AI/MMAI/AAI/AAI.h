@@ -163,6 +163,7 @@ public:
 	void actionFinished(const BattleID & bid, const BattleAction & action) override;
 	void actionStarted(const BattleID & bid, const BattleAction & action) override;
 	void activeStack(const BattleID & bid, const CStack * stack) override;
+	void onNewSystemMessageReceived(const std::string & msg) const override;
 	void battleAttack(const BattleID & bid, const BattleAttack * ba) override;
 	void battleCatapultAttacked(const BattleID & bid, const CatapultAttack & ca) override;
 	void battleGateStateChanged(const BattleID & bid, const EGateState state) override;
