@@ -857,6 +857,7 @@ namespace
 		G.setFlag(ET::NODE_HEX);
 
 		auto hexobstacles = std::array<std::vector<std::shared_ptr<const CObstacleInstance>>, 165>{};
+		auto hasNativeStack = acstack && battle.battleHasNativeStack(acstack->unitSide());
 
 		for(const auto & obstacle : battle.battleGetAllObstacles())
 			for(const auto & bh : obstacle->getAffectedTiles())
@@ -882,7 +883,8 @@ namespace
 					.obstacles=hexobstacles.at(i),
 					.wallHP=GetWallHP(battle, bh),
 					.isGateOpen=isGateOpen,
-					.isSiege=(battle.battleGetFortifications().wallsHealth > 0)
+					.isSiege=(battle.battleGetFortifications().wallsHealth > 0),
+					.hasNativeStack=hasNativeStack
 				}));
 			}
 		}
@@ -1029,6 +1031,12 @@ namespace
 				if(unit == other || ostack.isInvincible())
 					continue;
 
+				// XXX: removing MELEE_DMG edge may be problematic, as other edges rely on it
+				// (e.g. shooter next to enemy stack will not see it as an enemy without MELEE_DMG edge...)
+				// => make sure to explicitly check for nearby war machines when calculating blockers
+				if(unit == other || ostack.isInvincible() || unit->attr(N::Unit::A::IS_WAR_MACHINE))
+					continue;
+
 				const auto pair = std::pair<int, int>{stack.unitId(), ostack.unitId()};
 				auto [_, inserted] = pairs.emplace(pair);
 
@@ -1071,40 +1079,48 @@ namespace
 		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
 		G.setFlag(ET::EDGE_UNIT_SHOOT_DMG_UNIT);
 
-		// RANGED_DMG edges use a subset of the MELEE_DMG edge nodes
-		// (all ranged units can also melee)
-		for(const auto & edge : G.getAll<E::Unit_MeleeDmg_Unit>())
+		for(const auto & unit : G.getAll<N::Unit>())
 		{
-			const auto & unit = edge->srcNode;
 			const auto & stack = unit->cstack;
-			const auto & other = edge->dstNode;
-			const auto & ostack = other->cstack;
+			for(const auto & other : G.getAll<N::Unit>())
+			{
+				const auto & ostack = other->cstack;
 
-			if(!stack.canShoot() || ostack.isInvincible())
-				continue;
+				// RANGED_DMG edges use a subset of the MELEE_DMG edge nodes:
+				// all ranged units can also melee, except for ballistas
+				// Ballistas are shooters which do NOT have melee dmg edges to enemies
+				// => handle separately
+				bool isCandidate = (
+					G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(unit, other, false)
+					|| (stack.isBallista() && stack.unitSide() != ostack.unitSide())
+				);
 
-			bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
-			const auto states = SimulateAttackAction(battle, stack, ostack, true, isOtherBlocked);
-			const auto & state = states.a;
-			const auto & ostate = states.b;
+				if (!isCandidate || !stack.canShoot() || ostack.isInvincible())
+					continue;
 
-			ASSERT(states.a.cstack->unitId() == stack.unitId() && states.b.cstack->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
+				bool isOtherBlocked = G.getOneEdgeByDst<E::Unit_Blocks_Unit>(other, false) != nullptr;
+				const auto states = SimulateAttackAction(battle, stack, ostack, true, isOtherBlocked);
+				const auto & state = states.a;
+				const auto & ostate = states.b;
 
-			auto hpdiff_attacker = state.calcAvailableHealth() - stack.getAvailableHealth();
-			auto hpdiff_defender = ostate.calcAvailableHealth() - ostack.getAvailableHealth();
-			auto qtydiff_attacker = state.cstate->getCount() - stack.getCount();
-			auto qtydiff_defender = ostate.cstate->getCount() - ostack.getCount();
-			auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
-			auto vdiff_defender = other->valueOne * qtydiff_defender;
+				ASSERT(states.a.cstack->unitId() == stack.unitId() && states.b.cstack->unitId() == ostack.unitId(), "SimulateAttackAction: fatal error");
 
-			G.add(E::Unit_ShootDmg_Unit::Create(unit, other, {
-				.vdiffAttacker=vdiff_attacker,
-				.vdiffDefender=vdiff_defender,
-				.hpdiffAttacker=static_cast<int>(hpdiff_attacker),
-				.hpdiffDefender=static_cast<int>(hpdiff_defender),
-				.battlefieldValue=stats.totalValue,
-				.battlefieldHp=stats.totalHp
-			}));
+				auto hpdiff_attacker = state.calcAvailableHealth() - stack.getAvailableHealth();
+				auto hpdiff_defender = ostate.calcAvailableHealth() - ostack.getAvailableHealth();
+				auto qtydiff_attacker = state.cstate->getCount() - stack.getCount();
+				auto qtydiff_defender = ostate.cstate->getCount() - ostack.getCount();
+				auto vdiff_attacker = unit->valueOne * qtydiff_attacker;
+				auto vdiff_defender = other->valueOne * qtydiff_defender;
+
+				G.add(E::Unit_ShootDmg_Unit::Create(unit, other, {
+					.vdiffAttacker=vdiff_attacker,
+					.vdiffDefender=vdiff_defender,
+					.hpdiffAttacker=static_cast<int>(hpdiff_attacker),
+					.hpdiffDefender=static_cast<int>(hpdiff_defender),
+					.battlefieldValue=stats.totalValue,
+					.battlefieldHp=stats.totalHp
+				}));
+			}
 		}
 	}
 
@@ -1126,11 +1142,10 @@ namespace
 			const auto & other = edge->dstNode;
 			const auto & ostack = other->cstack;
 
-			// ATTACKS_NEAREST_CREATURE == berserk
 			// XXX: VCMI considers a shooter blocked by an ally only if the shooter (not the ally) is berserk
 			// 		It makes sense to become blocked if the ally is berserk, but not sure what original H3 behaviour is.
 			// XXX: what about hypnotize?
-			if(cstack.unitSide() == ostack.unitSide() && !cstack.hasBonusOfType(BonusType::ATTACKS_NEAREST_CREATURE))
+			if(cstack.unitSide() == ostack.unitSide() && !checkBerserk(cstack))
 				continue;
 
 			for(const auto & bhex : cstack.getSurroundingHexes())
@@ -1195,8 +1210,7 @@ namespace
 
 	void AddMoveAndDefendActions(
 		Graph::Graph & G,
-		EnumFlags<AT> & atFlags,
-		const CStack * acstack)
+		EnumFlags<AT> & atFlags)
 	{
 		G.getFlags().require(ET::NODE_UNIT);
 		G.getFlags().require(ET::NODE_HEX);
@@ -1258,8 +1272,7 @@ namespace
 	void AddMoveActionEdges_Action_Blocks_Unit(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
-		const CPlayerBattleCallback & battle,
-		const CStack * acstack)
+		const CPlayerBattleCallback & battle)
 	{
 		G.getFlags().require(ET::NODE_ACTION);
 		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
@@ -1469,8 +1482,7 @@ namespace
 	void AddMoveActionEdges_UnitAndHex_BecomesMeleeTargetAfter_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
-		const CPlayerBattleCallback & battle,
-		const CStack * acstack)
+		const CPlayerBattleCallback & battle)
 	{
 		G.getFlags().require(ET::EDGE_ACTION_ENDS_AT_HEX);
 		G.getFlags().require(ET::EDGE_UNIT_MELEE_DMG_UNIT);
@@ -1555,8 +1567,7 @@ namespace
 	void AddMoveActionEdges_UnitAndHex_BecomesShootTargetAfter_Action(
 		Graph::Graph & G,
 		EnumFlags<AT> & atFlags,
-		const CPlayerBattleCallback & battle,
-		const CStack * acstack)
+		const CPlayerBattleCallback & battle)
 	{
 		G.getFlags().require(ET::NODE_ACTION);
 		atFlags.requireExclusive({AT::DEFEND, AT::MOVE});
@@ -1593,9 +1604,18 @@ namespace
 
 					const auto & adjhex = G.getByExtraIndex<N::Hex>(adjbhex.toInt());
 					const auto & ounit = G.getOneEdgeSrcByDst<E::Unit_Occupies_Hex>(adjhex, false);
-					if (ounit && G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(ounit, unit, false))
+
+					if (!ounit)
+						continue;
+
+					// Some units (e.g. war machines) have no melee dmg edges to enemies
+					// but can still block them from shooting
+					// => check the reverse melee dmg edge as well
+					if (G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(ounit, unit, false)
+						|| G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(unit, ounit, false))
 						return true;
 				}
+
 				return false;
 			};
 
@@ -1998,8 +2018,11 @@ namespace
 		{
 			assert(move->actionType == AT::MOVE || move->actionType == AT::DEFEND);
 			AddAmoveAction(G, move, battle);
-			if(move->by->cstack.getPosition() == move->endsAt.at(0)->bhex)
+			if(move->actionType == AT::DEFEND)
+			{
+				assert(move->by->cstack.getPosition() == move->endsAt.at(0)->bhex);
 				defendmoves.try_emplace(move->by, move);
+			}
 		};
 
 		for(const auto & unit : G.getAll<N::Unit>())
@@ -2111,15 +2134,15 @@ void State::onActiveStack(
 	AddEdges_Unit_Occupies_Hex(*G);
 
 	auto atFlags = EnumFlags<S15::ActionType>();
-	AddMoveAndDefendActions(*G, atFlags, acstack); // + edges: ActionByUnit, ActionEndsAtHex
+	AddMoveAndDefendActions(*G, atFlags); // + edges: ActionByUnit, ActionEndsAtHex
 	// AddMoveActionEdges_Action_By_Unit() // already added
-	AddMoveActionEdges_Action_Blocks_Unit(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_Action_Blocks_Unit(*G, atFlags, battle);
 	// AddMoveActionEdges_Action_EndsAt_Hex() // already added
 	AddMoveActionEdges_Unit_BecomesMeleeThreatAfter_Action(*G, atFlags);
 	AddMoveActionEdges_Unit_BecomesShootThreatAfter_Action(*G, atFlags, battle);
 
-	AddMoveActionEdges_UnitAndHex_BecomesMeleeTargetAfter_Action(*G, atFlags, battle, acstack);
-	AddMoveActionEdges_UnitAndHex_BecomesShootTargetAfter_Action(*G, atFlags, battle, acstack);
+	AddMoveActionEdges_UnitAndHex_BecomesMeleeTargetAfter_Action(*G, atFlags, battle);
+	AddMoveActionEdges_UnitAndHex_BecomesShootTargetAfter_Action(*G, atFlags, battle);
 
 	AddOtherActions(*G, atFlags, battle);
 	// AddRetreatAction(*G, atFlags); // XXX: retreats intentionally disabled
