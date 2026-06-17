@@ -33,6 +33,8 @@ public:
 	//battle call-ins
 	virtual void activeStack(const BattleID & battleID, const CStack * stack)=0; //called when it's turn of that stack
 	virtual void yourTacticPhase(const BattleID & battleID, int distance)=0; //called when interface has opportunity to use Tactics skill -> use cb->battleMakeTacticAction from this function
+
+	virtual void onNewSystemMessageReceived(const std::string & msg) const {};
 };
 
 VCMI_LIB_NAMESPACE_END

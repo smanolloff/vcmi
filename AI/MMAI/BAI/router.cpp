@@ -244,6 +244,12 @@ void Router::actionStarted(const BattleID & bid, const BattleAction & action)
 	bai->actionStarted(bid, action);
 }
 
+void Router::onNewSystemMessageReceived(const std::string & msg) const
+{
+	MMAI_LOG_TAG;
+	bai->onNewSystemMessageReceived(msg);
+}
+
 void Router::activeStack(const BattleID & bid, const CStack * astack)
 {
 	MMAI_LOG_TAG;
@@ -383,7 +389,7 @@ void Router::battleStart(
 	auto realside = static_cast<Schema::Side>(EI(side));
 
 	if(modelside != realside && modelside != Schema::Side::BOTH)
-		logAi->warn("The loaded '%s' model was not trained to play as %s", modelkey, modelkey);
+		logAi->warn("The loaded '%s' model was not trained to play as %s (modelside=%d, realside=%d)", modelkey, modelkey, static_cast<int>(modelside), static_cast<int>(realside));
 
 	switch(model->getType())
 	{

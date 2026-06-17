@@ -530,6 +530,12 @@ void AAI::activeStack(const BattleID & bid, const CStack * stack)
 	battleAI->activeStack(bid, stack);
 }
 
+void AAI::onNewSystemMessageReceived(const std::string & msg) const
+{
+	battleAI->onNewSystemMessageReceived(msg);
+}
+
+
 void AAI::battleAttack(const BattleID & bid, const BattleAttack * ba)
 {
 	battleAI->battleAttack(bid, ba);
