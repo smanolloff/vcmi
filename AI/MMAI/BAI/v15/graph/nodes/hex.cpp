@@ -1,7 +1,9 @@
 #include "BAI/v15/graph/nodes/hex.h"
 
 #include "AI/MMAI/common.h"
+#include "vcmi/spells/Service.h"
 #include "vcmi/spells/Spell.h"
+#include "lib/spells/CSpellHandler.h"
 
 namespace MMAI::BAI::V15::Graph::Nodes
 {
@@ -26,7 +28,7 @@ Hex::Hex(const Args & args)
     guardflags.set(); // See note for attr()/setattr() in Hex.h
 
     for(const auto& obstacle : args.obstacles)
-        setMoatFlags(obstacle.get(), args.isGateOpen, args.side);
+        setMoatFlags(obstacle.get(), args.isGateOpen, args.side, args.hasNativeStack);
 
     setattr(A::Y_COORD, y);
     setattr(A::X_COORD, x);
@@ -73,7 +75,8 @@ std::string Hex::name() const
 void Hex::setMoatFlags(
     const CObstacleInstance * obstacle,
     bool isGateOpen,
-    BattleSide side)
+    BattleSide side,
+    bool hasNativeStack)
 {
     switch(obstacle->obstacleType)
     {
@@ -87,22 +90,27 @@ void Hex::setMoatFlags(
             break;
 
         case CObstacleInstance::SPELL_CREATED:
-            switch(SpellID(obstacle->ID))
-            {
-                case SpellID::QUICKSAND:
+        {
+            const auto * so = dynamic_cast<const SpellCreatedObstacle*>(obstacle);
+            // const bool visible = so->visibleForSide(side, hasNativeStack);
+
+            // XXX: for quicksand, this should be STOPPING only for opponent
+            //      for regular moats, this should be STOPPING for everyone
+            //      How to check which side is affected?
+            if (so->stopsMovement())
                     setattr(A::IS_STOPPING, 1);
-                    break;
 
-                case SpellID::LAND_MINE:
-                    if(side == dynamic_cast<const SpellCreatedObstacle*>(obstacle)->casterSide)
-                        setattr(side == BattleSide::DEFENDER ? A::IS_DAMAGING_L : A::IS_DAMAGING_R, 1);
-                    else
-                        setattr(side == BattleSide::DEFENDER ? A::IS_DAMAGING_R : A::IS_DAMAGING_L, 1);
-                default:
-                    break;
+            const CSpell * spell = so->trigger.toSpell();
+            if (spell->identifier == "landMineTrigger")
+            {
+                if(side == so->casterSide)
+                    setattr(side == BattleSide::DEFENDER ? A::IS_DAMAGING_L : A::IS_DAMAGING_R, 1);
+                else
+                    setattr(side == BattleSide::DEFENDER ? A::IS_DAMAGING_R : A::IS_DAMAGING_L, 1);
             }
-            break;
 
+            break;
+        }
         default:
             break;
     }
