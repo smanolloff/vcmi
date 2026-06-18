@@ -29,6 +29,10 @@
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
 #include "vstd/RNG.h"
+#include <algorithm>
+#include <array>
+#include <boost/range/numeric.hpp>
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <random>
@@ -296,6 +300,7 @@ namespace {
 
         LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
+            std::cout << "level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << "\n";
             if (cr->getLevel() > 0)
             {
                 // std::cout << "CREATURE: " << cr->getNamePluralTextID() << "\n";
@@ -606,45 +611,146 @@ void ServerPlugin::handleVips(
 
 }
 
-void ServerPlugin::handleRandomStacks(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
-    auto dist100 = std::uniform_int_distribution<>(0, 99);
-    auto distCreatures = std::uniform_int_distribution<>(0, allcreatures.size() - 1);
-    auto distQuantity = std::uniform_int_distribution<>(0, 1000);
+void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
+    // TODO: this is no longer a "chance", but a toggle => rename config
+    if (config.randomArmyValueMax == 0)
+        return;
 
-    auto maybeAddStack = [this, &dist100, &distQuantity, &distCreatures](const CGHeroInstance *hero, int slot) {
-        if (hero->hasStackAtSlot(SlotID(slot))) {
-            if (hero->stacksCount() == 1)
-                return;
+    if ((config.randomArmyValueMin < 0) || (config.randomArmyValueMax < config.randomArmyValueMin) || (config.randomArmyTargetVar < 0) || (config.randomArmyTargetVar > 100))
+        throw std::runtime_error("invalid randomArmy config given");
 
-            // Roll whether to remove existing stack
-            if (dist100(rng) >= config.randomStackChance)
-                return;
-
-            // gh->giveHeroNewArtifact(hero, )
-            gh->eraseStack(StackLocation(hero->id, SlotID(slot)));
-        }
-
-        // Roll whether to add a new stack
-        if (dist100(rng) >= config.randomStackChance)
-            return;
-
-        const auto * cr = allcreatures.at(distCreatures(rng)).toCreature();
-        auto qty = distQuantity(rng);
-        // std::cout << "added " << cr->getDescriptionTextID() << "\n";
-        // Crude guard against absurd stacks such as 1K azure dragons
-        qty = std::max(1, qty / cr->getLevel());
-        // printf("Adding %d %s to slot %d for hero %s\n", qty, cr->getNamePluralTranslated().c_str(), slot, hero->nameCustomTextId.c_str());
-        gh->insertNewStack(StackLocation(hero->id, SlotID(slot)), cr, qty);
+    struct GeneratedStack
+    {
+        SlotID slot;
+        const CCreature * creature;
+        int quantity;
     };
 
-    // Don't add stacks to VIP armies
-    if (hero1 != vipHero1)
-        for (int i=0; i<7; ++i)
-            maybeAddStack(hero1, i);
+    auto divCeil = [](int value, int divisor) -> int
+    {
+        return (value + divisor - 1) / divisor;
+    };
 
-    if (hero2 != vipHero2)
-        for (int i=0; i<7; ++i)
-            maybeAddStack(hero2, i);
+    auto distTargetValue = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax);
+
+    auto var = static_cast<double>(config.randomArmyTargetVar) / 100;
+
+    auto generateArmy = [this, &divCeil, &var](int targetValue) -> std::vector<GeneratedStack>
+    {
+        const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
+        const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
+        const auto cheapestCreature = std::ranges::min_element(allcreatures, [this](const CreatureID & left, const CreatureID & right)
+        {
+            return creatureValues.at(left) < creatureValues.at(right);
+        });
+        const int cheapestValue = creatureValues.at(*cheapestCreature);
+
+        for(int attempt = 0; attempt < 1000; ++attempt)
+        {
+            std::array<int, 7> slots = { 0, 1, 2, 3, 4, 5, 6 };
+            std::shuffle(slots.begin(), slots.end(), rng);
+
+            // Bias towards fuller armies while still allowing sparse ones sometimes.
+            auto distSlotCount = std::uniform_int_distribution<>(1, 7);
+            const int desiredStackCount = std::max(distSlotCount(rng), distSlotCount(rng));
+
+            int totalValue = 0;
+            std::vector<GeneratedStack> generated;
+
+            for(int stackIndex = 0; stackIndex < desiredStackCount; ++stackIndex)
+            {
+                const int remainingSlotsAfterThis = desiredStackCount - stackIndex - 1;
+                const int remainingMaxValue = maxTotalValue - totalValue;
+                const int reservedValueForLaterSlots = cheapestValue * remainingSlotsAfterThis;
+                if(remainingMaxValue <= reservedValueForLaterSlots)
+                    break;
+
+                const bool isLastStack = remainingSlotsAfterThis == 0;
+                std::vector<const CCreature *> candidates;
+                for(const auto & creatureId : allcreatures)
+                {
+                    const auto value = creatureValues.at(creatureId);
+                    if(value <= 0 || value + reservedValueForLaterSlots > remainingMaxValue)
+                        continue;
+
+                    if(isLastStack)
+                    {
+                        const int requiredQuantity = divCeil(minTotalValue - totalValue, value);
+                        if(requiredQuantity * value > remainingMaxValue)
+                            continue;
+                    }
+
+                    candidates.push_back(creatureId.toCreature());
+                }
+
+                if(candidates.empty())
+                    break;
+
+                const auto * creature = candidates.at(std::uniform_int_distribution<>(0, static_cast<int>(candidates.size()) - 1)(rng));
+                const int creatureValue = creatureValues.at(creature->getId());
+                int maxQuantity = (remainingMaxValue - reservedValueForLaterSlots) / creatureValue;
+                const int minQuantity = isLastStack
+                    ? std::max(1, divCeil(minTotalValue - totalValue, creatureValue))
+                    : 1;
+
+                if(!isLastStack)
+                {
+                    const int valueBudgetForThisStack = divCeil(targetValue - totalValue, desiredStackCount - stackIndex);
+                    const int quantityBudgetForThisStack = std::max(1, divCeil(valueBudgetForThisStack * 2, creatureValue));
+                    maxQuantity = std::min(maxQuantity, quantityBudgetForThisStack);
+                }
+
+                if(minQuantity > maxQuantity)
+                    break;
+
+                const int quantity = std::uniform_int_distribution<>(minQuantity, maxQuantity)(rng);
+                generated.push_back({ SlotID(slots.at(stackIndex)), creature, quantity });
+                totalValue += creatureValue * quantity;
+            }
+
+            if(generated.size() == desiredStackCount && totalValue >= minTotalValue && totalValue <= maxTotalValue)
+                return generated;
+        }
+
+        const auto * creature = cheapestCreature->toCreature();
+        const int creatureValue = creatureValues.at(creature->getId());
+        const int quantity = std::max(1, divCeil(targetValue, creatureValue));
+        return { { SlotID(0), creature, quantity } };
+    };
+
+    const int target = distTargetValue(rng);
+
+    auto replaceArmy = [this, &target, &generateArmy](const CGHeroInstance * hero)
+    {
+        const auto generated = generateArmy(target);
+
+        for(int slot = 0; slot < 7; ++slot)
+            if(hero->hasStackAtSlot(SlotID(slot)))
+                gh->eraseStack(StackLocation(hero->id, SlotID(slot)), true);
+
+        std::cout << "Generated army for " << hero->nameCustomTextId << ":\n";
+        auto total = boost::accumulate(generated, 0, [&](int sum, const auto & stack) {
+            return sum + (creatureValues.at(stack.creature->getId()) * stack.quantity);
+        });
+
+        for(const auto & stack : generated)
+        {
+            auto value = creatureValues.at(stack.creature->getId()) * stack.quantity;
+            auto percent = std::round(100 * static_cast<float>(value) / static_cast<float>(total));
+            std::cout << "\t" << "[" << static_cast<int>(stack.slot) << "]\t" << percent << "%\t" << stack.quantity << " x " << stack.creature->getNameSingularTextID() << "\n";
+            gh->insertNewStack(StackLocation(hero->id, stack.slot), stack.creature, stack.quantity);
+        }
+        std::cout << "\t" << "Total value: " << total << " (" << std::round(100.0 * total / target) << "% of target)\n";
+    };
+
+    std::cout << "=================================\n";
+
+    // Don't add stacks to VIP armies
+    if(hero1 != vipHero1)
+        replaceArmy(hero1);
+
+    if(hero2 != vipHero2)
+        replaceArmy(hero2);
 }
 
 void ServerPlugin::handleWarmachines(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
@@ -745,7 +851,7 @@ void ServerPlugin::startBattleHook(
 
     handleRandomHeroes(army1, army2, hero1, hero2);
     handleVips(army1, army2, hero1, hero2);
-    handleRandomStacks(hero1, hero2);
+    handleRandomArmies(hero1, hero2);
     handleWarmachines(hero1, hero2);
     handleTightFormation(hero1, hero2);
     handleMinMaxMana(hero1, hero2);

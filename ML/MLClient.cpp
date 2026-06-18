@@ -244,8 +244,18 @@ namespace ML {
             exit(1);
         }
 
-        if (a.randomStackChance < 0 || a.randomStackChance > 100) {
-            std::cerr << "Bad value for randomStackChance: expected an integer between 0 and 100, got: " << a.randomStackChance << "\n";
+        if (a.randomArmyValueMin < 0 || a.randomArmyValueMin > 10000000) {
+            std::cerr << "Bad value for randomArmyValueMin: expected an integer between 0 and 10000000, got: " << a.randomArmyValueMin << "\n";
+            exit(1);
+        }
+
+        if ((a.randomArmyValueMax < a.randomArmyValueMin) || a.randomArmyValueMax > 10000000) {
+            std::cerr << "Bad value for randomArmyValueMax: expected an integer between " << a.randomArmyValueMin << " and 10000000, got: " << a.randomArmyValueMax << "\n";
+            exit(1);
+        }
+
+        if (a.randomArmyTargetVar < 0 || a.randomArmyTargetVar > 100) {
+            std::cerr << "Bad value for randomArmyTargetVar: expected an integer between 0 and 100, got: " << a.randomArmyTargetVar << "\n";
             exit(1);
         }
 
@@ -355,7 +365,9 @@ namespace ML {
         Settings(settings.write({"server", "ML", "randomObstacles"}))->Integer() = a.randomObstacles;
         Settings(settings.write({"server", "ML", "townChance"}))->Integer() = a.townChance;
         Settings(settings.write({"server", "ML", "warmachineChance"}))->Integer() = a.warmachineChance;
-        Settings(settings.write({"server", "ML", "randomStackChance"}))->Integer() = a.randomStackChance;
+        Settings(settings.write({"server", "ML", "randomArmyValueMin"}))->Integer() = a.randomArmyValueMin;
+        Settings(settings.write({"server", "ML", "randomArmyValueMax"}))->Integer() = a.randomArmyValueMax;
+        Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
         Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
         Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;
         Settings(settings.write({"server", "ML", "leftVipChance"}))->Integer() = a.leftVipChance;

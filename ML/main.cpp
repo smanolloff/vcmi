@@ -55,7 +55,9 @@ namespace ML {
         int seed = 0;
         int randomHeroes = 0;
         int randomObstacles = 0;
-        int randomStackChance = 0;
+        int randomArmyValueMin = 0;
+        int randomArmyValueMax = 0;
+        int randomArmyTargetVar = 0;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
         int leftVipChance = 0;
@@ -115,8 +117,12 @@ namespace ML {
                 "Percent chance to have the combat in a town (no town combat if 0*)")
             ("warmachine-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to add ballista/tent/cart in combat (no war machines if 0*)")
-            ("random-stack-chance", po::value<int>()->value_name("<N>"),
-                "Percent chance to set a random stack for each of the 7 hero slots (default 0*)")
+            ("random-army-value-min", po::value<int>()->value_name("<N>"),
+                "Min total value for randomized armies (default 5000*)")
+            ("random-army-value-max", po::value<int>()->value_name("<N>"),
+                "Max total value for randomized armies (disabled if 0; default 1000000*)")
+            ("random-army-target-var", po::value<int>()->value_name("<N>"),
+                "Percent variance for meeting the target total value (default 30*)")
             ("tight-formation-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a tight army formation (default 0*)")
             ("random-terrain-chance", po::value<int>()->value_name("<N>"),
@@ -212,8 +218,14 @@ namespace ML {
         if (vm.count("warmachine-chance"))
             warmachineChance = vm.at("warmachine-chance").as<int>();
 
-        if (vm.count("random-stack-chance"))
-            randomStackChance = vm.at("random-stack-chance").as<int>();
+        if (vm.count("random-army-value-min"))
+            randomArmyValueMin = vm.at("random-army-value-min").as<int>();
+
+        if (vm.count("random-army-value-max"))
+            randomArmyValueMax = vm.at("random-army-value-max").as<int>();
+
+        if (vm.count("random-army-target-var"))
+            randomArmyTargetVar = vm.at("random-army-target-var").as<int>();
 
         if (vm.count("tight-formation-chance"))
             tightFormationChance = vm.at("tight-formation-chance").as<int>();
@@ -326,7 +338,9 @@ namespace ML {
             .randomObstacles=randomObstacles,
             .townChance=townChance,
             .warmachineChance=warmachineChance,
-            .randomStackChance=randomStackChance,
+            .randomArmyValueMin=randomArmyValueMin,
+            .randomArmyValueMax=randomArmyValueMax,
+            .randomArmyTargetVar=randomArmyTargetVar,
             .tightFormationChance=tightFormationChance,
             .randomTerrainChance=randomTerrainChance,
             .leftVipChance=leftVipChance,

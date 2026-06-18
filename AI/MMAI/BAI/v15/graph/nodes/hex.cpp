@@ -94,12 +94,28 @@ void Hex::setMoatFlags(
             const auto * so = dynamic_cast<const SpellCreatedObstacle*>(obstacle);
             // const bool visible = so->visibleForSide(side, hasNativeStack);
 
-            // XXX: for quicksand, this should be STOPPING only for opponent
-            //      for regular moats, this should be STOPPING for everyone
-            //      How to check which side is affected?
+            // XXX: this does NOT work for town land mine? (it has ID 95 i think -- not mapped)
+            // TODO: check if the land mines are static and add a constant accordingly?
+            // XXX: this works for QUICKSAND (ID is 10 - checked)
+            // TODO: does it work for LAND_MINE (regular cast)?
+            //
             if (so->stopsMovement())
                     setattr(A::IS_STOPPING, 1);
 
+            // switch(SpellID(obstacle->ID))
+            // {
+            //     case SpellID::QUICKSAND:
+            //         setattr(A::IS_STOPPING, 1);
+            //         statemask |= S_STOPPING;
+            //         break;
+
+
+            // XXX: for quicksand, this should be STOPPING only for opponent
+            //      for regular moats, this should be STOPPING for everyone
+            //      How to check which side is affected?
+
+            // XXX: Quicksand has no trigger => this fails
+            // (it is just an invisible trap)
             const CSpell * spell = so->trigger.toSpell();
             if (spell->identifier == "landMineTrigger")
             {
