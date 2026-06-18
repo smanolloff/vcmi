@@ -31,7 +31,9 @@ namespace ML {
             randomObstacles = settings["server"]["ML"]["randomObstacles"].Integer();
             townChance = settings["server"]["ML"]["townChance"].Integer();
             warmachineChance = settings["server"]["ML"]["warmachineChance"].Integer();
-            randomStackChance = settings["server"]["ML"]["randomStackChance"].Integer();
+            randomArmyValueMin = settings["server"]["ML"]["randomArmyValueMin"].Integer();
+            randomArmyValueMax = settings["server"]["ML"]["randomArmyValueMax"].Integer();
+            randomArmyTargetVar = settings["server"]["ML"]["randomArmyTargetVar"].Integer();
             tightFormationChance = settings["server"]["ML"]["tightFormationChance"].Integer();
             randomTerrainChance = settings["server"]["ML"]["randomTerrainChance"].Integer();
             leftVipChance = settings["server"]["ML"]["leftVipChance"].Integer();
@@ -56,7 +58,9 @@ namespace ML {
         int randomObstacles = 0;
         int townChance = 0;
         int warmachineChance = 0;
-        int randomStackChance = 0;
+        int randomArmyValueMin = 0;
+        int randomArmyValueMax = 0;
+        int randomArmyTargetVar = 0;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
         int leftVipChance = 0;

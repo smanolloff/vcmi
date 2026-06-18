@@ -99,17 +99,49 @@ namespace
 	            tmp = G.size<E::Global_To_Player>();
 	            std::cout << tmp << " EDGE_GLOBAL_TO_PLAYER\n";
 	            break;
+	        case ET::EDGE_PLAYER_TO_GLOBAL:
+	            tmp = G.size<E::Player_To_Global>();
+	            std::cout << tmp << " EDGE_PLAYER_TO_GLOBAL\n";
+	            break;
 	        case ET::EDGE_GLOBAL_TO_UNIT:
 	            tmp = G.size<E::Global_To_Unit>();
 	            std::cout << tmp << " EDGE_GLOBAL_TO_UNIT\n";
 	            break;
+	        case ET::EDGE_UNIT_TO_GLOBAL:
+	        	tmp = G.size<E::Unit_To_Global>();
+	        	std::cout << tmp << " EDGE_UNIT_TO_GLOBAL\n";
 	        case ET::EDGE_GLOBAL_TO_HEX:
 	            tmp = G.size<E::Global_To_Hex>();
 	            std::cout << tmp << " EDGE_GLOBAL_TO_HEX\n";
 	            break;
+	        case ET::EDGE_HEX_TO_GLOBAL:
+	        	tmp = G.size<E::Hex_To_Global>();
+	        	std::cout << tmp << " EDGE_HEX_TO_GLOBAL\n";
+	        case ET::EDGE_GLOBAL_TO_ACTION:
+	        	tmp = G.size<E::Global_To_Action>();
+	        	std::cout << tmp << " EDGE_GLOBAL_TO_ACTION\n";
 	        case ET::EDGE_PLAYER_OWNS_UNIT:
 	            tmp = G.size<E::Player_Owns_Unit>();
 	            std::cout << tmp << " EDGE_PLAYER_OWNS_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_OWNED_BY_PLAYER:
+	        	tmp = G.size<E::Unit_OwnedBy_Player>();
+	        	std::cout << tmp << " EDGE_UNIT_OWNED_BY_PLAYER\n";
+	        case ET::EDGE_UNIT_OCCUPIES_HEX:
+	            tmp = G.size<E::Unit_Occupies_Hex>();
+	            std::cout << tmp << " EDGE_UNIT_OCCUPIES_HEX\n";
+	            break;
+	        case ET::EDGE_HEX_OCCUPIED_BY_UNIT:
+	            tmp = G.size<E::Hex_OccupiedBy_Unit>();
+	            std::cout << tmp << " EDGE_HEX_OCCUPIED_BY_UNIT\n";
+	            break;
+	        case ET::EDGE_ACTION_BY_UNIT:
+	            tmp = G.size<E::Action_By_Unit>();
+	            std::cout << tmp << " EDGE_ACTION_BY_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_HAS_ACTION:
+	            tmp = G.size<E::Unit_Has_Action>();
+	            std::cout << tmp << " EDGE_UNIT_HAS_ACTION\n";
 	            break;
 	        case ET::EDGE_HEX_ADJACENT_HEX:
 	            tmp = G.size<E::Hex_Adjacent_Hex>();
@@ -131,21 +163,21 @@ namespace
 	            tmp = G.size<E::Unit_Blocks_Unit>();
 	            std::cout << tmp << " EDGE_UNIT_BLOCKS_UNIT\n";
 	            break;
-	        case ET::EDGE_UNIT_OCCUPIES_HEX:
-	            tmp = G.size<E::Unit_Occupies_Hex>();
-	            std::cout << tmp << " EDGE_UNIT_OCCUPIES_HEX\n";
-	            break;
-	        case ET::EDGE_ACTION_BY_UNIT:
-	            tmp = G.size<E::Action_By_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_BY_UNIT\n";
-	            break;
 	        case ET::EDGE_ACTION_ENDS_AT_HEX:
 	            tmp = G.size<E::Action_EndsAt_Hex>();
 	            std::cout << tmp << " EDGE_ACTION_ENDS_AT_HEX\n";
 	            break;
+	        case ET::EDGE_HEX_IS_END_OF_ACTION:
+	            tmp = G.size<E::Hex_IsEndOf_Action>();
+	            std::cout << tmp << " EDGE_HEX_IS_END_OF_ACTION\n";
+	            break;
 	        case ET::EDGE_ACTION_BLOCKS_UNIT:
 	            tmp = G.size<E::Action_Blocks_Unit>();
 	            std::cout << tmp << " EDGE_ACTION_BLOCKS_UNIT\n";
+	            break;
+	        case ET::EDGE_UNIT_BLOCKED_BY_ACTION:
+	            tmp = G.size<E::Unit_BlockedBy_Action>();
+	            std::cout << tmp << " EDGE_UNIT_BLOCKED_BY_ACTION\n";
 	            break;
 	        case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
 	            tmp = G.size<E::Unit_BecomesMeleeThreatAfter_Action>();
@@ -182,6 +214,7 @@ namespace
 	        default:
 	        	throw std::runtime_error("Unexpected element type: " + std::to_string(i));
 	        }
+	        static_assert(static_cast<int>(ET::_count) == 35);
 	        total += tmp;
 		}
 		std::cout << "  ---\n";
@@ -1779,7 +1812,7 @@ namespace
 				default:
 					throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
 			}
-	        static_assert(static_cast<int>(S15::Graph::ElementType::_count) == 35);
+	        static_assert(static_cast<int>(ET::_count) == 35);
 		}
 	};
 

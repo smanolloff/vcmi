@@ -107,7 +107,7 @@ namespace ML {
 
         void _setVipArmy(CGHeroInstance * heroA, CGHeroInstance * heroB);
 
-        void handleRandomStacks(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
+        void handleRandomArmies(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleWarmachines(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleTightFormation(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleMinMaxMana(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
