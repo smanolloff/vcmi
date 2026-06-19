@@ -21,7 +21,7 @@
 #include "battle/BattleAction.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CCallback.h"
-#include "callback/CDynLibHandler.h"
+#include "lib/callback/AIFactory.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
 #include "networkPacks/BattleChanges.h"
@@ -100,7 +100,7 @@ void AAI::battleStart(
 	assert(cbc);
 
 	auto ainame = getBattleAIName();
-	battleAI = CDynLibHandler::getNewBattleAI("MMAI");
+	battleAI = AIFactory::createBattleAI("MMAI");
 	battleAI->initBattleInterface(env, cbc, aiCombatOptions);
 	battleAI->battleStart(bid, army1, army2, tile, hero1, hero2, side_, replayAllowed);
 }

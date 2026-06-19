@@ -1961,18 +1961,9 @@ bool CPlayerInterface::capturedAllEvents()
 
 void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side)
 {
-<<<<<<< HEAD
-	autofightingAI = AIFactory::createBattleAI(settings["ai"]["combatAlliedAI"].String());
-
-	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
-	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-
-	autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
-=======
 	aiCombatOptions.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-	autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["combatAlliedAI"].String());
+	autofightingAI = AIFactory::createBattleAI(settings["server"]["combatAlliedAI"].String());
 	autofightingAI->initBattleInterface(env, cb, aiCombatOptions);
->>>>>>> 2b7b6ba16 (MMAI: ML-related changes)
 	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
 	isAutoFightOn = true;
 	registerBattleInterface(autofightingAI);

@@ -294,16 +294,6 @@ namespace ML {
             exit(1);
         }
 
-        if (boost::filesystem::is_directory(VCMI_BIN_DIR)) {
-            if (!boost::filesystem::is_regular_file(boost::filesystem::path(VCMI_BIN_DIR) / "AI" / "libMMAI." LIBEXT)) {
-                std::cerr << "Bad value for VCMI_BIN_DIR: exists, but AI/libMMAI." LIBEXT " was not found: " << VCMI_BIN_DIR << "\n";
-                exit(1);
-            }
-        } else {
-            std::cerr << "Bad value for VCMI_BIN_DIR: " << VCMI_BIN_DIR << "\n(not a directory)\n";
-                exit(1);
-        }
-
         // XXX: can this blow given preinitDLL is not yet called here?
         auto dir = VCMIDirs::get().userDataPath() / "Maps";
         validateFile("map", a.mapname, VCMIDirs::get().userDataPath() / "Maps");

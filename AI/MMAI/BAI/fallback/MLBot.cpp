@@ -22,8 +22,8 @@
 #include "battle/CObstacleInstance.h"
 #include "battle/ReachabilityInfo.h"
 #include "callback/CBattleCallback.h"
-#include "callback/CDynLibHandler.h"
 #include "lib/CRandomGenerator.h"
+#include "lib/callback/AIFactory.h"
 
 #include "MLBot.h"
 #include <algorithm>
@@ -136,7 +136,7 @@ MLBot::MLBot(const std::string & botname)
     oss << ptr;
     addrstr = oss.str();
     info("+++ constructor +++"); // log after addrstr is set
-    bot = CDynLibHandler::getNewBattleAI(botname);
+    bot = AIFactory::createBattleAI(botname);
 }
 
 MLBot::~MLBot()

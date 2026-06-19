@@ -13,11 +13,7 @@
 #include "BattleExchangeVariant.h"
 
 #include "StackWithBonuses.h"
-<<<<<<< HEAD
-=======
-#include "EnemyInfo.h"
 #include "battle/AICombatOptions.h"
->>>>>>> 2b7b6ba16 (MMAI: ML-related changes)
 #include "tbb/parallel_for.h"
 #include "../../lib/CStopWatch.h"
 #include "../../lib/CThreadHelper.h"

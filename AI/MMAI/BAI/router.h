@@ -15,8 +15,7 @@
 #include "battle/AICombatOptions.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
-
-#include "schema/base.h"
+#include "AI/MMAI/schema/base.h"
 
 namespace MMAI::BAI
 {

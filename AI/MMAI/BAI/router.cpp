@@ -396,23 +396,13 @@ void Router::battleStart(
 		case Schema::ModelType::SCRIPTED:
 			if(model->getName() == "StupidAI")
 			{
-<<<<<<< HEAD
 				bai = std::make_shared<CStupidAI>();
-				bai->initBattleInterface(env, cb, autocombatPreferences);
+				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
 			else if(model->getName() == "BattleAI")
 			{
 				bai = std::make_shared<CBattleAI>();
-				bai->initBattleInterface(env, cb, autocombatPreferences);
-=======
-				bai = CDynLibHandler::getNewBattleAI("StupidAI");
 				bai->initBattleInterface(env, cb, aiCombatOptions);
-			}
-			else if(model->getName() == "BattleAI")
-			{
-				bai = CDynLibHandler::getNewBattleAI("BattleAI");
-				bai->initBattleInterface(env, cb, aiCombatOptions);
->>>>>>> 2b7b6ba16 (MMAI: ML-related changes)
 			}
 #ifdef ENABLE_ML
 			else if(model->getName() == "MMAI_BATTLEAI")
