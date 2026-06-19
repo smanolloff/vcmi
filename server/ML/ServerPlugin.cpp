@@ -300,7 +300,7 @@ namespace {
 
         LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
-            std::cout << "level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << "\n";
+            // std::cout << "level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << "\n";
             if (cr->getLevel() > 0)
             {
                 // std::cout << "CREATURE: " << cr->getNamePluralTextID() << "\n";
@@ -413,8 +413,8 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
         {
             for (auto &[poolname, pool] : heropools.at(owner)) {
                 // std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
-                if (pool.heroes.size() % 2 != 0) {
-                    throw std::runtime_error("randomHeroes requires an even number of heroes is required in each hero pool.");
+                if (pool.heroes.size() == 0) {
+                    throw std::runtime_error("randomHeroes requires at leats 1 hero in each pool.");
                 }
             }
         }
@@ -612,8 +612,7 @@ void ServerPlugin::handleVips(
 }
 
 void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
-    // TODO: this is no longer a "chance", but a toggle => rename config
-    if (config.randomArmyValueMax == 0)
+    if (!config.randomArmies)
         return;
 
     if ((config.randomArmyValueMin < 0) || (config.randomArmyValueMax < config.randomArmyValueMin) || (config.randomArmyTargetVar < 0) || (config.randomArmyTargetVar > 100))

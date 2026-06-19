@@ -55,6 +55,7 @@ namespace ML {
         int seed = 0;
         int randomHeroes = 0;
         int randomObstacles = 0;
+        bool randomArmies = false;
         int randomArmyValueMin = 0;
         int randomArmyValueMax = 0;
         int randomArmyTargetVar = 0;
@@ -117,10 +118,12 @@ namespace ML {
                 "Percent chance to have the combat in a town (no town combat if 0*)")
             ("warmachine-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to add ballista/tent/cart in combat (no war machines if 0*)")
+            ("random-armies", po::bool_switch(&randomArmies),
+                "Randomize armies before each battle")
             ("random-army-value-min", po::value<int>()->value_name("<N>"),
                 "Min total value for randomized armies (default 5000*)")
             ("random-army-value-max", po::value<int>()->value_name("<N>"),
-                "Max total value for randomized armies (disabled if 0; default 1000000*)")
+                "Max total value for randomized armies (default 1000000*)")
             ("random-army-target-var", po::value<int>()->value_name("<N>"),
                 "Percent variance for meeting the target total value (default 30*)")
             ("tight-formation-chance", po::value<int>()->value_name("<N>"),
@@ -338,6 +341,7 @@ namespace ML {
             .randomObstacles=randomObstacles,
             .townChance=townChance,
             .warmachineChance=warmachineChance,
+            .randomArmies=randomArmies,
             .randomArmyValueMin=randomArmyValueMin,
             .randomArmyValueMax=randomArmyValueMax,
             .randomArmyTargetVar=randomArmyTargetVar,

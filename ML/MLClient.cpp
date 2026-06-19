@@ -250,7 +250,7 @@ namespace ML {
         }
 
         if ((a.randomArmyValueMax < a.randomArmyValueMin) || a.randomArmyValueMax > 10000000) {
-            std::cerr << "Bad value for randomArmyValueMax: expected an integer between " << a.randomArmyValueMin << " and 10000000, got: " << a.randomArmyValueMax << "\n";
+            std::cerr << "Bad value for randomArmyValueMax: expected an integer between randomArmyValueMin and 10000000, got: " << a.randomArmyValueMax << "\n";
             exit(1);
         }
 
@@ -365,6 +365,7 @@ namespace ML {
         Settings(settings.write({"server", "ML", "randomObstacles"}))->Integer() = a.randomObstacles;
         Settings(settings.write({"server", "ML", "townChance"}))->Integer() = a.townChance;
         Settings(settings.write({"server", "ML", "warmachineChance"}))->Integer() = a.warmachineChance;
+        Settings(settings.write({"server", "ML", "randomArmies"}))->Bool() = a.randomArmies;
         Settings(settings.write({"server", "ML", "randomArmyValueMin"}))->Integer() = a.randomArmyValueMin;
         Settings(settings.write({"server", "ML", "randomArmyValueMax"}))->Integer() = a.randomArmyValueMax;
         Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
