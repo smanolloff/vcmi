@@ -54,7 +54,6 @@ public:
 		const S15::WallHP wallHP;
 		const bool isGateOpen;
 		const bool isSiege;
-		const bool hasNativeStack;
 	};
 
     static std::shared_ptr<const Hex> Create(const Args & args)
@@ -86,8 +85,7 @@ private:
 	void setMoatFlags(
 	    const CObstacleInstance * obstacle,
 	    bool isGateOpen,
-	    BattleSide side,
-	    bool hasNativeStack);
+	    BattleSide side);
 };
 
 }

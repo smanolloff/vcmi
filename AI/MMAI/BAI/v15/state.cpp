@@ -890,7 +890,6 @@ namespace
 		G.setFlag(ET::NODE_HEX);
 
 		auto hexobstacles = std::array<std::vector<std::shared_ptr<const CObstacleInstance>>, 165>{};
-		auto hasNativeStack = acstack && battle.battleHasNativeStack(acstack->unitSide());
 
 		for(const auto & obstacle : battle.battleGetAllObstacles())
 			for(const auto & bh : obstacle->getAffectedTiles())
@@ -917,7 +916,6 @@ namespace
 					.wallHP=GetWallHP(battle, bh),
 					.isGateOpen=isGateOpen,
 					.isSiege=(battle.battleGetFortifications().wallsHealth > 0),
-					.hasNativeStack=hasNativeStack
 				}));
 			}
 		}
