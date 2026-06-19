@@ -28,7 +28,7 @@ Hex::Hex(const Args & args)
     guardflags.set(); // See note for attr()/setattr() in Hex.h
 
     for(const auto& obstacle : args.obstacles)
-        setMoatFlags(obstacle.get(), args.isGateOpen, args.side, args.hasNativeStack);
+        setMoatFlags(obstacle.get(), args.isGateOpen, args.side);
 
     setattr(A::Y_COORD, y);
     setattr(A::X_COORD, x);
@@ -75,8 +75,7 @@ std::string Hex::name() const
 void Hex::setMoatFlags(
     const CObstacleInstance * obstacle,
     bool isGateOpen,
-    BattleSide side,
-    bool hasNativeStack)
+    BattleSide side)
 {
     switch(obstacle->obstacleType)
     {
@@ -91,39 +90,27 @@ void Hex::setMoatFlags(
 
         case CObstacleInstance::SPELL_CREATED:
         {
-            const auto * so = dynamic_cast<const SpellCreatedObstacle*>(obstacle);
-            // const bool visible = so->visibleForSide(side, hasNativeStack);
+            const auto * spell = SpellID(obstacle->ID).toSpell();
 
-            // XXX: this does NOT work for town land mine? (it has ID 95 i think -- not mapped)
-            // TODO: check if the land mines are static and add a constant accordingly?
-            // XXX: this works for QUICKSAND (ID is 10 - checked)
-            // TODO: does it work for LAND_MINE (regular cast)?
-            //
-            if (so->stopsMovement())
-                    setattr(A::IS_STOPPING, 1);
-
-            // switch(SpellID(obstacle->ID))
-            // {
-            //     case SpellID::QUICKSAND:
-            //         setattr(A::IS_STOPPING, 1);
-            //         statemask |= S_STOPPING;
-            //         break;
-
-
-            // XXX: for quicksand, this should be STOPPING only for opponent
-            //      for regular moats, this should be STOPPING for everyone
-            //      How to check which side is affected?
-
-            // XXX: Quicksand has no trigger => this fails
-            // (it is just an invisible trap)
-            const CSpell * spell = so->trigger.toSpell();
-            if (spell->identifier == "landMineTrigger")
+            // XXX: can't compare SpellID because there is no constant for tower moat
+            // => compare string identifiers
+            //  landMine - regular land mine spell
+            //  towerMoat - tower land mine
+            //  quicksand - no need to check this (checking stopsMovement() is preferred)
+            // Ideally, a "damaging" property of the spell or obstacle would be
+            // enough and we wouldn't need to check exactly what obstacle this is,
+            // but there seems to be no easy way to obtain such information
+            if (spell->identifier == "landMine" || spell->identifier == "towerMoat")
             {
+                const auto * so = dynamic_cast<const SpellCreatedObstacle *>(obstacle);
                 if(side == so->casterSide)
                     setattr(side == BattleSide::DEFENDER ? A::IS_DAMAGING_L : A::IS_DAMAGING_R, 1);
                 else
                     setattr(side == BattleSide::DEFENDER ? A::IS_DAMAGING_R : A::IS_DAMAGING_L, 1);
             }
+
+            if (obstacle->stopsMovement())
+                setattr(A::IS_STOPPING, 1);
 
             break;
         }
