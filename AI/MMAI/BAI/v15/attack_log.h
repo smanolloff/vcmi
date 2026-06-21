@@ -11,6 +11,7 @@
 #pragma once
 
 #include "BAI/v15/graph/nodes/unit.h"
+#include "networkPacks/PacksForClientBattle.h"
 #include "schema/v15/types.h"
 
 namespace MMAI::BAI::V15
@@ -21,6 +22,7 @@ class AttackLog : public Schema::V15::IAttackLog
 	using UnitPtr = std::shared_ptr<const Graph::Nodes::Unit>;
 public:
 	AttackLog(
+		const BattleStackAttacked & bsa,
 		const UnitPtr & attacker,
 		const UnitPtr & defender,
 		const int dmg,
@@ -29,7 +31,8 @@ public:
 		const int value,
 		const int valuePermille
 	)
-	: attacker(attacker)
+	: bsa(bsa)
+	, attacker(attacker)
 	, defender(defender)
 	, dmg(dmg)
 	, dmgPermille(dmgPermille)
@@ -68,6 +71,7 @@ public:
 	 * => store only defender slot
 	 */
 
+	const BattleStackAttacked bsa;
 	const UnitPtr attacker;
 	const UnitPtr defender;
 	const int dmg;

@@ -14,7 +14,8 @@ _require-cmake:
 
 dependencies: _require-cmake
 dependencies:
-	curl -LO https://github.com/vcmi/vcmi-dependencies/releases/download/2026-06-18/dependencies-mac-arm.txz
+	tag=$$(git -C dependencies tag --points-at HEAD); echo "Dependencies tag: $$tag"; \
+	curl -LO https://github.com/vcmi/vcmi-dependencies/releases/download/$$(git -C dependencies tag --points-at HEAD)/dependencies-mac-arm.txz
 	conan cache restore dependencies-mac-arm.txz
 	conan install . \
 		--output-folder=conan-generated-debug \

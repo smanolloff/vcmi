@@ -697,15 +697,18 @@ namespace
 				}
 			}
 
-			if(al.defender->cstack.unitSide() == BattleSide::LEFT_SIDE)
+			if(al.defender)
 			{
-				res.ldr += al.dmg;
-				res.lvl += al.value;
-			}
-			else
-			{
-				res.rdr += al.dmg;
-				res.rvl += al.value;
+				if(al.defender->cstack.unitSide() == BattleSide::LEFT_SIDE)
+				{
+					res.ldr += al.dmg;
+					res.lvl += al.value;
+				}
+				else
+				{
+					res.rdr += al.dmg;
+					res.rvl += al.value;
+				}
 			}
 		}
 
@@ -2105,6 +2108,7 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		attackLogs.emplace_back(
 			// attacker and/or defender CStack may be missing in G
 			// (e.g. resurrected after G was constructed)
+			elem,
 			attacker ? G->getByExtraIndex<N::Unit>(attacker->unitId(), false) : nullptr,
 			G->getByExtraIndex<N::Unit>(defender->unitId(), false),
 			static_cast<int>(elem.damageAmount),
