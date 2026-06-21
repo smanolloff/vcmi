@@ -627,7 +627,7 @@ namespace
 						expect(actor.canShoot(), "ACTION.ACTION_TYPE[SHOOT]: can't shoot");
 						expect(!ctx.battle.battleIsUnitBlocked(&actor)
 							|| actor.hasBonusOfType(BonusType::FREE_SHOOTING)
-							|| actor.isBallista(), "ACTION.ACTION_TYPE[SHOOT]: blocked");
+							|| actor.unitType()->warMachine == ArtifactID::BALLISTA, "ACTION.ACTION_TYPE[SHOOT]: blocked");
 						break;
 					default:
 						throw std::runtime_error("Unexpected Action type: " + std::to_string(v));

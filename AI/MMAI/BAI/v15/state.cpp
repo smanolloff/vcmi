@@ -1121,9 +1121,10 @@ namespace
 				// all ranged units can also melee, except for ballistas
 				// Ballistas are shooters which do NOT have melee dmg edges to enemies
 				// => handle separately
+				bool isBallista = stack.unitType()->warMachine == ArtifactID::BALLISTA;
 				bool isCandidate = (
 					G.getEdgeBySrcDst<E::Unit_MeleeDmg_Unit>(unit, other, false)
-					|| (stack.isBallista() && stack.unitSide() != ostack.unitSide())
+					|| (isBallista && stack.unitSide() != ostack.unitSide())
 				);
 
 				if (!isCandidate || !stack.canShoot() || ostack.isInvincible())

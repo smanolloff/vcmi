@@ -219,7 +219,7 @@ void AAI::showBlockingDialog(
 	throw std::runtime_error("`showBlockingDialog` not implemented by AAI");
 }
 
-void AAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID, const MetaString & customTitle)
+void AAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QueryID queryID)
 {
 	debug("*** showGarrisonDialog ***");
 	throw std::runtime_error("`showGarrisonDialog` not implemented by AAI");
