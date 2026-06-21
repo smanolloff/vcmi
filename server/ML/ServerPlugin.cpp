@@ -727,7 +727,7 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
             if(hero->hasStackAtSlot(SlotID(slot)))
                 gh->eraseStack(StackLocation(hero->id, SlotID(slot)), true);
 
-        std::cout << "Generated army for " << hero->nameCustomTextId << ":\n";
+        // std::cout << "Generated army for " << hero->nameCustomTextId << ":\n";
         auto total = boost::accumulate(generated, 0, [&](int sum, const auto & stack) {
             return sum + (creatureValues.at(stack.creature->getId()) * stack.quantity);
         });
@@ -739,7 +739,7 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
             std::cout << "\t" << "[" << static_cast<int>(stack.slot) << "]\t" << percent << "%\t" << stack.quantity << " x " << stack.creature->getNameSingularTextID() << "\n";
             gh->insertNewStack(StackLocation(hero->id, stack.slot), stack.creature, stack.quantity);
         }
-        std::cout << "\t" << "Total value: " << total << " (" << std::round(100.0 * total / target) << "% of target)\n";
+        // std::cout << "\t" << "Total value: " << total << " (" << std::round(100.0 * total / target) << "% of target)\n";
     };
 
     std::cout << "=================================\n";
