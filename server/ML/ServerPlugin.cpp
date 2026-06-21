@@ -742,7 +742,7 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
         // std::cout << "\t" << "Total value: " << total << " (" << std::round(100.0 * total / target) << "% of target)\n";
     };
 
-    std::cout << "=================================\n";
+    // std::cout << "=================================\n";
 
     // Don't add stacks to VIP armies
     if(hero1 != vipHero1)
