@@ -736,7 +736,7 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
         {
             auto value = creatureValues.at(stack.creature->getId()) * stack.quantity;
             auto percent = std::round(100 * static_cast<float>(value) / static_cast<float>(total));
-            std::cout << "\t" << "[" << static_cast<int>(stack.slot) << "]\t" << percent << "%\t" << stack.quantity << " x " << stack.creature->getNameSingularTextID() << "\n";
+            // std::cout << "\t" << "[" << static_cast<int>(stack.slot) << "]\t" << percent << "%\t" << stack.quantity << " x " << stack.creature->getNameSingularTextID() << "\n";
             gh->insertNewStack(StackLocation(hero->id, stack.slot), stack.creature, stack.quantity);
         }
         // std::cout << "\t" << "Total value: " << total << " (" << std::round(100.0 * total / target) << "% of target)\n";
