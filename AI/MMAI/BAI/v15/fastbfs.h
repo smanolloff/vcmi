@@ -97,8 +97,10 @@ private:
         // but modified to fix a bug with gate hex (see notes/moats.txt)
         for(const auto & o : battle.battleGetAllObstacles(battle.battleGetMySide()))
         {
-            if(!battle.battleIsObstacleVisibleForSide(*o, side))
-                continue;
+            // XXX: enemies can't see the quicksand, but they will still be stopped
+            //      by it => disable this "if"
+            // if(!battle.battleIsObstacleVisibleForSide(*o, side))
+            //     continue;
 
             for(const auto & hex : o->getStoppingTile())
             {

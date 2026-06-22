@@ -22,6 +22,7 @@
 #include "common.h"
 #include "schema/v15/types.h"
 #include <algorithm>
+#include <string>
 #include <vector>
 
 
@@ -194,7 +195,8 @@ namespace
 				break;
 			case A::BATTLE_ROUND:
 				// XXX: technically, the first round for MMAI may not be the 1st VCMI round
-				// It's highly unlikely though: all MMAI units must be blinded for the 1st round
+				// With GUI, when "auto-play" is pressed, MMAI perceives starts from round 0
+				// In headless mode it's unlikely: all MMAI units must be blinded for the 1st round
 				vassert(v, ctx.battle.battleGetRound(), "GLOBAL.BATTLE_ROUND");
 				break;
 			case A::HAS_UPPER_TOWER:
@@ -616,7 +618,7 @@ namespace
 						// nothing to check (always possible action)
 						break;
 					case AT::MOVE:
-						expect(isReachable(actor, endBhex), "ACTION.ACTION_TYPE[MOVE]: endBhex unreachable");
+						expect(isReachable(actor, endBhex), "ACTION.ACTION_TYPE[MOVE]: endBhex unreachable: " + action->endsAt.at(0)->name() + " by " + action->by->name());
 						break;
 					case AT::AMOVE:
 						expect(isReachable(actor, endBhex), "ACTION.ACTION_TYPE[AMOVE]: endBhex unreachable");
@@ -752,8 +754,20 @@ namespace
 				return false;
 			});
 
-			const auto & params = ReachabilityInfo::Parameters(&threat, threat.getPosition(), knownAccessible);
-			const auto & reachability = ctx.battle.getReachability(params);
+			// XXX: Original VCMI constructor for Parameters does not allow
+			// to set neighter knownAccessible (which we need for the hypothetical new pos)
+			// not the perspective (which we need to set to OUR, instead of the threat's perspective)
+			// The reachability can "see" all obstacles visible to the enemy otherwise,
+			// which is incorrect -- we must ignore what is not visible to us
+			// => use a custom constructor added for ML purposes
+			const auto & params = ReachabilityInfo::Parameters(
+				ctx.battle.battleGetMySide(),
+				&threat,
+				threat.getPosition(),
+				knownAccessible
+			);
+
+			auto reachability = ctx.battle.getReachability(params);
 
 			// "Move" the actor to its new position
 			const auto & actorstate = actor.acquireState();
@@ -827,7 +841,12 @@ namespace
 			for (const auto & bhex : actor.getHexes(dstHex))
 				knownAccessible.checkAndPush(bhex);
 
-			const auto & params = ReachabilityInfo::Parameters(&actor, dstHex, knownAccessible);
+			const auto & params = ReachabilityInfo::Parameters(
+				ctx.battle.battleGetMySide(),
+				&actor,
+				dstHex,
+				knownAccessible
+			);
 			const auto & reachability = ctx.battle.getReachability(params);
 			const auto & attackableHexes = target.getAttackableHexes(&actor);
 			bool threat = std::ranges::any_of(attackableHexes, [&speed, &reachability](const BattleHex & bh) {
@@ -906,7 +925,12 @@ namespace
 			for (const auto & bhex : actor.getHexes(moveDest))
 				knownAccessible.checkAndPush(bhex);
 
-			const auto & params = ReachabilityInfo::Parameters(&actor, moveDest, knownAccessible);
+			const auto & params = ReachabilityInfo::Parameters(
+				ctx.battle.battleGetMySide(),
+				&actor,
+				moveDest,
+				knownAccessible
+			);
 			const auto & reachability = ctx.battle.getReachability(params);
 
 			const bool attackable = std::ranges::any_of(attackPositions, [&reachability, &actor](const BattleHex & bh) {

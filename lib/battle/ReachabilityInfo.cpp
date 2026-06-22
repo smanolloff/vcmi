@@ -14,8 +14,8 @@
 
 VCMI_LIB_NAMESPACE_BEGIN
 
-ReachabilityInfo::Parameters::Parameters(const battle::Unit * Stack, const BattleHex & StartPosition, const BattleHexArray & knownAccessible):
-	perspective(static_cast<BattleSide>(Stack->unitSide())),
+ReachabilityInfo::Parameters::Parameters(BattleSide perspective, const battle::Unit * Stack, const BattleHex & StartPosition, const BattleHexArray & knownAccessible):
+	perspective(perspective),
 	startPosition(StartPosition),
 	doubleWide(Stack->doubleWide()),
 	side(Stack->unitSide()),
@@ -26,7 +26,7 @@ ReachabilityInfo::Parameters::Parameters(const battle::Unit * Stack, const Battl
 }
 
 ReachabilityInfo::Parameters::Parameters(const battle::Unit * Stack, const BattleHex & StartPosition):
-	ReachabilityInfo::Parameters::Parameters(Stack, StartPosition, Stack->getHexes(StartPosition))
+	ReachabilityInfo::Parameters::Parameters(static_cast<BattleSide>(Stack->unitSide()), Stack, StartPosition, Stack->getHexes(StartPosition))
 {
 }
 
