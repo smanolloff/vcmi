@@ -683,6 +683,8 @@ namespace
 
 		for(const auto & al : attackLogs)
 		{
+			// attacker is null if the dmg comes from an effect, e.g. acid
+			// or if it "appeared" after G was built, e.g. was summoned
 			if(al.attacker)
 			{
 				if(al.attacker->cstack.unitSide() == BattleSide::LEFT_SIDE)
@@ -697,6 +699,7 @@ namespace
 				}
 			}
 
+			// defender is null if it "appeared" after G was built, e.g. was summoned
 			if(al.defender)
 			{
 				if(al.defender->cstack.unitSide() == BattleSide::LEFT_SIDE)

@@ -1,6 +1,5 @@
 MAKEFLAGS += --always-make
 SHELL := bash
-.ONESHELL:
 .SHELLFLAGS := -euxo pipefail -c
 
 help:
@@ -30,3 +29,17 @@ dependencies:
 		--profile=dependencies/conan_profiles/base/apple-system \
 		-s "&:build_type=Release"
 
+vastai-build:
+	cmake -S . -B rel -Wno-dev \
+		-D CMAKE_BUILD_TYPE=Release \
+		-D CMAKE_EXPORT_COMPILE_COMMANDS=0 \
+		-D ENABLE_CCACHE=1 \
+		-D ENABLE_NULLKILLER2_AI=0 \
+		-D ENABLE_LAUNCHER=0 \
+		-D ENABLE_VIDEO=0 \
+		-D ENABLE_DISCORD=0 \
+		-D ENABLE_TRANSLATIONS=0 \
+		-D ENABLE_ML=1 \
+		-D ENABLE_MMAI=1 \
+		-D ONNXRUNTIME_ROOT=/opt/onnxruntime
+	cmake --build rel -- -j$$(nproc)
