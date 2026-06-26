@@ -83,6 +83,7 @@ private:
 	bool wasWaitingForRealize = false;
 	std::string addrstr = "?";
 	std::string colorname = "?";
+	std::string basetag = "?";
 	std::string logtag = "?";
 };
 }
