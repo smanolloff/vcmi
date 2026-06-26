@@ -319,7 +319,12 @@ std::vector<const char *> NNModel::readInputNames()
 	std::vector<const char *> res;
 	auto count = container->session->GetInputCount();
 	if(count != 4)
+	{
+		for(size_t i = 0; i < count; ++i)
+			std::cout << "input[" << i << "] " << container->session->GetInputNameAllocated(i, container->allocator) << "\n";
+
 		throwf("wrong input count: want: %d, have: %lld", 4, count);
+	}
 
 	inputNamePtrs.reserve(count);
 	res.reserve(count);
@@ -358,7 +363,12 @@ std::vector<const char *> NNModel::readOutputNames()
 	std::vector<const char *> res;
 	auto count = container->session->GetOutputCount();
 	if(count != 6)
+	{
+		for(size_t i = 0; i < count; ++i)
+			std::cout << "output[" << i << "] " << container->session->GetOutputNameAllocated(i, container->allocator) << "\n";
+
 		throwf("wrong output count: want: %d, have: %lld", 6, count);
+	}
 
 	outputNamePtrs.reserve(count);
 	res.reserve(count);
