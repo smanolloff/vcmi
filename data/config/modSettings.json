@@ -8,7 +8,8 @@
 	},
 	"presets" : {
 		"default" : {
-			"mods" : [ "vcmi", "vcmi-extras", "core", "ml", "mmai", "hota", "wake-of-gods" ],
+			//"mods" : [ "vcmi", "vcmi-extras", "core", "ml", "mmai", "hota", "wake-of-gods" ],
+			"mods" : [ "vcmi", "vcmi-extras", "core", "ml", "mmai" ],
 			"settings" : {
 				"hota" : {
 					"adventuremapbuttons" : true,

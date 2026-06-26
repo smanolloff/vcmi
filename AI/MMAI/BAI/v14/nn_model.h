@@ -44,7 +44,7 @@ private:
 	Schema::Side side;
 	std::mt19937 rng;
 
-	const int version = 13;
+	const int version = 14;
 
 	// AllocatedStringPtrs manage the string lifetime
 	// but names passed to model.Run must be const char*

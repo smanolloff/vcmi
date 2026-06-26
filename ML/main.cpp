@@ -153,8 +153,6 @@ namespace ML {
                 ("Path to model.zip (" + omap.at("left-model") + "*)").c_str())
             ("right-model", po::value<std::string>()->value_name("<FILE>"),
                 ("Path to model.zip (" + omap.at("right-model") + "*)").c_str())
-            ("right-model", po::value<std::string>()->value_name("<FILE>"),
-                ("Path to model.zip (" + omap.at("right-model") + "*)").c_str())
             ("left-allow-mlbot", po::bool_switch(&leftAllowMlBot),
                 "Allow MLBot to control VIP armies when left AI is MMAI_USER or MMAI_MODEL")
             ("right-allow-mlbot", po::bool_switch(&rightAllowMlBot),

@@ -14,6 +14,7 @@
 #include "filesystem/Filesystem.h"
 #include "nn_model.h"
 #include "schema/base.h"
+#include "schema/v14/constants.h"
 #include "vstd/CLoggerBase.h"
 #include "json/JsonNode.h"
 
@@ -25,6 +26,8 @@ namespace MMAI::BAI::V14
 namespace
 {
 	constexpr int LT_COUNT = EI(MMAI::Schema::V14::LinkType::_count);
+	constexpr int EA_FLAT_ATTR_SIZE = MMAI::Schema::V14::LINK_SIZES[EI(MMAI::Schema::V14::LinkType::ADJACENT)];
+	static_assert(EA_FLAT_ATTR_SIZE == 6);
 
 	template<class... Args>
 	[[noreturn]] inline void throwf(const std::string & fmt, Args &&... args)
@@ -311,7 +314,7 @@ std::vector<const char *> NNModel::readInputNames()
 	 *        shape=[2, E*] where E is the number of edges
 	 *   [2] edge attributes
 	 *        dtype=float
-	 *        shape=[E*, 1]
+	 *        shape=[E*, max(LINK_SIZES)]
 	 *   [3] lengths
 	 *        dtype=int
 	 *        shape=[LT_COUNT]
@@ -375,7 +378,7 @@ std::vector<const char *> NNModel::readOutputNames()
 NNModel::NNModel(const std::shared_ptr<NNContainer> & container, float temperature, uint64_t seed) : container(container), temperature(temperature)
 {
 	NestedLogTag _("NN");
-	logAi->info("Params: seed=%1%, temperature=%2%", seed, temperature);
+	logAi->info("Params: seed=%1%, temperature=%2%, path=%3%", seed, temperature, container->path);
 
 	if(container->version != version)
 		throwf("Bad version: want: %d, have: %d", version, container->version);
@@ -536,12 +539,16 @@ std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s
 		const auto & attrs = links->getAttributes();
 
 		const auto nlinks = srcinds.size();
+		const auto attr_size = MMAI::Schema::V14::LINK_SIZES[EI(type)];
+
+		if(attr_size > EA_FLAT_ATTR_SIZE)
+			throwf("unexpected attr_size for LinkType(%d): max: %d, have: %d", EI(type), EA_FLAT_ATTR_SIZE, attr_size);
 
 		if(dstinds.size() != nlinks)
 			throwf("unexpected dstinds.size() for LinkType(%d): want: %d, have: %d", EI(type), nlinks, dstinds.size());
 
-		if(attrs.size() != nlinks)
-			throwf("unexpected attrs.size() for LinkType(%d): want: %d, have: %d", EI(type), nlinks, attrs.size());
+		if(attrs.size() != nlinks * attr_size)
+			throwf("unexpected attrs.size() for LinkType(%d): want: %d, have: %d", EI(type), nlinks * attr_size, attrs.size());
 
 		oss << nlinks << " ";
 
@@ -549,7 +556,13 @@ std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s
 
 		ei_flat_src.insert(ei_flat_src.end(), srcinds.begin(), srcinds.end());
 		ei_flat_dst.insert(ei_flat_dst.end(), dstinds.begin(), dstinds.end());
-		ea_flat.insert(ea_flat.end(), attrs.begin(), attrs.end());
+
+		for(size_t j = 0; j < nlinks; ++j)
+		{
+			ea_flat.insert(ea_flat.end(), attrs.begin() + static_cast<std::ptrdiff_t>(j * attr_size), attrs.begin() + static_cast<std::ptrdiff_t>((j + 1) * attr_size));
+			ea_flat.insert(ea_flat.end(), EA_FLAT_ATTR_SIZE - attr_size, 0.0f);
+		}
+
 		++i;
 	}
 
@@ -563,18 +576,21 @@ std::vector<Ort::Value> NNModel::prepareInputsV13(const MMAI::Schema::IState * s
 	ei_flat.insert(ei_flat.end(), ei_flat_src.begin(), ei_flat_src.end());
 	ei_flat.insert(ei_flat.end(), ei_flat_dst.begin(), ei_flat_dst.end());
 
+	if(ea_flat.size() != sum_e * EA_FLAT_ATTR_SIZE)
+		throwf("unexpected ea_flat.size(): want: %d, have: %d", sum_e * EA_FLAT_ATTR_SIZE, ea_flat.size());
+
 	const auto * state = s->getBattlefieldState();
-	auto estate = std::vector<float>(state->size());
+	std::vector<float> estate(state->size());
 	std::ranges::copy(*state, estate.begin());
 
 	auto tensors = std::vector<Ort::Value>{};
 	tensors.push_back(toTensor("obs", estate, {static_cast<int64_t>(estate.size())}));
 	tensors.push_back(toTensor("ei_flat", ei_flat, {2, static_cast<int64_t>(sum_e)}));
-	tensors.push_back(toTensor("ea_flat", ea_flat, {static_cast<int64_t>(sum_e), 1}));
+	tensors.push_back(toTensor("ea_flat", ea_flat, {static_cast<int64_t>(sum_e), EA_FLAT_ATTR_SIZE}));
 	tensors.push_back(toTensor("lengths", lengths, {LT_COUNT}));
 
 	logAi->debug("Edge lengths: [ " + oss.str() + "]");
-	logAi->debug("Model input shapes: state={%d} edgeIndex={2, %d} edgeAttrs={%d, 1}", estate.size(), sum_e, sum_e);
+	logAi->debug("Model input shapes: state={%d} edgeIndex={2, %d} edgeAttrs={%d, %d}", estate.size(), sum_e, sum_e, EA_FLAT_ATTR_SIZE);
 
 	return tensors;
 }

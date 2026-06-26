@@ -369,7 +369,7 @@ void Router::battleStart(
 			// For example, attacker is an injected model (being trained),
 			// while defender is nullptr which stands for "load a pre-trained
 			// model as usual"
-			model = GetModel(modelkey);
+			model = GetModel(modelkey, baggage);
 		}
 
 		ASSERT(model != nullptr, "model is nullptr");

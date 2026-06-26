@@ -103,6 +103,8 @@ std::shared_ptr<MMAI::Schema::IModel> CreateNNModel(const std::string & path, fl
 
 	if(container->version == 13)
 		return std::make_shared<V13::NNModel>(container, temperature, seed);
+	if(container->version == 14)
+		return std::make_shared<V14::NNModel>(container, temperature, seed);
 	else
 		throw std::runtime_error("CreateNNModel: unsupported schema version: " + std::to_string(container->version));
 }
