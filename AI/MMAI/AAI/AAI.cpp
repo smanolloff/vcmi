@@ -115,6 +115,7 @@ void AAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 	{
 		ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
 		info("Answering query " + std::to_string(queryID) + " to re-play battle");
+		std::cout << "Answering query " << std::to_string(queryID) << " to re-play battle\n";
 
 		asyncTasks->run(
 			[this, queryID]()
@@ -175,7 +176,6 @@ void AAI::yourTurn(QueryID queryID)
 			if(queryID != -1)
 			{
 				info("Answering query " + std::to_string(queryID) + " to start turn");
-				std::cout << "Answering query " << std::to_string(queryID) << " to start turn\n";
 				cb->selectionMade(0, queryID);
 			}
 
@@ -187,7 +187,6 @@ void AAI::yourTurn(QueryID queryID)
 			cb->moveHero(h, h->pos + int3{1, 0, 0}, false);
 		}
 	);
-	asyncTasks->wait();
 }
 
 void AAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QueryID queryID)

@@ -110,6 +110,7 @@ namespace
 	        case ET::EDGE_UNIT_TO_GLOBAL:
 	        	tmp = G.size<E::Unit_To_Global>();
 	        	std::cout << tmp << " EDGE_UNIT_TO_GLOBAL\n";
+	        	break;
 	        case ET::EDGE_GLOBAL_TO_HEX:
 	            tmp = G.size<E::Global_To_Hex>();
 	            std::cout << tmp << " EDGE_GLOBAL_TO_HEX\n";
@@ -117,9 +118,11 @@ namespace
 	        case ET::EDGE_HEX_TO_GLOBAL:
 	        	tmp = G.size<E::Hex_To_Global>();
 	        	std::cout << tmp << " EDGE_HEX_TO_GLOBAL\n";
+	        	break;
 	        case ET::EDGE_GLOBAL_TO_ACTION:
 	        	tmp = G.size<E::Global_To_Action>();
 	        	std::cout << tmp << " EDGE_GLOBAL_TO_ACTION\n";
+	        	break;
 	        case ET::EDGE_PLAYER_OWNS_UNIT:
 	            tmp = G.size<E::Player_Owns_Unit>();
 	            std::cout << tmp << " EDGE_PLAYER_OWNS_UNIT\n";
@@ -127,6 +130,7 @@ namespace
 	        case ET::EDGE_UNIT_OWNED_BY_PLAYER:
 	        	tmp = G.size<E::Unit_OwnedBy_Player>();
 	        	std::cout << tmp << " EDGE_UNIT_OWNED_BY_PLAYER\n";
+	        	break;
 	        case ET::EDGE_UNIT_OCCUPIES_HEX:
 	            tmp = G.size<E::Unit_Occupies_Hex>();
 	            std::cout << tmp << " EDGE_UNIT_OCCUPIES_HEX\n";

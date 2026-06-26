@@ -4231,6 +4231,9 @@ bool CGameHandler::isBlockedByQueries(const CPackForServer *pack, PlayerColor pl
 			% boost::to_upper_copy<std::string>(player.toString())
 			% query->toString()
 		));
+		#ifdef ENABLE_ML
+		throw std::runtime_error("throwing due to unanswered query");
+		#endif
 		return true;
 	}
 
