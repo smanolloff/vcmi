@@ -73,153 +73,153 @@ namespace
 		{
 			size_t tmp = 0;
 			std::cout << "  " << std::setw(5);
-		    switch (ET(i))
-		    {
-	        case ET::NODE_GLOBAL:
-	            tmp = G.size<N::Global>();
-	            std::cout << tmp << " NODE_GLOBAL\n";
-	            break;
-	        case ET::NODE_PLAYER:
-	            tmp = G.size<N::Player>();
-	            std::cout << tmp << " NODE_PLAYER\n";
-	            break;
-	        case ET::NODE_UNIT:
-	            tmp = G.size<N::Unit>();
-	            std::cout << tmp << " NODE_UNIT\n";
-	            break;
-	        case ET::NODE_HEX:
-	            tmp = G.size<N::Hex>();
-	            std::cout << tmp << " NODE_HEX\n";
-	            break;
-	        case ET::NODE_ACTION:
-	            tmp = G.size<N::Action>();
-	            std::cout << tmp << " NODE_ACTION\n";
-	            break;
-	        case ET::EDGE_GLOBAL_TO_PLAYER:
-	            tmp = G.size<E::Global_To_Player>();
-	            std::cout << tmp << " EDGE_GLOBAL_TO_PLAYER\n";
-	            break;
-	        case ET::EDGE_PLAYER_TO_GLOBAL:
-	            tmp = G.size<E::Player_To_Global>();
-	            std::cout << tmp << " EDGE_PLAYER_TO_GLOBAL\n";
-	            break;
-	        case ET::EDGE_GLOBAL_TO_UNIT:
-	            tmp = G.size<E::Global_To_Unit>();
-	            std::cout << tmp << " EDGE_GLOBAL_TO_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_TO_GLOBAL:
-	        	tmp = G.size<E::Unit_To_Global>();
-	        	std::cout << tmp << " EDGE_UNIT_TO_GLOBAL\n";
-	        	break;
-	        case ET::EDGE_GLOBAL_TO_HEX:
-	            tmp = G.size<E::Global_To_Hex>();
-	            std::cout << tmp << " EDGE_GLOBAL_TO_HEX\n";
-	            break;
-	        case ET::EDGE_HEX_TO_GLOBAL:
-	        	tmp = G.size<E::Hex_To_Global>();
-	        	std::cout << tmp << " EDGE_HEX_TO_GLOBAL\n";
-	        	break;
-	        case ET::EDGE_GLOBAL_TO_ACTION:
-	        	tmp = G.size<E::Global_To_Action>();
-	        	std::cout << tmp << " EDGE_GLOBAL_TO_ACTION\n";
-	        	break;
-	        case ET::EDGE_PLAYER_OWNS_UNIT:
-	            tmp = G.size<E::Player_Owns_Unit>();
-	            std::cout << tmp << " EDGE_PLAYER_OWNS_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_OWNED_BY_PLAYER:
-	        	tmp = G.size<E::Unit_OwnedBy_Player>();
-	        	std::cout << tmp << " EDGE_UNIT_OWNED_BY_PLAYER\n";
-	        	break;
-	        case ET::EDGE_UNIT_OCCUPIES_HEX:
-	            tmp = G.size<E::Unit_Occupies_Hex>();
-	            std::cout << tmp << " EDGE_UNIT_OCCUPIES_HEX\n";
-	            break;
-	        case ET::EDGE_HEX_OCCUPIED_BY_UNIT:
-	            tmp = G.size<E::Hex_OccupiedBy_Unit>();
-	            std::cout << tmp << " EDGE_HEX_OCCUPIED_BY_UNIT\n";
-	            break;
-	        case ET::EDGE_ACTION_BY_UNIT:
-	            tmp = G.size<E::Action_By_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_BY_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_HAS_ACTION:
-	            tmp = G.size<E::Unit_Has_Action>();
-	            std::cout << tmp << " EDGE_UNIT_HAS_ACTION\n";
-	            break;
-	        case ET::EDGE_HEX_ADJACENT_HEX:
-	            tmp = G.size<E::Hex_Adjacent_Hex>();
-	            std::cout << tmp << " EDGE_HEX_ADJACENT_HEX\n";
-	            break;
-	        case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
-	            tmp = G.size<E::Unit_ActsBefore_Unit>();
-	            std::cout << tmp << " EDGE_UNIT_ACTS_BEFORE_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_MELEE_DMG_UNIT:
-	            tmp = G.size<E::Unit_MeleeDmg_Unit>();
-	            std::cout << tmp << " EDGE_UNIT_MELEE_DMG_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
-	            tmp = G.size<E::Unit_ShootDmg_Unit>();
-	            std::cout << tmp << " EDGE_UNIT_SHOOT_DMG_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_BLOCKS_UNIT:
-	            tmp = G.size<E::Unit_Blocks_Unit>();
-	            std::cout << tmp << " EDGE_UNIT_BLOCKS_UNIT\n";
-	            break;
-	        case ET::EDGE_ACTION_ENDS_AT_HEX:
-	            tmp = G.size<E::Action_EndsAt_Hex>();
-	            std::cout << tmp << " EDGE_ACTION_ENDS_AT_HEX\n";
-	            break;
-	        case ET::EDGE_HEX_IS_END_OF_ACTION:
-	            tmp = G.size<E::Hex_IsEndOf_Action>();
-	            std::cout << tmp << " EDGE_HEX_IS_END_OF_ACTION\n";
-	            break;
-	        case ET::EDGE_ACTION_BLOCKS_UNIT:
-	            tmp = G.size<E::Action_Blocks_Unit>();
-	            std::cout << tmp << " EDGE_ACTION_BLOCKS_UNIT\n";
-	            break;
-	        case ET::EDGE_UNIT_BLOCKED_BY_ACTION:
-	            tmp = G.size<E::Unit_BlockedBy_Action>();
-	            std::cout << tmp << " EDGE_UNIT_BLOCKED_BY_ACTION\n";
-	            break;
-	        case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
-	            tmp = G.size<E::Unit_BecomesMeleeThreatAfter_Action>();
-	            std::cout << tmp << " EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION\n";
-	            break;
-	        case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
-	            tmp = G.size<E::Unit_BecomesShootThreatAfter_Action>();
-	            std::cout << tmp << " EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION\n";
-	            break;
-	        case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
-	            tmp = G.size<E::Unit_IsMeleedBy_Action>();
-	            std::cout << tmp << " EDGE_UNIT_IS_MELEED_BY_ACTION\n";
-	            break;
-	        case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
-	            tmp = G.size<E::Unit_IsShotBy_Action>();
-	            std::cout << tmp << " EDGE_UNIT_IS_SHOT_BY_ACTION\n";
-	            break;
-	        case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:
-	            tmp = G.size<E::Unit_BecomesMeleeTargetAfter_Action>();
-	            std::cout << tmp << " EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION\n";
-	            break;
-	        case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
-	            tmp = G.size<E::Unit_BecomesShootTargetAfter_Action>();
-	            std::cout << tmp << " EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION\n";
-	            break;
-	        case ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION:
-	            tmp = G.size<E::Hex_BecomesMeleeTargetAfter_Action>();
-	            std::cout << tmp << " EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION\n";
-	            break;
-	        case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
-	            tmp = G.size<E::Hex_BecomesShootTargetAfter_Action>();
-	            std::cout << tmp << " EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION\n";
-	            break;
-	        default:
-	        	throw std::runtime_error("Unexpected element type: " + std::to_string(i));
-	        }
-	        static_assert(static_cast<int>(ET::_count) == 35);
-	        total += tmp;
+			switch (ET(i))
+			{
+			case ET::NODE_GLOBAL:
+				tmp = G.size<N::Global>();
+				std::cout << tmp << " NODE_GLOBAL\n";
+				break;
+			case ET::NODE_PLAYER:
+				tmp = G.size<N::Player>();
+				std::cout << tmp << " NODE_PLAYER\n";
+				break;
+			case ET::NODE_UNIT:
+				tmp = G.size<N::Unit>();
+				std::cout << tmp << " NODE_UNIT\n";
+				break;
+			case ET::NODE_HEX:
+				tmp = G.size<N::Hex>();
+				std::cout << tmp << " NODE_HEX\n";
+				break;
+			case ET::NODE_ACTION:
+				tmp = G.size<N::Action>();
+				std::cout << tmp << " NODE_ACTION\n";
+				break;
+			case ET::EDGE_GLOBAL_TO_PLAYER:
+				tmp = G.size<E::Global_To_Player>();
+				std::cout << tmp << " EDGE_GLOBAL_TO_PLAYER\n";
+				break;
+			case ET::EDGE_PLAYER_TO_GLOBAL:
+				tmp = G.size<E::Player_To_Global>();
+				std::cout << tmp << " EDGE_PLAYER_TO_GLOBAL\n";
+				break;
+			case ET::EDGE_GLOBAL_TO_UNIT:
+				tmp = G.size<E::Global_To_Unit>();
+				std::cout << tmp << " EDGE_GLOBAL_TO_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_TO_GLOBAL:
+				tmp = G.size<E::Unit_To_Global>();
+				std::cout << tmp << " EDGE_UNIT_TO_GLOBAL\n";
+				break;
+			case ET::EDGE_GLOBAL_TO_HEX:
+				tmp = G.size<E::Global_To_Hex>();
+				std::cout << tmp << " EDGE_GLOBAL_TO_HEX\n";
+				break;
+			case ET::EDGE_HEX_TO_GLOBAL:
+				tmp = G.size<E::Hex_To_Global>();
+				std::cout << tmp << " EDGE_HEX_TO_GLOBAL\n";
+				break;
+			case ET::EDGE_GLOBAL_TO_ACTION:
+				tmp = G.size<E::Global_To_Action>();
+				std::cout << tmp << " EDGE_GLOBAL_TO_ACTION\n";
+				break;
+			case ET::EDGE_PLAYER_OWNS_UNIT:
+				tmp = G.size<E::Player_Owns_Unit>();
+				std::cout << tmp << " EDGE_PLAYER_OWNS_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_OWNED_BY_PLAYER:
+				tmp = G.size<E::Unit_OwnedBy_Player>();
+				std::cout << tmp << " EDGE_UNIT_OWNED_BY_PLAYER\n";
+				break;
+			case ET::EDGE_UNIT_OCCUPIES_HEX:
+				tmp = G.size<E::Unit_Occupies_Hex>();
+				std::cout << tmp << " EDGE_UNIT_OCCUPIES_HEX\n";
+				break;
+			case ET::EDGE_HEX_OCCUPIED_BY_UNIT:
+				tmp = G.size<E::Hex_OccupiedBy_Unit>();
+				std::cout << tmp << " EDGE_HEX_OCCUPIED_BY_UNIT\n";
+				break;
+			case ET::EDGE_ACTION_BY_UNIT:
+				tmp = G.size<E::Action_By_Unit>();
+				std::cout << tmp << " EDGE_ACTION_BY_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_HAS_ACTION:
+				tmp = G.size<E::Unit_Has_Action>();
+				std::cout << tmp << " EDGE_UNIT_HAS_ACTION\n";
+				break;
+			case ET::EDGE_HEX_ADJACENT_HEX:
+				tmp = G.size<E::Hex_Adjacent_Hex>();
+				std::cout << tmp << " EDGE_HEX_ADJACENT_HEX\n";
+				break;
+			case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
+				tmp = G.size<E::Unit_ActsBefore_Unit>();
+				std::cout << tmp << " EDGE_UNIT_ACTS_BEFORE_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_MELEE_DMG_UNIT:
+				tmp = G.size<E::Unit_MeleeDmg_Unit>();
+				std::cout << tmp << " EDGE_UNIT_MELEE_DMG_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_SHOOT_DMG_UNIT:
+				tmp = G.size<E::Unit_ShootDmg_Unit>();
+				std::cout << tmp << " EDGE_UNIT_SHOOT_DMG_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_BLOCKS_UNIT:
+				tmp = G.size<E::Unit_Blocks_Unit>();
+				std::cout << tmp << " EDGE_UNIT_BLOCKS_UNIT\n";
+				break;
+			case ET::EDGE_ACTION_ENDS_AT_HEX:
+				tmp = G.size<E::Action_EndsAt_Hex>();
+				std::cout << tmp << " EDGE_ACTION_ENDS_AT_HEX\n";
+				break;
+			case ET::EDGE_HEX_IS_END_OF_ACTION:
+				tmp = G.size<E::Hex_IsEndOf_Action>();
+				std::cout << tmp << " EDGE_HEX_IS_END_OF_ACTION\n";
+				break;
+			case ET::EDGE_ACTION_BLOCKS_UNIT:
+				tmp = G.size<E::Action_Blocks_Unit>();
+				std::cout << tmp << " EDGE_ACTION_BLOCKS_UNIT\n";
+				break;
+			case ET::EDGE_UNIT_BLOCKED_BY_ACTION:
+				tmp = G.size<E::Unit_BlockedBy_Action>();
+				std::cout << tmp << " EDGE_UNIT_BLOCKED_BY_ACTION\n";
+				break;
+			case ET::EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION:
+				tmp = G.size<E::Unit_BecomesMeleeThreatAfter_Action>();
+				std::cout << tmp << " EDGE_UNIT_BECOMES_MELEE_THREAT_AFTER_ACTION\n";
+				break;
+			case ET::EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION:
+				tmp = G.size<E::Unit_BecomesShootThreatAfter_Action>();
+				std::cout << tmp << " EDGE_UNIT_BECOMES_SHOOT_THREAT_AFTER_ACTION\n";
+				break;
+			case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
+				tmp = G.size<E::Unit_IsMeleedBy_Action>();
+				std::cout << tmp << " EDGE_UNIT_IS_MELEED_BY_ACTION\n";
+				break;
+			case ET::EDGE_UNIT_IS_SHOT_BY_ACTION:
+				tmp = G.size<E::Unit_IsShotBy_Action>();
+				std::cout << tmp << " EDGE_UNIT_IS_SHOT_BY_ACTION\n";
+				break;
+			case ET::EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION:
+				tmp = G.size<E::Unit_BecomesMeleeTargetAfter_Action>();
+				std::cout << tmp << " EDGE_UNIT_BECOMES_MELEE_TARGET_AFTER_ACTION\n";
+				break;
+			case ET::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+				tmp = G.size<E::Unit_BecomesShootTargetAfter_Action>();
+				std::cout << tmp << " EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION\n";
+				break;
+			case ET::EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION:
+				tmp = G.size<E::Hex_BecomesMeleeTargetAfter_Action>();
+				std::cout << tmp << " EDGE_HEX_BECOMES_MELEE_TARGET_AFTER_ACTION\n";
+				break;
+			case ET::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION:
+				tmp = G.size<E::Hex_BecomesShootTargetAfter_Action>();
+				std::cout << tmp << " EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION\n";
+				break;
+			default:
+				throw std::runtime_error("Unexpected element type: " + std::to_string(i));
+			}
+			static_assert(static_cast<int>(ET::_count) == 35);
+			total += tmp;
 		}
 		std::cout << "  ---\n";
 		std::cout << "  " << std::setw(5) << total << " TOTAL\n";
@@ -299,105 +299,105 @@ namespace
 		};
 	}
 
-    // Stolen from BattleActionProcessor::handleDeathStare
-    // Calculates number of kills
-    double CalcDeathStare(
-    	const CPlayerBattleCallback & battle,
-    	const battle::CUnitState * attacker,
-    	const battle::CUnitState * defender,
-    	bool ranged)
-    {
-    	/*
-         * Death stare:
-         * - X=10% chance to kill per gorgon
-         * - rolled separately for each gorgon in the stack
-         * - kills capped to (N*X/100), where N=number of gorgons
-         *
-         * Accurate Shot (HotA seadogs):
-         * - same mechanic as death stare, but ranged
-         * - X=3% chance to kill for each seadog (X=2% with range penalty)
-         *
-         * Commander death stare:
-         * - different mechanic: kills depend on level
-         */
+	// Stolen from BattleActionProcessor::handleDeathStare
+	// Calculates number of kills
+	double CalcDeathStare(
+		const CPlayerBattleCallback & battle,
+		const battle::CUnitState * attacker,
+		const battle::CUnitState * defender,
+		bool ranged)
+	{
+		/*
+		 * Death stare:
+		 * - X=10% chance to kill per gorgon
+		 * - rolled separately for each gorgon in the stack
+		 * - kills capped to (N*X/100), where N=number of gorgons
+		 *
+		 * Accurate Shot (HotA seadogs):
+		 * - same mechanic as death stare, but ranged
+		 * - X=3% chance to kill for each seadog (X=2% with range penalty)
+		 *
+		 * Commander death stare:
+		 * - different mechanic: kills depend on level
+		 */
 
-        auto subtype = BonusCustomSubtype::deathStareGorgon;
+		auto subtype = BonusCustomSubtype::deathStareGorgon;
 
-        if (ranged)
-        {
-            bool distancePenalty = battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition());
-            bool obstaclePenalty = battle.battleHasWallPenalty(attacker, attacker->getPosition(), defender->getPosition());
+		if (ranged)
+		{
+			bool distancePenalty = battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition());
+			bool obstaclePenalty = battle.battleHasWallPenalty(attacker, attacker->getPosition(), defender->getPosition());
 
-            if(distancePenalty)
-                subtype = obstaclePenalty
-                    ? BonusCustomSubtype::deathStareRangeObstaclePenalty
-                    : BonusCustomSubtype::deathStareRangePenalty;
-            else
-                subtype = obstaclePenalty
-                    ? BonusCustomSubtype::deathStareObstaclePenalty
-                    : BonusCustomSubtype::deathStareNoRangePenalty;
-        }
+			if(distancePenalty)
+				subtype = obstaclePenalty
+					? BonusCustomSubtype::deathStareRangeObstaclePenalty
+					: BonusCustomSubtype::deathStareRangePenalty;
+			else
+				subtype = obstaclePenalty
+					? BonusCustomSubtype::deathStareObstaclePenalty
+					: BonusCustomSubtype::deathStareNoRangePenalty;
+		}
 
-        // Non-commander death stare
-        int n = attacker->getCount();
-        int x = attacker->valOfBonuses(BonusType::DEATH_STARE, subtype);
-        double kills = n * x / 100.0;
+		// Non-commander death stare
+		int n = attacker->getCount();
+		int x = attacker->valOfBonuses(BonusType::DEATH_STARE, subtype);
+		double kills = n * x / 100.0;
 
-        // Commander death stare
-        int x1 = attacker->valOfBonuses(BonusType::DEATH_STARE, BonusCustomSubtype::deathStareCommander);
-        kills += static_cast<double>(x1 * attacker->creatureLevel()) / defender->creatureLevel();
+		// Commander death stare
+		int x1 = attacker->valOfBonuses(BonusType::DEATH_STARE, BonusCustomSubtype::deathStareCommander);
+		kills += static_cast<double>(x1 * attacker->creatureLevel()) / defender->creatureLevel();
 
-        return kills;
-    }
+		return kills;
+	}
 
-    struct CUnitStateWrapper {
-	   	explicit CUnitStateWrapper(const CStack * cstack, const std::shared_ptr<battle::CUnitState> & cstate)
-    	: cstack(cstack), cstate(cstate) {}
+	struct CUnitStateWrapper {
+		explicit CUnitStateWrapper(const CStack * cstack, const std::shared_ptr<battle::CUnitState> & cstate)
+		: cstack(cstack), cstate(cstate) {}
 
 		// XXX: many methods such as unitType() or getAvailableHealth() throw
 		// exceptions when called on a CUnitState => calculate health manually.
-    	int calcAvailableHealth() const
-    	{
+		int calcAvailableHealth() const
+		{
 			// excplicitly cast to int otherwise unsigned int arithmetic may cause UB
 			int n = static_cast<int>(cstate->getCount());
 			int hpOne = static_cast<int>(cstack->getMaxHealth());
 			int hp1st = static_cast<int>(cstate->getFirstHPleft());
 			return (std::max(0, (n - 1)) * hpOne) + hp1st;
-    	}
+		}
 
-    	const CStack * cstack;
-    	std::shared_ptr<battle::CUnitState> cstate;
-    };
+		const CStack * cstack;
+		std::shared_ptr<battle::CUnitState> cstate;
+	};
 
-    struct UnitStates {
+	struct UnitStates {
 		CUnitStateWrapper a;
 		CUnitStateWrapper b;
-    };
+	};
 
-    // Executes a single attack (without retaliation logic)
-    // Applies damage to defender and to attacker (if fire shield)
-    // Mutates the given states.
-    void ApplyAttack(
-    	UnitStates & states,
+	// Executes a single attack (without retaliation logic)
+	// Applies damage to defender and to attacker (if fire shield)
+	// Mutates the given states.
+	void ApplyAttack(
+		UnitStates & states,
 		const CPlayerBattleCallback & battle,
-    	bool ranged)
-    {
-    	auto & A_state = states.a.cstate;
-    	auto & B_state = states.b.cstate;
+		bool ranged)
+	{
+		auto & A_state = states.a.cstate;
+		auto & B_state = states.b.cstate;
 
 		auto A_bai = BattleAttackInfo(A_state.get(), B_state.get(), 0, ranged);
 		auto estimation = std::make_shared<DamageEstimation>(DamageCalculator(battle, A_bai).calculateDmgRange());
-	    auto A_dmg_min = static_cast<int>(estimation->damage.min);
-	    auto A_dmg_max = static_cast<int>(estimation->damage.max);
-	    auto A_dmg_mean = static_cast<int64_t>(0.5 * (A_dmg_min + A_dmg_max));
+		auto A_dmg_min = static_cast<int>(estimation->damage.min);
+		auto A_dmg_max = static_cast<int>(estimation->damage.max);
+		auto A_dmg_mean = static_cast<int64_t>(0.5 * (A_dmg_min + A_dmg_max));
 
-    	int B_qty_old = B_state->getCount();
+		int B_qty_old = B_state->getCount();
 		// CUnitState->damage() expects a *mutable* ref and can set it to 0 (?!?)
 		{
 			int64_t dmg = A_dmg_mean;
 			B_state->damage(dmg);
 		}
-    	auto A_kills_mean = B_qty_old - B_state->getCount();
+		auto A_kills_mean = B_qty_old - B_state->getCount();
 
 		// 1. Handle LIFE_DRAIN and SOUL_STEAL
 		// Stolen from BattleActionProcessor::applyBattleEffects
@@ -451,10 +451,10 @@ namespace
 				--staredeaths;
 			}
 		}
-    }
+	}
 
-    /*
-     * VCMI's damage estimation helper does not take into account stuff such as:
+	/*
+	 * VCMI's damage estimation helper does not take into account stuff such as:
 	 * 	- Base mechanics:
 	 * 	 	* HAS_ADDITIONAL_ATTACK // tested
 	 * 	 	* DEATH_STARE 			// tested
@@ -469,7 +469,7 @@ namespace
 	 * This is an attempt to reimplement it here.
 	 *
 	 */
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+	// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 	UnitStates SimulateAttackAction(
 		const CPlayerBattleCallback & battle,
 		const CStack & attacker,
@@ -757,8 +757,8 @@ namespace
 	{
 		std::size_t operator()(const std::pair<si16, si16> & t) const
 		{
-	        std::size_t h0 = std::hash<si16>{}(t.first);
-	        std::size_t h1 = std::hash<si16>{}(t.second);
+			std::size_t h0 = std::hash<si16>{}(t.first);
+			std::size_t h1 = std::hash<si16>{}(t.second);
 			return h0 ^ (h1 << 1);
 		}
 	};
@@ -1781,7 +1781,7 @@ namespace
 						G.add(E::Hex_BecomesShootTargetAfter_Action::Create(e->srcNode, newAction, e->mult));
 					});
 					break;
-        		case ET::EDGE_GLOBAL_TO_ACTION:
+				case ET::EDGE_GLOBAL_TO_ACTION:
 					cloneEdgesWithDstAction.template operator()<E::Global_To_Action>();
 					break;
 				case ET::EDGE_UNIT_IS_MELEED_BY_ACTION:
@@ -1801,14 +1801,14 @@ namespace
 				case ET::NODE_UNIT:
 				case ET::NODE_HEX:
 				case ET::NODE_ACTION:
-        		case ET::EDGE_GLOBAL_TO_PLAYER:
-    			case ET::EDGE_PLAYER_TO_GLOBAL:
-        		case ET::EDGE_GLOBAL_TO_UNIT:
-    			case ET::EDGE_UNIT_TO_GLOBAL:
-        		case ET::EDGE_GLOBAL_TO_HEX:
-    			case ET::EDGE_HEX_TO_GLOBAL:
-        		case ET::EDGE_PLAYER_OWNS_UNIT:
-        		case ET::EDGE_UNIT_OWNED_BY_PLAYER:
+				case ET::EDGE_GLOBAL_TO_PLAYER:
+				case ET::EDGE_PLAYER_TO_GLOBAL:
+				case ET::EDGE_GLOBAL_TO_UNIT:
+				case ET::EDGE_UNIT_TO_GLOBAL:
+				case ET::EDGE_GLOBAL_TO_HEX:
+				case ET::EDGE_HEX_TO_GLOBAL:
+				case ET::EDGE_PLAYER_OWNS_UNIT:
+				case ET::EDGE_UNIT_OWNED_BY_PLAYER:
 				case ET::EDGE_HEX_ADJACENT_HEX:
 				case ET::EDGE_UNIT_ACTS_BEFORE_UNIT:
 				case ET::EDGE_UNIT_MELEE_DMG_UNIT:
@@ -1820,7 +1820,7 @@ namespace
 				default:
 					throw std::runtime_error("Unexpected edge type: " + std::to_string(i));
 			}
-	        static_assert(static_cast<int>(ET::_count) == 35);
+			static_assert(static_cast<int>(ET::_count) == 35);
 		}
 	};
 
