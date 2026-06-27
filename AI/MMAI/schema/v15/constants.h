@@ -506,7 +506,7 @@ inline constexpr std::array EDGE_TYPES{
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Hex_To_Global>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_GLOBAL_TO_ACTION,
-		"Has",
+		"To",
 		{Graph::ElementType::NODE_GLOBAL, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Global_To_Action>::encoding)},
 	EdgeType{
@@ -561,7 +561,7 @@ inline constexpr std::array EDGE_TYPES{
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Action_By_Unit>::encoding)},
 	EdgeType{
 		Graph::ElementType::EDGE_UNIT_HAS_ACTION,
-		"By",
+		"Has",
 		{Graph::ElementType::NODE_UNIT, Graph::ElementType::NODE_ACTION},
 		EncodedSize(EncodingTraits<Graph::EdgeAttributes::Unit_Has_Action>::encoding)},
 	EdgeType{
