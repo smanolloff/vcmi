@@ -76,6 +76,8 @@ set(MMAI_FILES
 
   BAI/v15/BAI.cpp
   BAI/v15/BAI.h
+  BAI/v15/nn_model.h
+  BAI/v15/nn_model.cpp
   BAI/v15/attack_log.h
   BAI/v15/encoder.h
   BAI/v15/enum_flags.h

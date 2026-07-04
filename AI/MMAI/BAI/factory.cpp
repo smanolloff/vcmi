@@ -18,7 +18,7 @@
 #include "BAI/v15/BAI.h"
 #include "BAI/v13/nn_model.h"
 #include "BAI/v14/nn_model.h"
-// #include "BAI/v15/nn_model.h"
+#include "BAI/v15/nn_model.h"
 
 namespace MMAI::BAI
 {
@@ -105,6 +105,8 @@ std::shared_ptr<MMAI::Schema::IModel> CreateNNModel(const std::string & path, fl
 		return std::make_shared<V13::NNModel>(container, temperature, seed);
 	if(container->version == 14)
 		return std::make_shared<V14::NNModel>(container, temperature, seed);
+	if(container->version == 15)
+		return std::make_shared<V15::NNModel>(container, temperature, seed);
 	else
 		throw std::runtime_error("CreateNNModel: unsupported schema version: " + std::to_string(container->version));
 }

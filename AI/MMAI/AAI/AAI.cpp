@@ -115,7 +115,6 @@ void AAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 	{
 		ASSERT(queryID != -1, "QueryID is -1, but we are ATTACKER");
 		info("Answering query " + std::to_string(queryID) + " to re-play battle");
-
 		std::shared_lock gsLock(CGameState::mutex);
 		cb->selectionMade(1, queryID);
 	}
