@@ -1,0 +1,44 @@
+
+@startuml "vcmi-1.32-communication-sequence-loadgame"
+
+title "VCMI-1.3.2 communication sequence for starting a game"
+
+skinparam DefaultTextAlignment center
+skinparam DefaultFontName monospaced
+skinparam SequenceDividerFontName SansSerif
+skinparam NoteFontName SansSerif
+
+participant Server as server
+participant Client as client
+actor Player as player
+
+== (in game) ==
+
+player --> client : //clicks "New Game"//
+client X-> server : LobbyClientDisconnected
+
+== (in lobby) ==
+
+' Savegame
+
+client o-> server : LobbyClientConnected
+server -> client : //(to all)//\nLobbyClientConnected
+note right: display "Player joined the game"
+server -> client : LobbyUpdateState
+
+player --> client: //clicks on a map//
+
+client -> server : LobbySetMap
+server -> client : //(to all)//\nLobbySetMap
+note right: highlight the map
+server -> client : LobbyUpdateState
+
+player --> client: //clicks "Start Game"//
+client -> server : LobbyStartGame
+server -> client : LobbyStartGame
+note right: switch to loading screen
+
+== (in game) ==
+server -> client : YourTurn
+
+@enduml

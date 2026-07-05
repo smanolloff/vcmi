@@ -37,6 +37,83 @@ namespace
 		throw std::runtime_error(f.str());
 	}
 
+#ifdef ENABLE_ML
+	[[maybe_unused]] const char * nodeTypeName(ET type)
+	{
+		for(const auto & [candidateType, name, size] : S15::NODE_TYPES)
+			if(candidateType == type)
+				return name;
+
+		throwf("unknown node element type: %d", EU(type));
+	}
+
+	[[maybe_unused]] void printActionEdges(const IGraph * graph, int64_t actionId)
+	{
+		const auto * action = graph->getNode(ET::NODE_ACTION, actionId);
+
+		for(const auto & [edgeType, relationName, endpointTypes, size] : S15::EDGE_TYPES)
+		{
+			const auto & [srcType, dstType] = endpointTypes;
+			if(srcType != ET::NODE_ACTION && dstType != ET::NODE_ACTION)
+				continue;
+
+			std::cout
+				<< "  "
+				<< nodeTypeName(srcType)
+				<< "_"
+				<< relationName
+				<< "_"
+				<< nodeTypeName(dstType)
+				<< '\n';
+
+			for(const auto * edge : graph->getEdges(edgeType))
+			{
+				const auto [src, dst] = edge->endpoints();
+				if(src == action || dst == action)
+					std::cout << "    " << edge->name() << '\n';
+			}
+		}
+	}
+
+	void printMeleeDmgEdges(const IGraph * graph, int64_t actionId)
+	{
+		const auto * action = graph->getNode(ET::NODE_ACTION, actionId);
+		const S15::Graph::INode * actor = nullptr;
+		for(const auto * edge : graph->getEdgesBySrc(ET::EDGE_ACTION_BY_UNIT, action))
+		{
+			const auto & [srcNode, dstNode] = edge->endpoints();
+			if(action == srcNode)
+			{
+				actor = dstNode;
+				break;
+			}
+		}
+
+		if(!actor)
+			throw std::runtime_error("Actor not found!");
+
+		for(const auto * edge : graph->getEdgesBySrc(ET::EDGE_UNIT_MELEE_DMG_UNIT, actor))
+		{
+			const auto & [srcNode, dstNode] = edge->endpoints();
+			const auto * srcHex = graph->getEdgesBySrc(ET::EDGE_UNIT_OCCUPIES_HEX, srcNode).front()->endpoints().second;
+			const auto * dstHex = graph->getEdgesBySrc(ET::EDGE_UNIT_OCCUPIES_HEX, dstNode).front()->endpoints().second;
+			const auto & attrs = edge->rawAttributes();
+			using HA = S15::Graph::NodeAttributes::Hex;
+			using EA = S15::Graph::EdgeAttributes::Unit_MeleeDmg_Unit;
+
+			std::cout
+				<< "-------\n"
+				<< "src: " << srcNode->name() << " (y=" << srcHex->rawAttributes().at(EU(HA::Y_COORD)) << " x=" << srcHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
+				<< "dst: " << dstNode->name() << " (y=" << dstHex->rawAttributes().at(EU(HA::Y_COORD)) << " x=" << dstHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
+				<< "ESTIMATED_NET_VALUE_REL_BF:         " << attrs.at(EI(EA::ESTIMATED_NET_VALUE_REL_BF)) << "\n"
+				<< "ESTIMATED_ATTACKER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_SELF)) << "\n"
+				<< "ESTIMATED_ATTACKER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_BF)) << "\n"
+				<< "ESTIMATED_DEFENDER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_SELF)) << "\n"
+				<< "ESTIMATED_DEFENDER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_BF)) << "\n";
+		}
+	}
+#endif
+
 	template<typename T>
 	void assertValidTensor(const std::string & name, const Ort::Value & tensor, int ndim)
 	{
@@ -597,6 +674,9 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	logAi->debug(
 		"sample: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d %s", saction, sample.prob, sample.confidence, value, sample.index, sname
 	);
+
+	// ML(printActionEdges(graph, saction));
+	ML(printMeleeDmgEdges(graph, saction));
 
 	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f): %s") % saction % sample.confidence % sname);
 	return static_cast<int>(saction);

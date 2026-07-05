@@ -1,0 +1,43 @@
+Notes on AI creation
+
+*** Game start - adventure interfaces ***
+initGameInterface() is called on:
+* CPlayerInterface (CPI) for humans
+* settings["playerAI"] for computers
+  settings["playerAI"] is fixed to "MMAI" (ie. MMAI::AAI), which
+  can create battle interfaces as per `redAI` and `blueAI`
+  script arguments (this info is passed to AAI via baggage).
+
+*** Battle start - battle interfaces ***
+* battleStart() is called on the adventure interfaces for all players
+
+VCAI - (via parent class) reads settings["enemyAI"]) and calls GetNewBattleAI()
+MMAI - creates BAI (which makes use of the baggage), StupidAI or BattleAI directly
+CPI - reads settings["friendlyAI"]
+
+All adventure AIs have been modified to pass an "AICombatOptions" struct
+to the newly created battle interface:
+battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+it contains autocombat options + a special "other" std::any object which
+is non-null if an MMAI model was loaded. BAI uses it for action predictions.
+
+*** Auto-combat button clicked ***
+BattleWindow()::bAutofightf() has been patched to reuse code in CPI
+(in order to also pass baggage)
+
+Notes on AI deletion
+*** Battle end ***
+The battleEnd() is sent to the ADVENTURE AI:
+* for CPI, it's NOT forwarded to the battle AI (which is just destroyed)
+* for MMAI, it's forwarded to the battle AI and THEN the MMAI is destroyed
+
+
+AI for attacker (red)
+When attacker is "MMAI":
+ * if headless=true, VCMI will create MMAI::AAI which inits BAI via myInitBattleInterface()
+ * if headless=false, it will create CPI which inits BAI via the (default) initBattleInterface()
+
+CPI creates battle interfaces as per settings["friendlyAI"]
+=> must set that setting also (see further down)
+(Note: CPI had to be modded to pass the baggage)
+

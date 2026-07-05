@@ -14,6 +14,7 @@
 
 #include "CThreadHelper.h"
 #include <filesystem>
+#include <source_location>
 
 #include <boost/format.hpp>
 

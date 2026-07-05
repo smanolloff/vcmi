@@ -21,7 +21,10 @@
 #include "../../StupidAI/StupidAI.h"
 
 #include "BAI/factory.h"
-#include "BAI/fallback/scripted_model.h"
+#include "BAI/scripted/VIPBot.h"
+#include "BAI/scripted/HARBot.h"
+#include "BAI/scripted/scripted_model.h"
+#include "BAI/router.h"
 #include "BAI/v13/BAI_v13.h"
 
 #include "AI/MMAI/common.h"
@@ -44,9 +47,32 @@ namespace
 		std::string fallbackName;
 	};
 
-	std::shared_ptr<ModelRepository> InitModelRepository()
+	std::shared_ptr<ModelRepository> InitModelRepository(Schema::Baggage * baggage = nullptr)
 	{
 		auto repo = std::make_unique<ModelRepository>();
+
+		if (baggage) {
+			repo->seed = baggage->seed;
+			repo->temperature = baggage->temperature;
+
+			// Since ML client cannot load onnx models, it sends PATH
+			// "models" whose getName() returns the path to the model to load
+			// (in ML mode, the "MMAI" mod hence its config are not present)
+			if(baggage->modelLeft->getType() == Schema::ModelType::PATH)
+			{
+				const auto path = baggage->modelLeft->getName();
+				repo->models.try_emplace("attacker", CreateNNModel(path, repo->temperature, repo->seed), path);
+				repo->paths.try_emplace("attacker", path);
+			}
+			if(baggage->modelRight->getType() == Schema::ModelType::PATH)
+			{
+				const auto path = baggage->modelRight->getName();
+				repo->models.try_emplace("defender", CreateNNModel(path, repo->temperature, repo->seed), path);
+				repo->paths.try_emplace("defender", path);
+			}
+			return repo;
+		}
+
 		auto json = JsonUtils::assembleFromFiles("MMAI/CONFIG/mmai-settings.json");
 		std::string fallback;
 
@@ -56,7 +82,10 @@ namespace
 			repo->temperature = static_cast<float>(json["temperature"].Float());
 
 			repo->seed = json["seed"].Integer();
-			if(repo->seed == 0)
+
+			if(baggage)
+				repo->seed = baggage->seed;
+			else if(repo->seed == 0)
 				repo->seed = CRandomGenerator::getDefault().nextInt();
 
 			for(const auto & [key, node] : json["models"].Struct())
@@ -77,15 +106,15 @@ namespace
 		return repo;
 	}
 
-	const ModelRepository * GetModelRepository()
+	const ModelRepository * GetModelRepository(Schema::Baggage * baggage = nullptr)
 	{
-		static const auto repo = InitModelRepository();
+		static const auto repo = InitModelRepository(baggage);
 		return repo.get();
 	}
 
-	Schema::IModel * GetModel(const std::string & key)
+	Schema::IModel * GetModel(const std::string & key, Schema::Baggage * baggage = nullptr)
 	{
-		const auto * repo = GetModelRepository();
+		const auto * repo = GetModelRepository(baggage);
 		auto lock = std::lock_guard<std::mutex>(repo->mutex);
 
 		std::shared_ptr<Schema::IModel> model = nullptr;
@@ -168,19 +197,38 @@ Router::Router() : addrstr(MakeAddrStr(this)), basetag(addrstr + ":MMAI"), logta
 
 Router::~Router() = default;
 
-void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB)
+void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions_)
 {
 	env = ENV;
 	cb = CB;
 	colorname = cb->getPlayerID()->toString();
-	bai.reset();
-}
+	aiCombatOptions = aiCombatOptions_;
 
-void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences prefs)
-{
-	MMAI_LOG_TAG;
-	autocombatPreferences = prefs;
-	initBattleInterface(ENV, CB);
+	// During training, baggage is used for injecting the model-in-training
+	// (which acts as a bridge to vcmi-gym)
+	auto & any = aiCombatOptions.other;
+	if(any.has_value())
+	{
+		auto & t = typeid(Schema::Baggage *);
+		ASSERT(
+			any.type() == t,
+			boost::str(
+				boost::format("Bad std::any payload type for aiCombatOptions.other: want: %s/%u, have: %s/%u") % boost::core::demangle(t.name())
+				% t.hash_code() % boost::core::demangle(any.type().name()) % any.type().hash_code()
+			)
+		);
+		baggage = std::any_cast<Schema::Baggage *>(aiCombatOptions.other);
+
+		logAi->info("Baggage decoded");
+#ifndef ENABLE_ML
+		throw std::runtime_error("ENABLE_ML IS UNDEFINED, but baggage was given!");
+#endif
+	}
+	else
+	{
+		logAi->debug("No baggage given");
+	}
+	bai.reset();
 }
 
 /*
@@ -197,6 +245,15 @@ void Router::actionStarted(const BattleID & bid, const BattleAction & action)
 {
 	MMAI_LOG_TAG;
 	bai->actionStarted(bid, action);
+}
+
+void Router::onNewSystemMessageReceived(const std::string & msg) const
+{
+	if(!bai)
+		return;
+
+	MMAI_LOG_TAG;
+	bai->onNewSystemMessageReceived(msg);
 }
 
 void Router::activeStack(const BattleID & bid, const CStack * astack)
@@ -293,10 +350,40 @@ void Router::battleStart(
 
 	std::string modelkey = side == BattleSide::ATTACKER ? "attacker" : "defender";
 
-	if(cb->getBattle(bid)->battleGetWallState(EWallPart::GATE) != EWallState::NONE)
-		modelkey += ".siege";
+	if(baggage)
+	{
+		// During training, the model object is provided via the baggage
+		// This is a special model (a bridge between VCMI and vcmi-gym).
+		// Additionally, the `cb->getPlayerID` is used instead of `side`
+		// to accomodate for the "side swapping" training feature.
+		// XXX: dev mode assumes there are no neutral players in battle
+		ASSERT(baggage != nullptr, "baggage is nullptr");
+		// neutral AI has no player ID
+		if (!cb->getPlayerID()->hasValue() || cb->getPlayerID()->num > 0) {
+			model = baggage->modelRight;
+		} else {
+			model = baggage->modelLeft;
+		}
+		ASSERT(model != nullptr, "model is nullptr");
+		if(model->getType() == Schema::ModelType::PATH)
+		{
+			// If the baggage does not carry a model, it means we must load one from file
+			// This occurs when training is done vs. another pre-trained model
+			// For example, attacker is an injected model (being trained),
+			// while defender is nullptr which stands for "load a pre-trained
+			// model as usual"
+			model = GetModel(modelkey, baggage);
+		}
 
-	model = GetModel(modelkey);
+		ASSERT(model != nullptr, "model is nullptr");
+	}
+	else
+	{
+		if(cb->getBattle(bid)->battleGetWallState(EWallPart::GATE) != EWallState::NONE)
+			modelkey += ".siege";
+
+		model = GetModel(modelkey);
+	}
 
 	logtag = basetag + ".v" + std::to_string(model->getVersion());
 	LogTag _2(logtag + "." + __func__);
@@ -319,23 +406,43 @@ void Router::battleStart(
 			if(model->getName() == "StupidAI")
 			{
 				bai = std::make_shared<CStupidAI>();
-				bai->initBattleInterface(env, cb, autocombatPreferences);
+				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
 			else if(model->getName() == "BattleAI")
 			{
 				bai = std::make_shared<CBattleAI>();
-				bai->initBattleInterface(env, cb, autocombatPreferences);
+				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
+#ifdef ENABLE_ML
+			else if(model->getName() == "VIPBot")
+			{
+				bai = std::make_shared<VIPBot>("BattleAI");
+				bai->initBattleInterface(env, cb, aiCombatOptions);
+			}
+			else if(model->getName() == "HARBot")
+			{
+				bai = std::make_shared<HARBot>("BattleAI");
+				bai->initBattleInterface(env, cb, aiCombatOptions);
+			}
+#endif
 			else
 			{
 				THROW_FORMAT("Unexpected scripted model name: %s", model->getName());
 			}
 			break;
 		case Schema::ModelType::NN:
+		case Schema::ModelType::USER:
 			// XXX: must not call initBattleInterface here
-			bai = CreateBAI(model, env, cb, autocombatPreferences.enableSpellsUsage, autocombatPreferences.enableTacticsUsage);
+			bai = CreateBAI(model, env, cb, aiCombatOptions.enableSpellsUsage, aiCombatOptions.enableTacticsUsage);
+#ifdef ENABLE_ML
+			{
+				if(model->getVersion() == 13) {
+					auto bai_ = dynamic_cast<V13::BAI*>(bai.get());
+					ASSERT(bai_, "dynamic cast to V13::BAI failed");
+				}
+			}
+#endif
 			break;
-
 		default:
 			THROW_FORMAT("Unexpected model type: %d", EI(model->getType()));
 	}

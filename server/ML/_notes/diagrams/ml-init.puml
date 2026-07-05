@@ -1,0 +1,106 @@
+@startuml "ml-init"
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $lock_acq_fail_text()
+  !return "<back:yellow><color:red>acquire lock</color></back>"
+!endfunction
+
+!procedure $lock_acq_fail($node)
+  $node -> $node : $lock_acq_fail_text()
+  activate $node #red
+!endprocedure
+
+!procedure $lock_acq_direct($node)
+  $node -> $node : <back:yellow>acquire lock</back>
+!endprocedure
+
+!procedure $lock_acq_latent($node)
+  $lock_acq_direct($node)
+  deactivate $node
+!endprocedure
+
+!procedure $cond_wait($node)
+  $node -> $node : <back:red>cond.wait</back>\n<color:yellow><back:black>release lock</back></color>
+  activate $node #red
+!endprocedure
+
+!procedure $cond_notify($NodeA, $NodeB)
+  $NodeA --[#blue]> $NodeB : <color:blue>cond.notify</color>
+  $NodeB --[#red]> $NodeB : $lock_acq_fail_text()
+!endfunction
+
+!procedure $cond_switch($NodeA, $NodeB)
+  $cond_notify($NodeA, $NodeB)
+  $cond_wait($NodeA)
+  $lock_acq_latent($NodeB)
+!endfunction
+
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+!procedure $sharevar($node1, $node2, $txt)
+  $node1 <--[#gray]> $node2 : <color:gray>$replace($txt,"\n","</color>\n<color:gray>")</color>
+!endfunction
+
+!procedure $sharevar($txt)
+  $sharevar(C1, C2, $txt)
+!endfunction
+
+' avoids super long note lines in the diagram
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+participant vcmiclient as client
+participant NKAI
+participant StupidAI
+participant AAI
+participant BAI
+participant CDynLibHandler
+
+[-> client : (new)
+client -> client : load model
+client -> NKAI ** : initGameInterface(baggage)
+client -> AAI ** : initGameInterface(baggage)
+
+[-> client : battle
+client -> NKAI : battleStart()
+NKAI -> CDynLibHandler : getNewBattleAI()
+CDynLibHandler -> StupidAI ** : (new)
+CDynLibHandler --> NKAI : (ai)
+NKAI -> StupidAI : ai.battleStart()
+
+client -> AAI : battleStart()
+AAI -> CDynLibHandler : getNewBattleAI()
+CDynLibHandler -> BAI ** : (new)
+CDynLibHandler --> AAI : (ai)
+AAI -> BAI : ai.battleStart(baggage)
+
+@enduml

@@ -13,6 +13,7 @@
 #include "PossibleSpellcast.h"
 #include "PotentialTargets.h"
 #include "TacticsHandler.h"
+#include "battle/AICombatOptions.h"
 
 class CSpell;
 
@@ -61,8 +62,7 @@ public:
 	CBattleAI();
 	~CBattleAI();
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
 
 	void activeStack(const BattleID & battleID, const CStack * stack) override; //called when it's turn of that stack
 	void yourTacticPhase(const BattleID & battleID, int distance) override;
@@ -75,5 +75,5 @@ public:
 
 	void battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed) override;
 	void actionFinished(const BattleID & battleID, const BattleAction & action) override;
-	AutocombatPreferences autobattlePreferences = AutocombatPreferences();
+	AICombatOptions aiCombatOptions;
 };

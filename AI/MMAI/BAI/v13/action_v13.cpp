@@ -81,7 +81,9 @@ Action::Action(const Schema::Action action_, const Battlefield * bf, const std::
 
 std::string Action::name() const
 {
-	if(action == Schema::V13::ACTION_RETREAT)
+	if(action == Schema::ACTION_ERROR)
+		return "Error";
+	else if(action == Schema::V13::ACTION_RETREAT)
 		return "Retreat";
 	else if(action == Schema::V13::ACTION_WAIT)
 		return "Wait";

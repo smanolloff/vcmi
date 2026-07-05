@@ -21,6 +21,7 @@
 #include "adventureMap/CInGameConsole.h"
 #include "adventureMap/CList.h"
 
+#include "battle/AICombatOptions.h"
 #include "battle/BattleEffectsController.h"
 #include "battle/BattleFieldController.h"
 #include "battle/BattleInterface.h"
@@ -162,11 +163,12 @@ CPlayerInterface::~CPlayerInterface()
 		GAME->setInterfaceInstance(nullptr);
 }
 
-void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB)
+void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions_)
 {
 	cb = CB;
 	env = ENV;
 	hasQuickSave = checkQuickLoadingGame();
+	aiCombatOptions = aiCombatOptions_;
 
 	pathfinderCache = std::make_unique<PathfinderCache>(cb.get(), PathfinderOptions(*cb));
 	ENGINE->music().loadTerrainMusicThemes();
@@ -2142,13 +2144,10 @@ bool CPlayerInterface::capturedAllEvents()
 
 void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side)
 {
+	aiCombatOptions.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
+	aiCombatOptions.enableTacticsUsage = settings["battle"]["enableAutocombatTactics"].Bool();
 	autofightingAI = AIFactory::createBattleAI(settings["ai"]["combatAlliedAI"].String());
-
-	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
-	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-	autocombatPreferences.enableTacticsUsage = settings["battle"]["enableAutocombatTactics"].Bool();
-
-	autofightingAI->initBattleInterface(env, cb, autocombatPreferences);
+	autofightingAI->initBattleInterface(env, cb, aiCombatOptions);
 	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
 	isAutoFightOn = true;
 	registerBattleInterface(autofightingAI);

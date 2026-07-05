@@ -1,0 +1,19 @@
+{
+  "$comment": [
+    "Adjust temperature to alter model behaviour:",
+    "  0.0 = greedy (deterministic)",
+    "  1.0 = baseline",
+    "  2.0 = uncertain",
+    "  2.5 = dumb",
+    "  3+ = garbage (too random)",
+    "NOTE: The `temperature` feature is still a work-in-progress and is",
+    "      not yet configurable (changing the value here has no effect)."
+  ],
+  "models": {
+    "attacker": "attacker-nkjrmrsq-202509291846.onnx",
+    "defender": "defender-zvytfdpo-best48.onnx"
+  },
+  "fallback": "BattleAI",
+  "temperature": 0,
+  "seed": 0
+}

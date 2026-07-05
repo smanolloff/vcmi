@@ -76,10 +76,21 @@ namespace
 			return std::pair{numAdjacentHexes, numDistantHexes};
 		};
 
+		// Speed value grows linearly through common creature speeds, then tapers off.
+		constexpr double SPEED_KNEE = 13.0;
+		constexpr double SPEED_SLOPE = 0.2;
+		constexpr double SPEED_TAIL_WIDTH = 2.0;
+		const auto effectiveSpeed = spd <= SPEED_KNEE
+			? spd
+			: SPEED_KNEE + SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH);
+
 		auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
 		auto b = hp / (1 - std::min(0.7, 0.025 * def));
-		auto c = spd ? std::log(spd * 2) : 0.5;
+		auto c = spd ? 0.5 + SPEED_SLOPE * effectiveSpeed : 0.5;
 		auto d = shooter ? 1.5 : 1.0;
+
+		// Enchanters have multiple ENCHANTER bonuses, but their value should only be counted once.
+		bool enchanter = false;
 
 		for(const auto & bonus : *bonuses)
 		{
@@ -104,7 +115,11 @@ namespace
 					d += (bonus->val * 0.005);
 					break;
 				case BonusType::ENCHANTER:
-					d += 0.5;
+					if(!enchanter)
+					{
+						d += 0.5;
+						enchanter = true;
+					}
 					break;
 				case BonusType::ENEMY_ATTACK_REDUCTION:
 				case BonusType::ENEMY_DEFENCE_REDUCTION:

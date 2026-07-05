@@ -57,7 +57,7 @@ void CAdventureAI::battleStart(const BattleID & battleID, const CCreatureSet * a
 	assert(cbc);
 	suspendWaitTillRealize();
 	battleAI = AIFactory::createBattleAI(getBattleAIName());
-	battleAI->initBattleInterface(env, cbc);
+	battleAI->initBattleInterface(env, cbc, aiCombatOptions);
 	battleAI->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 

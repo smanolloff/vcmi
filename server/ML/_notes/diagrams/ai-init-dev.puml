@@ -1,0 +1,53 @@
+@startuml "vcmi-ai-init-dev"
+
+title "AI init (dev mode)"
+
+<style>
+activityDiagram {
+  FontName monospaced
+}
+</style>
+
+start
+:<i>// MLClient.cpp </i>
+
+<i>// Set all adventure AIs to AAI, which always create BAIs</i>
+settings["playerAI"] = "MMAI"
+settings["oneGoodAI"] = false
+
+<i>// Set CPlayerInterface (aka. GUI) to create BAI for auto-combat</i>
+settings["friendlyAI"] = "MMAI";
+
+switch (keyword)
+case (StupidAI\nBattleAI\nMMAI_SCRIPTED_SUMMONER)
+  :DummyModel(name=keyword);
+case (MMAI_USER)
+  :WrapperModel(name=keyword);
+case (MMAI_MODEL)
+  :IModel(name=keyword);
+endswitch
+
+://// AAI.cpp//
+
+battleAI = CDynLibHandler::getNewBattleAI("MMAI")
+battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+
+switch (//// BAI.cpp//\n\nmodel.getName())
+case (MMAI_MODEL)
+  :Base::Create(...);
+case (MMAI_USER)
+  :assert(devMode == false);
+  :Base::Create(...);
+case (MMAI_SCRIPTED_SUMMONER)
+  :assert(devMode == false);
+  :Scripted::Summoner(...);
+case (StupidAI)
+  :assert(devMode == false);
+  :CStupidAI(...);
+case (BattleAI)
+  :assert(devMode == false);
+  :CBattleAI(...);
+endswitch
+stop
+
+@enduml

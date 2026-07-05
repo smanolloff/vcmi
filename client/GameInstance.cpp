@@ -30,9 +30,9 @@
 
 std::unique_ptr<GameInstance> GAME = nullptr;
 
-GameInstance::GameInstance()
+GameInstance::GameInstance(AICombatOptions aco)
 	: translatorInstance(std::make_unique<CompositeTranslator>())
-	, serverInstance(std::make_unique<CServerHandler>())
+	, serverInstance(std::make_unique<CServerHandler>(aco))
 	, interfaceInstance(nullptr)
 {
 }

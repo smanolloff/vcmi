@@ -44,7 +44,7 @@ GlobalStats::GlobalStats(BattleSide side, int value, int hp)
 
 static_assert(EI(GlobalAction::_count) == 2); // RETREAT, WAIT
 
-void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, bool canWait)
+void GlobalStats::update(BattleSide side, CombatResult res, int value, int hp, bool canWait, int round)
 {
 	(res == CombatResult::NONE) ? setattr(GA::BATTLE_WINNER, S13::NULL_VALUE_UNENCODED) : setattr(GA::BATTLE_WINNER, EI(res));
 
