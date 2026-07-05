@@ -81,6 +81,8 @@ enum class ModelType : int
 {
 	SCRIPTED, // e.g. BattleAI, StupidAI
 	NN, // pre-trained models stored in a file
+	PATH, // similar to NN, but the model is not yet loaded (see BAI/router.cpp)
+	USER, // user-provided model, e.g. vcmi-gym trainable
 	_count
 };
 
@@ -102,6 +104,24 @@ public:
 	virtual Side getSide() = 0;
 
 	virtual ~IModel() = default;
+};
+
+// The Baggage struct is converted to a std::any object, which allows to
+// seamlessly transport MMAI-specific data through VCMI without polluting
+// the VCMI codebase.
+// Linkage needed due to ensure the MMAI constructor sees the proper
+// symbol when converting the std::any object back to a Baggage struct.
+//
+// Baggage is used during ML training only, where functions from vcmi-gym
+// are abstracted behind an IModel object and thus injected into VCMI.
+struct MMAI_DLL_LINKAGE Baggage
+{
+	IModel * modelLeft;
+	IModel * modelRight;
+
+	// ML bot is used in "VIP shooter" army scenarios
+	bool allowMlBotLeft;
+	bool allowMlBotRight;
 };
 
 // Convenience formatter for std::any cast errors

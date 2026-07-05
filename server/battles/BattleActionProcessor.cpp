@@ -62,11 +62,13 @@ bool BattleActionProcessor::doWaitAction(const CBattleInfoCallback & battle, con
 
 bool BattleActionProcessor::doRetreatAction(const CBattleInfoCallback & battle, const BattleAction & ba)
 {
+#ifndef ML // retreat is used for restarting *any* battle in ML
 	if (!battle.battleCanFlee(battle.sideToPlayer(ba.side)))
 	{
 		gameHandler->complain("Cannot retreat!");
 		return false;
 	}
+#endif
 
 	owner->setBattleResult(battle, EBattleResult::ESCAPE, battle.otherSide(ba.side));
 	return true;
@@ -245,7 +247,7 @@ bool BattleActionProcessor::doAttackAction(const CBattleInfoCallback & battle, c
 
 	if (movementResult.invalidRequest)
 	{
-		gameHandler->complain("Stack failed attack - unable to reach target!");
+		gameHandler->complain("Stack failed attack - unable to reach target!: dest=" + std::to_string(destinationTile.toInt()) + ", attackPos=" + std::to_string(attackPos.toInt()) + ", stack=" + stack->getDescription() + ", destinationStack=" + (destinationStack ? destinationStack->getDescription() : "nullptr"));
 		return false;
 	}
 
@@ -263,7 +265,7 @@ bool BattleActionProcessor::doAttackAction(const CBattleInfoCallback & battle, c
 
 	if(!destinationStack)
 	{
-		gameHandler->complain("Unit can not attack itself");
+		gameHandler->complain("Unit can not attack itself: dest=" + std::to_string(destinationTile.toInt()) + ", attackPos=" + std::to_string(attackPos.toInt()) + ", stack=" + stack->getDescription() + ", destinationStack=" + (destinationStack ? destinationStack->getDescription() : "nullptr"));
 		return false;
 	}
 
@@ -796,7 +798,8 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 
 	if (pathDistance > unitMovementRange)
 	{
-		gameHandler->complain("Given destination is not reachable!");
+		gameHandler->complain("Given destination is not reachable!: " + std::to_string(start.toInt()) + " -> " + std::to_string(dest.toInt()) + " by " + currentUnit->getDescription());
+		auto [unitPath, pathDistance] = battle.getPath(start, dest, currentUnit);
 		return { 0, false, true };
 	}
 
@@ -924,7 +927,10 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 		while(movementSuccess)
 		{
 			if (movementsLeft<tilesToMove)
-				throw std::runtime_error("Movement terminated abnormally");
+			{
+				logGlobal->error("Movement terminated abnormally");
+				IFML(break, throw std::runtime_error("Movement terminated abnormally"));
+			}
 
 			bool gateStateChanging = false;
 			//special handling for opening gate on from starting hex

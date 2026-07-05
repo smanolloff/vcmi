@@ -16,6 +16,7 @@
 #include "../lib/callback/CGameInfoCallback.h"
 #include "../lib/ConditionalWait.h"
 #include "../lib/ResourceSet.h"
+#include "../lib/battle/AICombatOptions.h"
 
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -126,6 +127,7 @@ public:
 	std::map<PlayerColor, std::vector<std::shared_ptr<IBattleEventsReceiver>>> additionalBattleInts;
 
 	std::unique_ptr<BattleAction> currentBattleAction;
+	AICombatOptions aiCombatOptions;
 
 	CClient();
 	~CClient();
@@ -167,6 +169,7 @@ public:
 	void battleStarted(const BattleID & battle);
 	void battleFinished(const BattleID & battleID);
 	void startPlayerBattleAction(const BattleID & battleID, PlayerColor color);
+	void onNewSystemMessageReceived(const std::string & msg);
 
 	friend class CCallback; //handling players actions
 	friend class CBattleCallback; //handling players actions

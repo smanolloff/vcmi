@@ -179,8 +179,11 @@ void CClient::initMapHandler()
 	// TODO: CMapHandler initialization can probably go somewhere else
 	// It's can't be before initialization of interfaces
 	// During loading CPlayerInterface from serialized state it's depend on MH
-	GAME->setMapInstance(std::make_unique<CMapHandler>(&gameState().getMap()));
-	logNetwork->trace("Creating mapHandler: %d ms", GAME->server().th->getDiff());
+	if(!settings["session"]["headless"].Bool() || IS_ML)
+	{
+		GAME->setMapInstance(std::make_unique<CMapHandler>(&gameState().getMap()));
+		logNetwork->trace("Creating mapHandler: %d ms", GAME->server().th->getDiff());
+	}
 }
 
 void CClient::initPlayerEnvironments()
@@ -316,7 +319,7 @@ void CClient::installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInte
 
 	auto cb = std::make_shared<CCallback>(gamestate, callbackPlayer, this);
 	battleCallbacks[color] = cb;
-	gameInterface->initGameInterface(playerEnvironments.at(color), cb);
+	gameInterface->initGameInterface(playerEnvironments.at(color), cb, aiCombatOptions);
 
 	installNewBattleInterface(gameInterface, color, battlecb);
 }
@@ -330,7 +333,7 @@ void CClient::installNewBattleInterface(std::shared_ptr<CBattleGameInterface> ba
 		logGlobal->trace("\tInitializing the battle interface for player %s", color.toString());
 		auto cbc = std::make_shared<CBattleCallback>(color, this);
 		battleCallbacks[color] = cbc;
-		battleInterface->initBattleInterface(playerEnvironments.at(color), cbc);
+		battleInterface->initBattleInterface(playerEnvironments.at(color), cbc, aiCombatOptions);
 	}
 }
 
@@ -501,6 +504,12 @@ void CClient::startPlayerBattleAction(const BattleID & battleID, PlayerColor col
 	{
 		activateStack();
 	}
+}
+
+void CClient::onNewSystemMessageReceived(const std::string & msg)
+{
+	for (const auto & [_, battleint] : battleints)
+		battleint->onNewSystemMessageReceived(msg);
 }
 
 void CClient::removeGUI() const

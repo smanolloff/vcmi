@@ -70,7 +70,7 @@ void CAmmo::use(int32_t amount)
 
 	if(available() - amount < 0)
 	{
-		logGlobal->error("Stack ammo overuse. total: %d, used: %d, requested: %d", total(), used, amount);
+		logGlobal->warn("Stack ammo overuse. total: %d, used: %d, requested: %d", total(), used, amount);
 		used += available();
 	}
 	else
@@ -993,8 +993,29 @@ SlotID CUnitStateDetached::unitSlot() const
 	return unit->unitSlot();
 }
 
+namespace
+{
+struct RecursionGuard {
+    int& depth;
+
+    explicit RecursionGuard(int& depth) : depth(depth) {
+        ++depth;
+    }
+
+    ~RecursionGuard() {
+        --depth;
+    }
+};
+}
+
 int32_t CUnitStateDetached::unitBaseAmount() const
 {
+	static thread_local int depth = 0;
+	RecursionGuard guard(depth);
+	if (depth > 1000) {
+			throw std::runtime_error("recursion depth exceeded in yourFunction");
+	}
+
 	return unit->unitBaseAmount();
 }
 

@@ -1,0 +1,32 @@
+@startuml "vcmi-ai-init"
+
+title "AI init"
+
+<style>
+activityDiagram {
+  FontName monospaced
+}
+</style>
+
+start
+:<i>// CMT.cpp </i>
+
+baggage = ML::InitBaggage(settings["MMAI"]);
+
+://// CAdventureAI::battleStart (called by VCAI and NKAI's battleStart)//
+
+battleAI = CDynLibHandler::getNewBattleAI(getBattleAIName())
+battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+
+:if (baggage->devMode == false)
+  ASSERT(baggage->model->getName() == "MMAI_MODEL");
+
+switch (//// BAI.cpp//\n\nmodel.getName())
+case (MMAI_MODEL)
+  :Base::Create(...);
+case (other)
+  :<i>irrelevant in prod;
+endswitch
+stop
+
+@enduml

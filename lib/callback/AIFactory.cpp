@@ -43,6 +43,15 @@ std::shared_ptr<CGlobalAI> AIFactory::createAdventureAI(const std::string & name
 #endif
 	}
 
+#ifdef ENABLE_ML
+	if(name == "MMAI")
+	{
+		auto ret = std::make_shared<MMAI::AAI::AAI>();
+		ret->dllName = name;
+		return ret;
+	}
+#endif
+
 	auto ret = std::make_shared<CEmptyAI>();
 	ret->dllName = name;
 	return ret;

@@ -182,15 +182,15 @@ State::State(int version_, const std::string & colorname, const CPlayerBattleCal
 	actmask.reserve(S13::N_ACTIONS);
 }
 
-void State::onActiveStack(const CStack * astack, CombatResult result, bool recording, bool fastpath)
+void State::onActiveStack(const CStack * astack, int round, CombatResult result, bool recording, bool fastpath)
 {
-	logAi->debug("onActiveStack: result=%d, recording=%d, fastpath=%d", EI(result), recording, fastpath);
+	logAi->debug("onActiveStack: round=%d, result=%d, recording=%d, fastpath=%d", round, EI(result), recording, fastpath);
 	const auto & [lv, lh, rv, rh] = CalcGlobalStats(battle);
 	const auto & [ldd, ldr, lvk, lvl, rdd, rdr, rvk, rvl] = ProcessAttackLogs(attackLogs, sstats);
 	auto ogstats = *gstats; // a copy of the "old" gstats
 
-	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn)
-								   : gstats->update(BattleSide::NONE, result, lv + rv, lh + rh, false);
+	(result == CombatResult::NONE) ? gstats->update(astack->unitSide(), result, lv + rv, lh + rh, !astack->waitedThisTurn, round)
+								   : gstats->update(battle->battleGetMySide(), result, lv + rv, lh + rh, false, round);
 	lpstats->update(&ogstats, lv, lh, ldd, ldr, lvk, lvl);
 	rpstats->update(&ogstats, rv, rh, rdd, rdr, rvk, rvl);
 
@@ -271,7 +271,7 @@ void State::onActiveStack(const CStack * astack, CombatResult result, bool recor
 	attackLogs.clear(); // accumulate new logs until next turn
 }
 
-void State::_onActionStarted(const BattleAction & ba)
+void State::_onActionStarted(const BattleAction & ba, int round)
 {
 	if(!ba.isUnitAction())
 	{
@@ -416,7 +416,7 @@ void State::_onActionStarted(const BattleAction & ba)
 	}
 
 	logAi->debug("Recording actionType=%d", EI(ba.actionType));
-	onActiveStack(actingStack, CombatResult::NONE, true, fastpath);
+	onActiveStack(actingStack, round, CombatResult::NONE, true, fastpath);
 }
 
 void State::encodeGlobal(CombatResult result)
@@ -530,27 +530,27 @@ void State::onActionFinished(const BattleAction & ba) const
  * !!!!!! IMPORTANT: `battlefield` must not be used here (old state) !!!!!!
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  */
-void State::onActionStarted(const BattleAction & ba)
+void State::onActionStarted(const BattleAction & ba, int round)
 {
 	if(!enableTransitions)
 		return;
 
-	_onActionStarted(ba);
+	_onActionStarted(ba, round);
 	actingStack = nullptr;
 }
 
-void State::onBattleEnd(const BattleResult * br)
+void State::onBattleEnd(const BattleResult * br, int round)
 {
 	switch(br->winner)
 	{
 		case BattleSide::LEFT_SIDE:
-			onActiveStack(nullptr, CombatResult::LEFT_WINS);
+			onActiveStack(nullptr, round, CombatResult::LEFT_WINS);
 			break;
 		case BattleSide::RIGHT_SIDE:
-			onActiveStack(nullptr, CombatResult::RIGHT_WINS);
+			onActiveStack(nullptr, round, CombatResult::RIGHT_WINS);
 			break;
 		default:
-			onActiveStack(nullptr, CombatResult::DRAW);
+			onActiveStack(nullptr, round, CombatResult::DRAW);
 	}
 }
 };

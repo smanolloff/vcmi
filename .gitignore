@@ -34,7 +34,7 @@ out/
 /CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
-Makefile
+#Makefile
 cmake_install.cmake
 install_manifest.txt
 moc_*.cpp
@@ -77,3 +77,13 @@ compile_commands.json
 
 # CLion
 .idea/
+
+# ML
+.cmake
+*.sqlite3
+*.db
+rel/
+actions.txt
+
+data/*
+!data/config/
