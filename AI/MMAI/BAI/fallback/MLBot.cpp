@@ -221,7 +221,7 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
 
     const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
     if (art && art->getTypeId() == ArtifactID::GRAIL) {
-        info("GRAIL found in hero -- looking for VIP stack");
+        warn("GRAIL found in hero -- looking for VIP stack");
         for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
             if (cstack->getCount() > 1 && cstack->isShooter()) {
                 vip = cstack;
@@ -231,9 +231,9 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
     }
 
     if (vip)
-        info("Found VIP stack: %s", vip->getDescription());
+        warn("Found VIP stack: %s", vip->getDescription());
     else
-        info("Could not find VIP stack, will delegate all calls to %s", botname);
+        warn("Could not find VIP stack, will delegate all calls to %s", botname);
 
     msgbuf.push_back(boost::str(boost::format("[round %d][%d] battleStart\n") % nrounds % nturns));
 }
@@ -304,19 +304,42 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
         return;
     }
 
-
     auto targets = std::vector<BattleHex>{};
     targets.reserve(8); // max for 2-hex stack in the open
 
+    bool canWait = guard->willMove() && !guard->waitedThisTurn;
+
     /*
-     * First check if we already stand on any of those hexes => only defend
+     * First check if we already stand on any of those hexes => in-place attack, wait or defend
      * (avoids expensive reachability calculations)
      */
 
     for (const auto & hex : hexes) {
         debug("Consider guard hex %d ...", hex.toInt());
         if (guard->coversPos(hex)) {
-            info("Already guarding on that hex => defend");
+            info("Already guarding on that hex");
+
+            // 1. if neighbouring enemy => attack (in-place)
+            for (const auto & target : battle->battleGetStacks())
+            {
+                if (guard->unitSide() != target->unitSide() && CStack::isMeleeAttackPossible(guard, target, guard->getPosition()))
+                {
+                    info("Attacking nearby unit...");
+                    cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, target, guard->getPosition()));
+                    return;
+                }
+            }
+
+            // 2. else if can wait => wait
+            if (canWait)
+            {
+                info("Waiting...");
+                cb->battleMakeUnitAction(bid, BattleAction::makeWait(guard));
+                return;
+            }
+
+            // 3. else defend
+            info("Defending...");
             cb->battleMakeUnitAction(bid, BattleAction::makeDefend(guard));
             return;
         }
@@ -332,7 +355,7 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
     }
 
     /*
-     * Try moving towards a guard target hex
+     * Try moving towards a guard target hex (wait first)
      */
 
     if (targets.empty()){
@@ -343,9 +366,18 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
 
     auto skips = std::array<bool, GameConstants::BFIELD_SIZE> {};
     const BattleHex * target = PickClosestHex(guard, rdebug.distances, targets, skips);
+
     while(target && rdebug.distances.at(target->toInt()) > speed) {
         debug("Target hex %d not reachable: dist(%d) > speed(%d)", target->toInt(), rdebug.distances.at(target->toInt()), speed);
+        if (canWait)
+        {
+            info("Waiting...");
+            cb->battleMakeUnitAction(bid, BattleAction::makeWait(guard));
+            return;
+        }
+
         target = PickClosestHex(guard, rdebug.distances, NearbyMoveHexes(guard, *target), skips);
+        info("Will try a closer hex: %d", target ? target->toInt() : -1);
     }
 
     if (!target) {

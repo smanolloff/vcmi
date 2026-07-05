@@ -85,6 +85,8 @@ namespace ML {
 
         CGHeroInstance* vipHero1 = nullptr;
         CGHeroInstance* vipHero2 = nullptr;
+        const CGHeroInstance* nonvipHero1 = nullptr;
+        const CGHeroInstance* nonvipHero2 = nullptr;
 
         int towncounter = 0;
         int battlecounter = 0;

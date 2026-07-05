@@ -407,6 +407,10 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
             vipHero1 = p1[0];
             vipHero2 = p2[0];
 
+            nonvipHero1 = p1[1];
+            nonvipHero2 = p2[1];
+
+            // Remove vip heroes from pools so they can't be chosen via randomHeroes
             p1.erase(p1.begin(), p1.begin() + 2);
             p2.erase(p2.begin(), p2.begin() + 2);
 
@@ -555,6 +559,11 @@ void ServerPlugin::handleRandomHeroes(
     army1 = hero1->getArmy();
     army2 = hero2->getArmy();
     // std::cout << "Pool: " << it->first << ", " << hero1->nameCustomTextId << " vs. " << hero2->nameCustomTextId << "\n";
+
+    // Store as nonvip heroes
+    nonvipHero1 = hero1;
+    nonvipHero2 = hero2;
+
 }
 
 void ServerPlugin::handleRandomArmies(
@@ -788,7 +797,11 @@ void ServerPlugin::handleRandomArmies(
         army1 = hero1->getArmy();
     }
     else
+    {
         std::cout << "RED VIP: SKIP\n";
+        hero1 = nonvipHero1;
+        army1 = nonvipHero1->getArmy();
+    }
 
     if(rightVip)
     {
@@ -797,7 +810,11 @@ void ServerPlugin::handleRandomArmies(
         army2 = hero2->getArmy();
     }
     else
+    {
         std::cout << "BLUE VIP: SKIP " << config.rightVipChance << "\n";
+        hero2 = nonvipHero2;
+        army2 = nonvipHero2->getArmy();
+    }
 
     auto replaceArmy = [this, &target, &generateArmy, &generateVipArmy](const CGHeroInstance * hero, bool vip)
     {
