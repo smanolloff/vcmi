@@ -541,7 +541,7 @@ bool AIGateway::canRetreatFromBattle(const BattleID & battleID, const CGHeroInst
 }
 
 
-void AIGateway::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> callback)
+void AIGateway::initGameInterface(std::shared_ptr<Environment> env, std::shared_ptr<CCallback> callback, AutocombatPreferences autocombatPreferences)
 {
 	LOG_TRACE(logAi);
 	cbc = callback;

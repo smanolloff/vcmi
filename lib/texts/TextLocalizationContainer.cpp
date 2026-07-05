@@ -52,7 +52,7 @@ const std::string & TextLocalizationContainer::translateString(const TextIdentif
 {
 	if(stringsLocalizations.count(identifier.get()) == 0)
 	{
-		logGlobal->error("Unable to find localization for string '%s'", identifier.get());
+		logGlobal->warn("Unable to find localization for string '%s'", identifier.get());
 		return identifier.get();
 	}
 

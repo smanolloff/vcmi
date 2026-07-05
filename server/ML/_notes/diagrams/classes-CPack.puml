@@ -1,0 +1,189 @@
+@startuml "vcmi-1.32-classes"
+
+skinparam defaultTextAlignment center
+
+!procedure $desc($txt)
+<font:Arial><color:Gray><i>// $txt</i></color></font>
+!endprocedure
+
+title "VCMI-1.3.2 class diagram (packs)"
+
+'''' Declarations to stylize the diagram ''''
+hide circle
+set namespaceSeparator none
+
+skinparam ClassFontStyle bold
+skinparam ClassFontName monospaced
+skinparam ClassAttributeFontName monospaced
+skinparam ClassAttributeIconSize 0
+skinparam DefaultTextAlignment left
+
+
+'''' Attributes and methods '''
+
+class CPack {
+    $desc("A communication packet")
+    c           CConnection
+    --
+    serialize(Handler, int version)
+    applyGs(CGameState)
+    visit(ICPackVisitor)       $desc("public, calls the below 2 methods. Implemented by CPack only")
+    visitBasic(ICPackVisitor)  $desc("protected, implemented by mid subclasses (eg. CPackForServer)")
+    visitTyped(ICPackVisitor)  $desc("protected, implemented by leaf subclasses (eg. LobbyClientConnected)")
+}
+
+CPack -- CPackForServer
+class CPackForServer {
+    player      PlayerColor
+    requestID   int
+    --
+    --
+    $desc("sub-classes:")
+    ArrangeStacks
+    AssembleArtifacts
+    BuildBoat
+    BuildStructure
+    BulkExchangeArtifacts
+    BulkMergeStacks
+    BulkMoveArmy
+    BulkSmartSplitStack
+    BulkSplitStack
+    BuyArtifact
+    CastAdvSpell
+    CastleTeleportHero
+    DigWithHero
+    DisbandCreature
+    DismissHero
+    EndTurn
+    EraseArtifactByClient
+    ExchangeArtifacts
+    GarrisonHeroSwap
+    HireHero
+    MakeAction
+    MakeCustomAction
+    MoveHero
+    PlayerMessage
+    QueryReply
+    RecruitCreatures
+    SaveGame
+    SetFormation
+    TradeOnMarketplace
+    UpgradeCreature
+}
+
+CPack -- CPackForClient
+class CPackForClient {
+    --
+    --
+    $desc("sub-classes:")
+    AddQuest
+    AdvmapSpellCast
+    BattleAttack
+    BattleLogMessage
+    BattleNextRound
+    BattleObstaclesChanged
+    BattleResultAccepted
+    BattleResultsApplied
+    BattleSetActiveStack
+    BattleSetStackProperty
+    BattleSpellCast
+    BattleStackMoved
+    BattleStart
+    BattleTriggerEffect
+    BattleUnitsChanged
+    BattleUpdateGateState
+    CatapultAttack
+    CenterView
+    ChangeFormation
+    ChangeObjPos
+    ChangeObjectVisitors
+    ChangeSpells
+    EndAction
+    EntitiesChanged
+    FoWChange
+    GiveBonus
+    GiveHero
+    HeroRecruited
+    HeroVisit
+    HeroVisitCastle
+    InfoWindow
+    NewObject
+    NewStructures
+    NewTurn
+    OpenWindow
+    PackageApplied
+    PlayerBlocked
+    PlayerCheated
+    PlayerEndsGame
+    PlayerMessageClient
+    PlayerReinitInterface
+    PrepareHeroLevelUp
+    Query
+    RazeStructures
+    RemoveBonus
+    RemoveObject
+    SetAvailableArtifacts
+    SetAvailableCreatures
+    SetAvailableHero
+    SetCommanderProperty
+    SetHeroesInTown
+    SetMana
+    SetMovePoints
+    SetObjectProperty
+    SetPrimSkill
+    SetResources
+    SetSecSkill
+    SetStackEffect
+    ShowWorldViewEx
+    StacksInjured
+    StartAction
+    SystemMessage
+    TryMoveHero
+    UpdateArtHandlerLists
+    UpdateCastleEvents
+    UpdateMapEvents
+    YourTurn
+
+}
+
+
+CPack - CPackForLobby
+class CPackForLobby {
+    --
+    isForServer()       bool
+}
+
+CPackForLobby -- CLobbyPackToServer
+class CLobbyPackToServer {
+    --
+    --
+    $desc("sub-classes:")
+    LobbyChangePlayerOption
+    LobbyForceSetPlayer
+    LobbySetCampaign
+    LobbySetCampaignBonus
+    LobbySetCampaignMap
+    LobbySetDifficulty
+    LobbySetMap
+    LobbySetPlayer
+    LobbySetTurnTime
+}
+
+
+CPackForLobby -- CLobbyPackToPropagate
+class CLobbyPackToPropagate {
+    --
+    --
+    $desc("sub-classes:")
+    LobbyChangeHost
+    LobbyChatMessage
+    LobbyClientConnected
+    LobbyClientDisconnected
+    LobbyEndGame
+    LobbyGuiAction
+    LobbyShowMessage
+    LobbyStartGame
+    LobbyUpdateState
+}
+
+@enduml

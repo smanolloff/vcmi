@@ -19,6 +19,7 @@
 #include "../GameEngine.h"
 #include "../gui/Shortcut.h"
 #include "../gui/WindowHandler.h"
+#include "Global.h"
 #include "media/IMusicPlayer.h"
 #include "../widgets/Buttons.h"
 #include "../widgets/Images.h"
@@ -56,7 +57,7 @@ BattleResultWindow::BattleResultWindow(const BattleResult & br, CPlayerInterface
 	bool isDefenderHuman = defenderPlayer && defenderPlayer->isHuman();
 	bool onlyOnePlayerHuman = isAttackerHuman != isDefenderHuman;
 
-	if((allowReplay || owner.cb->getStartInfo()->extraOptionsInfo.unlimitedReplay) && onlyOnePlayerHuman)
+	if(IS_ML || ((allowReplay || owner.cb->getStartInfo()->extraOptionsInfo.unlimitedReplay) && onlyOnePlayerHuman))
 	{
 		repeat = std::make_shared<CButton>(Point(24, 505), AnimationPath::builtin("icn6432.def"), std::make_pair("", ""), [this](){ bRepeatf();}, EShortcut::GLOBAL_CANCEL);
 		repeat->setBorderColor(Colors::METALLIC_GOLD);

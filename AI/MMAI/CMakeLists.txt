@@ -6,6 +6,9 @@ if(POLICY CMP0177)
 endif()
 
 set(MMAI_FILES
+  AAI/AAI.cpp
+  AAI/AAI.h
+
   BAI/logger.h
   BAI/factory.h
   BAI/factory.cpp
@@ -13,6 +16,10 @@ set(MMAI_FILES
   BAI/router.h
   BAI/scripted/scripted_model.h
   BAI/scripted/scripted_model.cpp
+  BAI/scripted/VIPBot.h
+  BAI/scripted/VIPBot.cpp
+  BAI/scripted/HARBot.h
+  BAI/scripted/HARBot.cpp
 
   BAI/v13/BAI_v13.cpp
   BAI/v13/BAI_v13.h

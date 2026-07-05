@@ -51,20 +51,15 @@ void logHexNumbers()
 #endif
 }
 
-void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB)
+void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP)
 {
 	env = ENV;
 	cb = CB;
+	autobattlePreferences = AP;
 	playerID = *CB->getPlayerID();
 	movesSkippedByDefense = 0;
 
 	logHexNumbers();
-}
-
-void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
-{
-	initBattleInterface(ENV, CB);
-	autobattlePreferences = autocombatPreferences;
 }
 
 BattleAction CBattleAI::useHealingTent(const BattleID & battleID, const CStack *stack)
@@ -255,6 +250,3 @@ std::optional<BattleAction> CBattleAI::considerFleeingOrSurrendering(const Battl
 
 	return result;
 }
-
-
-

@@ -1,0 +1,11 @@
+- if hero has picked up an artifact on A7.vmap, game crashes on battle start
+- makeHeal can target ballista, although UI does not allow to heal it
+- enemy mines are invisible, but their location is compromised by a
+  brief stop + a weird animation whenever one of their units passes through it
+- mapeditor does not detect changes if only army is modified
+- mapeditor does not remove creatures from army if they are set to "", but the count is >0
+- mapeditor army window keyboard navigation (tab) is messed up
+- summoning water elementals on A7.vmap if hero has 3 war machines causes an error
+- summoning demons prevents summon elementals
+- summoning elements causes random creature "cast" animation (manticores)
+  (i believe same applies to all spells)

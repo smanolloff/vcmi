@@ -16,10 +16,11 @@
 #include "../../lib/battle/CPlayerBattleCallback.h"
 #include "../../lib/callback/CCallback.h"
 
-void CEmptyAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB)
+void CEmptyAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AutocombatPreferences AP)
 {
 	cb = CB;
 	env = ENV;
+	autocombatPreferences = AP;
 	human=false;
 	playerID = *cb->getPlayerID();
 }

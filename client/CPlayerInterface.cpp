@@ -162,10 +162,11 @@ CPlayerInterface::~CPlayerInterface()
 		GAME->setInterfaceInstance(nullptr);
 }
 
-void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB)
+void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AutocombatPreferences AP)
 {
 	cb = CB;
 	env = ENV;
+	autocombatPreferences = AP;
 	hasQuickSave = checkQuickLoadingGame();
 
 	pathfinderCache = std::make_unique<PathfinderCache>(cb.get(), PathfinderOptions(*cb));
@@ -2144,7 +2145,6 @@ void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatur
 {
 	autofightingAI = AIFactory::createBattleAI(settings["ai"]["combatAlliedAI"].String());
 
-	AutocombatPreferences autocombatPreferences = AutocombatPreferences();
 	autocombatPreferences.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
 	autocombatPreferences.enableTacticsUsage = settings["battle"]["enableAutocombatTactics"].Bool();
 

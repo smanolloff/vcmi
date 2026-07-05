@@ -521,7 +521,7 @@ set(lib_MAIN_HEADERS
 	callback/GameRandomizer.h
 	callback/MapInfoCallback.h
 	callback/EditorCallback.h
-	
+
 	campaign/CampaignBonus.h
 	campaign/CampaignConstants.h
 	campaign/CampaignHandler.h
