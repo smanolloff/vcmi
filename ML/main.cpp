@@ -178,7 +178,7 @@ namespace ML {
             ("stats-timeout", po::value<int>()->value_name("<N>"),
                 "Timeout in ms for obtaining a DB lock in stats storage (default 60000*)")
             ("stats-persist-freq", po::value<int>()->value_name("<N>"),
-                "Persist stats to storage file every N battles (read only if 0*)");
+                "Persist stats to storage file every N battles (no persistence if 0*)");
 
         po::variables_map vm;
 

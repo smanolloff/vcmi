@@ -173,8 +173,12 @@ namespace {
     HeroPools InitHeroPools(CGameState* gs) {
         auto pattern = std::regex(R"(^hero_\d+_pool_([0-9A-Za-z]+)$)");
         auto res = HeroPools{};
-        int poolid = 0;
         int counter = 0;
+
+        // the order in which pools for side0 and side1 arrive may be different
+        // => use a central lookup table
+        int poolid = 0;
+        std::unordered_map<std::string, int> poolids;
 
         for (const auto &heroid : gs->getMap().getHeroesOnMap()) {
             auto * hero = gs->getHero(heroid);
@@ -193,7 +197,20 @@ namespace {
             if (std::regex_match(hero->nameCustomTextId, matches, pattern))
                 poolname = matches[1].str();
 
-            auto & pool = ownedPools.try_emplace(poolname, HeroPool(poolid++, poolname)).first->second;
+            auto it = ownedPools.find(poolname);
+            if (it == ownedPools.end())
+            {
+
+                auto it_id = poolids.find(poolname);
+                if (it_id == poolids.end())
+                    it_id = poolids.try_emplace(poolname, poolid++).first;
+                auto poolid = it_id->second;
+
+                it = ownedPools.emplace(poolname, HeroPool(poolid, poolname)).first;
+                std::cout << "Added pool " << poolid << " of owner " << poolowner << ": " << poolname << "\n";
+            }
+
+            auto& pool = it->second;
             pool.heroes.push_back(hero);
             ++counter;
         }
@@ -373,7 +390,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 , allcreatures(InitCreatures())
 , allshooters(InitShootingCreatures())
 , allguards(InitGuardingCreatures())
-// , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
+, stats(InitStats(gs, config, heropools.at(0).size(), 2*heropools.at(0).begin()->second.heroes.size()))
 , rng(std::mt19937(config.rngSeed ? config.rngSeed : gh->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
 , creatureValues(InitCreatureValues())
 {
@@ -864,57 +881,61 @@ void ServerPlugin::endBattleHook(
     const CGHeroInstance * heroAttacker,
     const CGHeroInstance * heroDefender
 ) {
-    // // don't record stats for retreats (i.e. env resets)
-    //     // XXX: stats not updated with owner-based hero pools
-    // if (stats && br->result == EBattleResult::NORMAL) {
-    //     auto extractHeroID = [](const std::string& name) {
-    //         std::regex pattern(R"(^hero_(\d+)_pool_([0-9A-Za-z]+)$)");
+    if (br->result == EBattleResult::NORMAL) // ESCAPE=1 SURRENDER=2
+        // left=0, right=1, draw=2, none=-1
+        std::cout << static_cast<int>(br->winner) << "\n" << std::flush;
 
-    //         int hero_id = -1;
-    //         std::string pool_name = "default";
-    //         std::smatch match;
+    // don't record stats for retreats (i.e. env resets)
+    // XXX: stats not updated with owner-based hero pools
+    if (stats && br->result == EBattleResult::NORMAL) {
+        auto extractHeroID = [](const std::string& name) {
+            std::regex pattern(R"(^hero_(\d+)_pool_([0-9A-Za-z]+)$)");
 
-    //         if (std::regex_match(name, match, pattern)) {
-    //             pool_name = match[2].str();
-    //         } else {
-    //             // assert old hero name format (no pools)
-    //             std::regex pattern2(R"(^hero_(\d+)$)");
-    //             if (!std::regex_match(name, match, pattern2))
-    //                 throw std::runtime_error("invalid hero name: " + name);
-    //         }
+            int hero_id = -1;
+            std::string pool_name = "default";
+            std::smatch match;
 
-    //         hero_id = std::stoi(match[1].str());
+            if (std::regex_match(name, match, pattern)) {
+                pool_name = match[2].str();
+            } else {
+                // assert old hero name format (no pools)
+                std::regex pattern2(R"(^hero_(\d+)$)");
+                if (!std::regex_match(name, match, pattern2))
+                    throw std::runtime_error("invalid hero name: " + name);
+            }
 
-    //         return std::pair<int, std::string>(hero_id, pool_name);
-    //     };
+            hero_id = std::stoi(match[1].str());
 
-    //     auto [attackerID, poolname] = extractHeroID(heroAttacker->nameCustomTextId);
-    //     auto [defenderID, poolname2] = extractHeroID(heroDefender->nameCustomTextId);
+            return std::pair<int, std::string>(hero_id, pool_name);
+        };
 
-    //     if (poolname != poolname2)
-    //         throw std::runtime_error("Pools do not match: " + poolname + " <> " + poolname2);
+        auto [attackerID, poolname] = extractHeroID(heroAttacker->nameCustomTextId);
+        auto [defenderID, poolname2] = extractHeroID(heroDefender->nameCustomTextId);
 
-    //     if(heroAttacker->tempOwner == heroDefender->tempOwner)
-    //         throw std::runtime_error("temp owners must differ");
+        if (poolname != poolname2)
+            throw std::runtime_error("Pools do not match: " + poolname + " <> " + poolname2);
 
-    //     auto itAttacker = heropools.at(heroAttacker->tempOwner).find(poolname);
-    //     if (itAttacker == heropools.at(heroAttacker->tempOwner).end())
-    //         throw std::runtime_error("Could not pool with name: " + poolname);
+        if(heroAttacker->tempOwner == heroDefender->tempOwner)
+            throw std::runtime_error("temp owners must differ");
 
-    //     auto itDefender = heropools.at(heroDefender->tempOwner).find(poolname);
-    //     if (itDefender == heropools.at(heroDefender->tempOwner).end())
-    //         throw std::runtime_error("Could not pool with name: " + poolname);
+        auto itAttacker = heropools.at(heroAttacker->tempOwner).find(poolname);
+        if (itAttacker == heropools.at(heroAttacker->tempOwner).end())
+            throw std::runtime_error("Could not find attacker pool with name: " + poolname);
 
-    //     if (itAttacker->second.id != itDefender->second.id)
-    //         throw std::runtime_error("Attacker and defender pools are different");
+        auto itDefender = heropools.at(heroDefender->tempOwner).find(poolname);
+        if (itDefender == heropools.at(heroDefender->tempOwner).end())
+            throw std::runtime_error("Could not find defender pool with name: " + poolname);
 
-    //     auto poolid = itAttacker->second.id;
+        if (itAttacker->second.id != itDefender->second.id)
+            throw std::runtime_error("Attacker and defender pools are different: " + std::to_string(itAttacker->second.id) + "/" + itAttacker->second.name + " <> " + std::to_string(itDefender->second.id) + "/" + itDefender->second.name);
 
-    //     // XXX: stats not updated with owner-based hero pools
-    //     auto statside = (config.statsMode == "red") ? redside : !redside;
-    //     auto victory = br->winner == BattleSide(statside);
-    //     stats->dataadd(victory, poolid, attackerID, defenderID);
-    // }
+        auto poolid = itAttacker->second.id;
+
+        // XXX: stats not updated with owner-based hero pools
+        auto statside = (config.statsMode == "red") ? redside : !redside;
+        auto victory = br->winner == BattleSide(statside);
+        stats->dataadd(victory, poolid, attackerID, defenderID);
+    }
 
     if (config.maxBattles && battlecounter >= config.maxBattles) {
         std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";

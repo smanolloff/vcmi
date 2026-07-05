@@ -198,10 +198,7 @@ namespace ML {
 
         if (a.statsStorage != "-") {
             auto f = std::filesystem::path(a.statsStorage);
-            if (!std::filesystem::is_regular_file(f)) {
-                std::cerr << "Bad value for statsStorage: file does not exist: " << f << " (hint: use the SQLs in server/ML/sql to create it)\n";
-                exit(1);
-            }
+            validateFile("stats-storage", f, wd);
         }
 
         if (a.maxBattles < 0) {
