@@ -23,8 +23,8 @@ set(MMAI_FILES
   BAI/v13/attack_log.h
   BAI/v13/battlefield.cpp
   BAI/v13/battlefield.h
-  BAI/v13/encoder.cpp
   BAI/v13/encoder.h
+  BAI/v13/encoder.cpp
   BAI/v13/global_stats.cpp
   BAI/v13/global_stats.h
   BAI/v13/hex.cpp
@@ -43,16 +43,103 @@ set(MMAI_FILES
   BAI/v13/supplementary_data.cpp
   BAI/v13/supplementary_data.h
 
+  BAI/v14/BAI.cpp
+  BAI/v14/BAI.h
+  BAI/v14/nn_model.h
+  BAI/v14/nn_model.cpp
+  BAI/v14/action.cpp
+  BAI/v14/action.h
+  BAI/v14/attack_log.h
+  BAI/v14/battlefield.cpp
+  BAI/v14/battlefield.h
+  BAI/v14/cache.cpp
+  BAI/v14/cache.h
+  BAI/v14/encoder.cpp
+  BAI/v14/encoder.h
+  BAI/v14/global_stats.cpp
+  BAI/v14/global_stats.h
+  BAI/v14/hex.cpp
+  BAI/v14/hex.h
+  BAI/v14/hexaction.h
+  BAI/v14/hexactmask.h
+  BAI/v14/links.h
+  BAI/v14/player_stats.cpp
+  BAI/v14/player_stats.h
+  BAI/v14/render.cpp
+  BAI/v14/render.h
+  BAI/v14/stack.cpp
+  BAI/v14/stack.h
+  BAI/v14/state.cpp
+  BAI/v14/state.h
+  BAI/v14/supplementary_data.cpp
+  BAI/v14/supplementary_data.h
+
+  BAI/v15/BAI.cpp
+  BAI/v15/BAI.h
+  BAI/v15/nn_model.h
+  BAI/v15/nn_model.cpp
+  BAI/v15/attack_log.h
+  BAI/v15/encoder.h
+  BAI/v15/enum_flags.h
+  BAI/v15/fastbfs.h
+  BAI/v15/graph/edge_store.h
+  BAI/v15/graph/edges/action_ends_at_hex.h
+  BAI/v15/graph/edges/base.h
+  BAI/v15/graph/edges/generic.h
+  BAI/v15/graph/edges/hex_adjacent_hex.h
+  BAI/v15/graph/edges/hex_becomes_shoot_target_after_action.h
+  BAI/v15/graph/edges/hex_is_end_of_action.h
+  BAI/v15/graph/edges/unit_acts_before_unit.h
+  BAI/v15/graph/edges/unit_becomes_shoot_target_after_action.h
+  BAI/v15/graph/edges/unit_becomes_shoot_threat_after_action.h
+  BAI/v15/graph/edges/unit_is_meleed_by_action.h
+  BAI/v15/graph/edges/unit_is_shot_by_action.h
+  BAI/v15/graph/edges/unit_melee_dmg_unit.cpp
+  BAI/v15/graph/edges/unit_melee_dmg_unit.h
+  BAI/v15/graph/edges/unit_shoot_dmg_unit.cpp
+  BAI/v15/graph/edges/unit_shoot_dmg_unit.h
+  BAI/v15/graph/element.h
+  BAI/v15/graph/graph.cpp
+  BAI/v15/graph/graph.h
+  BAI/v15/graph/node_store.h
+  BAI/v15/graph/nodes/action.h
+  BAI/v15/graph/nodes/base.h
+  BAI/v15/graph/nodes/global.cpp
+  BAI/v15/graph/nodes/global.h
+  BAI/v15/graph/nodes/hex.cpp
+  BAI/v15/graph/nodes/hex.h
+  BAI/v15/graph/nodes/player.cpp
+  BAI/v15/graph/nodes/player.h
+  BAI/v15/graph/nodes/unit.cpp
+  BAI/v15/graph/nodes/unit.h
+  BAI/v15/graph/util.h
+  BAI/v15/render.cpp
+  BAI/v15/render.h
+  BAI/v15/state.cpp
+  BAI/v15/state.h
+  BAI/v15/supplementary_data.cpp
+  BAI/v15/supplementary_data.h
+  BAI/v15/verify.cpp
+  BAI/v15/verify.h
+
   schema/schema.h
   schema/v13/constants.h
   schema/v13/schema.h
   schema/v13/types.h
+  schema/v14/constants.h
+  schema/v14/schema.h
+  schema/v14/types.h
+  schema/v15/constants.h
+  schema/v15/encoding.h
+  schema/v15/graph.h
+  schema/v15/schema.h
+  schema/v15/types.h
+  schema/v15/util.h
 
   MMAI.h
   StdInc.h
   common.h
 )
-
 
 option(ENABLE_MMAI_TEST "Compile tests" OFF)
 
