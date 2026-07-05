@@ -790,7 +790,7 @@ void ServerPlugin::handleRandomArmies(
 
     if(leftVip)
     {
-        std::cout << "RED VIP: TRIGGER\n";
+        // std::cout << "RED VIP: TRIGGER\n";
         // XXX: heroes must be different (objects must have different tempOwner)
         // modification by reference
         hero1 = vipHero1;
@@ -798,20 +798,20 @@ void ServerPlugin::handleRandomArmies(
     }
     else
     {
-        std::cout << "RED VIP: SKIP\n";
+        // std::cout << "RED VIP: SKIP\n";
         hero1 = nonvipHero1;
         army1 = nonvipHero1->getArmy();
     }
 
     if(rightVip)
     {
-        std::cout << "BLUE VIP: TRIGGER " << config.rightVipChance << "\n";
+        // std::cout << "BLUE VIP: TRIGGER " << config.rightVipChance << "\n";
         hero2 = vipHero2;
         army2 = hero2->getArmy();
     }
     else
     {
-        std::cout << "BLUE VIP: SKIP " << config.rightVipChance << "\n";
+        // std::cout << "BLUE VIP: SKIP " << config.rightVipChance << "\n";
         hero2 = nonvipHero2;
         army2 = nonvipHero2->getArmy();
     }
