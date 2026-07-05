@@ -241,8 +241,8 @@ namespace ML {
             exit(1);
         }
 
-        if (a.randomArmyValueMin < 0 || a.randomArmyValueMin > 10000000) {
-            std::cerr << "Bad value for randomArmyValueMin: expected an integer between 0 and 10000000, got: " << a.randomArmyValueMin << "\n";
+        if (a.randomArmyValueMin < 500 || a.randomArmyValueMin > 10000000) {
+            std::cerr << "Bad value for randomArmyValueMin: expected an integer between 500 and 10000000, got: " << a.randomArmyValueMin << "\n";
             exit(1);
         }
 

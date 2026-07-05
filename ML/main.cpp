@@ -56,9 +56,9 @@ namespace ML {
         int randomHeroes = 0;
         int randomObstacles = 0;
         bool randomArmies = false;
-        int randomArmyValueMin = 0;
-        int randomArmyValueMax = 0;
-        int randomArmyTargetVar = 0;
+        int randomArmyValueMin = 5000;
+        int randomArmyValueMax = 1000000;
+        int randomArmyTargetVar = 30;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
         int leftVipChance = 0;
@@ -131,9 +131,9 @@ namespace ML {
             ("random-terrain-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a random terrain (default 0*)")
             ("left-vip-chance", po::value<int>()->value_name("<N>"),
-                "Percent chance to swap entire left army with 1 random shooter + guards (default 0*)")
+                "Percent chance to generate a VIP left army with 1 shooter stack + guard stacks (default 0*)")
             ("right-vip-chance", po::value<int>()->value_name("<N>"),
-                "Percent chance to swap entire right army with 1 random shooter + guards (default 0*)")
+                "Percent chance to generate a VIP right army with 1 shooter stack + guard stacks (default 0*)")
             ("battlefield-pattern", po::value<std::string>()->value_name("<REGEX>"),
                 "If given, it will be used as a regex pattern for filtering battlefields"
                 "based on their json key (see config/battlefields.json)")

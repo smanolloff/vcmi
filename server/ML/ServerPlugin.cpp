@@ -344,14 +344,14 @@ namespace {
         return res;
     }
 
-    // Just low-tier creatures (levels 1..3)
+    // Just non-shooting low-tier creatures (levels 1..3)
     std::vector<CreatureID> InitGuardingCreatures() {
         auto res = std::vector<CreatureID>{};
 
         LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
             // "special" creatures (property not exposed, but e.g. ballistas have lvl=4 and growth=0)
-            if (cr->getLevel() > 0 && cr->getGrowth() && cr->getLevel() < 4) {
+            if (cr->getLevel() > 0 && cr->getGrowth() && cr->getLevel() < 4 && cr->getBaseShots() == 0) {
                 // std::cout << "ADDING GUARD: " << cr->getId() << " | " << cr->getGrowth() << " | " << cr->getNameSingularTranslated() << "\n";
                 res.push_back(cr->getId());
             }
@@ -557,83 +557,23 @@ void ServerPlugin::handleRandomHeroes(
     // std::cout << "Pool: " << it->first << ", " << hero1->nameCustomTextId << " vs. " << hero2->nameCustomTextId << "\n";
 }
 
-void ServerPlugin::_setVipArmy(
-    CGHeroInstance * heroA,
-    CGHeroInstance * heroB
-) {
-    auto dist100 = std::uniform_int_distribution<>(0, 99);
-    auto distShooterCreatures = std::uniform_int_distribution<>(0, allshooters.size() - 1);
-    auto distGuardingCreatures = std::uniform_int_distribution<>(0, allguards.size() - 1);
-    auto distGuardStacks = std::uniform_int_distribution<>(3, 6);
-    auto distStrength = std::uniform_real_distribution<float>(0.5, 1.5);
-    auto distSlot = std::uniform_int_distribution<>(0, 6);
-
-    const auto *guard = allguards.at(distGuardingCreatures(rng)).toCreature();
-    const auto *shooter = allshooters.at(distShooterCreatures(rng)).toCreature();
-    auto shooterslot = SlotID(distSlot(rng));
-
-    auto totalValue = 0;
-    auto guardsToAdd = distGuardStacks(rng);
-    auto guardsAdded = 0;
-
-    for (int i = 0; i < 7; ++i) {
-        auto islot = SlotID(i);
-
-        // (A) Erase all stacks
-        if (heroA->hasStackAtSlot(islot))
-            gh->eraseStack(StackLocation(heroA->id, islot), true);
-
-        // (A) Insert guards at non-shooter slots
-        if (islot != shooterslot && guardsAdded < guardsToAdd){
-            gh->insertNewStack(StackLocation(heroA->id, islot), guard, 1);
-            ++guardsAdded;
-        }
-
-        // (B) Calculate value of all stacks
-        if (heroB->hasStackAtSlot(islot)) {
-            const auto & cstack = heroB->getStack(islot);
-            totalValue += creatureValues.at(cstack.getCreatureID()) * cstack.getCount();
-        }
-    }
-
-    int shooterQty = distStrength(rng) * (totalValue / creatureValues.at(shooter->getId()));
-    if (shooterQty == 0)
-        shooterQty = 1;
-
-    // Insert shooter stack
-    gh->insertNewStack(StackLocation(heroA->id, SlotID(shooterslot)), shooter, shooterQty);
-}
-
-void ServerPlugin::handleVips(
+void ServerPlugin::handleRandomArmies(
     const CArmedInstance *&army1,
     const CArmedInstance *&army2,
     const CGHeroInstance *&hero1,
     const CGHeroInstance *&hero2
 ) {
-    auto dist100 = std::uniform_int_distribution<>(0, 99);
-
-    if (dist100(rng) < config.leftVipChance) {
-        // XXX: heroes must be different (objects must have different tempOwner)
-        // modification by reference
-        hero1 = vipHero1;
-        army1 = hero1->getArmy();
-        _setVipArmy(const_cast<CGHeroInstance*>(hero1), const_cast<CGHeroInstance*>(hero2));
-    }
-
-    if (dist100(rng) < config.rightVipChance) {
-        hero2 = vipHero2;
-        army2 = hero2->getArmy();
-        _setVipArmy(const_cast<CGHeroInstance*>(hero2), const_cast<CGHeroInstance*>(hero1));
-    }
-
-}
-
-void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
     if (!config.randomArmies)
         return;
 
-    if ((config.randomArmyValueMin < 0) || (config.randomArmyValueMax < config.randomArmyValueMin) || (config.randomArmyTargetVar < 0) || (config.randomArmyTargetVar > 100))
+    if ((config.randomArmyValueMin < 500) || (config.randomArmyValueMax < config.randomArmyValueMin) || (config.randomArmyTargetVar < 0) || (config.randomArmyTargetVar > 100))
         throw std::runtime_error("invalid randomArmy config given");
+
+    if(allcreatures.empty())
+        throw std::runtime_error("cannot generate random armies without valid creatures");
+
+    if((config.leftVipChance > 0 || config.rightVipChance > 0) && (allshooters.empty() || allguards.empty()))
+        throw std::runtime_error("cannot generate VIP random armies without shooter and guard creatures");
 
     struct GeneratedStack
     {
@@ -647,15 +587,24 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
         return (value + divisor - 1) / divisor;
     };
 
-    auto distTargetValue = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax);
+    auto totalArmyValue = [this](const std::vector<GeneratedStack> & generated) -> int
+    {
+        return boost::accumulate(generated, 0, [&](int sum, const auto & stack) {
+            return sum + (creatureValues.at(stack.creature->getId()) * stack.quantity);
+        });
+    };
 
     auto var = static_cast<double>(config.randomArmyTargetVar) / 100;
 
-    auto generateArmy = [this, &divCeil, &var](int targetValue) -> std::vector<GeneratedStack>
+    auto generateArmyWithStackCount = [this, &divCeil, &var](
+        int targetValue,
+        const std::vector<CreatureID> & creaturePool,
+        int desiredStackCount
+    ) -> std::vector<GeneratedStack>
     {
         const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
         const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
-        const auto cheapestCreature = std::ranges::min_element(allcreatures, [this](const CreatureID & left, const CreatureID & right)
+        const auto cheapestCreature = std::ranges::min_element(creaturePool, [this](const CreatureID & left, const CreatureID & right)
         {
             return creatureValues.at(left) < creatureValues.at(right);
         });
@@ -665,10 +614,6 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
         {
             std::array<int, 7> slots = { 0, 1, 2, 3, 4, 5, 6 };
             std::shuffle(slots.begin(), slots.end(), rng);
-
-            // Bias towards fuller armies while still allowing sparse ones sometimes.
-            auto distSlotCount = std::uniform_int_distribution<>(1, 7);
-            const int desiredStackCount = std::max(distSlotCount(rng), distSlotCount(rng));
 
             int totalValue = 0;
             std::vector<GeneratedStack> generated;
@@ -683,7 +628,7 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
 
                 const bool isLastStack = remainingSlotsAfterThis == 0;
                 std::vector<const CCreature *> candidates;
-                for(const auto & creatureId : allcreatures)
+                for(const auto & creatureId : creaturePool)
                 {
                     const auto value = creatureValues.at(creatureId);
                     if(value <= 0 || value + reservedValueForLaterSlots > remainingMaxValue)
@@ -728,45 +673,148 @@ void ServerPlugin::handleRandomArmies(const CGHeroInstance * hero1, const CGHero
                 return generated;
         }
 
+        return {};
+    };
+
+    auto generateArmy = [this, &divCeil, &generateArmyWithStackCount](int targetValue) -> std::vector<GeneratedStack>
+    {
+        for(int attempt = 0; attempt < 100; ++attempt)
+        {
+            // Bias towards fuller armies while still allowing sparse ones sometimes.
+            auto distSlotCount = std::uniform_int_distribution<>(1, 7);
+            const int desiredStackCount = std::max(distSlotCount(rng), distSlotCount(rng));
+            auto generated = generateArmyWithStackCount(targetValue, allcreatures, desiredStackCount);
+            if(!generated.empty())
+                return generated;
+        }
+
+        const auto cheapestCreature = std::ranges::min_element(allcreatures, [this](const CreatureID & left, const CreatureID & right)
+        {
+            return creatureValues.at(left) < creatureValues.at(right);
+        });
         const auto * creature = cheapestCreature->toCreature();
         const int creatureValue = creatureValues.at(creature->getId());
         const int quantity = std::max(1, divCeil(targetValue, creatureValue));
         return { { SlotID(0), creature, quantity } };
     };
 
-    const int target = distTargetValue(rng);
-
-    auto replaceArmy = [this, &target, &generateArmy](const CGHeroInstance * hero)
+    auto generateVipArmy = [this, &divCeil, &var, &totalArmyValue, &generateArmyWithStackCount](int targetValue) -> std::vector<GeneratedStack>
     {
-        const auto generated = generateArmy(target);
+        const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
+        const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
+
+        const auto cheapestGuard = std::ranges::min_element(allguards, [this](const CreatureID & left, const CreatureID & right)
+        {
+            return creatureValues.at(left) < creatureValues.at(right);
+        });
+        const int cheapestGuardValue = creatureValues.at(*cheapestGuard);
+
+        for(int attempt = 0; attempt < 1000; ++attempt)
+        {
+            const int desiredStackCount = std::uniform_int_distribution<>(4, 7)(rng);
+            const int guardStackCount = desiredStackCount - 1;
+            const int minGuardValue = cheapestGuardValue * guardStackCount;
+            const int maxGuardValue = (maxTotalValue * 7) / 10;
+
+            if(minGuardValue > maxGuardValue)
+                continue;
+
+            const int guardTarget = std::uniform_int_distribution<>(minGuardValue, maxGuardValue)(rng);
+            auto generated = generateArmyWithStackCount(guardTarget, allguards, guardStackCount);
+            if(generated.empty())
+                continue;
+
+            const int guardValue = totalArmyValue(generated);
+            const int minShooterValue = std::max({ 1, minTotalValue - guardValue, divCeil(guardValue * 3, 7) });
+            const int maxShooterValue = maxTotalValue - guardValue;
+            if(minShooterValue > maxShooterValue)
+                continue;
+
+            struct ShooterCandidate
+            {
+                const CCreature * creature;
+                int minQuantity;
+                int maxQuantity;
+            };
+
+            std::vector<ShooterCandidate> shooters;
+            for(const auto & shooterId : allshooters)
+            {
+                const int shooterValue = creatureValues.at(shooterId);
+                const int minQuantity = std::max(1, divCeil(minShooterValue, shooterValue));
+                const int maxQuantity = maxShooterValue / shooterValue;
+                if(minQuantity <= maxQuantity)
+                    shooters.push_back({ shooterId.toCreature(), minQuantity, maxQuantity });
+            }
+
+            if(shooters.empty())
+                continue;
+
+            const auto & shooter = shooters.at(std::uniform_int_distribution<>(0, static_cast<int>(shooters.size()) - 1)(rng));
+            const int shooterQuantity = std::uniform_int_distribution<>(shooter.minQuantity, shooter.maxQuantity)(rng);
+            const int shooterValue = creatureValues.at(shooter.creature->getId()) * shooterQuantity;
+
+            std::array<bool, 7> occupied = { false, false, false, false, false, false, false };
+            for(const auto & stack : generated)
+                occupied.at(static_cast<int>(stack.slot)) = true;
+
+            std::vector<int> freeSlots;
+            for(int slot = 0; slot < 7; ++slot)
+                if(!occupied.at(slot))
+                    freeSlots.push_back(slot);
+
+            const int shooterSlot = freeSlots.at(std::uniform_int_distribution<>(0, static_cast<int>(freeSlots.size()) - 1)(rng));
+            generated.push_back({ SlotID(shooterSlot), shooter.creature, shooterQuantity });
+
+            const int totalValue = guardValue + shooterValue;
+            if(totalValue >= minTotalValue && totalValue <= maxTotalValue && shooterValue * 10 >= totalValue * 3)
+                return generated;
+        }
+
+        throw std::runtime_error("failed to generate VIP random army with the current randomArmy config");
+    };
+
+    const int target = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
+    auto dist100 = std::uniform_int_distribution<>(0, 99);
+    const bool leftVip = vipHero1 && (dist100(rng) < config.leftVipChance);
+    const bool rightVip = vipHero2 && (dist100(rng) < config.rightVipChance);
+
+    if(leftVip)
+    {
+        std::cout << "RED VIP: TRIGGER\n";
+        // XXX: heroes must be different (objects must have different tempOwner)
+        // modification by reference
+        hero1 = vipHero1;
+        army1 = hero1->getArmy();
+    }
+    else
+        std::cout << "RED VIP: SKIP\n";
+
+    if(rightVip)
+    {
+        std::cout << "BLUE VIP: TRIGGER " << config.rightVipChance << "\n";
+        hero2 = vipHero2;
+        army2 = hero2->getArmy();
+    }
+    else
+        std::cout << "BLUE VIP: SKIP " << config.rightVipChance << "\n";
+
+    auto replaceArmy = [this, &target, &generateArmy, &generateVipArmy](const CGHeroInstance * hero, bool vip)
+    {
+        const auto generated = vip ? generateVipArmy(target) : generateArmy(target);
 
         for(int slot = 0; slot < 7; ++slot)
             if(hero->hasStackAtSlot(SlotID(slot)))
                 gh->eraseStack(StackLocation(hero->id, SlotID(slot)), true);
 
-        // std::cout << "Generated army for " << hero->nameCustomTextId << ":\n";
-        auto total = boost::accumulate(generated, 0, [&](int sum, const auto & stack) {
-            return sum + (creatureValues.at(stack.creature->getId()) * stack.quantity);
-        });
-
         for(const auto & stack : generated)
-        {
-            auto value = creatureValues.at(stack.creature->getId()) * stack.quantity;
-            auto percent = std::round(100 * static_cast<float>(value) / static_cast<float>(total));
-            // std::cout << "\t" << "[" << static_cast<int>(stack.slot) << "]\t" << percent << "%\t" << stack.quantity << " x " << stack.creature->getNameSingularTextID() << "\n";
             gh->insertNewStack(StackLocation(hero->id, stack.slot), stack.creature, stack.quantity);
-        }
-        // std::cout << "\t" << "Total value: " << total << " (" << std::round(100.0 * total / target) << "% of target)\n";
     };
 
     // std::cout << "=================================\n";
 
-    // Don't add stacks to VIP armies
-    if(hero1 != vipHero1)
-        replaceArmy(hero1);
-
-    if(hero2 != vipHero2)
-        replaceArmy(hero2);
+    replaceArmy(hero1, leftVip);
+    replaceArmy(hero2, rightVip);
 }
 
 void ServerPlugin::handleWarmachines(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
@@ -866,8 +914,7 @@ void ServerPlugin::startBattleHook(
     // printf("config.randomHeroes = %d\n", config.randomHeroes);
 
     handleRandomHeroes(army1, army2, hero1, hero2);
-    handleVips(army1, army2, hero1, hero2);
-    handleRandomArmies(hero1, hero2);
+    handleRandomArmies(army1, army2, hero1, hero2);
     handleWarmachines(hero1, hero2);
     handleTightFormation(hero1, hero2);
     handleMinMaxMana(hero1, hero2);
