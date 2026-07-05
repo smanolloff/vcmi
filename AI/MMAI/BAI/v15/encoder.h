@@ -11,6 +11,7 @@
 
 #include "schema/v15/types.h"
 #include <chrono>
+#include <map>
 #include <span>
 
 namespace MMAI::BAI::V15::Encoder

@@ -112,6 +112,7 @@ struct DLL_LINKAGE LogRecord
 	std::string message;
 	std::chrono::system_clock::time_point timeStamp;
 	std::string threadId;
+	std::string processId;
 };
 
 /// The class CLogFormatter formats log records.

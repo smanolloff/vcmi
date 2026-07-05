@@ -262,24 +262,26 @@ private:
 		{
 			const auto occupiedHex = CStack::occupiedHex(oldpos, wide, side);
 
-			// . . . . . . .     . . . . . .
-			//  . . . . . .     . . . . . .
-			// . . . . . . .     . - R R ◼ .
-			//  . ◼ L L - .     . . . . . .
-			// . . . . . . .     . . . . . .
-			//
-			// In accessL2, LL as well as the hex "-" in front are all unaccessible.
-			// In accessR2, RR and the "-" in front of it are unaccessible.
-			//
-			// However, we are now calculating reachability for a new hypothetical
-			// position of LL (or RR). hence we must set as available the LL hexes,
-			// but also the hex front as well.
-			// Caveat1: if that hex in front was unaccessible because of something else
-			//          (e.g. real obstacle), then it must remain unaccessible
-			//          => set it to whatever value it has in accessL1.
-			// Caveat2: if the hex "behind" the L stack was an inaccessible (e.g. obstacle),
-			//          then we must *not* mark both LL hexes as available: only the primary.
-			//
+			/*
+			 * . . . . . . .     . . . . . .
+			 *  . . . . . .     . . . . . .
+			 * . . . . . . .     . - R R ◼ .
+			 *  . ◼ L L - .     . . . . . .
+			 * . . . . . . .     . . . . . .
+			 *
+			 * In accessL2, LL as well as the hex "-" in front are all unaccessible.
+			 * In accessR2, RR and the "-" in front of it are unaccessible.
+			 *
+			 * However, we are now calculating reachability for a new hypothetical
+			 * position of LL (or RR). hence we must set as available the LL hexes,
+			 * but also the hex front as well.
+			 * Caveat1: if that hex in front was unaccessible because of something else
+			 *          (e.g. real obstacle), then it must remain unaccessible
+			 *          => set it to whatever value it has in accessL1.
+			 * Caveat2: if the hex "behind" the L stack was an inaccessible (e.g. obstacle),
+			 *          then we must *not* mark both LL hexes as available: only the primary.
+			 *
+			 */
 
 			// Handle caveat 1
 			const auto hexInFront =
@@ -318,54 +320,56 @@ private:
 		if(!wide || !moat)
 			return mask;
 
-		// A wide stack which already stands on the moat does not count
-		// any of its occupied hexes as stopping anymore.
-		//
-		// Layout (no mask):  Layout (no mask, wide moat):
-		//  . . . . ~ . . .   . . . ~ ~ | . .
-		// . . . . ~ | . .   . . . ~ ~ | . .
-		//  . . . ~ . . . .   . . ~ ~ . . . .    Legend:
-		// . . . ~ | . . .   . . ~ ~ | . . .       ~    moat
-		//  . . . @ @ . . .   . . ~ @ @ . . .      |    wall
-		// . . . ~ | . . .   . . ~ ~ | . . .       .    accessible (destroyed wall)
-		//  . . . ~ | . . .   . . ~ ~ | . .        @    gate
-		// . . . . ~ . . .     . . ~ ~ . . .
-		//
-		// Masks:                               Masks (wide moat):
-		// stop2L:           stop2R:            stop2L:           stop2R:
-		//  . . . . ~ > . .   . . . < ~ . . .    . . . ~ ~ | . .   . . < ~ ~ . . .
-		// . . . . ~ | . .   . . . < ~ | . .    . . . ~ ~ | . .   . . < ~ ~ | . .
-		//  . . . ~ > . . .   . . < ~ . . . .    . . ~ ~ > . . .   . < ~ ~ . . . .
-		// . . . ~ | . . .   . . < ~ | . . .    . . ~ ~ | . . .   . < ~ ~ | . . .
-		//  . . . @ @ . . .   . . . @ @ . . .    . . ~ @ @ . . .   . . . @ @ . . .
-		// . . . ~ | . . .   . . < ~ | . . .    . . ~ ~ | . . .   . < ~ ~ | . . .
-		//  . . . ~ | . . .   . . < ~ | . . .    . . ~ ~ | . .     . < ~ ~ | . .
-		// . . . . ~ > . .   . . . < ~ . . .      . . ~ ~ > . .   . . < ~ ~ . . .
-		//
-		// "<" / ">" is the extra stopping hex for wide units
-		//          This is the location outside the moat where their primary
-		//           hex would be if their rear hex is still in the moat.
-		//
-		// The above masks are like this regardless of current unit positions.
-		// I.e. even if there is a unit like this (left diagram):
-		//
-		// stop2L (stored):           stop2L (modified)
-		//  . . . . ~ > . .            . . . . ~ > . .
-		// . . . . ~ | . .            . . . . ~ | . .
-		//  . . o o > . . .            . . o o . . . .   modify the stored graph
-		// . . . ~ | . . .            . . . ~ | . . .    to remove the ">"
-		//  . . . @ @ . . .            . . . @ @ . . .
-		// . . . ~ | . . .            . . . ~ | . . .
-		//  . . . ~ | . . .            . . . ~ | . . .
-		// . . . . ~ > . .            . . . . ~ > . .
-		//
-		// If the unit sits in the moat, some hexes must be modified to non-stopping:
-		// 1. all ~ it occupies
-		// 2. (wide L stacks) the > hex if the primary hex of the stack is on a narrow moatHex
-		// 2. (wide R stacks) the < hex if the primary hex of the stack is on a wide moatHex
-		//
-		// We don't need to modify mask for oldpos (the stored hexes are already stopping as if the stack weren't there)
-		// But we must modify mask for newpos as per the above rules
+		/*
+		 * A wide stack which already stands on the moat does not count
+		 * any of its occupied hexes as stopping anymore.
+		 *
+		 * Layout (no mask):  Layout (no mask, wide moat):
+		 *  . . . . ~ . . .   . . . ~ ~ | . .
+		 * . . . . ~ | . .   . . . ~ ~ | . .
+		 *  . . . ~ . . . .   . . ~ ~ . . . .    Legend:
+		 * . . . ~ | . . .   . . ~ ~ | . . .       ~    moat
+		 *  . . . @ @ . . .   . . ~ @ @ . . .      |    wall
+		 * . . . ~ | . . .   . . ~ ~ | . . .       .    accessible (destroyed wall)
+		 *  . . . ~ | . . .   . . ~ ~ | . .        @    gate
+		 * . . . . ~ . . .     . . ~ ~ . . .
+		 *
+		 * Masks:                               Masks (wide moat):
+		 * stop2L:           stop2R:            stop2L:           stop2R:
+		 *  . . . . ~ > . .   . . . < ~ . . .    . . . ~ ~ | . .   . . < ~ ~ . . .
+		 * . . . . ~ | . .   . . . < ~ | . .    . . . ~ ~ | . .   . . < ~ ~ | . .
+		 *  . . . ~ > . . .   . . < ~ . . . .    . . ~ ~ > . . .   . < ~ ~ . . . .
+		 * . . . ~ | . . .   . . < ~ | . . .    . . ~ ~ | . . .   . < ~ ~ | . . .
+		 *  . . . @ @ . . .   . . . @ @ . . .    . . ~ @ @ . . .   . . . @ @ . . .
+		 * . . . ~ | . . .   . . < ~ | . . .    . . ~ ~ | . . .   . < ~ ~ | . . .
+		 *  . . . ~ | . . .   . . < ~ | . . .    . . ~ ~ | . .     . < ~ ~ | . .
+		 * . . . . ~ > . .   . . . < ~ . . .      . . ~ ~ > . .   . . < ~ ~ . . .
+		 *
+		 * "<" / ">" is the extra stopping hex for wide units
+		 *          This is the location outside the moat where their primary
+		 *           hex would be if their rear hex is still in the moat.
+		 *
+		 * The above masks are like this regardless of current unit positions.
+		 * I.e. even if there is a unit like this (left diagram):
+		 *
+		 * stop2L (stored):           stop2L (modified)
+		 *  . . . . ~ > . .            . . . . ~ > . .
+		 * . . . . ~ | . .            . . . . ~ | . .
+		 *  . . o o > . . .            . . o o . . . .   modify the stored graph
+		 * . . . ~ | . . .            . . . ~ | . . .    to remove the ">"
+		 *  . . . @ @ . . .            . . . @ @ . . .
+		 * . . . ~ | . . .            . . . ~ | . . .
+		 *  . . . ~ | . . .            . . . ~ | . . .
+		 * . . . . ~ > . .            . . . . ~ > . .
+		 *
+		 * If the unit sits in the moat, some hexes must be modified to non-stopping:
+		 * 1. all ~ it occupies
+		 * 2. (wide L stacks) the > hex if the primary hex of the stack is on a narrow moatHex
+		 * 2. (wide R stacks) the < hex if the primary hex of the stack is on a wide moatHex
+		 *
+		 * We don't need to modify mask for oldpos (the stored hexes are already stopping as if the stack weren't there)
+		 * But we must modify mask for newpos as per the above rules
+		 */
 
 		const BattleHex newpos_rear = CStack::occupiedHex(newpos, true, side);
 
@@ -373,12 +377,6 @@ private:
 		static const BattleHexArray moatHexes = {11, 28, 44, 61, 77, 111, 129, 146, 164, 181};
 		static const BattleHexArray wideMoatHexes = {10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180};
 		static const BattleHexArray allMoatHexes = {10, 11, 27, 28, 43, 44, 60, 61, 76, 77, 94, 110, 111, 128, 129, 145, 163, 164, 180, 181};
-		static const BattleHex bridgeHex = BattleHex::GATE_BRIDGE;
-
-		// Positions of the ">"/"<" hexes for left and right side, respectively
-		// static const BattleHexArray additionalStoppers2L = {12, 29, 45, 62, 78, 112, 130, 147, 165, 182};
-		// static const BattleHexArray additionalStoppers2R = {9, 26, 42, 59, 75, 109, 127, 144, 162, 179};
-		static const BattleHex additionalStopperBridge = 93;
 
 		if(side == BattleSide::LEFT_SIDE)
 		{

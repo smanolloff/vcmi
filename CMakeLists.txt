@@ -104,6 +104,7 @@ if(IOS OR ANDROID)
 	set(ENABLE_LOBBY OFF)
 	set(ENABLE_SERVER OFF)
 	set(COPY_CONFIG_ON_BUILD OFF)
+	set(ENABLE_ML OFF)
 	set(ENABLE_DISCORD OFF)
 else()
 	option(ENABLE_MONOLITHIC_INSTALL "Install everything in single directory on Linux and Mac" OFF) # Used for Snap packages and also useful for debugging
@@ -113,6 +114,19 @@ else()
 	option(ENABLE_SINGLE_APP_BUILD "Builds client and launcher as single executable" OFF)
 	option(ENABLE_TEST "Enable compilation of unit tests" OFF)
 	option(ENABLE_LOBBY "Enable compilation of lobby server" OFF)
+	option(ENABLE_ML "Enable compilation of extensions for MMAI training" OFF)
+
+	include(CheckCXXCompilerFlag)
+	if(MSVC)
+		check_cxx_compiler_flag("/std:c++23" COMPILER_SUPPORTS_CXX23)
+		if(NOT COMPILER_SUPPORTS_CXX23)
+			check_cxx_compiler_flag("/std:c++23preview" COMPILER_SUPPORTS_CXX23_PREVIEW)
+			set(COMPILER_SUPPORTS_CXX23 ${COMPILER_SUPPORTS_CXX23_PREVIEW})
+		endif()
+	else()
+		check_cxx_compiler_flag("-std=c++23" COMPILER_SUPPORTS_CXX23)
+	endif()
+
 	option(ENABLE_DISCORD "Enable compilation of discord integration" ON)
 
 	if (ENABLE_DISCORD)
@@ -348,6 +362,11 @@ if(ENABLE_GOLDMASTER)
 	add_definitions(-DENABLE_GOLDMASTER)
 endif()
 
+if(ENABLE_ML)
+	add_definitions(-DENABLE_ML)
+	set(ENABLE_MMAI ON)
+endif()
+
 if(ENABLE_NULLKILLER2_AI)
 	add_definitions(-DENABLE_NULLKILLER2_AI)
 endif()
@@ -507,7 +526,23 @@ set(BOOST_COMPONENTS filesystem program_options)
 if(ENABLE_INNOEXTRACT)
 	list(APPEND BOOST_COMPONENTS iostreams)
 endif()
+
+if(ENABLE_ML)
+	list(APPEND BOOST_COMPONENTS headers)
+endif()
+
 find_package(Boost 1.74.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+
+if(ENABLE_ML)
+	foreach(c IN LISTS BOOST_COMPONENTS)
+		if(TARGET Boost::${c})
+			message(STATUS "Boost::${c} exists")
+		else()
+			message(FATAL_ERROR "Missing Boost component target: Boost::${c}")
+		endif()
+	endforeach()
+endif()
+
 if(Boost_MAJOR_VERSION EQUAL 1 AND Boost_MINOR_VERSION LESS 69)
 	list(APPEND BOOST_COMPONENTS system)
 	find_package(Boost 1.74.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
@@ -755,6 +790,10 @@ if(ENABLE_TEST)
 	add_subdirectory(test)
 endif()
 
+if(ENABLE_ML)
+   add_subdirectory(ML)
+endif()
+
 #######################################
 #        Installation section         #
 #######################################
@@ -816,6 +855,8 @@ else()
 	set(CPACK_PACKAGE_FILE_NAME "${PACKAGE_FILE_NAME}")
 endif()
 set(CPACK_PACKAGE_VENDOR "VCMI team")
+
+add_definitions(-DVCMI_BIN_DIR="${CMAKE_BINARY_DIR}/bin")
 
 if(WIN32)
 	# This needs to be removed in future as we already migrated to Inno Setup and artifacts in CI are always packed to ZIP

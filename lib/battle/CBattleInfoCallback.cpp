@@ -1865,17 +1865,17 @@ AttackableTiles CBattleInfoCallback::getPotentiallyAttackableHexes(
 
 AttackableTiles CBattleInfoCallback::getPotentiallyShootableHexes(const battle::Unit * attacker, const BattleHex & destinationTile, const BattleHex & attackerPos) const
 {
-	//does not return hex attacked directly
-	AttackableTiles at;
-	RETURN_IF_NOT_BATTLE(at);
+   //does not return hex attacked directly
+   AttackableTiles at;
+   RETURN_IF_NOT_BATTLE(at);
 
-	if(attacker->hasBonusOfType(BonusType::SHOOTS_ALL_ADJACENT) && !attackerPos.getNeighbouringTiles().contains(destinationTile))
-	{
-		at.hostileCreaturePositions.insert(destinationTile.getNeighbouringTiles());
-		at.hostileCreaturePositions.insert(destinationTile);
-	}
+   if(attacker->hasBonusOfType(BonusType::SHOOTS_ALL_ADJACENT) && !attackerPos.getNeighbouringTiles().contains(destinationTile))
+   {
+       at.hostileCreaturePositions.insert(destinationTile.getNeighbouringTiles());
+       at.hostileCreaturePositions.insert(destinationTile);
+   }
 
-	return at;
+   return at;
 }
 
 battle::Units CBattleInfoCallback::getAttackedBattleUnits(

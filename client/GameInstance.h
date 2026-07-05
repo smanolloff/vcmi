@@ -10,6 +10,7 @@
 #pragma once
 
 #include "GameEngineUser.h"
+#include "../lib/battle/AICombatOptions.h"
 
 class CServerHandler;
 class GlobalLobbyClient;
@@ -38,7 +39,7 @@ class GameInstance final : boost::noncopyable, public IGameEngineUser
 	void pauseAutoSave();
 
 public:
-	GameInstance();
+	GameInstance(AICombatOptions aiCombatOptions = {});
 	~GameInstance();
 
 	CServerHandler & server();

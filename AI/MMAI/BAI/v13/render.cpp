@@ -1033,7 +1033,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 	const auto * gstats = sup->getGlobalStats();
 	const auto * lpstats = sup->getLeftPlayerStats();
 	const auto * rpstats = sup->getRightPlayerStats();
-	const auto * mystats = gstats->getAttr(GA::BATTLE_SIDE) ? rpstats : lpstats;
+	const auto * mystats = gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER) ? rpstats : lpstats;
 	auto hexes = sup->getHexes();
 	auto alogs = sup->getAttackLogs();
 
@@ -1263,7 +1263,7 @@ std::string Render(const Schema::IState * istate, const Action * action) // NOSO
 	{
 		std::string name;
 		std::string value;
-		auto side = gstats->getAttr(GA::BATTLE_SIDE);
+		auto side = gstats->getAttr(GA::BATTLE_SIDE_ACTIVE_PLAYER);
 
 		switch(i)
 		{

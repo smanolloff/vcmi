@@ -93,6 +93,7 @@ DLL_LINKAGE vstd::CLoggerBase * logNetwork = CLogger::getLogger(CLoggerDomain("n
 DLL_LINKAGE vstd::CLoggerBase * logAi = CLogger::getLogger(CLoggerDomain("ai"));
 DLL_LINKAGE vstd::CLoggerBase * logAnim = CLogger::getLogger(CLoggerDomain("animation"));
 DLL_LINKAGE vstd::CLoggerBase * logMod = CLogger::getLogger(CLoggerDomain("mod"));
+DLL_LINKAGE vstd::CLoggerBase * logStats = CLogger::getLogger(CLoggerDomain("stats"));
 DLL_LINKAGE vstd::CLoggerBase * logRng = CLogger::getLogger(CLoggerDomain("rng"));
 DLL_LINKAGE vstd::CLoggerBase * logScript = CLogger::getLogger(CLoggerDomain("script"));
 
@@ -106,7 +107,7 @@ CLogger * CLogger::getLogger(const CLoggerDomain & domain)
 		logger = new CLogger(domain);
 		if(domain.isGlobalDomain())
 		{
-			logger->setLevel(ELogLevel::TRACE);
+			logger->setLevel(IFML(ELogLevel::WARN, ELogLevel::TRACE));
 		}
 		CLogManager::get().addLogger(logger);
 	}
@@ -279,6 +280,7 @@ std::string CLogFormatter::format(const LogRecord & record) const
 
 	//Format name, thread id and message
 	boost::algorithm::replace_first(message, "%n", record.domain.getName());
+	boost::algorithm::replace_first(message, "%p", record.processId);
 	boost::algorithm::replace_first(message, "%t", record.threadId);
 	boost::algorithm::replace_first(message, "%m", record.message);
 
@@ -449,7 +451,8 @@ LogRecord::LogRecord(const CLoggerDomain & domain, ELogLevel::ELogLevel level, c
 	level(level),
 	message(message),
 	timeStamp(std::chrono::system_clock::now()),
-	threadId(getThreadName())
+	threadId(getThreadName()),
+	processId(std::to_string(getpid()))
 {
 
 }

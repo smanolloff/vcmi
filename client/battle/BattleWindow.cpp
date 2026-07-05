@@ -39,6 +39,7 @@
 #include "../windows/CMessage.h"
 #include "../windows/CSpellWindow.h"
 #include "../windows/settings/SettingsMainWindow.h"
+#include "battle/AICombatOptions.h"
 
 #include "../../lib/CConfigHandler.h"
 #include "../../lib/CStack.h"

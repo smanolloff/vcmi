@@ -15,6 +15,10 @@
 #include "BAI/v13/state.h"
 #include "callback/CBattleGameInterface.h"
 
+#ifdef ENABLE_ML
+#include "BAI/fallback/MLBot.h"
+#endif
+
 namespace MMAI::BAI::V13
 {
 class BAI : public CBattleGameInterface
@@ -82,5 +86,10 @@ public:
 	void _activeStack(const BattleID & bid, const CStack * stack);
 
 	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);
+
+#ifdef ENABLE_ML
+	bool allowMlBot = false;
+	std::shared_ptr<MLBot> mlbot = nullptr;
+#endif
 };
 }

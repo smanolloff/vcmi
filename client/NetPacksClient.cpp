@@ -935,9 +935,11 @@ void ApplyClientNetPackVisitor::visitQueryResolved(QueryResolved & pack)
 void ApplyClientNetPackVisitor::visitSystemMessage(SystemMessage & pack)
 {
 	// usually used to receive error messages from server
-	logNetwork->error("System message: %s", pack.text.toString());
+	const auto msg = pack.text.toString();
+	logNetwork->error("System message: %s", msg);
 
-	GAME->server().getGameChat().onNewSystemMessageReceived(pack.text.toString());
+	GAME->server().getGameChat().onNewSystemMessageReceived(msg);
+	cl.onNewSystemMessageReceived(msg);
 }
 
 void ApplyClientNetPackVisitor::visitPlayerBlocked(PlayerBlocked & pack)

@@ -52,3 +52,7 @@ class VCMIApp(VCMI):
         elif self.settings.os == "Windows":
             tc.variables["CONAN_ZLIB_DIR"] = self._pathForCmake(self.dependencies.host["zlib"].cpp_info.bindirs[0])
         tc.generate()
+
+    def requirements(self):
+        super().requirements()
+        self.requires("sqlite3/^3.39")

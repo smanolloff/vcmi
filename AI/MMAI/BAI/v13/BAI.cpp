@@ -10,6 +10,7 @@
 
 #include "StdInc.h"
 #include "AI/BattleAI/BattleEvaluator.h"
+#include "BAI/fallback/MLBot.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleStateInfoForRetreat.h"
 #include "battle/CBattleInfoEssentials.h"
@@ -22,6 +23,7 @@
 #include "BAI/v13/render.h"
 #include "BAI/v13/supplementary_data.h"
 #include "common.h"
+#include "schema/base.h"
 #include "schema/v13/types.h"
 
 namespace MMAI::BAI::V13
@@ -74,6 +76,18 @@ void BAI::battleStart(
 )
 {
 	battle = cb->getBattle(bid);
+
+#ifdef ENABLE_ML
+	const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
+	// info("allowMlBot: %d", allowMlBot);
+	if (allowMlBot && art && art->getTypeId() == ArtifactID::GRAIL) {
+		logger.info("GRAIL found in hero -- preparing MLBot (for model: %s)", model->getName());
+		mlbot = std::make_shared<MLBot>("BattleAI");
+		mlbot->initBattleInterface(env, cb, {.enableSpellsUsage = false});
+		mlbot->battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);
+	}
+#endif
+
 	state = initState(battle.get());
 	getActionTotalMs = 0;
 	getActionTotalCalls = 0;
@@ -84,7 +98,7 @@ void BAI::battleStart(
 //      since the terminal result is needed only during training.
 void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID)
 {
-	state->onBattleEnd(br);
+	state->onBattleEnd(br, roundcounter);
 
 	logger.debug("MMAI %s this battle.", (br->winner == battle->battleGetMySide() ? "won" : "lost"));
 
@@ -286,12 +300,23 @@ std::optional<BattleAction> BAI::maybeFleeOrSurrender(const BattleID & bid)
 
 void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
+#ifdef ENABLE_ML
+	if (mlbot) {
+		logger.info("Delegating activeStack to MLBot");
+		mlbot->activeStack(bid, astack);
+		return;
+	}
+#endif
+
 	try
 	{
 		_activeStack(bid, astack);
 	}
 	catch(const std::exception & e)
 	{
+#ifdef ENABLE_ML
+		throw;
+#endif
 		logger.error("Falling back to BattleAI due to MMAI error: " + std::string(e.what()));
 		auto evaluator = BattleEvaluator(env, cb, astack, *cb->getPlayerID(), bid, battle->battleGetMySide(), 1.0f, 2);
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
@@ -310,6 +335,13 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifdef ENABLE_ML
+	if (roundcounter > Schema::V13::MAX_ROUNDS) {
+		logger.warn("Max rounds (%d) exceeded, retreating...", Schema::V13::MAX_ROUNDS);
+		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
+		return;
+	}
+#else
 	// Guard against infinite battles
 	// (print warning once, make only fallback actions from there on)
 	if(!inFallback && getActionTotalCalls >= 100)
@@ -324,11 +356,14 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
+#endif
 
-	state->onActiveStack(astack);
+	state->onActiveStack(astack, roundcounter);
 
+#ifndef ENABLE_ML
 	if(maybeCastSpell(astack, bid))
 		return;
+#endif
 
 	if(state->battlefield->astack == nullptr)
 	{
@@ -342,6 +377,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifndef ENABLE_ML
 	auto concede = maybeFleeOrSurrender(bid);
 	if(concede)
 	{
@@ -351,6 +387,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 
 	logger.debug("Not conceding.");
+#endif
 
 	while(true)
 	{
@@ -388,11 +425,15 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 
 			if(errcounter > 10)
 			{
+#ifdef ENABLE_ML
+				throw std::runtime_error("Got 10 consecutive errors");
+#else
 				logger.warn("Got 10 consecutive errors, will fall back to BattleAI until this combat ends");
 				auto evaluator = BattleEvaluator(env, cb, astack, *cb->getPlayerID(), bid, battle->battleGetMySide(), 1.0f, 2);
 				cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 				inFallback = true;
 				break;
+#endif
 			}
 		}
 	}
@@ -408,6 +449,12 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	auto [x, y] = Hex::CalcXY(acstack->getPosition());
 	const auto & hex = bf->hexes->at(y).at(x);
 	std::shared_ptr<BattleAction> res = nullptr;
+
+	if(state->action->action == Schema::ACTION_ERROR)
+	{
+		logger.error("ACTION_ERROR");
+		return nullptr;
+	}
 
 	if(!state->action->hex)
 	{
@@ -737,7 +784,7 @@ std::string BAI::renderANSI() const
 
 void BAI::actionStarted(const BattleID & bid, const BattleAction & action)
 {
-	state->onActionStarted(action);
+	state->onActionStarted(action, roundcounter);
 };
 
 void BAI::actionFinished(const BattleID & bid, const BattleAction & action)

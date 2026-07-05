@@ -217,7 +217,7 @@ void CBonusSystemNode::attachToSource(const CBonusSystemNode & parent)
 
 void CBonusSystemNode::detachFrom(CBonusSystemNode & parent)
 {
-	assert(vstd::contains(parentsToPropagate, &parent));
+	assert(IFML(true, vstd::contains(parentsToPropagate, &parent)));
 
 	if(!isHypothetic())
 	{
@@ -231,7 +231,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode & parent)
 	{
 		parentsToPropagate -= &parent;
 	}
-	else
+	else if(!IS_ML)
 	{
 		logBonus->error("Error on Detach. Node %s (nodeType=%d) has not parent %s (nodeType=%d)",
 			nodeShortInfo(), static_cast<int>(nodeType), parent.nodeShortInfo(), static_cast<int>(parent.nodeType));
@@ -241,7 +241,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode & parent)
 	{
 		if(vstd::contains(parent.children, this))
 			parent.children -= this;
-		else
+		else if (!IS_ML)
 		{
 			logBonus->error("Error on Detach. Node %s (nodeType=%d) is not a child of %s (nodeType=%d)",
 				nodeShortInfo(), static_cast<int>(nodeType), parent.nodeShortInfo(), static_cast<int>(parent.nodeType));
@@ -253,7 +253,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode & parent)
 
 void CBonusSystemNode::detachFromSource(const CBonusSystemNode & parent)
 {
-	assert(vstd::contains(parentsToInherit, &parent));
+	assert(IFML(true, vstd::contains(parentsToInherit, &parent)));
 
 	++globalCounter;
 
@@ -267,7 +267,7 @@ void CBonusSystemNode::detachFromSource(const CBonusSystemNode & parent)
 	{
 		parentsToInherit -= &parent;
 	}
-	else
+	else if(!IS_ML)
 	{
 		logBonus->error("Error on Detach. Node %s (nodeType=%d) has not parent %s (nodeType=%d)",
 			nodeShortInfo(), static_cast<int>(nodeType), parent.nodeShortInfo(), static_cast<int>(parent.nodeType));

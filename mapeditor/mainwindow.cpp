@@ -175,9 +175,9 @@ void EditorMainWindow::loadUserSettings()
 	{
 		move(position);
 	}
-	lastSavingDir = s.value(lastDirectorySetting).toString();
-	if(lastSavingDir.isEmpty())
-		lastSavingDir = QString::fromStdString(VCMIDirs::get().userDataPath().make_preferred().string());
+	// lastSavingDir = s.value(lastDirectorySetting).toString();
+	// if(lastSavingDir.isEmpty())
+	lastSavingDir = QString::fromStdString((VCMIDirs::get().userDataPath() / "Maps" / "gym").make_preferred().string());
 }
 
 void EditorMainWindow::saveUserSettings()
@@ -647,7 +647,7 @@ void EditorMainWindow::on_actionOpen_triggered()
 		return;
 
 	auto title = tr("Open map");
-	auto dir = QString::fromStdString(VCMIDirs::get().userDataPath().make_preferred().string());
+	auto dir = QString::fromStdString((VCMIDirs::get().userDataPath() / "Maps" / "gym").make_preferred().string());
 	auto filter = tr("All supported maps (*.vmap *.h3m);;VCMI maps(*.vmap);;HoMM3 maps(*.h3m)");
 
 	auto filenameSelect = EditorFileDialog::getOpenFileName(this, title, dir, filter);

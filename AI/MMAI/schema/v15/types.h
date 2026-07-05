@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "./graph.h"
+#include "graph.h"
 #include "encoding.h"
 #include "schema/base.h"
 

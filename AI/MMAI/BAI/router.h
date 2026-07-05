@@ -12,8 +12,7 @@
 
 #include "StdInc.h"
 
-#include "AI/MMAI/schema/base.h"
-#include "battle/AutocombatPreferences.h"
+#include "battle/AICombatOptions.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
 
@@ -35,8 +34,7 @@ public:
 	 * Handled locally (not delegated)
 	 */
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences prefs) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
 
 	/*
 	 * Delegated to BAI
@@ -45,6 +43,7 @@ public:
 	void actionFinished(const BattleID & bid, const BattleAction & action) override;
 	void actionStarted(const BattleID & bid, const BattleAction & action) override;
 	void activeStack(const BattleID & bid, const CStack * stack) override; //called when it's turn of that stack
+	void onNewSystemMessageReceived(const std::string & msg) const override;
 	void battleAttack(const BattleID & bid, const BattleAttack * ba) override;
 	void battleCatapultAttacked(const BattleID & bid, const CatapultAttack & ca) override;
 	void battleEnd(const BattleID & bid, const BattleResult * br, QueryID queryID) override;
@@ -74,10 +73,13 @@ public:
 private:
 	std::shared_ptr<Environment> env;
 	std::shared_ptr<CBattleCallback> cb;
+
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
+	AICombatOptions aiCombatOptions;
+	Schema::Baggage * baggage = nullptr;
+
 	bool wasWaitingForRealize = false;
-	AutocombatPreferences autocombatPreferences;
 	std::string addrstr = "?";
 	std::string colorname = "?";
 	const std::string basetag = "?";

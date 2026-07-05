@@ -580,6 +580,8 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 
 	for (const auto & elem : gameState().players)
 		turnOrder->addPlayer(elem.first);
+
+	ML(mlplugin = std::make_unique<ML::ServerPlugin>(this, gs.get(), si->mlconfig));
 }
 
 void CGameHandler::setPortalDwelling(const CGTownInstance * town, bool forced=false, bool clear = false)
@@ -4243,6 +4245,9 @@ bool CGameHandler::isBlockedByQueries(const CPackForServer *pack, PlayerColor pl
 			% boost::to_upper_copy<std::string>(player.toString())
 			% query->toString()
 		));
+		#ifdef ENABLE_ML
+		throw std::runtime_error("throwing due to unanswered query");
+		#endif
 		return true;
 	}
 

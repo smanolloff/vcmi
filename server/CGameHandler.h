@@ -18,6 +18,10 @@
 #include "../lib/serializer/GameConnectionID.h"
 #include "../lib/serializer/PlayerConnectionID.h"
 
+#ifdef ENABLE_ML
+#include "server/ML/ServerPlugin.h"
+namespace ML { class ServerPlugin; }
+#endif
 struct SideInBattle;
 class IMarket;
 class SpellCastEnvironment;
@@ -77,6 +81,8 @@ public:
 	QueryID QID;
 
 	std::set<PlayerColor> uiReadyForDialogs;
+
+	ML(std::shared_ptr<ML::ServerPlugin> mlplugin);
 
 	const Services * services() const override;
 	const BattleCb * battle(const BattleID & battleID) const override;

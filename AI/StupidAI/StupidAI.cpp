@@ -34,7 +34,7 @@ CStupidAI::~CStupidAI()
 	}
 }
 
-void CStupidAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB)
+void CStupidAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions _aiCombatOptions)
 {
 	print("init called, saving ptr to IBattleCallback");
 	env = ENV;
@@ -42,11 +42,6 @@ void CStupidAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::share
 
 	wasWaitingForRealize = CB->waitTillRealize;
 	CB->waitTillRealize = false;
-}
-
-void CStupidAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences)
-{
-	initBattleInterface(ENV, CB);
 }
 
 void CStupidAI::actionFinished(const BattleID & battleID, const BattleAction &action)
