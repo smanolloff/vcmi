@@ -316,9 +316,10 @@ namespace {
         auto res = std::vector<CreatureID>{};
 
         LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
-            // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
-            // std::cout << "level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << "\n";
-            if (cr->getLevel() > 0)
+            // Invalid creatures (arrow towers, non-damage war machines, NOT_USED, etc. have growth=0)
+            // We dont those as they cause a game crash when there is no regular creature in the army (instant battle end)
+            // std::cout << "level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << " growth: " << cr->getGrowth() << "\n";
+            if (cr->getGrowth() > 0)
             {
                 // std::cout << "CREATURE: " << cr->getNamePluralTextID() << "\n";
                 res.push_back(cr->getId());
@@ -395,39 +396,36 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 , creatureValues(InitCreatureValues())
 {
     // XXX: Take out the first two heroes from the first heropool
-    if (config.leftVipChance > 0 || config.rightVipChance > 0) {
-        auto & p1 = heropools.at(0).begin()->second.heroes;
-        auto & p2 = heropools.at(1).begin()->second.heroes;
+    auto & p1 = heropools.at(0).begin()->second.heroes;
+    auto & p2 = heropools.at(1).begin()->second.heroes;
 
-        if (p1.size() < 2 || p2.size() < 2) {
-            std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
-            config.leftVipChance = 0;
-            config.rightVipChance = 0;
-        } else {
-            vipHero1 = p1[0];
-            vipHero2 = p2[0];
+    if (p1.size() < 2 || p2.size() < 2) {
+        std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
+        config.leftVipChance = 0;
+        config.rightVipChance = 0;
+    } else {
+        vipHero1 = p1[0];
+        vipHero2 = p2[0];
 
-            nonvipHero1 = p1[1];
-            nonvipHero2 = p2[1];
+        nonvipHero1 = p1[1];
+        nonvipHero2 = p2[1];
 
-            // Remove vip heroes from pools so they can't be chosen via randomHeroes
-            p1.erase(p1.begin(), p1.begin() + 2);
-            p2.erase(p2.begin(), p2.begin() + 2);
+        // Remove vip heroes from pools so they can't be chosen via randomHeroes
+        p1.erase(p1.begin(), p1.begin() + 2);
+        p2.erase(p2.begin(), p2.begin() + 2);
 
-            // Mark heres with "VIP shooter" armies via grail in backpack
-            auto grailId = ArtifactID::GRAIL;
-            for (const auto & h : {vipHero1, vipHero2}) {
-                auto artloc = ArtifactLocation(h->id, ArtifactPosition::BACKPACK_START);
-                // XXX: createArtifact (via GS, not GH) must be done BEFORE map is sent to clients?
-                // (does not work if done in setupBattle hook, for example: client does not see new artifact)
-                const auto * art = gs->createArtifact(grailId);
-                // std::cout << "+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n";
-                h->putArtifact(artloc.slot, art);
-                // gh->putArtifact(artloc, art->getId(), false);
-            }
+        // Mark heres with "VIP shooter" armies via grail in backpack
+        auto grailId = ArtifactID::GRAIL;
+        for (const auto & h : {vipHero1, vipHero2}) {
+            auto artloc = ArtifactLocation(h->id, ArtifactPosition::BACKPACK_START);
+            // XXX: createArtifact (via GS, not GH) must be done BEFORE map is sent to clients?
+            // (does not work if done in setupBattle hook, for example: client does not see new artifact)
+            const auto * art = gs->createArtifact(grailId);
+            // std::cout << "+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n";
+            h->putArtifact(artloc.slot, art);
+            // gh->putArtifact(artloc, art->getId(), false);
         }
     }
-
 
     if (config.randomHeroes > 0) {
         for (int owner : {0, 1})
@@ -945,9 +943,9 @@ void ServerPlugin::endBattleHook(
     const CGHeroInstance * heroAttacker,
     const CGHeroInstance * heroDefender
 ) {
-    if (br->result == EBattleResult::NORMAL) // ESCAPE=1 SURRENDER=2
-        // left=0, right=1, draw=2, none=-1
-        std::cout << static_cast<int>(br->winner) << "\n" << std::flush;
+    // if (br->result == EBattleResult::NORMAL) // ESCAPE=1 SURRENDER=2
+    //     // left=0, right=1, draw=2, none=-1
+    //     std::cout << static_cast<int>(br->winner) << "\n" << std::flush;
 
     // don't record stats for retreats (i.e. env resets)
     // XXX: stats not updated with owner-based hero pools

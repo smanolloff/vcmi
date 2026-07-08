@@ -74,6 +74,7 @@ namespace ML {
         const int swapSides;
         const std::string loglevelGlobal;
         const std::string loglevelAI;
+        const std::string loglevelNetwork;
         const std::string loglevelStats;
         const std::string statsMode;
         const std::string statsStorage;

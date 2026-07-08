@@ -221,7 +221,7 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
 
     const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
     if (art && art->getTypeId() == ArtifactID::GRAIL) {
-        warn("GRAIL found in hero -- looking for VIP stack");
+        info("GRAIL found in hero -- looking for VIP stack");
         for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
             if (cstack->getCount() > 1 && cstack->isShooter()) {
                 vip = cstack;
@@ -231,9 +231,9 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
     }
 
     if (vip)
-        warn("Found VIP stack: %s", vip->getDescription());
+        info("Found VIP stack: %s", vip->getDescription());
     else
-        warn("Could not find VIP stack, will delegate all calls to %s", botname);
+        info("Could not find VIP stack, will delegate all calls to %s", botname);
 
     msgbuf.push_back(boost::str(boost::format("[round %d][%d] battleStart\n") % nrounds % nturns));
 }

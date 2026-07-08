@@ -79,6 +79,18 @@ void BAI::battleStart(
 {
 	battle = cb->getBattle(bid);
 
+#ifdef ENABLE_ML
+	const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
+	// info("allowMlBot: %d", allowMlBot);
+	if (allowMlBot && art && art->getTypeId() == ArtifactID::GRAIL) {
+		logger.info("GRAIL found in hero -- preparing MLBot (for model: %s)", model->getName());
+		mlbot = std::make_shared<MLBot>("BattleAI");
+		mlbot->initBattleInterface(env, cb, {.enableSpellsUsage = false});
+		mlbot->battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);
+	}
+#endif
+
+
 	state = initState(battle.get());
 	getActionTotalMs = 0;
 	getActionTotalCalls = 0;
@@ -324,6 +336,15 @@ namespace
 
 void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
+#ifdef ENABLE_ML
+	if (mlbot) {
+		logger.info("Delegating activeStack to MLBot");
+		mlbot->activeStack(bid, astack);
+		return;
+	}
+
+	_activeStack(bid, astack);
+#else
 	try
 	{
 		_activeStack(bid, astack);
@@ -335,6 +356,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
+#endif
 }
 
 void BAI::_activeStack(const BattleID & bid, const CStack * astack)
@@ -346,6 +368,13 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifdef ENABLE_ML
+	if (roundcounter > S15::MAX_ROUNDS) {
+		logger.warn("Max rounds (%d) exceeded, retreating...", S15::MAX_ROUNDS);
+		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
+		return;
+	}
+#else
 	// Guard against infinite battles
 	// (print warning once, make only fallback actions from there on)
 	if(!inFallback && getActionTotalCalls >= 100)
@@ -360,9 +389,11 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
+#endif
 
 	state->onActiveStack(astack, roundcounter);
 
+#ifndef ENABLE_ML
 	if(maybeCastSpell(astack, bid))
 		return;
 
@@ -375,6 +406,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 
 	logger.debug("Not conceding.");
+#endif
 
 	auto t0 = std::chrono::steady_clock::now();
 	int a = getNonRenderAction();

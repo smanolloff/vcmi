@@ -300,6 +300,11 @@ namespace ML {
             exit(1);
         }
 
+        if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), a.loglevelNetwork) == LOGLEVELS.end()) {
+            std::cerr << "Bad value for loglevelNetwork: " << a.loglevelNetwork << "\n";
+            exit(1);
+        }
+
         if (std::find(LOGLEVELS.begin(), LOGLEVELS.end(), a.loglevelGlobal) == LOGLEVELS.end()) {
             std::cerr << "Bad value for loglevelGlobal: " << a.loglevelGlobal << "\n";
             exit(1);
@@ -414,7 +419,6 @@ namespace ML {
         };
 
         auto loglevelRng = getloglevel("rng");
-        auto loglevelNetwork = getloglevel("network");
         auto loglevelMod = getloglevel("mod");
         auto loglevelAnimation = getloglevel("animation");
         auto loglevelBonus = getloglevel("bonus");
@@ -437,7 +441,7 @@ namespace ML {
         conflog("ai", a.loglevelAI);
         conflog("stats", a.loglevelStats);
         conflog("rng", loglevelRng);
-        conflog("network", loglevelNetwork);
+        conflog("network", a.loglevelNetwork);
         conflog("mod", loglevelMod);
         conflog("animation", loglevelAnimation);
         conflog("bonus", loglevelBonus);
@@ -478,7 +482,7 @@ namespace ML {
         Settings(settings.write({"battle", "speedFactor"}))->Integer() = 5;
         Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
         Settings(settings.write({"battle", "stickyHeroInfoWindows"}))->Bool() = false;
-        Settings(settings.write({"logging", "console", "format"}))->String() = "[%t][%n] %l %m";
+        Settings(settings.write({"logging", "console", "format"}))->String() = "[%p/%t][%n] %l %m";
         Settings(settings.write({"logging", "console", "coloredOutputEnabled"}))->Bool() = true;
         Settings(settings.write({"logging", "console", "threshold"}))->String() = "trace";
 

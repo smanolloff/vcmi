@@ -287,6 +287,7 @@ std::string CLogFormatter::format(const LogRecord & record) const
 
 	//Format name, thread id and message
 	boost::algorithm::replace_first(message, "%n", record.domain.getName());
+	boost::algorithm::replace_first(message, "%p", record.processId);
 	boost::algorithm::replace_first(message, "%t", record.threadId);
 	boost::algorithm::replace_first(message, "%m", record.message);
 	boost::algorithm::replace_first(message, "%c", boost::posix_time::to_simple_string(record.timeStamp));
@@ -453,9 +454,9 @@ LogRecord::LogRecord(const CLoggerDomain & domain, ELogLevel::ELogLevel level, c
 	level(level),
 	message(message),
 	timeStamp(boost::posix_time::microsec_clock::local_time()),
-	threadId(getThreadName())
+	threadId(getThreadName()),
+	processId(std::to_string(getpid()))
 {
-
 }
 
 VCMI_LIB_NAMESPACE_END

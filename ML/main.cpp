@@ -85,6 +85,7 @@ namespace ML {
             {"map", "gym/A1.vmap"},
             {"loglevel-global", "error"},
             {"loglevel-ai", "warn"},
+            {"loglevel-network", "error"},
             {"loglevel-stats", "warn"},
             {"left-ai", AI_MMAI_USER},
             {"right-ai", AI_STUPIDAI},
@@ -161,6 +162,8 @@ namespace ML {
                 values(LOGLEVELS, omap.at("loglevel-global")).c_str())
             ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
                 values(LOGLEVELS, omap.at("loglevel-ai")).c_str())
+            ("loglevel-network", po::value<std::string>()->value_name("<LVL>"),
+                values(LOGLEVELS, omap.at("loglevel-network")).c_str())
             ("loglevel-stats", po::value<std::string>()->value_name("<LVL>"),
                 values(LOGLEVELS, omap.at("loglevel-stats")).c_str())
             ("interactive", po::bool_switch(&interactive),
@@ -354,6 +357,7 @@ namespace ML {
             .swapSides=swapSides,
             .loglevelGlobal=omap.at("loglevel-global"),
             .loglevelAI=omap.at("loglevel-ai"),
+            .loglevelNetwork=omap.at("loglevel-network"),
             .loglevelStats=omap.at("loglevel-stats"),
             .statsMode=omap.at("stats-mode"),
             .statsStorage=omap.at("stats-storage"),

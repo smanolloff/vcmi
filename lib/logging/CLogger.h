@@ -118,6 +118,7 @@ struct DLL_LINKAGE LogRecord
 	std::string message;
 	boost::posix_time::ptime timeStamp;
 	std::string threadId;
+	std::string processId;
 };
 
 /// The class CLogFormatter formats log records.
