@@ -26,6 +26,7 @@
 #include "lib/callback/AIFactory.h"
 
 #include "MLBot.h"
+#include "schema/v15/constants.h"
 #include <algorithm>
 #include <boost/range/numeric.hpp>
 #include <span>
@@ -248,12 +249,13 @@ void MLBot::activeStack(const BattleID & bid, const CStack * astack)
     ++nturns;
     msgbuf.push_back(boost::str(boost::format("[round %d][%d] activeStack: %s\n") % nrounds % nturns % astack->getDescription()));
 
-    // TODO change to 500
-    if (nturns > 500) {
-        error("More than 500 turns in this battle (vip=%d)", vip ? vip->getDescription() : "n/a");
+    // XXX: this absolutely can happen if defender is BattleAI: destroys catapult then camps in town forever
+    // However, MMAI should retreat after MAX_ROUNDS anyway
+    if (battle->battleGetRound() > Schema::V15::MAX_ROUNDS + 2) {
+        error("More than %d rounds in this battle (vip=%d)", Schema::V15::MAX_ROUNDS + 2, vip ? vip->getDescription() : "n/a");
         for (const auto & msg : msgbuf)
             error(msg);
-        throw std::runtime_error("More than 500 turns in this battle, aborting");
+        throw std::runtime_error("More than " + std::to_string(Schema::V15::MAX_ROUNDS) + " rounds in this battle, aborting");
     }
 
     if (!vip) {
