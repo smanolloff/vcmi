@@ -69,12 +69,14 @@ namespace {
      *  1. is closest to the guard
      *  2. (if guard is attacker) has the lowest "X" coordinate ("keep left")
      *     (if guard is defender) has the highest "X" coordinate ("keep right")
+     *                                    ^^^^^^ reversed via "invert"
      */
     const BattleHex* PickClosestHex(
         const CStack * guard,
         std::span<const uint32_t> distances,
         std::span<const BattleHex> candidates,
-        std::span<bool> skips
+        std::span<bool> skips,
+        bool invert = false
     ) {
         if (candidates.empty()) return nullptr;
 
@@ -86,6 +88,10 @@ namespace {
         // }
 
         bool keepLeft = guard->unitSide() == BattleSide::ATTACKER;
+
+        if (invert)
+            keepLeft = !keepLeft;
+
         uint32_t bestVal = 999;
         int bestX = keepLeft ? 999 : -999;
 
@@ -296,7 +302,7 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
     // XXX: using getAttackableHexes with a friendly attacker is a convenient
     // way to get VIP's neighbouring hexes for moving guards to, as it handles
     // cases where VIP and/or guard are 2-hex units.
-    // NOTE: hexes will be *accessible*, but not necessarily *reachable*
+    // NOTE: hexes will be *accessible*, but not necessarily *reachable* (may even be occupied)
     const auto hexes = vip->getAttackableHexes(guard);
 
     if(hexes.empty()) {
@@ -311,6 +317,11 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
     targets.reserve(8); // max for 2-hex stack in the open
 
     bool canWait = guard->willMove() && !guard->waitedThisTurn;
+
+    // Front hex will always be guarded first unless guard is wide
+    const BattleHex frontHex = vip->getPosition().cloneInDirection(
+        vip->unitSide() == BattleSide::LEFT_SIDE ? BattleHex::EDir::RIGHT : BattleHex::EDir::LEFT
+    );
 
     /*
      * First check if we already stand on any of those hexes => in-place attack, wait or defend
@@ -346,8 +357,18 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
             cb->battleMakeUnitAction(bid, BattleAction::makeDefend(guard));
             return;
         }
-        targets.push_back(hex);
+
+        // std::cout << "hex: " << hex.toInt() << ", frontHex: " << frontHex.toInt() << "\n";
+        if (hex.toInt() == frontHex.toInt() && !guard->doubleWide())
+            targets.insert(targets.begin(), hex);
+        else
+            targets.push_back(hex);
     }
+
+    // std::cout << "=== TARGETS: [";
+    // for (const auto & t : targets)
+    //     std::cout << " " << t.toInt();
+    // std::cout << " ]\n";
 
     auto speed = guard->getMovementRange();
     if (speed == 0) {
@@ -368,7 +389,14 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
     const auto rdebug = battle->getReachability(guard);
 
     auto skips = std::array<bool, GameConstants::BFIELD_SIZE> {};
-    const BattleHex * target = PickClosestHex(guard, rdebug.distances, targets, skips);
+
+    const BattleHex * target = nullptr;
+    if (targets.at(0).toInt() == frontHex.toInt() && rdebug.distances.at(frontHex.toInt()) <= speed)
+        target = &frontHex;
+    else
+        target = PickClosestHex(guard, rdebug.distances, targets, skips, !guard->doubleWide());
+
+    // std::cout << "target: " << (target ? target->toInt() : -1) << " / front: " << frontHex.toInt() << " / distance: " << (target ? rdebug.distances.at(target->toInt()) : -1) << "\n";
 
     while(target && rdebug.distances.at(target->toInt()) > speed) {
         debug("Target hex %d not reachable: dist(%d) > speed(%d)", target->toInt(), rdebug.distances.at(target->toInt()), speed);
