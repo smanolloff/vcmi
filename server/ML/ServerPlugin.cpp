@@ -399,6 +399,12 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     auto & p1 = heropools.at(0).begin()->second.heroes;
     auto & p2 = heropools.at(1).begin()->second.heroes;
 
+    if ((config.leftVipChance > 0 || config.rightVipChance > 0) && !config.randomArmies) {
+        std::cout << "WARNING: VipChance > 0, but random armies are not enabled. Will not enable VIP shooters.\n";
+        config.leftVipChance = 0;
+        config.rightVipChance = 0;
+    }
+
     if (p1.size() < 2 || p2.size() < 2) {
         std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
         config.leftVipChance = 0;
