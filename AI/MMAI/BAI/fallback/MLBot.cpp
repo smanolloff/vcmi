@@ -224,7 +224,8 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
     if (art && art->getTypeId() == ArtifactID::GRAIL) {
         info("GRAIL found in hero -- looking for VIP stack");
         for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
-            if (cstack->getCount() > 1 && cstack->isShooter()) {
+            // growth > 0 excludes ballistas, commanders, etc.
+            if (cstack->unitType()->getGrowth() > 0 && cstack->isShooter()) {
                 vip = cstack;
                 break;
             }
