@@ -31,6 +31,7 @@
 #include <boost/range/numeric.hpp>
 #include <span>
 #include <stdexcept>
+#include <unordered_map>
 
 namespace MMAI::BAI
 {
@@ -69,14 +70,12 @@ namespace {
      *  1. is closest to the guard
      *  2. (if guard is attacker) has the lowest "X" coordinate ("keep left")
      *     (if guard is defender) has the highest "X" coordinate ("keep right")
-     *                                    ^^^^^^ reversed via "invert"
      */
     const BattleHex* PickClosestHex(
         const CStack * guard,
         std::span<const uint32_t> distances,
         std::span<const BattleHex> candidates,
-        std::span<bool> skips,
-        bool invert = false
+        std::span<bool> skips
     ) {
         if (candidates.empty()) return nullptr;
 
@@ -88,9 +87,6 @@ namespace {
         // }
 
         bool keepLeft = guard->unitSide() == BattleSide::ATTACKER;
-
-        if (invert)
-            keepLeft = !keepLeft;
 
         uint32_t bestVal = 999;
         int bestX = keepLeft ? 999 : -999;
@@ -226,6 +222,8 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
     battle = cb->getBattle(battleID);
     bot->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 
+    // TODO: look for the strongest shooter instead
+    //      + require at least 3 guards (+more if shooter is wide?)
     const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
     if (art && art->getTypeId() == ArtifactID::GRAIL) {
         info("GRAIL found in hero -- looking for VIP stack");
@@ -287,6 +285,543 @@ void MLBot::handleVip(const BattleID & bid, const CStack * vip)
     bot->activeStack(bid, vip);
 }
 
+namespace
+{
+    BattleHex CloneHex(const BattleHex & bh, const std::initializer_list<BattleHex::EDir> & dirs)
+    {
+        auto res = bh;
+        for (const auto dir : dirs)
+            res = res.cloneInDirection(dir, false);
+        return res;
+    }
+
+    // A custom hash function must be provided for the adjmap
+    struct VipInfo
+    {
+        const BattleHex vipPos;
+        const BattleSide vipSide;
+        const bool vipWide;
+        const bool guardWide;
+
+        bool operator==(const VipInfo&) const = default;
+    };
+
+    struct VipInfoHash
+    {
+        std::size_t operator()(const VipInfo & vi) const
+        {
+            std::size_t h = std::hash<si16>{}(vi.vipPos.toInt());
+            h ^= std::hash<int>{}(EI(vi.vipSide)) << 1;
+            h ^= std::hash<bool>{}(vi.guardWide) << 2;
+            h ^= std::hash<bool>{}(vi.vipWide) << 3;
+            return h;
+        }
+    };
+
+    std::vector<BattleHex> GuardableHexes(const CStack * vip, const CStack * guard)
+    {
+        auto res = std::vector<BattleHex>{};
+        res.reserve(16);
+
+        BattleHex vipHead = vip->getPosition();
+
+        static auto cache = std::unordered_map<VipInfo, std::vector<BattleHex>, VipInfoHash>{};
+        const auto vi = VipInfo{
+            .vipPos=vip->getPosition(),
+            .vipSide=vip->unitSide(),
+            .vipWide=vip->doubleWide(),
+            .guardWide=guard->doubleWide()
+        };
+
+        auto it = cache.find(vi);
+
+        if(it != cache.end())
+            return it->second;
+
+        using EDir = BattleHex::EDir;
+        auto L = EDir::LEFT;
+        auto TL = EDir::TOP_LEFT;
+        auto BL = EDir::BOTTOM_LEFT;
+        auto R = EDir::RIGHT;
+        auto TR = EDir::TOP_RIGHT;
+        auto BR = EDir::BOTTOM_RIGHT;
+
+        auto add = [&res, &vipHead](const std::initializer_list<BattleHex::EDir> dirs) {
+            auto hex = CloneHex(vipHead, dirs);
+            if (hex.isAvailable())
+                res.push_back(hex);
+        };
+
+        auto convex = vip->unitSide() == BattleSide::LEFT_SIDE
+            ? vipHead.getY() % 2 == 0
+            : vipHead.getY() % 2 == 1;
+
+        logAi->info("vip->unitSide()=%d / guard->doubleWide()=%d / vip->doubleWide()=%d / vipHead.getY()=%d", EI(vip->unitSide()), EI(guard->doubleWide()), EI(vip->doubleWide()), EI(vipHead.getY()));
+
+        if (vip->unitSide() == BattleSide::RIGHT_SIDE) {
+            if (guard->doubleWide()) {
+                if (vip->doubleWide()) {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  2-hex VIP, 2-hex guard
+                         *  (R/upper/convex)         (R/upper/concave)
+                         *  . A 8 C .                 . A 8 C .
+                         * . . 6 1 3 .               . . 6 1 .
+                         *  . 5 . x ~                 . 5 . x ~
+                         * . . 7 2 4 .               . . 7 2 .
+                         *  . B 9 D .                 . B 9 D .
+                         */
+                        add({TL}); // 1
+                        add({BL}); // 2
+
+                        if (convex) {
+                            add({TR}); // 3
+                            add({BR}); // 4
+                        }
+
+                        add({L, L}); // 5
+                        add({L, TL}); // 6
+                        add({L, BL}); // 7
+
+                        add({TL, TL}); // 8
+                        add({BL, BL}); // 9
+                        add({TL, TL, L}); // A
+                        add({BL, BL, L}); // B
+                        add({TL, TR}); // C
+                        add({BL, BR}); // D
+                    } else {
+                        /*
+                         *  2-hex VIP, 2-hex guard
+                         *  (R/lower/convex)       (R/lower/concave)
+                         *  . B 9 D .               . B 9 D .
+                         * . . 7 2 4 .             . . 7 2 .
+                         *  . 5 . x ~               . 5 . x ~
+                         * . . 6 1 3 .             . . 6 1 .
+                         *  . A 8 C .               . A 8 C .
+                         */
+                        add({BL}); // 1
+                        add({TL}); // 2
+
+                        if (convex) {
+                            add({BR}); // 3
+                            add({TR}); // 4
+                        }
+
+                        add({L, L}); // 5
+                        add({L, BL}); // 6
+                        add({L, TL}); // 7
+
+                        add({BL, BL}); // 8
+                        add({TL, TL}); // 9
+                        add({BL, BL, L}); // A
+                        add({TL, TL, L}); // B
+                        add({BL, BR}); // C
+                        add({TL, TR}); // D
+                    }
+                } else {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  1-hex VIP, 2-hex guard
+                         *  (R/upper/convex)       (R/upper/concave)
+                         *  . . 6 8 .               . . 6 8 .
+                         * . . . 4 1 .             . . . 4 .
+                         *  . . 3 . x               . . 3 . x
+                         * . . . 5 2 .             . . . 5 .
+                         *  . . 7 9 .               . . 7 9 .
+                         */
+                        if (convex) {
+                            add({TL}); // 1
+                            add({BL}); // 2
+                        }
+
+                        add({L, L}); // 3
+                        add({L, TL}); // 4
+                        add({L, BL}); // 5
+
+                        add({TL, TL, L}); // 6
+                        add({BL, BL, L}); // 7
+                        add({TL, TL}); // 8
+                        add({BL, BL}); // 9
+                    } else {
+                        /*
+                         *  1-hex VIP, 2-hex guard
+                         *  (R/lower/convex)        (R/lower/concave)
+                         *  . . 7 9 .                 . . 7 9 .
+                         * . . . 5 2 .               . . . 5 .
+                         *  . . 3 . x                 . . 3 . x
+                         * . . . 4 1 .               . . . 4 .
+                         *  . . 6 8 .                 . . 6 8 .
+                         */
+                        if (convex) {
+                            add({BL}); // 1
+                            add({TL}); // 2
+                        }
+
+                        add({L, L}); // 3
+                        add({L, BL}); // 4
+                        add({L, TL}); // 5
+
+                        add({BL, BL, L}); // 6
+                        add({TL, TL, L}); // 7
+                        add({BL, BL}); // 8
+                        add({TL, TL}); // 9
+                    }
+                }
+            } else {
+                if (vip->doubleWide()) {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  2-hex VIP, 1-hex guard
+                         *  (R/upper/convex)         (R/upper/concave)
+                         *  . . B D F                 . . . B D F
+                         * . . 8 2 4 6                 . . 8 2 4
+                         *  . A 1 x ~                 . . A 1 x ~
+                         * . . 9 3 5 7                 . . 9 3 5
+                         *  . . C E G                 . . . C E G
+                         */
+                        add({L}); // 1
+                        add({TL}); // 2
+                        add({BL}); // 3
+                        add({TR}); // 4
+                        add({BR}); // 5
+
+                        if (convex) {
+                            add({R, TR}); // 6
+                            add({R, BR}); // 7
+                        }
+
+                        add({L, TL}); // 8
+                        add({L, BL}); // 9
+                        add({L, L}); // A
+                        add({TL, TL}); // B
+                        add({BL, BL}); // C
+                        add({TL, TR}); // D
+                        add({BL, BR}); // E
+                        add({TR, TR}); // F
+                        add({BR, BR}); // G
+                    } else {
+                        /*
+                         *  2-hex VIP, 1-hex guard
+                         *  (R/lower/convex)         (R/lower/concave)
+                         *  . . C E G                 . . C E G
+                         * . . 9 3 5 7               . . 9 3 5
+                         *  . A 1 x ~                 . A 1 x ~
+                         * . . 8 2 4 6               . . 8 2 4
+                         *  . . B D F                 . . B D F
+                         */
+                        add({L}); // 1
+                        add({BL}); // 2
+                        add({TL}); // 3
+                        add({BR}); // 4
+                        add({TR}); // 5
+
+                        if (convex) {
+                            add({R, BR}); // 6
+                            add({R, TR}); // 7
+                        }
+
+                        add({L, BL}); // 8
+                        add({L, TL}); // 9
+                        add({L, L}); // A
+                        add({BL, BL}); // B
+                        add({TL, TL}); // C
+                        add({BL, BR}); // D
+                        add({TL, TR}); // E
+                        add({BR, BR}); // F
+                        add({TR, TR}); // G
+                    }
+                } else {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  1-hex VIP, 1-hex guard
+                         *  (R/upper/convex)         (R/upper/concave)
+                         *  . . . 9 B                 . . . 9 B
+                         * . . . 6 2 4               . . . 6 2
+                         *  . . 8 1 x                 . . 8 1 x
+                         * . . . 7 3 5               . . . 7 3
+                         *  . . . A C                 . . . A C
+                         */
+                        add({L}); // 1
+                        add({TL}); // 2
+                        add({BL}); // 3
+
+                        if (convex) {
+                            add({TR}); // 4
+                            add({BR}); // 5
+                        }
+
+                        add({L, TL}); // 6
+                        add({L, BL}); // 7
+                        add({L, L}); // 8
+                        add({TL, TL}); // 9
+                        add({BL, BL}); // A
+                        add({TL, TR}); // B
+                        add({BL, BR}); // C
+
+                    } else {
+                        /*
+                         *  1-hex VIP, 1-hex guard
+                         *  (R/lower/convex)         (R/lower/concave)
+                         *  . . . A C                 . . . A C
+                         * . . . 7 3 5               . . . 7 3
+                         *  . . 8 1 x                 . . 8 1 x
+                         * . . . 6 2 4               . . . 6 2
+                         *  . . . 9 B                 . . . 9 B
+                         */
+                        add({L}); // 1
+                        add({BL}); // 2
+                        add({TL}); // 3
+
+                        if (convex) {
+                            add({BR}); // 4
+                            add({TR}); // 5
+                        }
+
+                        add({L, BL}); // 6
+                        add({L, TL}); // 7
+                        add({L, L}); // 8
+                        add({BL, BL}); // 9
+                        add({TL, TL}); // A
+                        add({BL, BR}); // B
+                        add({TL, TR}); // C
+                    }
+                }
+            }
+        } else {
+            if (guard->doubleWide()) {
+                if (vip->doubleWide()) {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  2-hex VIP, 2-hex guard
+                         *  (L/upper/convex)         (L/upper/concave)
+                         *  . C 8 A .                 . C 8 A .
+                         * . 3 1 6 . .                 . 1 6 . .
+                         *  ~ x . 5 .                 ~ x . 5 .
+                         * . 4 2 7 . .                 . 2 7 . .
+                         *  . D 9 B .                 . D 9 B .
+                         */
+                        add({TR}); // 1
+                        add({BR}); // 2
+
+                        if (convex) {
+                            add({TL}); // 3
+                            add({BL}); // 4
+                        }
+
+                        add({R, R}); // 5
+                        add({R, TR}); // 6
+                        add({R, BR}); // 7
+
+                        add({TR, TR}); // 8
+                        add({BR, BR}); // 9
+                        add({TR, TR, R}); // A
+                        add({BR, BR, R}); // B
+                        add({TR, TL}); // C
+                        add({BR, BL}); // D
+                    } else {
+                        /*
+                         *  2-hex VIP, 2-hex guard
+                         *  (L/lower/convex)         (L/lower/concave)
+                         *  . D 9 B .                 . D 9 B .
+                         * . 4 2 7 . .                 . 2 7 . .
+                         *  ~ x . 5 .                 ~ x . 5 .
+                         * . 3 1 6 . .                 . 1 6 . .
+                         *  . C 8 A .                 . C 8 A .
+                         */
+                        add({BR}); // 1
+                        add({TR}); // 2
+
+                        if (convex) {
+                            add({BL}); // 3
+                            add({TL}); // 4
+                        }
+
+                        add({R, R}); // 5
+                        add({R, BR}); // 6
+                        add({R, TR}); // 7
+
+                        add({BR, BR}); // 8
+                        add({TR, TR}); // 9
+                        add({BR, BR, R}); // A
+                        add({TR, TR, R}); // B
+                        add({BR, BL}); // C
+                        add({TR, TL}); // D
+                    }
+                } else {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  1-hex VIP, 2-hex guard
+                         *  (L/upper/convex)       (L/upper/concave)
+                         *  . 8 6 . .               . 8 6 . .
+                         * . 1 4 . . .               . 4 . . .
+                         *  x . 3 . .               x . 3 . .
+                         * . 2 5 . . .               . 5 . . .
+                         *  . 9 7 . .               . 9 7 . .
+                         */
+                        if (convex) {
+                            add({TR}); // 1
+                            add({BR}); // 2
+                        }
+
+                        add({R, R}); // 3
+                        add({R, TR}); // 4
+                        add({R, BR}); // 5
+
+                        add({TR, TR, R}); // 6
+                        add({BR, BR, R}); // 7
+                        add({TR, TR}); // 8
+                        add({BR, BR}); // 9
+                    } else {
+                        /*
+                         *  1-hex VIP, 2-hex guard
+                         *  (L/lower/convex)        (L/lower/concave)
+                         *  . 9 7 . .                . 9 7 . .
+                         * . 2 5 . . .                . 5 . . .
+                         *  x . 3 . .                x . 3 . .
+                         * . 1 4 . . .                . 4 . . .
+                         *  . 8 6 . .                . 8 6 . .
+                         */
+                        if (convex) {
+                            add({BR}); // 1
+                            add({TR}); // 2
+                        }
+
+                        add({R, R}); // 3
+                        add({R, BR}); // 4
+                        add({R, TR}); // 5
+
+                        add({BR, BR, R}); // 6
+                        add({TR, TR, R}); // 7
+                        add({BR, BR}); // 8
+                        add({TR, TR}); // 9
+                    }
+                }
+            } else {
+                if (vip->doubleWide()) {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  2-hex VIP, 1-hex guard
+                         *  (L/upper/convex)         (L/upper/concave)
+                         *  F D B . .                 F D B . . .
+                         * 6 4 2 8 . .                 4 2 8 . . .
+                         *  ~ x 1 A .                 ~ x 1 A . .
+                         * 7 5 3 9 . .                 5 3 9 . . .
+                         *  G E C . .                 G E C . . .
+                         */
+                        add({R}); // 1
+                        add({TR}); // 2
+                        add({BR}); // 3
+                        add({TL}); // 4
+                        add({BL}); // 5
+
+                        if (convex) {
+                            add({L, TL}); // 6
+                            add({L, BL}); // 7
+                        }
+
+                        add({R, TR}); // 8
+                        add({R, BR}); // 9
+                        add({R, R}); // A
+                        add({TR, TR}); // B
+                        add({BR, BR}); // C
+                        add({TR, TL}); // D
+                        add({BR, BL}); // E
+                        add({TL, TL}); // F
+                        add({BL, BL}); // G
+                    } else {
+                        /*
+                         *  2-hex VIP, 1-hex guard
+                         *  (L/lower/convex)         (L/lower/concave)
+                         *  G E C . .                 G E C . .
+                         * 7 5 3 9 . .                 5 3 9 . .
+                         *  ~ x 1 A .                 ~ x 1 A .
+                         * 6 4 2 8 . .                 4 2 8 . .
+                         *  F D B . .                 F D B . .
+                         */
+                        add({R}); // 1
+                        add({BR}); // 2
+                        add({TR}); // 3
+                        add({BL}); // 4
+                        add({TL}); // 5
+
+                        if (convex) {
+                            add({L, BL}); // 6
+                            add({L, TL}); // 7
+                        }
+
+                        add({R, BR}); // 8
+                        add({R, TR}); // 9
+                        add({R, R}); // A
+                        add({BR, BR}); // B
+                        add({TR, TR}); // C
+                        add({BR, BL}); // D
+                        add({TR, TL}); // E
+                        add({BL, BL}); // F
+                        add({TL, TL}); // G
+                    }
+                } else {
+                    if (vipHead.getY() < 5) {
+                        /*
+                         *  1-hex VIP, 1-hex guard
+                         *  (L/upper/convex)         (L/upper/concave)
+                         *  B 9 . . .                 B 9 . . .
+                         * 4 2 6 . . .                 2 6 . . .
+                         *  x 1 8 . .                 x 1 8 . .
+                         * 5 3 7 . . .                 3 7 . . .
+                         *  C A . . .                 C A . . .
+                         */
+                        add({R}); // 1
+                        add({TR}); // 2
+                        add({BR}); // 3
+
+                        if (convex) {
+                            add({TL}); // 4
+                            add({BL}); // 5
+                        }
+
+                        add({R, TR}); // 6
+                        add({R, BR}); // 7
+                        add({R, R}); // 8
+                        add({TR, TR}); // 9
+                        add({BR, BR}); // A
+                        add({TR, TL}); // B
+                        add({BR, BL}); // C
+                    } else {
+                        /*
+                         *  1-hex VIP, 1-hex guard
+                         *  (L/lower/convex)         (L/lower/concave)
+                         *  C A . . .                 C A . . .
+                         * 5 3 7 . . .                 3 7 . . .
+                         *  x 1 8 . .                 x 1 8 . .
+                         * 4 2 6 . . .                 2 6 . . .
+                         *  B 9 . . .                 B 9 . . .
+                         */
+                        add({R}); // 1
+                        add({BR}); // 2
+                        add({TR}); // 3
+
+                        if (convex) {
+                            add({BL}); // 4
+                            add({TL}); // 5
+                        }
+
+                        add({R, BR}); // 6
+                        add({R, TR}); // 7
+                        add({R, R}); // 8
+                        add({BR, BR}); // 9
+                        add({TR, TR}); // A
+                        add({BR, BL}); // B
+                        add({TR, TL}); // C
+                    }
+                }
+            }
+        }
+
+        cache.try_emplace(vi, res);
+        return res;
+    }
+}
+
 void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack * vip)
 {
     info("Handling GUARD stack %s (vip=%s)", guard->getDescription(), vip->getDescription());
@@ -299,77 +834,6 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
         return;
     }
 
-    // XXX: using getAttackableHexes with a friendly attacker is a convenient
-    // way to get VIP's neighbouring hexes for moving guards to, as it handles
-    // cases where VIP and/or guard are 2-hex units.
-    // NOTE: hexes will be *accessible*, but not necessarily *reachable* (may even be occupied)
-    const auto hexes = vip->getAttackableHexes(guard);
-
-    if(hexes.empty()) {
-        // No "attackable" hexes (i.e. no free spots next to VIP for this guard)
-        // => let the bot act (should throw them forward)
-        info("No 'attackable' hexes => invoke bot");
-        bot->activeStack(bid, guard);
-        return;
-    }
-
-    auto targets = std::vector<BattleHex>{};
-    targets.reserve(8); // max for 2-hex stack in the open
-
-    bool canWait = guard->willMove() && !guard->waitedThisTurn;
-
-    // Front hex will always be guarded first unless guard is wide
-    const BattleHex frontHex = vip->getPosition().cloneInDirection(
-        vip->unitSide() == BattleSide::LEFT_SIDE ? BattleHex::EDir::RIGHT : BattleHex::EDir::LEFT
-    );
-
-    /*
-     * First check if we already stand on any of those hexes => in-place attack, wait or defend
-     * (avoids expensive reachability calculations)
-     */
-
-    for (const auto & hex : hexes) {
-        debug("Consider guard hex %d ...", hex.toInt());
-        if (guard->coversPos(hex)) {
-            info("Already guarding on that hex");
-
-            // 1. if neighbouring enemy => attack (in-place)
-            for (const auto & target : battle->battleGetStacks())
-            {
-                if (guard->unitSide() != target->unitSide() && CStack::isMeleeAttackPossible(guard, target, guard->getPosition()))
-                {
-                    info("Attacking nearby unit...");
-                    cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, target, guard->getPosition()));
-                    return;
-                }
-            }
-
-            // 2. else if can wait => wait
-            if (canWait)
-            {
-                info("Waiting...");
-                cb->battleMakeUnitAction(bid, BattleAction::makeWait(guard));
-                return;
-            }
-
-            // 3. else defend
-            info("Defending...");
-            cb->battleMakeUnitAction(bid, BattleAction::makeDefend(guard));
-            return;
-        }
-
-        // std::cout << "hex: " << hex.toInt() << ", frontHex: " << frontHex.toInt() << "\n";
-        if (hex.toInt() == frontHex.toInt() && !guard->doubleWide())
-            targets.insert(targets.begin(), hex);
-        else
-            targets.push_back(hex);
-    }
-
-    // std::cout << "=== TARGETS: [";
-    // for (const auto & t : targets)
-    //     std::cout << " " << t.toInt();
-    // std::cout << " ]\n";
-
     auto speed = guard->getMovementRange();
     if (speed == 0) {
         // Not guarding, but 0 speed => let bot decide (e.g. attack if possible)
@@ -378,56 +842,112 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
         return;
     }
 
+    // NOTE: Some (or even all) of these may be reachable by the current unit
+    const auto hexes = GuardableHexes(vip, guard);
+    const bool canWait = guard->willMove() && !guard->waitedThisTurn;
+
+    std::cout << "=== HEXES: [";
+    for (const auto & h : hexes)
+        std::cout << " " << h.toInt();
+    std::cout << " ]\n";
+
     /*
      * Try moving towards a guard target hex (wait first)
      */
 
-    if (targets.empty()){
-        throw std::runtime_error("no guard targets");
-    }
-
-    const auto rdebug = battle->getReachability(guard);
+    const auto distances = battle->getReachability(guard).distances;
 
     auto skips = std::array<bool, GameConstants::BFIELD_SIZE> {};
-
     const BattleHex * target = nullptr;
-    if (targets.at(0).toInt() == frontHex.toInt() && rdebug.distances.at(frontHex.toInt()) <= speed)
-        target = &frontHex;
-    else
-        target = PickClosestHex(guard, rdebug.distances, targets, skips, !guard->doubleWide());
+    uint32_t minDist = ReachabilityInfo::INFINITE_DIST;
 
-    // std::cout << "target: " << (target ? target->toInt() : -1) << " / front: " << frontHex.toInt() << " / distance: " << (target ? rdebug.distances.at(target->toInt()) : -1) << "\n";
+    for (const auto hex : hexes) {
+        auto dist = distances.at(hex.toInt());
 
-    while(target && rdebug.distances.at(target->toInt()) > speed) {
-        debug("Target hex %d not reachable: dist(%d) > speed(%d)", target->toInt(), rdebug.distances.at(target->toInt()), speed);
-        if (canWait)
-        {
+        if (dist < minDist) {
+            minDist = dist;
+            target = &hex;
+            if (dist <= speed)
+            {
+                info("Found reachable target hex %d: dist=%d <= speed=%d", hex, dist, speed);
+
+                // if target hex has a neighbouring enemy => move + attack
+                for (const auto & enemy : battle->battleGetStacks())
+                {
+                    if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, hex))
+                    {
+                        info("Will attack from hex %d at %s...", target->toInt(), enemy->getDescription());
+                        cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, hex));
+                        return;
+                    }
+                }
+
+                // otherwise, if already there, wait or defend
+                info("No enemies neighbouring target hex %d", hex.toInt());
+
+                if (guard->getPosition() == hex) {
+                    if (canWait)
+                    {
+                        info("Already guarding hex %d, will wait...", hex.toInt());
+                        cb->battleMakeUnitAction(bid, BattleAction::makeWait(guard));
+                        return;
+                    }
+
+                    info("Already guarding hex %d, will defend...", hex.toInt());
+                    cb->battleMakeUnitAction(bid, BattleAction::makeDefend(guard));
+                    return;
+                }
+
+                // otherwise, just move there
+                info("Moving to target hex %d", hex.toInt());
+                cb->battleMakeUnitAction(bid, BattleAction::makeMove(guard, hex));
+                return;
+            }
+
+            debug("Unreachable target hex %d: dist=%d > speed=%d", hex.toInt(), dist, speed);
+        } else {
+            debug("Irrelevant target hex %d: dist=%d >= minDist=%d", hex.toInt(), dist, minDist);
+        }
+
+    }
+
+    if (!target) {
+        // Maybe there were no targets to begin with (vip already surrounded)
+        info("could not find target hex (VIP already surrounded?) => invoke bot");
+        bot->activeStack(bid, guard);
+        return;
+    }
+
+    while(distances.at(target->toInt()) > speed) {
+        debug("Target hex %d not reachable: dist=%d > speed=%d", target->toInt(), distances.at(target->toInt()), speed);
+
+        if (canWait) {
             info("Waiting...");
             cb->battleMakeUnitAction(bid, BattleAction::makeWait(guard));
             return;
         }
 
-        target = PickClosestHex(guard, rdebug.distances, NearbyMoveHexes(guard, *target), skips);
+        target = PickClosestHex(guard, distances, NearbyMoveHexes(guard, *target), skips);
         info("Will try a closer hex: %d", target ? target->toInt() : -1);
-    }
-
-    if (!target) {
-        // Maybe there were no targets to begin with (vip already surrounded)
-        info("could not find new suitable target hex (VIP already surrounded?) => invoke bot");
-        bot->activeStack(bid, guard);
-        return;
-    }
-
-    // Should not happen
-    if (!target->isAvailable())
-        throw std::runtime_error("Final target is not available: " + std::to_string(target->toInt()));
-
-
-    debug("Final target hex towards VIP: %d", target->toInt());
+     }
 
     // Move towards the hex
-    info("Moving towards final target at dist=%d (speed=%d)", rdebug.distances.at(target->toInt()), speed);
+    info("Intermediate reachable target: hex=%d dist=%d speed=%d", target->toInt(), distances.at(target->toInt()), speed);
 
+    // if target hex has a neighbouring enemy => move + attack
+    for (const auto & enemy : battle->battleGetStacks())
+    {
+        if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, *target))
+        {
+            info("Will move to hex %d and attack at %s", target->toInt(), enemy->getDescription());
+            // XXX: make explicit copy of target to prevent dangling refs
+            cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, BattleHex(*target)));
+            return;
+        }
+    }
+
+    // else just move there
+    info("Will move to hex %d", target->toInt());
     // XXX: construct an explicit copy here (*target will dangling)
     cb->battleMakeUnitAction(bid, BattleAction::makeMove(guard, BattleHex(*target)));
 }
