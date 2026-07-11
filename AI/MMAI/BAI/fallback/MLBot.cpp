@@ -411,7 +411,7 @@ namespace
             ? vipHead.getY() % 2 == 0
             : vipHead.getY() % 2 == 1;
 
-        logAi->error("vipHead=%d vip->unitSide()=%d / guard->doubleWide()=%d / vip->doubleWide()=%d / vipHead.getY()=%d", vipHead.toInt(), EI(vip->unitSide()), EI(guard->doubleWide()), EI(vip->doubleWide()), EI(vipHead.getY()));
+        logAi->info("vipHead=%d vip->unitSide()=%d / guard->doubleWide()=%d / vip->doubleWide()=%d / vipHead.getY()=%d", vipHead.toInt(), EI(vip->unitSide()), EI(guard->doubleWide()), EI(vip->doubleWide()), EI(vipHead.getY()));
 
         if (vip->unitSide() == BattleSide::RIGHT_SIDE) {
             if (guard->doubleWide()) {
