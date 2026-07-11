@@ -49,6 +49,7 @@ private:
     std::string colorname = "?";
 
     const CStack * vip = nullptr;
+    BattleHex vipStartPos;
     const std::string botname = "?";
     int nturns = 0;
     int nrounds = 0;

@@ -65,21 +65,74 @@ namespace {
             : bh.getNeighbouringTilesDoubleWide(BattleSide::ATTACKER);
     }
 
+    BattleHex PickIntermediateAirHex(
+        const CStack * guard,
+        std::span<const uint32_t> distances,
+        const BattleHex & target
+    ) {
+        logAi->info("Looking for intermediate hex towards target=%d ...", target.toInt());
+        BattleHex bestHex;
+        int mindist = ReachabilityInfo::INFINITE_DIST;
+        bool keepLeft = guard->unitSide() == BattleSide::ATTACKER;
+        int bestX = keepLeft ? 999 : -999;
+
+        if (distances.size() > GameConstants::BFIELD_SIZE)
+            throw std::runtime_error("Unexpected distances size: " + std::to_string(distances.size()));
+
+        for (int i = 0; i < GameConstants::BFIELD_SIZE; ++i) {
+            auto dist = distances[i];
+            auto hex = BattleHex(i);
+            auto x = hex.getX();
+
+            if (dist < mindist || (dist == mindist && (keepLeft ? x < bestX : x > bestX))) {
+                mindist = dist;
+                bestHex = hex;
+                bestX = x;
+                logAi->info("Potential intermediate air hex=%d dist=%d x=%d", target.toInt(), dist, x);
+            } else {
+                logAi->info("Bad intermediate air hex=%d dist=%d x=%d", target.toInt(), dist, x);
+            }
+        }
+
+        logAi->info("Final intermediate air hex=%d", bestHex.toInt());
+
+        return bestHex;
+
+    }
+
     /*
      * From a list of candidate hexes, pick one which:
      *  1. is closest to the guard
      *  2. (if guard is attacker) has the lowest "X" coordinate ("keep left")
      *     (if guard is defender) has the highest "X" coordinate ("keep right")
+     *
+     * XXX: there is a BUG when the guard is flying:
+     *      the "closer" hex may lead to a dead-end
+     *
+     * Example:
+     *  stack "S" needs to reach "o" (x are unavailable/occupied hexes)
+     *  If "S" is ground, then hex A is returned (lowest walking dist)
+     *  If "S" is flying, then hex B is returned (lowest flying dist)
+     *    If S can't reach B, then NearbyMoveHexes(B) is called which fails
+     *    (all candidates are skipped as repeated)
+     *
+     * . . . . . S
+     *  . . . . .
+     * . . . . . .
+     *  . . . x x
+     * . . . A o B
+     *  . . . x x
+     *
      */
-    const BattleHex* PickClosestHex(
+    BattleHex PickClosestLandHex(
         const CStack * guard,
         std::span<const uint32_t> distances,
         std::span<const BattleHex> candidates,
         std::span<bool> skips
     ) {
-        if (candidates.empty()) return nullptr;
+        if (candidates.empty()) return BattleHex();
 
-        const BattleHex* best = nullptr;
+        BattleHex best = BattleHex();
 
         // if (best->toInt() < 0 || best->toInt() >= distances.size()) {
         //     logAi->error("Invalid candidate: %d (distances.size=%d)", best->toInt(), distances.size());
@@ -113,20 +166,21 @@ namespace {
             logAi->debug("Next candidate hex: %d (v=%d, bestVal=%d, keepLeft=%d, x=%d, bestX=%d)", h.toInt(), v, bestVal, keepLeft, x, bestX);
 
             if (v < bestVal || (v == bestVal && (keepLeft ? x < bestX : x > bestX))) {
-                best = &h;
+                best = h;
                 bestVal = v;
                 bestX = x;
             }
         }
 
-        if (best && distances[best->toInt()] < GameConstants::BFIELD_SIZE) {
-            logAi->debug("Best candidate hex: %d", best->toInt());
+        if (best.isValid() && distances[best.toInt()] < GameConstants::BFIELD_SIZE) {
+            logAi->debug("Best candidate hex: %d", best.toInt());
             return best;
         } else {
             logAi->info("No good candidate hex (none reachable)");
-            return nullptr;
+            return BattleHex();
         }
     }
+
 
 }
 
@@ -231,6 +285,7 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
             // growth > 0 excludes ballistas, commanders, etc.
             if (cstack->unitType()->getGrowth() > 0 && cstack->isShooter()) {
                 vip = cstack;
+                vipStartPos = vip->getPosition();
                 break;
             }
         }
@@ -356,7 +411,7 @@ namespace
             ? vipHead.getY() % 2 == 0
             : vipHead.getY() % 2 == 1;
 
-        logAi->info("vip->unitSide()=%d / guard->doubleWide()=%d / vip->doubleWide()=%d / vipHead.getY()=%d", EI(vip->unitSide()), EI(guard->doubleWide()), EI(vip->doubleWide()), EI(vipHead.getY()));
+        logAi->error("vipHead=%d vip->unitSide()=%d / guard->doubleWide()=%d / vip->doubleWide()=%d / vipHead.getY()=%d", vipHead.toInt(), EI(vip->unitSide()), EI(guard->doubleWide()), EI(vip->doubleWide()), EI(vipHead.getY()));
 
         if (vip->unitSide() == BattleSide::RIGHT_SIDE) {
             if (guard->doubleWide()) {
@@ -834,6 +889,13 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
         return;
     }
 
+    if(vip->getPosition().getX() != vipStartPos.getX()) {
+        // Guard positions become weird when vip moves away from the edge
+        info("VIP is displaced (x=%d, startx=%d) => invoke bot", vip->getPosition().getX(), vipStartPos.getX());
+        bot->activeStack(bid, guard);
+        return;
+    }
+
     auto speed = guard->getMovementRange();
     if (speed == 0) {
         // Not guarding, but 0 speed => let bot decide (e.g. attack if possible)
@@ -842,14 +904,20 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
         return;
     }
 
+    if(battle->battleIsUnitBlocked(vip) && !vip->canShootBlocked()) {
+        info("VIP is blocked => invoke bot");
+        bot->activeStack(bid, guard);
+        return;
+    }
+
     // NOTE: Some (or even all) of these may be reachable by the current unit
     const auto hexes = GuardableHexes(vip, guard);
     const bool canWait = guard->willMove() && !guard->waitedThisTurn;
 
-    std::cout << "=== HEXES: [";
-    for (const auto & h : hexes)
-        std::cout << " " << h.toInt();
-    std::cout << " ]\n";
+    // std::cout << "=== HEXES: [";
+    // for (const auto & h : hexes)
+    //     std::cout << " " << h.toInt();
+    // std::cout << " ]\n";
 
     /*
      * Try moving towards a guard target hex (wait first)
@@ -858,7 +926,7 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
     const auto distances = battle->getReachability(guard).distances;
 
     auto skips = std::array<bool, GameConstants::BFIELD_SIZE> {};
-    const BattleHex * target = nullptr;
+    BattleHex target;
     uint32_t minDist = ReachabilityInfo::INFINITE_DIST;
 
     for (const auto hex : hexes) {
@@ -866,7 +934,7 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
 
         if (dist < minDist) {
             minDist = dist;
-            target = &hex;
+            target = hex;
             if (dist <= speed)
             {
                 info("Found reachable target hex %d: dist=%d <= speed=%d", hex, dist, speed);
@@ -876,7 +944,7 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
                 {
                     if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, hex))
                     {
-                        info("Will attack from hex %d at %s...", target->toInt(), enemy->getDescription());
+                        info("Will attack from hex %d at %s...", target.toInt(), enemy->getDescription());
                         cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, hex));
                         return;
                     }
@@ -911,15 +979,15 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
 
     }
 
-    if (!target) {
+    if (!target.isValid()) {
         // Maybe there were no targets to begin with (vip already surrounded)
         info("could not find target hex (VIP already surrounded?) => invoke bot");
         bot->activeStack(bid, guard);
         return;
     }
 
-    while(distances.at(target->toInt()) > speed) {
-        debug("Target hex %d not reachable: dist=%d > speed=%d", target->toInt(), distances.at(target->toInt()), speed);
+    while(distances.at(target.toInt()) > speed) {
+        debug("Target hex %d not reachable: dist=%d > speed=%d", target.toInt(), distances.at(target.toInt()), speed);
 
         if (canWait) {
             info("Waiting...");
@@ -927,29 +995,40 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
             return;
         }
 
-        target = PickClosestHex(guard, distances, NearbyMoveHexes(guard, *target), skips);
-        info("Will try a closer hex: %d", target ? target->toInt() : -1);
-     }
+        if (guard->hasBonusOfType(BonusType::FLYING)) {
+            // this scans through the entire battlefield and directly returns the closest reachable hex
+            target = PickIntermediateAirHex(guard, distances, target);
+            break;
+        }
+
+        target = PickClosestLandHex(guard, distances, NearbyMoveHexes(guard, target), skips);
+
+        // This should not happen because if we are here, it means distances[target] was < INFINITE_DIST to begin with
+        // i.e. there exists some path to the target
+        if (!target.isValid())
+            throw std::runtime_error("Failed to find any hex towards the target. This should not happen.");
+
+        info("Will try a closer hex: %d", target.toInt());
+    }
+
 
     // Move towards the hex
-    info("Intermediate reachable target: hex=%d dist=%d speed=%d", target->toInt(), distances.at(target->toInt()), speed);
+    info("Intermediate reachable target: hex=%d dist=%d speed=%d", target.toInt(), distances.at(target.toInt()), speed);
 
     // if target hex has a neighbouring enemy => move + attack
     for (const auto & enemy : battle->battleGetStacks())
     {
-        if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, *target))
+        if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, target))
         {
-            info("Will move to hex %d and attack at %s", target->toInt(), enemy->getDescription());
-            // XXX: make explicit copy of target to prevent dangling refs
-            cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, BattleHex(*target)));
+            info("Will move to hex %d and attack at %s", target.toInt(), enemy->getDescription());
+            cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, target));
             return;
         }
     }
 
     // else just move there
-    info("Will move to hex %d", target->toInt());
-    // XXX: construct an explicit copy here (*target will dangling)
-    cb->battleMakeUnitAction(bid, BattleAction::makeMove(guard, BattleHex(*target)));
+    info("Will move to hex %d", target.toInt());
+    cb->battleMakeUnitAction(bid, BattleAction::makeMove(guard, target));
 }
 
 
