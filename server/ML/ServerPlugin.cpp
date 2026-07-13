@@ -44,7 +44,20 @@ VCMI_LIB_NAMESPACE_BEGIN
 namespace ML {
 
 namespace {
-    int calculateValue(const CCreature * cr)
+
+    #define ML_VERBOSE(arg) if (IsMLVerbose()) std::cout << arg;
+
+    inline bool IsMLVerbose()
+    {
+        static const bool value = []
+        {
+            const char * envvar = std::getenv("ML_VERBOSE");
+            return envvar != nullptr && std::strcmp(envvar, "1") == 0;
+        }();
+        return value;
+    }
+
+    int CalculateValue(const CCreature * cr)
     {
         /*
          * Formula:
@@ -160,7 +173,7 @@ namespace {
 
         for(const auto & creature : LIBRARY->creh->objects)
             if(creature)
-                values.try_emplace(creature->getId(), calculateValue(creature.get()));
+                values.try_emplace(creature->getId(), CalculateValue(creature.get()));
 
         return values;
     }
@@ -207,7 +220,8 @@ namespace {
                 auto poolid = it_id->second;
 
                 it = ownedPools.emplace(poolname, HeroPool(poolid, poolname)).first;
-                std::cout << "Added pool " << poolid << " of owner " << poolowner << ": " << poolname << "\n";
+
+                ML_VERBOSE("Added pool " << poolid << " of owner " << poolowner << ": " << poolname << "\n");
             }
 
             auto& pool = it->second;
@@ -223,9 +237,9 @@ namespace {
             if (pool1.heroes.size() != (*res.at(1).find(name1)).second.heroes.size())
                 throw std::runtime_error("Owners have differently sized pools");
         }
-        // for (const auto & pool : ownedPools)
 
-        std::cout << "Grouped " << counter << " heroes into " << res.size() << "x" << res.at(0).size() << " pools\n";
+        ML_VERBOSE("Grouped " << counter << " heroes into " << res.size() << "x" << res.at(0).size() << " pools\n");
+
         return res;
     }
 
@@ -258,7 +272,7 @@ namespace {
                 if (std::regex_search(bf.getInfo()->getJsonKey(), pattern)) {
                     res[bf.getInfo()].push_back(terrain);
                 } else {
-                    // std::cout << "Filtering out " << bf.getInfo()->getJsonKey() << "\n";
+                    ML_VERBOSE("Filtering out " << bf.getInfo()->getJsonKey() << "\n");
                 }
             }
         });
@@ -274,25 +288,27 @@ namespace {
                         res[bi].insert(res[bi].end(), lands.begin(), lands.end());
                     }
                 } else {
-                    // std::cout << "Filtering out " << bi->getJsonKey() << "\n";
+                    ML_VERBOSE("Filtering out " << bi->getJsonKey() << "\n");
                 }
             }
         });
 
         if (!battlefieldPattern.empty()) {
-            std::cout << "Filtered battlefields matching pattern: '" << battlefieldPattern << "'\n";
+            ML_VERBOSE("Filtered battlefields matching pattern: '" << battlefieldPattern << "'\n");
 
             if (res.size() == 0) {
                 std::cout << "ALL BATTLEFIELDS WERE FILTERED OUT\n";
             }
 
-            for (auto &[bi, terrains] : res) {
-                std::cout << bi->getJsonKey() << " ->";
-                for (auto &t : terrains) {
-                    std::cout << " " << t->getJsonKey();
-                }
-                std::cout << "\n";
-             }
+            if (IsMLVerbose()) {
+                for (auto &[bi, terrains] : res) {
+                    std::cout << bi->getJsonKey() << " ->";
+                    for (auto &t : terrains) {
+                        std::cout << " " << t->getJsonKey();
+                    }
+                    std::cout << "\n";
+                 }
+            }
          }
 
         return res;
@@ -318,12 +334,14 @@ namespace {
         LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, non-damage war machines, NOT_USED, etc. have growth=0)
             // We dont those as they cause a game crash when there is no regular creature in the army (instant battle end)
-            // std::cout << "level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << " growth: " << cr->getGrowth() << "\n";
-            if (cr->getGrowth() > 0)
-            {
-                // std::cout << "CREATURE: " << cr->getNamePluralTextID() << "\n";
+            if (cr->getGrowth() > 0) {
                 res.push_back(cr->getId());
+                ML_VERBOSE("ADD");
+            } else {
+                ML_VERBOSE("SKIP");
             }
+
+            ML_VERBOSE(" creature: level: " << cr->getLevel() << " " << cr->getNameSingularTextID() << " growth: " << cr->getGrowth() << "\n");
         });
 
         return res;
@@ -337,7 +355,7 @@ namespace {
             // "special" creatures (property not exposed, but e.g. ballistas have lvl=4 and growth=0)
             if (cr->getLevel() > 0 && cr->getGrowth() > 0 && cr->getBaseShots() > 0)
             {
-                // std::cout << "ADDING SHOOTER: " << cr->getId() << " | " << cr->getGrowth() << " | " << cr->getNameSingularTranslated() << "\n";
+                ML_VERBOSE("ADDING SHOOTER: " << cr->getId() << " | " << cr->getGrowth() << " | " << cr->getNameSingularTranslated() << "\n");
                 res.push_back(cr->getId());
             }
         });
@@ -353,7 +371,7 @@ namespace {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
             // "special" creatures (property not exposed, but e.g. ballistas have lvl=4 and growth=0)
             if (cr->getLevel() > 0 && cr->getGrowth() && cr->getLevel() < 4 && cr->getBaseShots() == 0) {
-                // std::cout << "ADDING GUARD: " << cr->getId() << " | " << cr->getGrowth() << " | " << cr->getNameSingularTranslated() << "\n";
+                ML_VERBOSE("ADDING GUARD: " << cr->getId() << " | " << cr->getGrowth() << " | " << cr->getNameSingularTranslated() << "\n");
                 res.push_back(cr->getId());
             }
         });
@@ -427,7 +445,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
             // XXX: createArtifact (via GS, not GH) must be done BEFORE map is sent to clients?
             // (does not work if done in setupBattle hook, for example: client does not see new artifact)
             const auto * art = gs->createArtifact(grailId);
-            // std::cout << "+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n";
+            ML_VERBOSE("+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n");
             h->putArtifact(artloc.slot, art);
             // gh->putArtifact(artloc, art->getId(), false);
         }
@@ -437,7 +455,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
         for (int owner : {0, 1})
         {
             for (auto &[poolname, pool] : heropools.at(owner)) {
-                // std::cout << "poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n";
+                ML_VERBOSE("poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n");
                 if (pool.heroes.size() == 0) {
                     throw std::runtime_error("randomHeroes requires at leats 1 hero in each pool.");
                 }
@@ -562,7 +580,6 @@ void ServerPlugin::handleRandomHeroes(
     // modification by reference
     army1 = hero1->getArmy();
     army2 = hero2->getArmy();
-    // std::cout << "Pool: " << it->first << ", " << hero1->nameCustomTextId << " vs. " << hero2->nameCustomTextId << "\n";
 
     // Store as nonvip heroes
     nonvipHero1 = hero1;
@@ -949,10 +966,6 @@ void ServerPlugin::endBattleHook(
     const CGHeroInstance * heroAttacker,
     const CGHeroInstance * heroDefender
 ) {
-    // if (br->result == EBattleResult::NORMAL) // ESCAPE=1 SURRENDER=2
-    //     // left=0, right=1, draw=2, none=-1
-    //     std::cout << static_cast<int>(br->winner) << "\n" << std::flush;
-
     // don't record stats for retreats (i.e. env resets)
     // XXX: stats not updated with owner-based hero pools
     if (stats && br->result == EBattleResult::NORMAL) {
