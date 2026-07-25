@@ -94,8 +94,8 @@ void BattleProcessor::restartBattle(const BattleID & battleID, const CArmedInsta
 		lastBattleQuery->result = std::nullopt;
 
 #ifndef ENABLE_ML // side swapping for ML violates these asserts
-		assert(lastBattleQuery->belligerents[BattleSide::ATTACKER] == battle->getSideArmy(BattleSide::ATTACKER).armyObject);
-		assert(lastBattleQuery->belligerents[BattleSide::DEFENDER] == battle->getSideArmy(BattleSide::DEFENDER).armyObject);
+		assert(lastBattleQuery->belligerents[BattleSide::ATTACKER] == battle->getSideArmy(BattleSide::ATTACKER));
+		assert(lastBattleQuery->belligerents[BattleSide::DEFENDER] == battle->getSideArmy(BattleSide::DEFENDER));
 #endif
 	}
 
