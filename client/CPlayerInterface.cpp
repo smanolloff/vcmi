@@ -1984,7 +1984,7 @@ bool CPlayerInterface::capturedAllEvents()
 void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side)
 {
 	aiCombatOptions.enableSpellsUsage = settings["battle"]["enableAutocombatSpells"].Bool();
-	autofightingAI = AIFactory::createBattleAI(settings["server"]["combatAlliedAI"].String());
+	autofightingAI = AIFactory::createBattleAI(settings["ai"]["combatAlliedAI"].String());
 	autofightingAI->initBattleInterface(env, cb, aiCombatOptions);
 	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
 	isAutoFightOn = true;
