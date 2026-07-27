@@ -358,6 +358,7 @@ namespace ML {
         Settings(settings.write({"server", "ML", "townChance"}))->Integer() = a.townChance;
         Settings(settings.write({"server", "ML", "warmachineChance"}))->Integer() = a.warmachineChance;
         Settings(settings.write({"server", "ML", "randomArmies"}))->Bool() = a.randomArmies;
+        Settings(settings.write({"server", "ML", "mirrorArmies"}))->Bool() = a.mirrorArmies;
         Settings(settings.write({"server", "ML", "randomArmyValueMin"}))->Integer() = a.randomArmyValueMin;
         Settings(settings.write({"server", "ML", "randomArmyValueMax"}))->Integer() = a.randomArmyValueMax;
         Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;

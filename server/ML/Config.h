@@ -31,6 +31,7 @@ namespace ML {
             randomObstacles = settings["server"]["ML"]["randomObstacles"].Integer();
             townChance = settings["server"]["ML"]["townChance"].Integer();
             warmachineChance = settings["server"]["ML"]["warmachineChance"].Integer();
+            mirrorArmies = settings["server"]["ML"]["mirrorArmies"].Bool();
             randomArmies = settings["server"]["ML"]["randomArmies"].Bool();
             randomArmyValueMin = settings["server"]["ML"]["randomArmyValueMin"].Integer();
             randomArmyValueMax = settings["server"]["ML"]["randomArmyValueMax"].Integer();
@@ -59,6 +60,7 @@ namespace ML {
         int randomObstacles = 0;
         int townChance = 0;
         int warmachineChance = 0;
+        bool mirrorArmies = false;
         bool randomArmies = false;
         int randomArmyValueMin = 0;
         int randomArmyValueMax = 0;

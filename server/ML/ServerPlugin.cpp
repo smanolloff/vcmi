@@ -417,7 +417,11 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     auto & p1 = heropools.at(0).begin()->second.heroes;
     auto & p2 = heropools.at(1).begin()->second.heroes;
 
-    if ((config.leftVipChance > 0 || config.rightVipChance > 0) && !config.randomArmies) {
+    auto vipEnabled = [this]() {
+        return config.leftVipChance > 0 || config.rightVipChance > 0;
+    };
+
+    if (vipEnabled() && !config.randomArmies) {
         std::cout << "WARNING: VipChance > 0, but random armies are not enabled. Will not enable VIP shooters.\n";
         config.leftVipChance = 0;
         config.rightVipChance = 0;
@@ -855,6 +859,36 @@ void ServerPlugin::handleRandomArmies(
     replaceArmy(hero2, rightVip);
 }
 
+
+void ServerPlugin::handleMirrorArmies(
+    const CArmedInstance *&army1,
+    const CArmedInstance *&army2,
+    const CGHeroInstance *&hero1,
+    const CGHeroInstance *&hero2
+) {
+    if (!config.mirrorArmies)
+        return;
+
+    struct MirroredStack
+    {
+        SlotID slot;
+        const CCreature * creature;
+        TQuantity quantity;
+    };
+
+    std::vector<MirroredStack> mirroredStacks;
+    for(const auto & [slot, stack] : army1->Slots())
+        mirroredStacks.push_back({ slot, stack->getCreature(), stack->getCount() });
+
+    for(int slot = 0; slot < GameConstants::ARMY_SIZE; ++slot)
+        if(army2->hasStackAtSlot(SlotID(slot)))
+            gh->eraseStack(StackLocation(army2->id, SlotID(slot)), true);
+
+    for(const auto & stack : mirroredStacks)
+        gh->insertNewStack(StackLocation(army2->id, stack.slot), stack.creature, stack.quantity);
+}
+
+
 void ServerPlugin::handleWarmachines(const CGHeroInstance * hero1, const CGHeroInstance * hero2) {
     if (config.warmachineChance == 0)
         return;
@@ -953,6 +987,7 @@ void ServerPlugin::startBattleHook(
 
     handleRandomHeroes(army1, army2, hero1, hero2);
     handleRandomArmies(army1, army2, hero1, hero2);
+    handleMirrorArmies(army1, army2, hero1, hero2);
     handleWarmachines(hero1, hero2);
     handleTightFormation(hero1, hero2);
     handleMinMaxMana(hero1, hero2);

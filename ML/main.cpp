@@ -55,6 +55,7 @@ namespace ML {
         int seed = 0;
         int randomHeroes = 0;
         int randomObstacles = 0;
+        bool mirrorArmies = false;
         bool randomArmies = false;
         int randomArmyValueMin = 5000;
         int randomArmyValueMax = 1000000;
@@ -119,6 +120,8 @@ namespace ML {
                 "Percent chance to have the combat in a town (no town combat if 0*)")
             ("warmachine-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to add ballista/tent/cart in combat (no war machines if 0*)")
+            ("mirror-armies", po::bool_switch(&mirrorArmies),
+                "Mirror armies before each battle")
             ("random-armies", po::bool_switch(&randomArmies),
                 "Randomize armies before each battle")
             ("random-army-value-min", po::value<int>()->value_name("<N>"),
@@ -342,6 +345,7 @@ namespace ML {
             .randomObstacles=randomObstacles,
             .townChance=townChance,
             .warmachineChance=warmachineChance,
+            .mirrorArmies=mirrorArmies,
             .randomArmies=randomArmies,
             .randomArmyValueMin=randomArmyValueMin,
             .randomArmyValueMax=randomArmyValueMax,

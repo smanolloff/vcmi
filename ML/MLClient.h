@@ -59,6 +59,7 @@ namespace ML {
         const int randomObstacles;
         const int townChance;
         const int warmachineChance;
+        const bool mirrorArmies;
         const bool randomArmies;
         const int randomArmyValueMin;
         const int randomArmyValueMax;

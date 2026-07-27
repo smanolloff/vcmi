@@ -106,6 +106,14 @@ namespace ML {
             const CGHeroInstance *&hero1,
             const CGHeroInstance *&hero2
         );
+
+        void handleMirrorArmies(
+            const CArmedInstance *&army1,
+            const CArmedInstance *&army2,
+            const CGHeroInstance *&hero1,
+            const CGHeroInstance *&hero2
+        );
+
         void handleWarmachines(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleTightFormation(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
         void handleMinMaxMana(const CGHeroInstance * hero1, const CGHeroInstance * hero2);
