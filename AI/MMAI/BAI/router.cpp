@@ -49,6 +49,9 @@ namespace
 		auto repo = std::make_unique<ModelRepository>();
 
 		if (baggage) {
+			repo->seed = baggage->seed;
+			repo->temperature = baggage->temperature;
+
 			// Since ML client cannot load onnx models, it sends PATH
 			// "models" whose getName() returns the path to the model to load
 			// (in ML mode, the "MMAI" mod hence its config are not present)
@@ -76,7 +79,10 @@ namespace
 			repo->temperature = static_cast<float>(json["temperature"].Float());
 
 			repo->seed = json["seed"].Integer();
-			if(repo->seed == 0)
+
+			if(baggage)
+				repo->seed = baggage->seed;
+			else if(repo->seed == 0)
 				repo->seed = CRandomGenerator::getDefault().nextInt();
 
 			for(const auto & [key, node] : json["models"].Struct())

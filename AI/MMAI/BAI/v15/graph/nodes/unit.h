@@ -61,7 +61,13 @@ public:
     std::string name() const override
     {
         std::stringstream ss;
-        ss << detail::Unit_Base::name() << "(isActive=" << isActive << ",desc=" << cstack.getDescription() << ")";
+        ss << detail::Unit_Base::name();
+        ss << "(isActive=" << isActive;
+        ss << ",owner=" << cstack.unitOwner().toString();
+        ss << ",slot=" << cstack.unitSlot();
+        ss << ",type=" << cstack.unitType()->getJsonKey();
+        ss << ")";
+
         return ss.str();
     }
 

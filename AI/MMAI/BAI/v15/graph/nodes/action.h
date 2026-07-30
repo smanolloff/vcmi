@@ -72,6 +72,15 @@ public:
 
         std::stringstream ss;
         ss << detail::Action_Base::name() << "(type=" << type;
+        switch(static_cast<S15::ActionType>(type))
+        {
+            case S15::ActionType::WAIT: ss << "(WAIT)"; break;
+            case S15::ActionType::DEFEND: ss << "(DEFEND)"; break;
+            case S15::ActionType::MOVE: ss << "(MOVE)"; break;
+            case S15::ActionType::AMOVE: ss << "(AMOVE)"; break;
+            case S15::ActionType::SHOOT: ss << "(SHOOT)"; break;
+            default: throw std::runtime_error("Unexpected action type: " + std::to_string(type));
+        }
 
         ss << ",by=" << by->name();
         ss << ",isActive=" << isActive;

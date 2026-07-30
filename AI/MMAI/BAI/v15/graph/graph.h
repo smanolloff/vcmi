@@ -361,6 +361,8 @@ public:
     int64_t getNodeIndex(const S15::Graph::INode* node) const override;
     int64_t getEdgeIndex(const S15::Graph::IEdge* edge) const override;
 
+    const S15::Graph::INode * getNode(ET t, std::size_t ind) const override;
+
     std::vector<int64_t> getActiveActionIds() const override;
 
     EnumFlags<ET> getFlags() const;

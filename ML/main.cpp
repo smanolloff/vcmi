@@ -81,6 +81,8 @@ namespace ML {
         int statsPersistFreq = 0;
         bool headless = false;
 
+        float temperature = 0.;
+
         // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
         auto omap = std::map<std::string, std::string> {
             {"map", "gym/A1.vmap"},
@@ -157,6 +159,8 @@ namespace ML {
                 ("Path to model.zip (" + omap.at("left-model") + "*)").c_str())
             ("right-model", po::value<std::string>()->value_name("<FILE>"),
                 ("Path to model.zip (" + omap.at("right-model") + "*)").c_str())
+            ("temperature", po::value<float>()->value_name("<FLOAT>"),
+                ("Model temperature for both --left-model and --right-model (default: 0*)"))
             ("left-allow-mlbot", po::bool_switch(&leftAllowMlBot),
                 "Allow MLBot to control VIP armies when left AI is MMAI_USER or MMAI_MODEL")
             ("right-allow-mlbot", po::bool_switch(&rightAllowMlBot),
@@ -239,6 +243,9 @@ namespace ML {
 
         if (vm.count("random-terrain-chance"))
             randomTerrainChance = vm.at("random-terrain-chance").as<int>();
+
+        if (vm.count("temperature"))
+            temperature = vm.at("temperature").as<float>();
 
         if (vm.count("left-vip-chance"))
             leftVipChance = vm.at("left-vip-chance").as<int>();
@@ -338,6 +345,7 @@ namespace ML {
             .rightAllowMlBot=rightAllowMlBot,
             .leftModelFile="",
             .rightModelFile="",
+            .temperature=temperature,
             .mapname=omap.at("map"),
             .maxBattles=maxBattles,
             .seed=seed,

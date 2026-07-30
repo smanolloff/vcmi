@@ -210,6 +210,16 @@ Graph::Graph(const CPlayerBattleCallback & battle)
 , nearbyPositions(PrecalculateNearbyPositions())
 {};
 
+const S15::Graph::INode * Graph::getNode(Schema::V15::Graph::ElementType t, std::size_t ind) const
+{
+    return withNodeStore(t, [ind](const auto & store)
+    {
+        const S15::Graph::INode * node = store.getById(ind, true).get();
+        return node;
+    });
+};
+
+
 std::vector<const S15::Graph::INode*>
 Graph::getNodes(Schema::V15::Graph::ElementType t) const
 {

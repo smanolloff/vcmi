@@ -52,6 +52,7 @@ namespace ML {
         const bool rightAllowMlBot;
         const std::string leftModelFile;
         const std::string rightModelFile;
+        const float temperature;
         const std::string mapname;
         const int maxBattles;
         const int seed;

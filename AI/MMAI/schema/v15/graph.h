@@ -338,6 +338,7 @@ namespace EdgeAttributes
         virtual std::vector<const IEdge*> getEdges(ElementType t) const = 0;
         virtual int64_t getNodeIndex(const INode*) const = 0;
         virtual int64_t getEdgeIndex(const IEdge*) const = 0;
+        virtual const INode* getNode(ElementType t, std::size_t ind) const = 0;
         virtual std::vector<int64_t> getActiveActionIds() const = 0;
         virtual ~IGraph() = default;
     };

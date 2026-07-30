@@ -328,6 +328,11 @@ namespace ML {
                 exit(1);
             }
         }
+
+        if (a.temperature < 0) {
+            std::cerr << "Bad value for temperature: expected a non-negative float, got: " << a.temperature << "\n";
+            exit(1);
+        }
     }
 
     void processArguments(
@@ -341,6 +346,10 @@ namespace ML {
         baggage->modelRight = rightModel;
         baggage->allowMlBotLeft = a.leftAllowMlBot;
         baggage->allowMlBotRight = a.rightAllowMlBot;
+        baggage->seed = a.seed;
+        baggage->temperature = a.temperature;
+
+        std::cout << "baggage->seed: " << baggage->seed << "\n";
 
         Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
         Settings(settings.write({"session", "headless"}))->Bool() = headless;

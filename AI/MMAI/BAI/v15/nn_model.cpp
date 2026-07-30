@@ -150,7 +150,13 @@ namespace
 		double prob; // original (non-tempered) probability
 	};
 
-	std::pair<Sample, Sample> categorical(const std::vector<float> & probs, float temperature, std::mt19937 & rng)
+	std::pair<Sample, Sample> categorical(
+		const std::vector<float> & probs,
+		float temperature,
+		std::mt19937 & rng,
+		const std::vector<int64_t> & activeActionIds,
+		const S15::Graph::IGraph * graph
+	)
 	{
 		auto sample = Sample{};
 		auto greedy = Sample{};
@@ -158,19 +164,35 @@ namespace
 		if(temperature < 0.0f)
 			throwf("sample: negative temperature");
 
+		bool isGreedy = temperature < 1e-5;
+
 		// Greedy sample: argmax, first tie.
 		{
 			int best = 0;
 			for(int i = 0; i < probs.size(); ++i)
+			{
+				// Only print probs here if greedy is enabled
+				// Otherwise, tempered probs are printed later instead
+				if (isMMAIVerbose() && isGreedy)
+				{
+					const auto action = activeActionIds.at(i);
+					const auto * actnode = graph->getNode(ET::NODE_ACTION, action);
+					std::cout << "i=" << i
+						<< " action=" << action
+						<< " prob=" << std::fixed << std::setprecision(3) << probs[i]
+						<< " " << actnode->name() << "\n";
+				}
+
 				if(probs[i] > probs[best])
 					best = i; // '>' keeps the first tie
+			}
 
 			greedy.index = best;
 			greedy.prob = probs[best];
 			greedy.confidence = 1.0f;
 		}
 
-		if(temperature < 1e-5)
+		if(isGreedy)
 			return {greedy, greedy};
 
 		// Stochastic sample (only if temperature > 0)
@@ -215,8 +237,22 @@ namespace
 			throwf("sample: negative weight sum: %f", wsum);
 
 		std::discrete_distribution<int> dist(weights.begin(), weights.end());
-		int idx = dist(rng);
 
+		if (isMMAIVerbose())
+		{
+			const auto actual_probs = dist.probabilities();
+			for(std::size_t i = 0; i < actual_probs.size(); ++i)
+			{
+				const auto action = activeActionIds.at(i);
+				const auto * actnode = graph->getNode(ET::NODE_ACTION, action);
+				std::cout << "i=" << i
+					<< " action=" << action
+					<< " prob=" << std::fixed << std::setprecision(3) << actual_probs[i]
+					<< " " << actnode->name() << "\n";
+			}
+		}
+
+		int idx = dist(rng);
 		sample.index = idx;
 		sample.prob = probs[idx];
 		sample.confidence = weights[idx] / wsum;
@@ -506,15 +542,15 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 
 	if(!any.has_value())
 		throw std::runtime_error("extractSupplementaryData: supdata is empty");
-	auto err = MMAI::Schema::AnyCastError(any, typeid(const MMAI::Schema::V15::ISupplementaryData *));
+	auto err = MMAI::Schema::AnyCastError(any, typeid(const S15::ISupplementaryData *));
 	if(!err.empty())
 		throwf("getAction: anycast failed: %s", err);
 
-	const auto * sup = std::any_cast<const MMAI::Schema::V15::ISupplementaryData *>(any);
+	const auto * sup = std::any_cast<const S15::ISupplementaryData *>(any);
 	if(!sup)
 		throwf("getAction: null supplementary data");
 
-	if(sup->getType() != MMAI::Schema::V15::ISupplementaryData::Type::REGULAR)
+	if(sup->getType() != S15::ISupplementaryData::Type::REGULAR)
 		throwf("getAction: unsupported supplementary data type: %d", EI(sup->getType()));
 
 	const auto * graph = sup->getGraph();
@@ -522,7 +558,7 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 		throwf("getAction: null graph");
 
 	const auto * gnode = graph->getNodes(ET::NODE_GLOBAL).at(0);
-	using GA = MMAI::Schema::V15::Graph::NodeAttributes::Global;
+	using GA = S15::Graph::NodeAttributes::Global;
 
 	if (gnode->rawAttributes().at(EU(GA::BATTLE_WINNER)) != EU(S15::CombatResult::NONE))
 	{
@@ -548,7 +584,7 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	if(activeActionIdsOut != activeActionIds)
 		throwf("getAction: active action ids output mismatch");
 
-	const auto [sample, greedy] = categorical(activeProbs, temperature, rng);
+	const auto [sample, greedy] = categorical(activeProbs, temperature, rng, activeActionIds, graph);
 
 	if(sample.prob == 0)
 		throwf("getAction: sample has 0 probability");
@@ -559,25 +595,30 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	if(modelGreedyAction != gaction)
 		throwf("getAction: model greedy action mismatch: output: %d, probabilities: %d", modelGreedyAction, gaction);
 
+	const auto sname = graph->getNode(ET::NODE_ACTION, saction)->name();
+	const auto gname = graph->getNode(ET::NODE_ACTION, gaction)->name();
+
 	logAi->debug(
-		"greedy: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d",
+		"greedy: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d %s",
 		gaction,
 		greedy.prob,
 		greedy.confidence,
 		value,
-		greedy.index
+		greedy.index,
+		gname
 	);
 
 	logAi->debug(
-		"sample: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d",
+		"sample: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d %s",
 		saction,
 		sample.prob,
 		sample.confidence,
 		value,
-		sample.index
+		sample.index,
+		sname
 	);
 
-	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f)") % saction % sample.confidence);
+	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f): %s") % saction % sample.confidence % sname);
 	return static_cast<int>(saction);
 };
 
@@ -588,7 +629,7 @@ double NNModel::getValue(const MMAI::Schema::IState * s)
 	return 0;
 }
 
-std::vector<Ort::Value> NNModel::prepareInputs(const MMAI::Schema::V15::Graph::IGraph * graph)
+std::vector<Ort::Value> NNModel::prepareInputs(const S15::Graph::IGraph * graph)
 {
 	NestedLogTag _("prepareInputs");
 
