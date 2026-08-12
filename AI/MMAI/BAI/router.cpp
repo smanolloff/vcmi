@@ -434,11 +434,7 @@ void Router::battleStart(
 			{
 				if(model->getVersion() == 13) {
 					auto bai_ = dynamic_cast<V13::BAI*>(bai.get());
-					ASSERT(bai_, "dynamic cast to V14::BAI failed");
-					bai_->allowMlBot = allowMlBot;
-				} else if(model->getVersion() == 14) {
-					auto bai_ = dynamic_cast<V14::BAI*>(bai.get());
-					ASSERT(bai_, "dynamic cast to V14::BAI failed");
+					ASSERT(bai_, "dynamic cast to V13::BAI failed");
 					bai_->allowMlBot = allowMlBot;
 				}
 			}
