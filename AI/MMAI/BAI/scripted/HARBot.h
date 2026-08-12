@@ -21,6 +21,7 @@
 #include "AI/MMAI/BAI/v15/fastbfs.h"
 
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace MMAI::BAI
@@ -45,6 +46,7 @@ private:
 	std::shared_ptr<CBattleGameInterface> fallbackBot;
 	std::shared_ptr<CPlayerBattleCallback> battle;
 	std::unordered_set<const CStack *> mustRetreat;
+	std::unordered_map<const CStack *, int> consecutiveRetreats;
 	std::string colorName = "?";
 
 	std::unique_ptr<const MMAI::BAI::V15::FastBFS> fastbfs;
@@ -59,6 +61,7 @@ private:
 	};
 
 	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition) const;
+	bool canEnemyReachNextTurn(const CStack * stack) const;
 	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
 	bool retreat(const BattleID & battleID, const CStack * stack);

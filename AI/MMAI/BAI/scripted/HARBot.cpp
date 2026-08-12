@@ -52,6 +52,7 @@ void HARBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, 
 	battle = cb->getBattle(battleID);
 	fastbfs = std::make_unique<const FastBFS>(*battle, battle->getAccessibility());
 	mustRetreat.clear();
+	consecutiveRetreats.clear();
 	logAi->info(
 		"HARBot [%s]: battle started as side=%d with %d friendly and %d enemy stacks",
 		colorName,
@@ -125,14 +126,51 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 	{
 		logAi->info("HARBot [%s]: %s is due to retreat after its previous attack", colorName, stack->getDescription());
 		if(retreat(battleID, stack))
+		{
+			consecutiveRetreats[stack] = 1;
 			return;
+		}
 
+		consecutiveRetreats.erase(stack);
 		delegate(battleID, stack, "no legal retreat destination was found");
 		return;
 	}
 
+	const auto retreatIt = consecutiveRetreats.find(stack);
+	const auto retreatCount = retreatIt == consecutiveRetreats.end() ? 0 : retreatIt->second;
+	if(retreatCount > 0 && retreatCount < 2 && canEnemyReachNextTurn(stack))
+	{
+		logAi->info(
+			"HARBot [%s]: %s is reachable after %d consecutive retreat(s) and will retreat again",
+			colorName,
+			stack->getDescription(),
+			retreatCount
+		);
+		if(retreat(battleID, stack))
+		{
+			consecutiveRetreats[stack] = retreatCount + 1;
+			return;
+		}
+
+		logAi->info("HARBot [%s]: %s cannot retreat again and will continue with its normal turn", colorName, stack->getDescription());
+	}
+	else if(retreatCount >= 2)
+	{
+		logAi->info(
+			"HARBot [%s]: %s reached the limit of %d consecutive retreats and will wait",
+			colorName,
+			stack->getDescription(),
+			retreatCount
+		);
+	}
+	else if(retreatCount > 0)
+	{
+		logAi->info("HARBot [%s]: %s is no longer reachable next turn and resumes its attack cycle", colorName, stack->getDescription());
+	}
+
 	if(!stack->waitedThisTurn)
 	{
+		consecutiveRetreats.erase(stack);
 		logAi->info("HARBot [%s]: %s waits so it can attack late in the round", colorName, stack->getDescription());
 		cb->battleMakeUnitAction(battleID, BattleAction::makeWait(stack));
 		return;
@@ -203,6 +241,48 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 	}
 
 	return best;
+}
+
+bool HARBot::canEnemyReachNextTurn(const CStack * stack) const
+{
+	assert(fastbfs);
+	for(const auto * enemy : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY))
+	{
+		if(!enemy->alive() || enemy->isInvincible() || !enemy->getPosition().isValid() || enemy->getMovementRange() == 0)
+			continue;
+
+		const auto distances = fastbfs->run(
+			enemy->getPosition(),
+			enemy->getPosition(),
+			enemy->unitSide(),
+			enemy->hasBonusOfType(BonusType::FLYING),
+			enemy->doubleWide(),
+			static_cast<int>(enemy->getMovementRange())
+		);
+
+		auto attackDistance = FastBFS::INFINITE_DIST;
+		for(const auto & attackHex : stack->getAttackableHexes(enemy))
+		{
+			if(attackHex.isValid())
+				attackDistance = std::min(attackDistance, distances.at(attackHex.toInt()));
+		}
+
+		logAi->debug(
+			"HARBot [%s]: chase check enemy=%s attackDistance=%u speed=%u target=%s",
+			colorName,
+			enemy->getDescription(),
+			attackDistance,
+			enemy->getMovementRange(),
+			stack->getDescription()
+		);
+		if(attackDistance <= enemy->getMovementRange())
+		{
+			logAi->info("HARBot [%s]: %s can reach %s next turn", colorName, enemy->getDescription(), stack->getDescription());
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack)
