@@ -4,7 +4,10 @@
 	},
     "general" : {
         "music" : 0,
-        "sound" : 0
+        "sound" : 0,
+        "multiPlayerNames" : [
+            "qwe"
+        ]
     },
 	"logging" : {
 		"console" : {

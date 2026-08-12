@@ -38,8 +38,8 @@ namespace ML {
             randomArmyTargetVar = settings["server"]["ML"]["randomArmyTargetVar"].Integer();
             tightFormationChance = settings["server"]["ML"]["tightFormationChance"].Integer();
             randomTerrainChance = settings["server"]["ML"]["randomTerrainChance"].Integer();
-            leftVipChance = settings["server"]["ML"]["leftVipChance"].Integer();
-            rightVipChance = settings["server"]["ML"]["rightVipChance"].Integer();
+            leftVip = settings["server"]["ML"]["leftVip"].Bool();
+            rightVip = settings["server"]["ML"]["rightVip"].Bool();
             battlefieldPattern = settings["server"]["ML"]["battlefieldPattern"].String();
             swapSides = settings["server"]["ML"]["swapSides"].Integer();
             manaMin = settings["server"]["ML"]["manaMin"].Integer();
@@ -67,8 +67,8 @@ namespace ML {
         int randomArmyTargetVar = 0;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
-        int leftVipChance = 0;
-        int rightVipChance = 0;
+        bool leftVip = false;
+        bool rightVip = false;
         int swapSides = 0;
         int manaMin = 0;
         int manaMax = 0;

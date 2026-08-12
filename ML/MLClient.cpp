@@ -266,13 +266,13 @@ namespace ML {
             exit(1);
         }
 
-        if (a.leftVipChance < 0 || a.leftVipChance > 100) {
-            std::cerr << "Bad value for leftVipChance: expected an integer between 0 and 100, got: " << a.leftVipChance << "\n";
+        if (a.leftVip && !a.randomArmies) {
+            std::cerr << "Bad value for leftVip: requires randomArmies\n";
             exit(1);
         }
 
-        if (a.rightVipChance < 0 || a.rightVipChance > 100) {
-            std::cerr << "Bad value for rightVipChance: expected an integer between 0 and 100, got: " << a.rightVipChance << "\n";
+        if (a.rightVip && !a.randomArmies) {
+            std::cerr << "Bad value for rightVip: requires randomArmies\n";
             exit(1);
         }
 
@@ -346,8 +346,6 @@ namespace ML {
 
         baggage->modelLeft = leftModel;
         baggage->modelRight = rightModel;
-        baggage->allowMlBotLeft = a.leftAllowMlBot;
-        baggage->allowMlBotRight = a.rightAllowMlBot;
         baggage->seed = a.seed;
         baggage->temperature = a.temperature;
 
@@ -373,8 +371,8 @@ namespace ML {
         Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
         Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
         Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;
-        Settings(settings.write({"server", "ML", "leftVipChance"}))->Integer() = a.leftVipChance;
-        Settings(settings.write({"server", "ML", "rightVipChance"}))->Integer() = a.rightVipChance;
+        Settings(settings.write({"server", "ML", "leftVip"}))->Bool() = a.leftVip;
+        Settings(settings.write({"server", "ML", "rightVip"}))->Bool() = a.rightVip;
         Settings(settings.write({"server", "ML", "battlefieldPattern"}))->String() = a.battlefieldPattern;
         Settings(settings.write({"server", "ML", "manaMin"}))->Integer() = a.manaMin;
         Settings(settings.write({"server", "ML", "manaMax"}))->Integer() = a.manaMax;

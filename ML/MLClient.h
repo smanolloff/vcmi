@@ -52,8 +52,6 @@ namespace ML {
     );
 
     struct MMAI_DLL_LINKAGE InitArgs {
-        const bool leftAllowMlBot;
-        const bool rightAllowMlBot;
         const std::string leftModelFile;
         const std::string rightModelFile;
         const float temperature;
@@ -71,8 +69,8 @@ namespace ML {
         const int randomArmyTargetVar;
         const int tightFormationChance;
         const int randomTerrainChance;
-        const int leftVipChance;
-        const int rightVipChance;
+        const bool leftVip;
+        const bool rightVip;
         const std::string battlefieldPattern;
         const int manaMin;
         const int manaMax;

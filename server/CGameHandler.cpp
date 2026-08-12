@@ -581,6 +581,7 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 	for (const auto & elem : gameState().players)
 		turnOrder->addPlayer(elem.first);
 
+	ML(si->mlconfig.init(settings));
 	ML(mlplugin = std::make_unique<ML::ServerPlugin>(this, gs.get(), si->mlconfig));
 }
 

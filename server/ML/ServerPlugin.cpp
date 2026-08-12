@@ -420,20 +420,17 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     auto & p2 = heropools.at(1).begin()->second.heroes;
 
     auto vipEnabled = [this]() {
-        return config.leftVipChance > 0 || config.rightVipChance > 0;
+        return config.leftVip || config.rightVip;
     };
 
-    if (vipEnabled() && !config.randomArmies) {
-        std::cout << "WARNING: VipChance > 0, but random armies are not enabled. Will not enable VIP shooters.\n";
-        config.leftVipChance = 0;
-        config.rightVipChance = 0;
-    }
+    if (vipEnabled() && !config.randomArmies)
+        throw std::runtime_error("leftVip or rightVip enabled, but random armies are not enabled.");
 
     if (p1.size() < 2 || p2.size() < 2) {
         if (vipEnabled())
-            std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
-        config.leftVipChance = 0;
-        config.rightVipChance = 0;
+            std::cout << "WARNING: leftVip or rightVip, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
+        config.leftVip = false;
+        config.rightVip = false;
         nonvipHero1 = p1[0];
         nonvipHero2 = p2[0];
     } else {
@@ -611,7 +608,7 @@ void ServerPlugin::handleRandomArmies(
     if(allcreatures.empty())
         throw std::runtime_error("cannot generate random armies without valid creatures");
 
-    if((config.leftVipChance > 0 || config.rightVipChance > 0) && (allshooters.empty() || allguards.empty()))
+    if((config.leftVip || config.rightVip) && (allshooters.empty() || allguards.empty()))
         throw std::runtime_error("cannot generate VIP random armies without shooter and guard creatures");
 
     struct GeneratedStack
@@ -815,8 +812,8 @@ void ServerPlugin::handleRandomArmies(
 
     const int target = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
     auto dist100 = std::uniform_int_distribution<>(0, 99);
-    const bool leftVip = vipHero1 && (dist100(rng) < config.leftVipChance);
-    const bool rightVip = vipHero2 && (dist100(rng) < config.rightVipChance);
+    const bool leftVip = vipHero1 && config.leftVip;
+    const bool rightVip = vipHero2 && config.rightVip;
 
     if(leftVip)
     {

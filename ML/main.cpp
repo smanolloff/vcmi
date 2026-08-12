@@ -62,8 +62,6 @@ namespace ML {
         int randomArmyTargetVar = 30;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
-        int leftVipChance = 0;
-        int rightVipChance = 0;
         std::string battlefieldPattern = "";
         int townChance = 0;
         int warmachineChance = 0;
@@ -71,8 +69,6 @@ namespace ML {
         int manaMax = 0;
         int randomPrimarySkills = 0;
         int swapSides = 0;
-        bool leftAllowMlBot = false;
-        bool rightAllowMlBot = false;
         bool benchmark = false;
         bool interactive = false;
         bool prerecorded = false;
@@ -136,10 +132,6 @@ namespace ML {
                 "Percent chance to set a tight army formation (default 0*)")
             ("random-terrain-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a random terrain (default 0*)")
-            ("left-vip-chance", po::value<int>()->value_name("<N>"),
-                "Percent chance to generate a VIP left army with 1 shooter stack + guard stacks (default 0*)")
-            ("right-vip-chance", po::value<int>()->value_name("<N>"),
-                "Percent chance to generate a VIP right army with 1 shooter stack + guard stacks (default 0*)")
             ("battlefield-pattern", po::value<std::string>()->value_name("<REGEX>"),
                 "If given, it will be used as a regex pattern for filtering battlefields"
                 "based on their json key (see config/battlefields.json)")
@@ -161,10 +153,6 @@ namespace ML {
                 ("Path to model.zip (" + omap.at("right-model") + "*)").c_str())
             ("temperature", po::value<float>()->value_name("<FLOAT>"),
                 ("Model temperature for both --left-model and --right-model (default: 0*)"))
-            ("left-allow-mlbot", po::bool_switch(&leftAllowMlBot),
-                "Allow MLBot to control VIP armies when left AI is MMAI_USER or MMAI_MODEL")
-            ("right-allow-mlbot", po::bool_switch(&rightAllowMlBot),
-                "Allow MLBot to control VIP armies when right AI is MMAI_USER or MMAI_MODEL")
             ("loglevel-global", po::value<std::string>()->value_name("<LVL>"),
                 values(LOGLEVELS, omap.at("loglevel-global")).c_str())
             ("loglevel-ai", po::value<std::string>()->value_name("<LVL>"),
@@ -246,12 +234,6 @@ namespace ML {
 
         if (vm.count("temperature"))
             temperature = vm.at("temperature").as<float>();
-
-        if (vm.count("left-vip-chance"))
-            leftVipChance = vm.at("left-vip-chance").as<int>();
-
-        if (vm.count("right-vip-chance"))
-            rightVipChance = vm.at("right-vip-chance").as<int>();
 
         if (vm.count("battlefield-pattern"))
             battlefieldPattern = vm.at("battlefield-pattern").as<std::string>();
@@ -343,8 +325,6 @@ namespace ML {
         }
 
         return {leftModel, rightModel, {
-            .leftAllowMlBot=leftAllowMlBot,
-            .rightAllowMlBot=rightAllowMlBot,
             .leftModelFile="",
             .rightModelFile="",
             .temperature=temperature,
@@ -362,8 +342,8 @@ namespace ML {
             .randomArmyTargetVar=randomArmyTargetVar,
             .tightFormationChance=tightFormationChance,
             .randomTerrainChance=randomTerrainChance,
-            .leftVipChance=leftVipChance,
-            .rightVipChance=rightVipChance,
+            .leftVip=(leftAi == AI_VIPBOT),
+            .rightVip=(rightAi == AI_VIPBOT),
             .battlefieldPattern=battlefieldPattern,
             .manaMin=manaMin,
             .manaMax=manaMax,
