@@ -24,11 +24,11 @@
 namespace MMAI::BAI
 {
 
-class MLBot : public CBattleGameInterface
+class VIPBot : public CBattleGameInterface
 {
 public:
-    explicit MLBot(const std::string & botname);
-    ~MLBot() override;
+    explicit VIPBot(const std::string & delegate);
+    ~VIPBot() override;
 
     void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
     void battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed) override;
@@ -50,7 +50,7 @@ private:
 
     const CStack * vip = nullptr;
     BattleHex vipStartPos;
-    const std::string botname = "?";
+    const std::string delegate = "?";
     int nturns = 0;
     int nrounds = 0;
 

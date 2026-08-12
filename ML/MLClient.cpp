@@ -342,6 +342,8 @@ namespace ML {
     {
         headless = a.headless;
         baggage = new MMAI::Schema::Baggage;
+        std::cout << " LEFT MODEL: " << leftModel->getName() << "\n";
+
         baggage->modelLeft = leftModel;
         baggage->modelRight = rightModel;
         baggage->allowMlBotLeft = a.leftAllowMlBot;
@@ -394,7 +396,7 @@ namespace ML {
 
         // With GUI, the player's "adventure" AI is CPlayerInterface
         // When auto-combat is pressed, it creates whatever combatAlliedAI says
-        Settings(settings.write({"server", "combatAlliedAI"}))->String() = "MMAI";
+        Settings(settings.write({"ai", "combatAlliedAI"}))->String() = "MMAI";
 
         // Set all adventure AIs to AAI, which always create BAIs
 

@@ -19,7 +19,9 @@
 #include "../../StupidAI/StupidAI.h"
 
 #include "BAI/factory.h"
-#include "BAI/fallback/scripted_model.h"
+#include "BAI/scripted/VIPBot.h"
+#include "BAI/scripted/HARBot.h"
+#include "BAI/scripted/scripted_model.h"
 #include "BAI/router.h"
 #include "BAI/v13/BAI.h"
 
@@ -345,7 +347,6 @@ void Router::battleStart(
 {
 	MMAI_LOG_TAG;
 	Schema::IModel * model;
-	bool allowMlBot = false;
 
 	std::string modelkey = side == BattleSide::ATTACKER ? "attacker" : "defender";
 
@@ -360,10 +361,8 @@ void Router::battleStart(
 		ASSERT(cb->getPlayerID()->hasValue(), "cb->getPlayerID() has no value");
 		if (cb->getPlayerID()->num) {
 			model = baggage->modelRight;
-			allowMlBot = baggage->allowMlBotRight;
 		} else {
 			model = baggage->modelLeft;
-			allowMlBot = baggage->allowMlBotLeft;
 		}
 		ASSERT(model != nullptr, "model is nullptr");
 		if(model->getType() == Schema::ModelType::PATH)
@@ -401,6 +400,8 @@ void Router::battleStart(
 			static_cast<int>(realside)
 		);
 
+	logAi->warn("model type: %d", EI(model->getType()));
+	logAi->warn("model name: %s", model->getName());
 	switch(model->getType())
 	{
 		case Schema::ModelType::SCRIPTED:
@@ -415,9 +416,14 @@ void Router::battleStart(
 				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
 #ifdef ENABLE_ML
-			else if(model->getName() == "MMAI_BATTLEAI")
+			else if(model->getName() == "VIPBot")
 			{
-				bai = std::make_shared<MLBot>("BattleAI");
+				bai = std::make_shared<VIPBot>("BattleAI");
+				bai->initBattleInterface(env, cb, aiCombatOptions);
+			}
+			else if(model->getName() == "HARBot")
+			{
+				bai = std::make_shared<HARBot>("BattleAI");
 				bai->initBattleInterface(env, cb, aiCombatOptions);
 			}
 #endif
@@ -435,7 +441,6 @@ void Router::battleStart(
 				if(model->getVersion() == 13) {
 					auto bai_ = dynamic_cast<V13::BAI*>(bai.get());
 					ASSERT(bai_, "dynamic cast to V13::BAI failed");
-					bai_->allowMlBot = allowMlBot;
 				}
 			}
 #endif

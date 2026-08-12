@@ -25,6 +25,8 @@ namespace ML {
     constexpr auto AI_MMAI_USER = "MMAI_USER"; // for user-provided getAction (gym)
     constexpr auto AI_MMAI_MODEL = "MMAI_MODEL"; // for pre-trained model's getAction
     constexpr auto AI_MMAI_BATTLEAI = "MMAI_BATTLEAI";
+    constexpr auto AI_VIPBOT = "VIPBot"; // protects VIP shooters
+    constexpr auto AI_HARBOT = "HARBot"; // does hit-and-run
 
     const std::vector<std::string> AIS = {
         AI_STUPIDAI,
@@ -32,6 +34,8 @@ namespace ML {
         AI_MMAI_USER,
         AI_MMAI_MODEL,
         AI_MMAI_BATTLEAI,
+        AI_VIPBOT,
+        AI_HARBOT,
     };
 
     const std::vector<std::string> LOGLEVELS = {"trace", "debug", "info", "warn", "error"};

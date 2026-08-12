@@ -78,19 +78,6 @@ void BAI::battleStart(
 )
 {
 	battle = cb->getBattle(bid);
-
-#ifdef ENABLE_ML
-	const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
-	// info("allowMlBot: %d", allowMlBot);
-	if (allowMlBot && art && art->getTypeId() == ArtifactID::GRAIL) {
-		logger.info("GRAIL found in hero -- preparing MLBot (for model: %s)", model->getName());
-		mlbot = std::make_shared<MLBot>("BattleAI");
-		mlbot->initBattleInterface(env, cb, {.enableSpellsUsage = false});
-		mlbot->battleStart(bid, army1, army2, tile, hero1, hero2, side, replayAllowed);
-	}
-#endif
-
-
 	state = initState(battle.get());
 	getActionTotalMs = 0;
 	getActionTotalCalls = 0;
@@ -334,12 +321,6 @@ namespace
 void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
 #ifdef ENABLE_ML
-	if (mlbot) {
-		logger.info("Delegating activeStack to MLBot");
-		mlbot->activeStack(bid, astack);
-		return;
-	}
-
 	_activeStack(bid, astack);
 #else
 	try

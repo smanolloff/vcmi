@@ -205,9 +205,10 @@ namespace {
             std::smatch matches;
 
             auto & ownedPools = res.at(poolowner);
+            auto heroname = hero->getNameTextID();
 
             // Check if the entire string matches the pattern
-            if (std::regex_match(hero->nameCustomTextId, matches, pattern))
+            if (std::regex_match(heroname, matches, pattern))
                 poolname = matches[1].str();
 
             auto it = ownedPools.find(poolname);
@@ -235,7 +236,8 @@ namespace {
                 throw std::runtime_error("Owners have different pools");
             auto x = (*res.at(1).find(name1)).second;
             if (pool1.heroes.size() != (*res.at(1).find(name1)).second.heroes.size())
-                throw std::runtime_error("Owners have differently sized pools");
+                // throw std::runtime_error("Owners have differently sized pools");
+                std::cout << "WARNING: Owners have differently sized pools: " << pool1.heroes.size() << " <> " << (*res.at(1).find(name1)).second.heroes.size() << "\n";
         }
 
         ML_VERBOSE("Grouped " << counter << " heroes into " << res.size() << "x" << res.at(0).size() << " pools\n");
@@ -428,7 +430,8 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     }
 
     if (p1.size() < 2 || p2.size() < 2) {
-        std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
+        if (vipEnabled())
+            std::cout << "WARNING: VipChance > 0, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
         config.leftVipChance = 0;
         config.rightVipChance = 0;
         nonvipHero1 = p1[0];
@@ -575,7 +578,7 @@ void ServerPlugin::handleRandomHeroes(
     hero1 = pool1.heroes.at(pool1.counter);
     hero2 = pool2.heroes.at(pool2.counter);
 
-    // printf("Pool: %s, hero0: %s, hero1: %s\n", pool.name.c_str(), hero1->nameCustomTextId.c_str(), hero2->nameCustomTextId.c_str());
+    // printf("Pool: %s, hero0: %s, hero1: %s\n", pool.name.c_str(), hero1->getNameTextID().c_str(), hero2->getNameTextID().c_str());
 
     if (battlecounter % config.randomHeroes == 0) {
         poolcounter += 1;
@@ -1027,8 +1030,8 @@ void ServerPlugin::endBattleHook(
             return std::pair<int, std::string>(hero_id, pool_name);
         };
 
-        auto [attackerID, poolname] = extractHeroID(heroAttacker->nameCustomTextId);
-        auto [defenderID, poolname2] = extractHeroID(heroDefender->nameCustomTextId);
+        auto [attackerID, poolname] = extractHeroID(heroAttacker->getNameTextID());
+        auto [defenderID, poolname2] = extractHeroID(heroDefender->getNameTextID());
 
         if (poolname != poolname2)
             throw std::runtime_error("Pools do not match: " + poolname + " <> " + poolname2);

@@ -18,7 +18,7 @@ namespace MMAI::BAI
 
 ScriptedModel::ScriptedModel(const std::string & keyword) : keyword(keyword)
 {
-	static const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI"};
+	static const std::vector<std::string> FALLBACKS = {"StupidAI", "BattleAI", "VIPBot", "HARBot"};
 	auto it = std::ranges::find(FALLBACKS, keyword);
 	if(it == FALLBACKS.end())
 		throw std::runtime_error("Unsupported fallback keyword: " + keyword);

@@ -14,10 +14,12 @@ set(MMAI_FILES
   BAI/factory.cpp
   BAI/router.cpp
   BAI/router.h
-  BAI/fallback/scripted_model.h
-  BAI/fallback/scripted_model.cpp
-  BAI/fallback/MLBot.h
-  BAI/fallback/MLBot.cpp
+  BAI/scripted/scripted_model.h
+  BAI/scripted/scripted_model.cpp
+  BAI/scripted/VIPBot.h
+  BAI/scripted/VIPBot.cpp
+  BAI/scripted/HARBot.h
+  BAI/scripted/HARBot.cpp
 
   BAI/v13/BAI.cpp
   BAI/v13/BAI.h

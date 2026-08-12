@@ -328,6 +328,7 @@ namespace ML {
             // BAI will load the actual model based on leftModel->getName()
             leftModel = new ModelWrappers::Path(omap.at("left-model"));
         } else {
+            std::cout << " LEFT AI SCRIPTED: " << leftAi << "\n";
             leftModel = new ModelWrappers::Scripted(leftAi, MMAI::Schema::Side::LEFT);
         }
 
@@ -335,6 +336,7 @@ namespace ML {
             rightModel = new UserAgents::AgentV15(benchmark, interactive, autorender, false, recordings);
         } else if (rightAi == AI_MMAI_MODEL) {
             // BAI will load the actual model based on leftModel->getName()
+            std::cout << " RIGHT AI SCRIPTED: " << leftAi << "\n";
             rightModel = new ModelWrappers::Path(omap.at("right-model"));
         } else {
             rightModel = new ModelWrappers::Scripted(rightAi, MMAI::Schema::Side::RIGHT);

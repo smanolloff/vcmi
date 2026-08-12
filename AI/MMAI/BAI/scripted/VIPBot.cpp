@@ -25,7 +25,7 @@
 #include "lib/CRandomGenerator.h"
 #include "lib/callback/AIFactory.h"
 
-#include "MLBot.h"
+#include "VIPBot.h"
 #include "schema/v15/constants.h"
 #include <algorithm>
 #include <boost/range/numeric.hpp>
@@ -184,8 +184,8 @@ namespace {
 
 }
 
-MLBot::MLBot(const std::string & botname)
-: botname(botname), msgbuf(500)
+VIPBot::VIPBot(const std::string & delegate)
+: delegate(delegate), msgbuf(500)
 {
     std::ostringstream oss;
     // Store the memory address and include it in logging
@@ -193,15 +193,15 @@ MLBot::MLBot(const std::string & botname)
     oss << ptr;
     addrstr = oss.str();
     info("+++ constructor +++"); // log after addrstr is set
-    bot = AIFactory::createBattleAI(botname);
+    bot = AIFactory::createBattleAI(delegate);
 }
 
-MLBot::~MLBot()
+VIPBot::~VIPBot()
 {
     info("--- destructor ---");
 }
 
-void MLBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions)
+void VIPBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions)
 {
     info("*** initBattleInterface ***");
     cb = CB;
@@ -209,7 +209,7 @@ void MLBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_pt
     bot->initBattleInterface(ENV, cb, aiCombatOptions);
 }
 
-void MLBot::addmsg(const CStack* astack, const CStack* vip, const std::string & event) {
+void VIPBot::addmsg(const CStack* astack, const CStack* vip, const std::string & event) {
     std::ostringstream oss;
     oss << boost::str(boost::format("[round %d][%d] %s") % nrounds % nturns % event) << "\n";
 
@@ -253,7 +253,7 @@ void MLBot::addmsg(const CStack* astack, const CStack* vip, const std::string & 
     msgbuf.push_back(oss.str());
 }
 
-void MLBot::actionStarted(const BattleID & bid, const BattleAction & action) {
+void VIPBot::actionStarted(const BattleID & bid, const BattleAction & action) {
     // addmsg(battle->battleActiveUnit(), vip, "actionStarted: " + action.toString()))
     const CStack * astack = nullptr;
     if (battle->battleActiveUnit())
@@ -262,13 +262,13 @@ void MLBot::actionStarted(const BattleID & bid, const BattleAction & action) {
     addmsg(astack, vip, "actionStarted: " + action.toString());
 };
 
-void MLBot::battleNewRound(const BattleID & bid) {
+void VIPBot::battleNewRound(const BattleID & bid) {
     ++nrounds;
     msgbuf.push_back(boost::str(boost::format("[round %d][%d] battleNewRound\n") % nrounds % nturns));
 }
 
 
-void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
+void VIPBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
 {
     vip = nullptr;
     nturns = 0;
@@ -294,17 +294,17 @@ void MLBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, c
     if (vip)
         info("Found VIP stack: %s", vip->getDescription());
     else
-        info("Could not find VIP stack, will delegate all calls to %s", botname);
+        info("Could not find VIP stack, will delegate all calls to %s", delegate);
 
     msgbuf.push_back(boost::str(boost::format("[round %d][%d] battleStart\n") % nrounds % nturns));
 }
 
-void MLBot::yourTacticPhase(const BattleID & battleID, int distance)
+void VIPBot::yourTacticPhase(const BattleID & battleID, int distance)
 {
     bot->yourTacticPhase(battleID, distance);
 }
 
-void MLBot::activeStack(const BattleID & bid, const CStack * astack)
+void VIPBot::activeStack(const BattleID & bid, const CStack * astack)
 {
     ++nturns;
     msgbuf.push_back(boost::str(boost::format("[round %d][%d] activeStack: %s\n") % nrounds % nturns % astack->getDescription()));
@@ -333,7 +333,7 @@ void MLBot::activeStack(const BattleID & bid, const CStack * astack)
  * private
  */
 
-void MLBot::handleVip(const BattleID & bid, const CStack * vip)
+void VIPBot::handleVip(const BattleID & bid, const CStack * vip)
 {
     // Just let the bot act (should shoot at someone)
     info("Handling VIP stack %s => invoke bot", vip->getDescription());
@@ -877,7 +877,7 @@ namespace
     }
 }
 
-void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack * vip)
+void VIPBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack * vip)
 {
     info("Handling GUARD stack %s (vip=%s)", guard->getDescription(), vip->getDescription());
 
@@ -1037,90 +1037,90 @@ void MLBot::handleGuard(const BattleID & bid, const CStack * guard, const CStack
  */
 
 template<typename... Args>
-void MLBot::_log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const
+void VIPBot::_log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const
 {
-    logAi->log(level, "MLBot-%s [%s] " + format, addrstr, colorname, args...);
+    logAi->log(level, "VIPBot-%s [%s] " + format, addrstr, colorname, args...);
 }
 
 template<typename... Args>
-void MLBot::error(const std::string & format, Args... args) const
+void VIPBot::error(const std::string & format, Args... args) const
 {
     log(ELogLevel::ERROR, format, args...);
 }
 template<typename... Args>
-void MLBot::warn(const std::string & format, Args... args) const
+void VIPBot::warn(const std::string & format, Args... args) const
 {
     log(ELogLevel::WARN, format, args...);
 }
 template<typename... Args>
-void MLBot::info(const std::string & format, Args... args) const
+void VIPBot::info(const std::string & format, Args... args) const
 {
     log(ELogLevel::INFO, format, args...);
 }
 template<typename... Args>
-void MLBot::debug(const std::string & format, Args... args) const
+void VIPBot::debug(const std::string & format, Args... args) const
 {
     log(ELogLevel::DEBUG, format, args...);
 }
 template<typename... Args>
-void MLBot::trace(const std::string & format, Args... args) const
+void VIPBot::trace(const std::string & format, Args... args) const
 {
     log(ELogLevel::DEBUG, format, args...);
 }
 template<typename... Args>
-void MLBot::log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const
+void VIPBot::log(const ELogLevel::ELogLevel level, const std::string & format, Args... args) const
 {
     if(logAi->getEffectiveLevel() <= level)
         _log(level, format, args...);
 }
 
-void MLBot::error(const std::string & text) const
+void VIPBot::error(const std::string & text) const
 {
     log(ELogLevel::ERROR, text);
 }
-void MLBot::warn(const std::string & text) const
+void VIPBot::warn(const std::string & text) const
 {
     log(ELogLevel::WARN, text);
 }
-void MLBot::info(const std::string & text) const
+void VIPBot::info(const std::string & text) const
 {
     log(ELogLevel::INFO, text);
 }
-void MLBot::debug(const std::string & text) const
+void VIPBot::debug(const std::string & text) const
 {
     log(ELogLevel::DEBUG, text);
 }
-void MLBot::trace(const std::string & text) const
+void VIPBot::trace(const std::string & text) const
 {
     log(ELogLevel::TRACE, text);
 }
-void MLBot::log(ELogLevel::ELogLevel level, const std::string & text) const
+void VIPBot::log(ELogLevel::ELogLevel level, const std::string & text) const
 {
     if(logAi->getEffectiveLevel() <= level)
         _log(level, "%s", text);
 }
 
-void MLBot::error(const std::function<std::string()> & cb) const
+void VIPBot::error(const std::function<std::string()> & cb) const
 {
     log(ELogLevel::ERROR, cb);
 }
-void MLBot::warn(const std::function<std::string()> & cb) const
+void VIPBot::warn(const std::function<std::string()> & cb) const
 {
     log(ELogLevel::WARN, cb);
 }
-void MLBot::info(const std::function<std::string()> & cb) const
+void VIPBot::info(const std::function<std::string()> & cb) const
 {
     log(ELogLevel::INFO, cb);
 }
-void MLBot::debug(const std::function<std::string()> & cb) const
+void VIPBot::debug(const std::function<std::string()> & cb) const
 {
     log(ELogLevel::DEBUG, cb);
 }
-void MLBot::trace(const std::function<std::string()> & cb) const
+void VIPBot::trace(const std::function<std::string()> & cb) const
 {
     log(ELogLevel::TRACE, cb);
 }
-void MLBot::log(ELogLevel::ELogLevel level, const std::function<std::string()> & cb) const
+void VIPBot::log(ELogLevel::ELogLevel level, const std::function<std::string()> & cb) const
 {
     if(logAi->getEffectiveLevel() <= level)
         _log(level, "%s", cb());

@@ -16,6 +16,7 @@ namespace MMAI::BAI
 {
 class ScriptedModel : public MMAI::Schema::IModel
 {
+	// Wrapper for scripted models to make them compatible with the IModel interface.
 public:
 	explicit ScriptedModel(const std::string & keyword);
 
