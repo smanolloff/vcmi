@@ -20,6 +20,7 @@
 #include "callback/CBattleGameInterface.h"
 #include "AI/MMAI/BAI/v15/fastbfs.h"
 
+#include <limits>
 #include <unordered_set>
 
 namespace MMAI::BAI
@@ -48,6 +49,16 @@ private:
 
 	std::unique_ptr<const MMAI::BAI::V15::FastBFS> fastbfs;
 
+	struct RetreatPlan
+	{
+		BattleHex destination;
+		int minimumEnemyDistance = -1;
+		int totalEnemyDistance = -1;
+		int homewardProgress = -1;
+		int movementDistance = std::numeric_limits<int>::max();
+	};
+
+	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition) const;
 	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
 	bool retreat(const BattleID & battleID, const CStack * stack);

@@ -149,6 +149,62 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 	delegate(battleID, stack, "no legal advance toward an enemy was found");
 }
 
+HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition) const
+{
+	assert(fastbfs);
+	const auto distances = fastbfs->run(
+		stack->getPosition(),
+		assumedPosition,
+		stack->unitSide(),
+		stack->hasBonusOfType(BonusType::FLYING),
+		stack->doubleWide(),
+		static_cast<int>(stack->getMovementRange())
+	);
+	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
+	RetreatPlan best;
+
+	for(int i = 0; i < GameConstants::BFIELD_SIZE; ++i)
+	{
+		const BattleHex destination(static_cast<si16>(i));
+		const auto movementDistance = static_cast<int>(distances.at(i));
+		if(movementDistance == FastBFS::INFINITE_DIST || movementDistance > stack->getMovementRange() || destination == assumedPosition)
+			continue;
+
+		int minimumEnemyDistance = std::numeric_limits<int>::max();
+		int totalEnemyDistance = 0;
+		for(const auto * enemy : enemies)
+		{
+			if(!enemy->alive() || !enemy->getPosition().isValid())
+				continue;
+
+			const auto distance = static_cast<int>(BattleHex::getDistance(destination, enemy->getPosition()));
+			minimumEnemyDistance = std::min(minimumEnemyDistance, distance);
+			totalEnemyDistance += distance;
+		}
+
+		if(minimumEnemyDistance == std::numeric_limits<int>::max())
+			continue;
+
+		const auto destinationX = static_cast<int>(destination.getX());
+		const auto homewardProgress = stack->unitSide() == BattleSide::ATTACKER ? -destinationX : destinationX;
+		if(!best.destination.isValid()
+			|| std::tie(minimumEnemyDistance, totalEnemyDistance, homewardProgress)
+				> std::tie(best.minimumEnemyDistance, best.totalEnemyDistance, best.homewardProgress)
+			|| (std::tie(minimumEnemyDistance, totalEnemyDistance, homewardProgress)
+				== std::tie(best.minimumEnemyDistance, best.totalEnemyDistance, best.homewardProgress)
+				&& movementDistance < best.movementDistance))
+		{
+			best.destination = destination;
+			best.minimumEnemyDistance = minimumEnemyDistance;
+			best.totalEnemyDistance = totalEnemyDistance;
+			best.homewardProgress = homewardProgress;
+			best.movementDistance = movementDistance;
+		}
+	}
+
+	return best;
+}
+
 bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack)
 {
 	const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
@@ -162,8 +218,8 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	);
 	const CStack * bestTarget = nullptr;
 	BattleHex bestAttackHex;
+	RetreatPlan bestRetreat;
 	int64_t bestTargetValue = std::numeric_limits<int64_t>::min();
-	int bestRetreatDistance = -1;
 
 	for(const auto * enemy : enemies)
 	{
@@ -187,22 +243,35 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 				continue;
 
 			++attackHexCount;
-			const auto retreatDistance = static_cast<int>(BattleHex::getDistance(hex, enemy->getPosition()));
+			const auto retreatPlan = findBestRetreatFrom(stack, hex);
 			logAi->debug(
-				"HARBot [%s]: attack candidate target=%s targetValue=%lld fromHex=%d postAttackDistance=%d",
+				"HARBot [%s]: attack candidate target=%s targetValue=%lld fromHex=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
 				colorName,
 				enemy->getDescription(),
 				targetValue,
 				hex.toInt(),
-				retreatDistance
+				retreatPlan.destination.toInt(),
+				retreatPlan.minimumEnemyDistance,
+				retreatPlan.totalEnemyDistance,
+				retreatPlan.homewardProgress,
+				retreatPlan.movementDistance
 			);
-			if(std::tie(targetValue, retreatDistance) > std::tie(bestTargetValue, bestRetreatDistance))
+
+			if(!retreatPlan.destination.isValid())
+				continue;
+
+			if(!bestTarget
+				|| std::tie(retreatPlan.minimumEnemyDistance, retreatPlan.totalEnemyDistance, retreatPlan.homewardProgress, targetValue)
+					> std::tie(bestRetreat.minimumEnemyDistance, bestRetreat.totalEnemyDistance, bestRetreat.homewardProgress, bestTargetValue)
+				|| (std::tie(retreatPlan.minimumEnemyDistance, retreatPlan.totalEnemyDistance, retreatPlan.homewardProgress, targetValue)
+					== std::tie(bestRetreat.minimumEnemyDistance, bestRetreat.totalEnemyDistance, bestRetreat.homewardProgress, bestTargetValue)
+					&& retreatPlan.movementDistance < bestRetreat.movementDistance))
 			{
-				logAi->debug("HARBot [%s]: candidate becomes the current best attack", colorName);
+				logAi->debug("HARBot [%s]: candidate becomes the current best attack/retreat plan", colorName);
 				bestTarget = enemy;
 				bestAttackHex = hex;
+				bestRetreat = retreatPlan;
 				bestTargetValue = targetValue;
-				bestRetreatDistance = retreatDistance;
 			}
 		}
 
@@ -217,12 +286,15 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	}
 
 	logAi->info(
-		"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld) and is marked to retreat",
+		"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld), planning to retreat toward hex %d (nearestDistance=%d, moveDistance=%d)",
 		colorName,
 		stack->getDescription(),
 		bestTarget->getDescription(),
 		bestAttackHex.toInt(),
-		bestTargetValue
+		bestTargetValue,
+		bestRetreat.destination.toInt(),
+		bestRetreat.minimumEnemyDistance,
+		bestRetreat.movementDistance
 	);
 	mustRetreat.insert(stack);
 	cb->battleMakeUnitAction(battleID, BattleAction::makeMeleeAttack(stack, bestTarget, bestAttackHex));
@@ -261,7 +333,7 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 			stack->unitSide(),
 			stack->hasBonusOfType(BonusType::FLYING),
 			stack->doubleWide(),
-			stack->getMovementRange());
+			static_cast<int>(stack->getMovementRange()));
 
 		const CStack * target = nullptr;
 		uint32_t nextAttackDistance = 0;
@@ -364,82 +436,31 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 
 bool HARBot::retreat(const BattleID & battleID, const CStack * stack)
 {
-	const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
-	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	logAi->debug(
-		"HARBot [%s]: evaluating retreat for %s from hex %d across %d destinations and %d enemies",
+		"HARBot [%s]: evaluating retreat for %s from hex %d",
 		colorName,
 		stack->getDescription(),
-		stack->getPosition().toInt(),
-		static_cast<int>(availableHexes.size()),
-		static_cast<int>(enemies.size())
+		stack->getPosition().toInt()
 	);
-	BattleHex bestHex;
-	int bestMinimumDistance = -1;
-	int bestTotalDistance = -1;
-	int bestHomewardProgress = -1;
+	const auto plan = findBestRetreatFrom(stack, stack->getPosition());
 
-	for(const auto & hex : availableHexes)
-	{
-		if(stack->coversPos(hex))
-		{
-			logAi->debug("HARBot [%s]: skipping retreat hex %d because the stack already occupies it", colorName, hex.toInt());
-			continue;
-		}
-
-		int minimumDistance = std::numeric_limits<int>::max();
-		int totalDistance = 0;
-		for(const auto * enemy : enemies)
-		{
-			if(!enemy->alive() || !enemy->getPosition().isValid())
-				continue;
-
-			const auto distance = static_cast<int>(BattleHex::getDistance(hex, enemy->getPosition()));
-			minimumDistance = std::min(minimumDistance, distance);
-			totalDistance += distance;
-		}
-
-		if(minimumDistance == std::numeric_limits<int>::max())
-		{
-			logAi->debug("HARBot [%s]: skipping retreat hex %d because no living enemies remain", colorName, hex.toInt());
-			continue;
-		}
-
-		const auto homewardProgress = stack->unitSide() == BattleSide::ATTACKER ? -hex.getX() : hex.getX();
-		logAi->debug(
-			"HARBot [%s]: retreat candidate hex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d",
-			colorName,
-			hex.toInt(),
-			minimumDistance,
-			totalDistance,
-			homewardProgress
-		);
-		if(std::tie(minimumDistance, totalDistance, homewardProgress) > std::tie(bestMinimumDistance, bestTotalDistance, bestHomewardProgress))
-		{
-			logAi->debug("HARBot [%s]: candidate hex %d becomes the current best retreat destination", colorName, hex.toInt());
-			bestHex = hex;
-			bestMinimumDistance = minimumDistance;
-			bestTotalDistance = totalDistance;
-			bestHomewardProgress = homewardProgress;
-		}
-	}
-
-	if(!bestHex.isValid())
+	if(!plan.destination.isValid())
 	{
 		logAi->info("HARBot [%s]: no legal retreat destination found for %s", colorName, stack->getDescription());
 		return false;
 	}
 
 	logAi->info(
-		"HARBot [%s]: %s retreats to hex %d (nearestDistance=%d, totalDistance=%d, homewardProgress=%d)",
+		"HARBot [%s]: %s retreats to hex %d (nearestDistance=%d, totalDistance=%d, homewardProgress=%d, moveDistance=%d)",
 		colorName,
 		stack->getDescription(),
-		bestHex.toInt(),
-		bestMinimumDistance,
-		bestTotalDistance,
-		bestHomewardProgress
+		plan.destination.toInt(),
+		plan.minimumEnemyDistance,
+		plan.totalEnemyDistance,
+		plan.homewardProgress,
+		plan.movementDistance
 	);
-	cb->battleMakeUnitAction(battleID, BattleAction::makeMove(stack, bestHex));
+	cb->battleMakeUnitAction(battleID, BattleAction::makeMove(stack, plan.destination));
 	return true;
 }
 
