@@ -125,9 +125,15 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 	if(mustRetreat.erase(stack) > 0)
 	{
 		logAi->info("HARBot [%s]: %s is due to retreat after its previous attack", colorName, stack->getDescription());
-		if(retreat(battleID, stack))
+		const auto result = retreat(battleID, stack);
+		if(result == RetreatResult::MOVED)
 		{
 			consecutiveRetreats[stack] = 1;
+			return;
+		}
+		if(result == RetreatResult::DELEGATED)
+		{
+			consecutiveRetreats.erase(stack);
 			return;
 		}
 
@@ -146,9 +152,15 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 			stack->getDescription(),
 			retreatCount
 		);
-		if(retreat(battleID, stack))
+		const auto result = retreat(battleID, stack);
+		if(result == RetreatResult::MOVED)
 		{
 			consecutiveRetreats[stack] = retreatCount + 1;
+			return;
+		}
+		if(result == RetreatResult::DELEGATED)
+		{
+			consecutiveRetreats.erase(stack);
 			return;
 		}
 
@@ -241,6 +253,51 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 	}
 
 	return best;
+}
+
+std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination) const
+{
+	int64_t exposedValue = 0;
+	int64_t totalValue = 0;
+
+	for(const auto * enemy : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY))
+	{
+		if(!enemy->alive() || enemy->isInvincible() || !enemy->getPosition().isValid())
+			continue;
+
+		const auto enemyValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		totalValue += enemyValue;
+
+		const bool canShoot = enemy->isShooter() && battle->battleCanShoot(enemy, destination);
+		const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
+		bool canMelee = battle->battleCanAttackHex(enemyAvailableHexes, enemy, destination);
+		if(stack->doubleWide())
+			canMelee |= battle->battleCanAttackHex(enemyAvailableHexes, enemy, stack->occupiedHex(destination));
+
+		const bool hasUnpenalizedMelee = canMelee && enemy->hasBonusOfType(BonusType::NO_MELEE_PENALTY);
+		const bool hasShootingDistancePenalty = canShoot
+			&& !hasUnpenalizedMelee
+			&& battle->battleHasDistancePenalty(enemy, enemy->getPosition(), destination);
+		const auto exposedContribution = hasShootingDistancePenalty ? enemyValue / 2 : enemyValue;
+		logAi->debug(
+			"HARBot [%s]: retreat exposure enemy=%s shooter=%d canShoot=%d canMelee=%d noMeleePenalty=%d distancePenalty=%d aiValue=%lld exposedContribution=%lld destination=%d",
+			colorName,
+			enemy->getDescription(),
+			enemy->isShooter(),
+			canShoot,
+			canMelee,
+			hasUnpenalizedMelee,
+			hasShootingDistancePenalty,
+			enemyValue,
+			exposedContribution,
+			destination.toInt()
+		);
+
+		if(canShoot || canMelee)
+			exposedValue += exposedContribution;
+	}
+
+	return {exposedValue, totalValue};
 }
 
 bool HARBot::canEnemyReachNextTurn(const CStack * stack) const
@@ -547,7 +604,7 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 	return true;
 }
 
-bool HARBot::retreat(const BattleID & battleID, const CStack * stack)
+HARBot::RetreatResult HARBot::retreat(const BattleID & battleID, const CStack * stack)
 {
 	logAi->debug(
 		"HARBot [%s]: evaluating retreat for %s from hex %d",
@@ -560,7 +617,29 @@ bool HARBot::retreat(const BattleID & battleID, const CStack * stack)
 	if(!plan.destination.isValid())
 	{
 		logAi->info("HARBot [%s]: no legal retreat destination found for %s", colorName, stack->getDescription());
-		return false;
+		return RetreatResult::UNAVAILABLE;
+	}
+
+	const auto [exposedValue, totalValue] = calculateExposedEnemyValue(stack, plan.destination);
+	const bool exceedsExposureLimit = totalValue > 0 && exposedValue * 10 > totalValue * 3;
+	logAi->info(
+		"HARBot [%s]: retreat exposure at hex %d is %lld/%lld AI value (%.1f%%, limit=30%%)",
+		colorName,
+		plan.destination.toInt(),
+		exposedValue,
+		totalValue,
+		totalValue > 0 ? 100.0 * static_cast<double>(exposedValue) / static_cast<double>(totalValue) : 0.0
+	);
+	if(exceedsExposureLimit)
+	{
+		delegate(
+			battleID,
+			stack,
+			boost::str(boost::format("retreat to hex %d exposes stack to %d%% of enemy army AI value")
+				% plan.destination.toInt()
+				% (100 * exposedValue / totalValue))
+		);
+		return RetreatResult::DELEGATED;
 	}
 
 	logAi->info(
@@ -574,7 +653,7 @@ bool HARBot::retreat(const BattleID & battleID, const CStack * stack)
 		plan.movementDistance
 	);
 	cb->battleMakeUnitAction(battleID, BattleAction::makeMove(stack, plan.destination));
-	return true;
+	return RetreatResult::MOVED;
 }
 
 void HARBot::delegate(const BattleID & battleID, const CStack * stack, const std::string & reason)

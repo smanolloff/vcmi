@@ -20,6 +20,7 @@
 #include "callback/CBattleGameInterface.h"
 #include "AI/MMAI/BAI/v15/fastbfs.h"
 
+#include <cstdint>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -60,11 +61,19 @@ private:
 		int movementDistance = std::numeric_limits<int>::max();
 	};
 
+	enum class RetreatResult : std::uint8_t
+	{
+		MOVED,
+		DELEGATED,
+		UNAVAILABLE
+	};
+
 	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition) const;
+	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
 	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
-	bool retreat(const BattleID & battleID, const CStack * stack);
+	RetreatResult retreat(const BattleID & battleID, const CStack * stack);
 	void delegate(const BattleID & battleID, const CStack * stack, const std::string & reason);
 };
 

@@ -14,9 +14,15 @@
 
 namespace MMAI::BAI
 {
+
+// SCRIPTED models are dummy models which should not be used for anything
+// other than their getType() and getName() methods. Based on the return
+// value, the corresponding scripted bot (e.g. StupidAI) should be
+// used for the upcoming battle instead.
+// When MMAI fails to load an ML model, it loads a SCRIPTED model instead
+// as per MMAI mod's "fallback" setting in order to prevent a game crash.
 class ScriptedModel : public MMAI::Schema::IModel
 {
-	// Wrapper for scripted models to make them compatible with the IModel interface.
 public:
 	explicit ScriptedModel(const std::string & keyword);
 
