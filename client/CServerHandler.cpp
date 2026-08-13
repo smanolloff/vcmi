@@ -910,19 +910,24 @@ ELoadMode CServerHandler::getLoadMode()
 	return loadMode;
 }
 
-void CServerHandler::debugStartTest(std::string filename, bool save)
+void CServerHandler::debugStartTest(std::string filename, bool save, const std::vector<std::string> & playerNames, bool hotseat)
 {
 	logGlobal->info("Starting debug test with file: %s", filename);
 	auto mapInfo = std::make_shared<CMapInfo>();
 	if(save)
 	{
-		resetStateForLobby(EStartMode::LOAD_GAME, ESelectionScreen::loadGame, EServerMode::LOCAL, {});
+		resetStateForLobby(EStartMode::LOAD_GAME, ESelectionScreen::loadGame, EServerMode::LOCAL, playerNames);
 		mapInfo->saveInit(ResourcePath(filename, EResType::SAVEGAME));
 	}
 	else
 	{
-		resetStateForLobby(EStartMode::NEW_GAME, ESelectionScreen::newGame, EServerMode::LOCAL, {});
+		resetStateForLobby(EStartMode::NEW_GAME, ESelectionScreen::newGame, EServerMode::LOCAL, playerNames);
 		mapInfo->mapInit(filename);
+	}
+	if(hotseat)
+	{
+		loadMode = ELoadMode::MULTI;
+		hotseatMode = true;
 	}
 	if(settings["session"]["donotstartserver"].Bool())
 		connectToServer(getLocalHostname(), getLocalPort());

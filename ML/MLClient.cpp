@@ -592,7 +592,8 @@ namespace ML {
             t.join();
         } else {
             // GAME->mainmenu()->makeActiveInterface();
-            si.debugStartTest(mapname, false);
+            const std::vector<std::string> playerNames = {"Player 1", "Player 2"};
+            si.debugStartTest(mapname, false, playerNames, true);
             ENGINE->mainLoop();
         }
 
