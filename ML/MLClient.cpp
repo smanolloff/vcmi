@@ -24,6 +24,8 @@
 #include <boost/filesystem.hpp>
 #include <stdexcept>
 #include <condition_variable>
+#include <termios.h>
+#include <unistd.h>
 
 #include "AI/MMAI/schema/schema.h"
 #include "ExceptionsCommon.h"
@@ -96,6 +98,12 @@ MMAI::Schema::Baggage * baggage;
 #else
 #error "Unsupported OS"
 #endif
+
+static void clearPendingTerminalInput()
+{
+    if (::isatty(STDIN_FILENO))
+        ::tcflush(STDIN_FILENO, TCIFLUSH);
+}
 
 [[noreturn]] static void quitApplicationImmediately(int error_code)
 {
@@ -555,6 +563,7 @@ namespace ML {
             }
 
             std::cerr << boost::stacktrace::stacktrace() << "\n";
+            clearPendingTerminalInput();
             std::abort();
         }
     }
@@ -588,6 +597,7 @@ namespace ML {
         }
 
         shutdown_vcmi();
+        clearPendingTerminalInput();
         quitApplicationImmediately(0);
     }
 }
