@@ -71,6 +71,8 @@ namespace ML {
         const int randomTerrainChance;
         const bool leftVip;
         const bool rightVip;
+        const bool leftHar;
+        const bool rightHar;
         const std::string battlefieldPattern;
         const int manaMin;
         const int manaMax;
@@ -85,6 +87,7 @@ namespace ML {
         const int statsTimeout;
         const int statsPersistFreq;
         const bool headless;
+        const bool hotseat;
     };
 
     void MMAI_DLL_LINKAGE init_vcmi(

@@ -423,8 +423,11 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
         return config.leftVip || config.rightVip;
     };
 
-    if (vipEnabled() && !config.randomArmies)
-        throw std::runtime_error("leftVip or rightVip enabled, but random armies are not enabled.");
+    if ((vipEnabled() || config.leftHar || config.rightHar) && !config.randomArmies)
+        throw std::runtime_error("VIP or HAR army enabled, but random armies are not enabled.");
+
+    if ((config.leftVip && config.leftHar) || (config.rightVip && config.rightHar))
+        throw std::runtime_error("VIP and HAR armies cannot be enabled for the same side.");
 
     if (p1.size() < 2 || p2.size() < 2) {
         if (vipEnabled())
@@ -610,6 +613,22 @@ void ServerPlugin::handleRandomArmies(
 
     if((config.leftVip || config.rightVip) && (allshooters.empty() || allguards.empty()))
         throw std::runtime_error("cannot generate VIP random armies without shooter and guard creatures");
+
+    std::vector<CreatureID> meleeCreatures;
+    std::vector<CreatureID> fastMeleeCreatures;
+    for(const auto & creatureId : allcreatures)
+    {
+        const auto * creature = creatureId.toCreature();
+        if(creature->hasBonusOfType(BonusType::SHOOTER))
+            continue;
+
+        meleeCreatures.push_back(creatureId);
+        if(creature->getBaseSpeed() > 7)
+            fastMeleeCreatures.push_back(creatureId);
+    }
+
+    if((config.leftHar || config.rightHar) && fastMeleeCreatures.empty())
+        throw std::runtime_error("cannot generate HAR random armies without fast melee creatures");
 
     struct GeneratedStack
     {
@@ -810,10 +829,81 @@ void ServerPlugin::handleRandomArmies(
         throw std::runtime_error("failed to generate VIP random army with the current randomArmy config");
     };
 
+    auto generateHarArmy = [this, &divCeil, &var, &meleeCreatures, &fastMeleeCreatures](int targetValue) -> std::vector<GeneratedStack>
+    {
+        const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
+        const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
+
+        for(int attempt = 0; attempt < 1000; ++attempt)
+        {
+            const auto * primary = fastMeleeCreatures.at(std::uniform_int_distribution<>(0, static_cast<int>(fastMeleeCreatures.size()) - 1)(rng)).toCreature();
+            const int primaryUnitValue = creatureValues.at(primary->getId());
+            const int otherStackCount = std::uniform_int_distribution<>(0, 3)(rng);
+
+            const CCreature * other = nullptr;
+            int otherQuantity = 0;
+            int otherValue = 0;
+            if(otherStackCount > 0)
+            {
+                std::vector<const CCreature *> otherCandidates;
+                for(const auto & creatureId : meleeCreatures)
+                {
+                    if(creatureId == primary->getId())
+                        continue;
+
+                    const int unitValue = creatureValues.at(creatureId);
+                    if(unitValue > 0 && unitValue * otherStackCount <= maxTotalValue / 20)
+                        otherCandidates.push_back(creatureId.toCreature());
+                }
+
+                if(otherCandidates.empty())
+                    continue;
+
+                other = otherCandidates.at(std::uniform_int_distribution<>(0, static_cast<int>(otherCandidates.size()) - 1)(rng));
+                const int otherUnitValue = creatureValues.at(other->getId());
+                const int maxOtherQuantity = (maxTotalValue / 20) / otherUnitValue;
+                otherQuantity = std::uniform_int_distribution<>(otherStackCount, maxOtherQuantity)(rng);
+                otherValue = otherUnitValue * otherQuantity;
+            }
+
+            const int minPrimaryValue = std::max(minTotalValue - otherValue, otherValue * 19);
+            const int minPrimaryQuantity = std::max(1, divCeil(minPrimaryValue, primaryUnitValue));
+            const int maxPrimaryQuantity = (maxTotalValue - otherValue) / primaryUnitValue;
+            if(minPrimaryQuantity > maxPrimaryQuantity)
+                continue;
+
+            const int primaryQuantity = std::uniform_int_distribution<>(minPrimaryQuantity, maxPrimaryQuantity)(rng);
+            const int primaryValue = primaryUnitValue * primaryQuantity;
+            const int totalValue = primaryValue + otherValue;
+            if(primaryValue * 20 < totalValue * 19)
+                continue;
+
+            std::array<int, 7> slots = { 0, 1, 2, 3, 4, 5, 6 };
+            std::shuffle(slots.begin(), slots.end(), rng);
+            std::vector<GeneratedStack> generated = { { SlotID(slots.at(0)), primary, primaryQuantity } };
+
+            int remainingOtherQuantity = otherQuantity;
+            for(int stackIndex = 0; stackIndex < otherStackCount; ++stackIndex)
+            {
+                const int remainingStacks = otherStackCount - stackIndex;
+                const int quantity = remainingStacks == 1
+                    ? remainingOtherQuantity
+                    : std::uniform_int_distribution<>(1, remainingOtherQuantity - remainingStacks + 1)(rng);
+                generated.push_back({ SlotID(slots.at(stackIndex + 1)), other, quantity });
+                remainingOtherQuantity -= quantity;
+            }
+
+            return generated;
+        }
+
+        throw std::runtime_error("failed to generate HAR random army with the current randomArmy config");
+    };
+
     const int target = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
-    auto dist100 = std::uniform_int_distribution<>(0, 99);
     const bool leftVip = vipHero1 && config.leftVip;
     const bool rightVip = vipHero2 && config.rightVip;
+    const bool leftHar = config.leftHar;
+    const bool rightHar = config.rightHar;
 
     if(leftVip)
     {
@@ -843,9 +933,15 @@ void ServerPlugin::handleRandomArmies(
         army2 = nonvipHero2->getArmy();
     }
 
-    auto replaceArmy = [this, &target, &generateArmy, &generateVipArmy](const CGHeroInstance * hero, bool vip)
+    auto replaceArmy = [this, &target, &generateArmy, &generateVipArmy, &generateHarArmy](const CGHeroInstance * hero, bool vip, bool har)
     {
-        const auto generated = vip ? generateVipArmy(target) : generateArmy(target);
+        std::vector<GeneratedStack> generated;
+        if(vip)
+            generated = generateVipArmy(target);
+        else if(har)
+            generated = generateHarArmy(target);
+        else
+            generated = generateArmy(target);
 
         for(int slot = 0; slot < 7; ++slot)
             if(hero->hasStackAtSlot(SlotID(slot)))
@@ -857,8 +953,8 @@ void ServerPlugin::handleRandomArmies(
 
     // std::cout << "=================================\n";
 
-    replaceArmy(hero1, leftVip);
-    replaceArmy(hero2, rightVip);
+    replaceArmy(hero1, leftVip, leftHar);
+    replaceArmy(hero2, rightVip, rightHar);
 }
 
 

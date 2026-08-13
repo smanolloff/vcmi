@@ -76,6 +76,7 @@ namespace ML {
         int statsTimeout = 60000;
         int statsPersistFreq = 0;
         bool headless = false;
+        bool hotseat = false;
 
         float temperature = 0.;
 
@@ -104,6 +105,8 @@ namespace ML {
             ("help,h", "Show this help")
             ("headless", po::bool_switch(&headless),
                 "Disable GUI (run in headless mode)")
+            ("hotseat", po::bool_switch(&hotseat),
+            	"Enable hotseat (incompatible with --headless)")
             ("map", po::value<std::string>()->value_name("<MAP>"),
                 ("Path to map (" + omap.at("map") + "*)").c_str())
             ("max-battles", po::value<int>()->value_name("<N>"),
@@ -344,6 +347,8 @@ namespace ML {
             .randomTerrainChance=randomTerrainChance,
             .leftVip=(leftAi == AI_VIPBOT),
             .rightVip=(rightAi == AI_VIPBOT),
+            .leftHar=(leftAi == AI_HARBOT),
+            .rightHar=(rightAi == AI_HARBOT),
             .battlefieldPattern=battlefieldPattern,
             .manaMin=manaMin,
             .manaMax=manaMax,
@@ -357,7 +362,8 @@ namespace ML {
             .statsStorage=omap.at("stats-storage"),
             .statsTimeout=statsTimeout,
             .statsPersistFreq=statsPersistFreq,
-            .headless=headless
+            .headless=headless,
+            .hotseat=hotseat
         }};
     }
 }

@@ -40,6 +40,8 @@ namespace ML {
             randomTerrainChance = settings["server"]["ML"]["randomTerrainChance"].Integer();
             leftVip = settings["server"]["ML"]["leftVip"].Bool();
             rightVip = settings["server"]["ML"]["rightVip"].Bool();
+            leftHar = settings["server"]["ML"]["leftHar"].Bool();
+            rightHar = settings["server"]["ML"]["rightHar"].Bool();
             battlefieldPattern = settings["server"]["ML"]["battlefieldPattern"].String();
             swapSides = settings["server"]["ML"]["swapSides"].Integer();
             manaMin = settings["server"]["ML"]["manaMin"].Integer();
@@ -69,6 +71,8 @@ namespace ML {
         int randomTerrainChance = 0;
         bool leftVip = false;
         bool rightVip = false;
+        bool leftHar = false;
+        bool rightHar = false;
         int swapSides = 0;
         int manaMin = 0;
         int manaMax = 0;

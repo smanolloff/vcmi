@@ -635,7 +635,7 @@ HARBot::RetreatResult HARBot::retreat(const BattleID & battleID, const CStack * 
 		delegate(
 			battleID,
 			stack,
-			boost::str(boost::format("retreat to hex %d exposes stack to %d%% of enemy army AI value")
+			boost::str(boost::format("retreat not viable: hex %d still exposes stack to %d%% of enemy army AI value")
 				% plan.destination.toInt()
 				% (100 * exposedValue / totalValue))
 		);
