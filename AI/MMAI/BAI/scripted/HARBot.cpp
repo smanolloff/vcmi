@@ -122,29 +122,43 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 		return;
 	}
 
+	bool actAsAlreadyRetreated = false;
 	if(mustRetreat.erase(stack) > 0)
 	{
 		logAi->info("HARBot [%s]: %s is due to retreat after its previous attack", colorName, stack->getDescription());
-		const auto result = retreat(battleID, stack);
-		if(result == RetreatResult::MOVED)
+		if(!canEnemyThreatenThisRound(stack))
 		{
+			logAi->info(
+				"HARBot [%s]: no non-shooter enemy acting later this round can threaten %s; skipping retreat",
+				colorName,
+				stack->getDescription()
+			);
 			consecutiveRetreats[stack] = 1;
-			return;
+			actAsAlreadyRetreated = true;
 		}
-		if(result == RetreatResult::DELEGATED)
+		else
 		{
+			const auto result = retreat(battleID, stack);
+			if(result == RetreatResult::MOVED)
+			{
+				consecutiveRetreats[stack] = 1;
+				return;
+			}
+			if(result == RetreatResult::DELEGATED)
+			{
+				consecutiveRetreats.erase(stack);
+				return;
+			}
+
 			consecutiveRetreats.erase(stack);
+			delegate(battleID, stack, "no legal retreat destination was found");
 			return;
 		}
-
-		consecutiveRetreats.erase(stack);
-		delegate(battleID, stack, "no legal retreat destination was found");
-		return;
 	}
 
 	const auto retreatIt = consecutiveRetreats.find(stack);
 	const auto retreatCount = retreatIt == consecutiveRetreats.end() ? 0 : retreatIt->second;
-	if(retreatCount > 0 && retreatCount < 2 && canEnemyReachNextTurn(stack))
+	if(!actAsAlreadyRetreated && retreatCount > 0 && retreatCount < 2 && canEnemyReachNextTurn(stack))
 	{
 		logAi->info(
 			"HARBot [%s]: %s is reachable after %d consecutive retreat(s) and will retreat again",
@@ -259,14 +273,17 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 {
 	int64_t exposedValue = 0;
 	int64_t totalValue = 0;
+	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
+	for(const auto * enemy : enemies)
+		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
+			totalValue += static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
 
-	for(const auto * enemy : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY))
+	for(const auto * enemy : enemies)
 	{
 		if(!enemy->alive() || enemy->isInvincible() || !enemy->getPosition().isValid())
 			continue;
 
 		const auto enemyValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
-		totalValue += enemyValue;
 
 		const bool canShoot = enemy->isShooter() && battle->battleCanShoot(enemy, destination);
 		const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
@@ -280,7 +297,7 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 			&& battle->battleHasDistancePenalty(enemy, enemy->getPosition(), destination);
 		const auto exposedContribution = hasShootingDistancePenalty ? enemyValue / 2 : enemyValue;
 		logAi->debug(
-			"HARBot [%s]: retreat exposure enemy=%s shooter=%d canShoot=%d canMelee=%d noMeleePenalty=%d distancePenalty=%d aiValue=%lld exposedContribution=%lld destination=%d",
+			"HARBot [%s]: retreat exposure enemy=%s shooter=%d canShoot=%d canMelee=%d noMeleePenalty=%d distancePenalty=%d aiValue=%lld (%.1f%%) exposedContribution=%lld (%.1f%%) destination=%d",
 			colorName,
 			enemy->getDescription(),
 			enemy->isShooter(),
@@ -289,7 +306,9 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 			hasUnpenalizedMelee,
 			hasShootingDistancePenalty,
 			enemyValue,
+			totalValue > 0 ? 100.0 * static_cast<double>(enemyValue) / static_cast<double>(totalValue) : 0.0,
 			exposedContribution,
+			totalValue > 0 ? 100.0 * static_cast<double>(exposedContribution) / static_cast<double>(totalValue) : 0.0,
 			destination.toInt()
 		);
 
@@ -298,6 +317,52 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 	}
 
 	return {exposedValue, totalValue};
+}
+
+bool HARBot::canEnemyThreatenThisRound(const CStack * stack) const
+{
+	assert(fastbfs);
+	std::vector<battle::Units> turnOrder;
+	battle->battleGetTurnOrder(turnOrder, std::numeric_limits<size_t>::max(), 1);
+
+	for(const auto & turn : turnOrder)
+	{
+		for(const auto * enemy : turn)
+		{
+			if(enemy == stack || enemy->unitSide() == stack->unitSide() || !enemy->alive() || enemy->isInvincible()
+				|| enemy->isShooter() || !enemy->getPosition().isValid() || enemy->getMovementRange() == 0)
+				continue;
+
+			const auto distances = fastbfs->run(
+				enemy->getPosition(),
+				enemy->getPosition(),
+				enemy->unitSide(),
+				enemy->hasBonusOfType(BonusType::FLYING),
+				enemy->doubleWide(),
+				static_cast<int>(enemy->getMovementRange())
+			);
+			auto attackDistance = FastBFS::INFINITE_DIST;
+			for(const auto & attackHex : stack->getAttackableHexes(enemy))
+				if(attackHex.isValid())
+					attackDistance = std::min(attackDistance, distances.at(attackHex.toInt()));
+
+			logAi->debug(
+				"HARBot [%s]: current-round threat check enemy=%s attackDistance=%u speed=%u target=%s",
+				colorName,
+				enemy->getDescription(),
+				attackDistance,
+				enemy->getMovementRange(),
+				stack->getDescription()
+			);
+			if(attackDistance <= enemy->getMovementRange())
+			{
+				logAi->info("HARBot [%s]: %s can threaten %s later this round", colorName, enemy->getDescription(), stack->getDescription());
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 bool HARBot::canEnemyReachNextTurn(const CStack * stack) const
@@ -357,6 +422,10 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 {
 	const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
+	int64_t totalEnemyValue = 0;
+	for(const auto * enemy : enemies)
+		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
+			totalEnemyValue += static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
 	logAi->debug(
 		"HARBot [%s]: evaluating attacks for %s from %d available hexes against %d enemies",
 		colorName,
@@ -397,10 +466,11 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 			++attackHexCount;
 			const auto retreatPlan = shouldRetreat ? findBestRetreatFrom(stack, hex) : RetreatPlan{};
 			logAi->debug(
-				"HARBot [%s]: attack candidate target=%s targetValue=%lld fromHex=%d shouldRetreat=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
+				"HARBot [%s]: attack candidate target=%s targetValue=%lld (%.1f%%) fromHex=%d shouldRetreat=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
 				colorName,
 				enemy->getDescription(),
 				targetValue,
+				totalEnemyValue > 0 ? 100.0 * static_cast<double>(targetValue) / static_cast<double>(totalEnemyValue) : 0.0,
 				hex.toInt(),
 				shouldRetreat,
 				retreatPlan.destination.toInt(),
@@ -443,12 +513,13 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	if(shouldRetreat)
 	{
 		logAi->info(
-			"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld), planning to retreat toward hex %d (nearest non-shooter distance=%d, moveDistance=%d)",
+			"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld, %.1f%%), planning to retreat toward hex %d (nearest non-shooter distance=%d, moveDistance=%d)",
 			colorName,
 			stack->getDescription(),
 			bestTarget->getDescription(),
 			bestAttackHex.toInt(),
 			bestTargetValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetValue) / static_cast<double>(totalEnemyValue) : 0.0,
 			bestRetreat.destination.toInt(),
 			bestRetreat.minimumEnemyDistance,
 			bestRetreat.movementDistance
@@ -458,12 +529,13 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	else
 	{
 		logAi->info(
-			"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld) without retreating because no living non-shooter enemies remain",
+			"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld, %.1f%%) without retreating because no living non-shooter enemies remain",
 			colorName,
 			stack->getDescription(),
 			bestTarget->getDescription(),
 			bestAttackHex.toInt(),
-			bestTargetValue
+			bestTargetValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetValue) / static_cast<double>(totalEnemyValue) : 0.0
 		);
 		consecutiveRetreats.erase(stack);
 	}
@@ -475,26 +547,80 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 {
 	const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
+	const auto enemyValue = [](const CStack * enemy)
+	{
+		return static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+	};
+	const auto eligible = [](const CStack * enemy)
+	{
+		return enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid();
+	};
+	int64_t totalEnemyValue = 0;
+	for(const auto * enemy : enemies)
+		if(eligible(enemy))
+			totalEnemyValue += enemyValue(enemy);
+
 	BattleHex bestDestination;
 	const CStack * bestTarget = nullptr;
-	int bestThreatCount = std::numeric_limits<int>::max();
+	int64_t bestReachableValue = -1;
+	int64_t bestToleratedThreatValue = std::numeric_limits<int64_t>::max();
 	int bestMinimumEnemyDistance = -1;
 	uint32_t bestNextAttackDistance = 0;
-	int64_t bestTargetValue = std::numeric_limits<int64_t>::min();
+	int64_t bestTargetValue = -1;
 
 	logAi->debug(
-		"HARBot [%s]: evaluating %d staging hexes for %s against %d enemies",
+		"HARBot [%s]: evaluating %d staging hexes for %s against %d enemies (totalEnemyValue=%lld)",
 		colorName,
 		static_cast<int>(availableHexes.size()),
 		stack->getDescription(),
-		static_cast<int>(enemies.size())
+		static_cast<int>(enemies.size()),
+		totalEnemyValue
 	);
 
 	assert(fastbfs);
-
 	for(const auto & destination : availableHexes)
 	{
 		if(stack->coversPos(destination))
+			continue;
+
+		int64_t toleratedThreatValue = 0;
+		int minimumEnemyDistance = std::numeric_limits<int>::max();
+		bool unsafe = false;
+		for(const auto * enemy : enemies)
+		{
+			if(!eligible(enemy))
+				continue;
+
+			minimumEnemyDistance = std::min(
+				minimumEnemyDistance,
+				static_cast<int>(BattleHex::getDistance(destination, enemy->getPosition()))
+			);
+			const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
+			bool canAttackDestination = battle->battleCanAttackHex(enemyAvailableHexes, enemy, destination);
+			const auto occupiedHex = stack->occupiedHex(destination);
+			if(stack->doubleWide() && occupiedHex.isValid())
+				canAttackDestination |= battle->battleCanAttackHex(enemyAvailableHexes, enemy, occupiedHex);
+			if(!canAttackDestination)
+				continue;
+
+			const auto value = enemyValue(enemy);
+			if(totalEnemyValue > 0 && value * 10 >= totalEnemyValue)
+			{
+				logAi->debug(
+					"HARBot [%s]: rejecting staging hex %d: %s can reach it and has value %lld/%lld (%.1f%%, at least 10%%)",
+					colorName,
+					destination.toInt(),
+					enemy->getDescription(),
+					value,
+					totalEnemyValue,
+					100.0 * static_cast<double>(value) / static_cast<double>(totalEnemyValue)
+				);
+				unsafe = true;
+				break;
+			}
+			toleratedThreatValue += value;
+		}
+		if(unsafe)
 			continue;
 
 		const auto distancesFromDestination = fastbfs->run(
@@ -504,80 +630,63 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 			stack->hasBonusOfType(BonusType::FLYING),
 			stack->doubleWide(),
 			static_cast<int>(stack->getMovementRange()));
-
 		const CStack * target = nullptr;
 		uint32_t nextAttackDistance = 0;
-		int64_t targetValue = std::numeric_limits<int64_t>::min();
+		int64_t targetValue = -1;
+		int64_t reachableValue = 0;
 
 		for(const auto * enemy : enemies)
 		{
-			if(!enemy->alive() || enemy->isInvincible())
+			if(!eligible(enemy))
 				continue;
 
 			auto distanceToAttack = FastBFS::INFINITE_DIST;
 			for(const auto & attackHex : enemy->getAttackableHexes(stack))
-			{
 				if(attackHex.isValid())
 					distanceToAttack = std::min(distanceToAttack, distancesFromDestination.at(attackHex.toInt()));
-			}
-
 			if(distanceToAttack > stack->getMovementRange())
 				continue;
 
-			const auto enemyValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
-			if(!target || distanceToAttack > nextAttackDistance || (distanceToAttack == nextAttackDistance && enemyValue > targetValue))
+			const auto value = enemyValue(enemy);
+			reachableValue += value;
+			if(!target || value > targetValue || (value == targetValue && distanceToAttack > nextAttackDistance))
 			{
 				target = enemy;
 				nextAttackDistance = distanceToAttack;
-				targetValue = enemyValue;
+				targetValue = value;
 			}
 		}
-
 		if(!target)
 		{
 			logAi->debug("HARBot [%s]: staging hex %d cannot produce a melee attack next turn", colorName, destination.toInt());
 			continue;
 		}
 
-		int threatCount = 0;
-		int minimumEnemyDistance = std::numeric_limits<int>::max();
-		for(const auto * enemy : enemies)
-		{
-			if(!enemy->alive() || enemy->isInvincible())
-				continue;
-
-			minimumEnemyDistance = std::min(
-				minimumEnemyDistance,
-				static_cast<int>(BattleHex::getDistance(destination, enemy->getPosition()))
-			);
-
-			const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
-			bool canAttackDestination = battle->battleCanAttackHex(enemyAvailableHexes, enemy, destination);
-			if(stack->doubleWide())
-				canAttackDestination |= battle->battleCanAttackHex(enemyAvailableHexes, enemy, stack->occupiedHex(destination));
-
-			if(canAttackDestination)
-				++threatCount;
-		}
-
 		logAi->debug(
-			"HARBot [%s]: staging candidate hex=%d target=%s nextAttackDistance=%u threats=%d nearestEnemyDistance=%d targetValue=%lld",
+			"HARBot [%s]: staging candidate hex=%d reachableValue=%lld (%.1f%%) toleratedThreatValue=%lld (%.1f%%) nearestEnemyDistance=%d representativeTarget=%s targetValue=%lld (%.1f%%) attackDistance=%u",
 			colorName,
 			destination.toInt(),
-			target->getDescription(),
-			nextAttackDistance,
-			threatCount,
+			reachableValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(reachableValue) / static_cast<double>(totalEnemyValue) : 0.0,
+			toleratedThreatValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(toleratedThreatValue) / static_cast<double>(totalEnemyValue) : 0.0,
 			minimumEnemyDistance,
-			targetValue
+			target->getDescription(),
+			targetValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(targetValue) / static_cast<double>(totalEnemyValue) : 0.0,
+			nextAttackDistance
 		);
-
 		if(!bestDestination.isValid()
-			|| threatCount < bestThreatCount
-			|| (threatCount == bestThreatCount && std::tie(minimumEnemyDistance, nextAttackDistance, targetValue) > std::tie(bestMinimumEnemyDistance, bestNextAttackDistance, bestTargetValue)))
+			|| reachableValue > bestReachableValue
+			|| (reachableValue == bestReachableValue && toleratedThreatValue < bestToleratedThreatValue)
+			|| (reachableValue == bestReachableValue && toleratedThreatValue == bestToleratedThreatValue
+				&& std::tie(minimumEnemyDistance, nextAttackDistance, targetValue)
+					> std::tie(bestMinimumEnemyDistance, bestNextAttackDistance, bestTargetValue)))
 		{
 			bestDestination = destination;
 			bestTarget = target;
-			bestThreatCount = threatCount;
+			bestReachableValue = reachableValue;
+			bestToleratedThreatValue = toleratedThreatValue;
 			bestMinimumEnemyDistance = minimumEnemyDistance;
 			bestNextAttackDistance = nextAttackDistance;
 			bestTargetValue = targetValue;
@@ -586,19 +695,23 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 
 	if(!bestDestination.isValid())
 	{
-		logAi->info("HARBot [%s]: no staging hex enables a melee attack next turn for %s", colorName, stack->getDescription());
+		logAi->info("HARBot [%s]: no safe staging hex enables a melee attack next turn for %s", colorName, stack->getDescription());
 		return false;
 	}
 
 	logAi->info(
-		"HARBot [%s]: %s stages at hex %d for a next-turn attack on %s (attackDistance=%u, threats=%d, nearestEnemyDistance=%d)",
+		"HARBot [%s]: %s stages at hex %d with reachableEnemyValue=%lld (%.1f%%), toleratedThreatValue=%lld (%.1f%%); representative target=%s (value=%lld, %.1f%%, attackDistance=%u)",
 		colorName,
 		stack->getDescription(),
 		bestDestination.toInt(),
+		bestReachableValue,
+		totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestReachableValue) / static_cast<double>(totalEnemyValue) : 0.0,
+		bestToleratedThreatValue,
+		totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestToleratedThreatValue) / static_cast<double>(totalEnemyValue) : 0.0,
 		bestTarget->getDescription(),
-		bestNextAttackDistance,
-		bestThreatCount,
-		bestMinimumEnemyDistance
+		bestTargetValue,
+		totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetValue) / static_cast<double>(totalEnemyValue) : 0.0,
+		bestNextAttackDistance
 	);
 	cb->battleMakeUnitAction(battleID, BattleAction::makeMove(stack, bestDestination));
 	return true;

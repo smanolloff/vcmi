@@ -70,6 +70,7 @@ private:
 
 	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition) const;
 	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination) const;
+	bool canEnemyThreatenThisRound(const CStack * stack) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
 	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
