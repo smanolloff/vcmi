@@ -423,11 +423,13 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
         return config.leftVip || config.rightVip;
     };
 
-    if ((vipEnabled() || config.leftHar || config.rightHar) && !config.randomArmies)
-        throw std::runtime_error("VIP or HAR army enabled, but random armies are not enabled.");
+    if ((vipEnabled() || config.leftHar || config.rightHar) && !config.randomArmies) {
+        std::cout << "WARNING: VIP or HAR army enabled, but random armies are not enabled -- will enable random armies\n";
+        config.randomArmies = true;
+    }
 
     if ((config.leftVip && config.leftHar) || (config.rightVip && config.rightHar))
-        throw std::runtime_error("VIP and HAR armies cannot be enabled for the same side.");
+        throw std::runtime_error("VIP and HAR armies cannot be both enabled for the same side.");
 
     if (p1.size() < 2 || p2.size() < 2) {
         if (vipEnabled())

@@ -275,26 +275,6 @@ namespace ML {
 			exit(1);
 		}
 
-		if (a.leftVip && !a.randomArmies) {
-			std::cerr << "Bad value for leftVip: requires randomArmies\n";
-			exit(1);
-		}
-
-		if (a.rightVip && !a.randomArmies) {
-			std::cerr << "Bad value for rightVip: requires randomArmies\n";
-			exit(1);
-		}
-
-		if (a.leftHar && !a.randomArmies) {
-			std::cerr << "Bad value for leftHar: requires randomArmies\n";
-			exit(1);
-		}
-
-		if (a.rightHar && !a.randomArmies) {
-			std::cerr << "Bad value for rightHar: requires randomArmies\n";
-			exit(1);
-		}
-
 		if (a.leftVip && a.leftHar) {
 			std::cerr << "Bad value for leftHar: cannot be combined with leftVip\n";
 			exit(1);

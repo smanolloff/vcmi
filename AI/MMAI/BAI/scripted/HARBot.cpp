@@ -104,6 +104,8 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 		return;
 	}
 
+	fastbfs = std::make_unique<const FastBFS>(*battle, battle->getAccessibility());
+
 	if(!stack->willMove())
 	{
 		delegate(battleID, stack, "stack cannot perform normal movement");
