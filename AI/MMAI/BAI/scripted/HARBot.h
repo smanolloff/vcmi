@@ -64,7 +64,7 @@ private:
 	enum class RetreatResult : std::uint8_t
 	{
 		MOVED,
-		DELEGATED,
+		NOT_VIABLE,
 		UNAVAILABLE
 	};
 
@@ -72,7 +72,7 @@ private:
 	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination) const;
 	bool canEnemyThreatenThisRound(const CStack * stack) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
-	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack);
+	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack = false);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
 	RetreatResult retreat(const BattleID & battleID, const CStack * stack);
 	void delegate(const BattleID & battleID, const CStack * stack, const std::string & reason);
