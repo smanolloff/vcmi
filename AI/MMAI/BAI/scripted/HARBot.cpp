@@ -588,6 +588,7 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 
 	BattleHex bestDestination;
 	const CStack * bestTarget = nullptr;
+	int bestThreatenedRetreatHexes = -1;
 	int64_t bestReachableValue = -1;
 	int64_t bestToleratedThreatValue = std::numeric_limits<int64_t>::max();
 	int bestMinimumEnemyDistance = -1;
@@ -656,6 +657,39 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 			stack->hasBonusOfType(BonusType::FLYING),
 			stack->doubleWide(),
 			static_cast<int>(stack->getMovementRange()));
+		BattleHexArray nextTurnAvailableHexes;
+		for(int i = 0; i < GameConstants::BFIELD_SIZE; ++i)
+			if(distancesFromDestination.at(i) <= stack->getMovementRange())
+				nextTurnAvailableHexes.insert(BattleHex(static_cast<si16>(i)));
+
+		int threatenedRetreatHexes = 0;
+		for(const auto * enemy : enemies)
+		{
+			if(!eligible(enemy))
+				continue;
+
+			int threatenedForEnemy = 0;
+			for(const auto & retreatHex : battle->battleGetAvailableHexes(enemy, false))
+			{
+				bool threatened = battle->battleCanAttackHex(nextTurnAvailableHexes, stack, retreatHex);
+				const auto occupiedHex = enemy->occupiedHex(retreatHex);
+				if(enemy->doubleWide() && occupiedHex.isValid())
+					threatened |= battle->battleCanAttackHex(nextTurnAvailableHexes, stack, occupiedHex);
+				if(threatened)
+				{
+					++threatenedForEnemy;
+					++threatenedRetreatHexes;
+				}
+			}
+			logAi->debug(
+				"HARBot [%s]: staging hex %d threatens %d possible positions of %s",
+				colorName,
+				destination.toInt(),
+				threatenedForEnemy,
+				enemy->getDescription()
+			);
+		}
+
 		const CStack * target = nullptr;
 		uint32_t nextAttackDistance = 0;
 		int64_t targetValue = -1;
@@ -689,9 +723,10 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 		}
 
 		logAi->debug(
-			"HARBot [%s]: staging candidate hex=%d reachableValue=%lld (%.1f%%) toleratedThreatValue=%lld (%.1f%%) nearestEnemyDistance=%d representativeTarget=%s targetValue=%lld (%.1f%%) attackDistance=%u",
+			"HARBot [%s]: staging candidate hex=%d threatenedRetreatHexes=%d reachableValue=%lld (%.1f%%) toleratedThreatValue=%lld (%.1f%%) nearestEnemyDistance=%d representativeTarget=%s targetValue=%lld (%.1f%%) attackDistance=%u",
 			colorName,
 			destination.toInt(),
+			threatenedRetreatHexes,
 			reachableValue,
 			totalEnemyValue > 0 ? 100.0 * static_cast<double>(reachableValue) / static_cast<double>(totalEnemyValue) : 0.0,
 			toleratedThreatValue,
@@ -703,14 +738,18 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 			nextAttackDistance
 		);
 		if(!bestDestination.isValid()
-			|| reachableValue > bestReachableValue
-			|| (reachableValue == bestReachableValue && toleratedThreatValue < bestToleratedThreatValue)
-			|| (reachableValue == bestReachableValue && toleratedThreatValue == bestToleratedThreatValue
-				&& std::tie(minimumEnemyDistance, nextAttackDistance, targetValue)
-					> std::tie(bestMinimumEnemyDistance, bestNextAttackDistance, bestTargetValue)))
+			|| threatenedRetreatHexes > bestThreatenedRetreatHexes
+			|| (threatenedRetreatHexes == bestThreatenedRetreatHexes && minimumEnemyDistance > bestMinimumEnemyDistance)
+			|| (threatenedRetreatHexes == bestThreatenedRetreatHexes && minimumEnemyDistance == bestMinimumEnemyDistance
+				&& toleratedThreatValue < bestToleratedThreatValue)
+			|| (threatenedRetreatHexes == bestThreatenedRetreatHexes && minimumEnemyDistance == bestMinimumEnemyDistance
+				&& toleratedThreatValue == bestToleratedThreatValue
+				&& std::tie(reachableValue, nextAttackDistance, targetValue)
+					> std::tie(bestReachableValue, bestNextAttackDistance, bestTargetValue)))
 		{
 			bestDestination = destination;
 			bestTarget = target;
+			bestThreatenedRetreatHexes = threatenedRetreatHexes;
 			bestReachableValue = reachableValue;
 			bestToleratedThreatValue = toleratedThreatValue;
 			bestMinimumEnemyDistance = minimumEnemyDistance;
@@ -726,10 +765,12 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 	}
 
 	logAi->info(
-		"HARBot [%s]: %s stages at hex %d with reachableEnemyValue=%lld (%.1f%%), toleratedThreatValue=%lld (%.1f%%); representative target=%s (value=%lld, %.1f%%, attackDistance=%u)",
+		"HARBot [%s]: %s stages at hex %d threatening %d enemy retreat positions while nearestEnemyDistance=%d; reachableEnemyValue=%lld (%.1f%%), toleratedThreatValue=%lld (%.1f%%); representative target=%s (value=%lld, %.1f%%, attackDistance=%u)",
 		colorName,
 		stack->getDescription(),
 		bestDestination.toInt(),
+		bestThreatenedRetreatHexes,
+		bestMinimumEnemyDistance,
 		bestReachableValue,
 		totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestReachableValue) / static_cast<double>(totalEnemyValue) : 0.0,
 		bestToleratedThreatValue,
