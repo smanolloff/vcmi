@@ -37,6 +37,11 @@ using UnitNode = MMAI::BAI::V15::Graph::Nodes::Unit;
 
 namespace
 {
+	bool IsWarMachine(const battle::Unit * unit)
+	{
+		return unit->hasBonusOfType(BonusType::SIEGE_WEAPON);
+	}
+
 	int64_t StackValue(const CStack * stack)
 	{
 		const auto valueOne = UnitNode::GetValue(
@@ -70,7 +75,7 @@ void HARBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, 
 	int64_t primaryValue = -1;
 	for(const auto * stack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE))
 	{
-		if(!stack->alive() || stack->unitType()->getGrowth() <= 0)
+		if(!stack->alive() || IsWarMachine(stack) || stack->unitType()->getGrowth() <= 0)
 			continue;
 
 		const auto value = StackValue(stack);
@@ -304,7 +309,7 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 		int totalEnemyDistance = 0;
 		for(const auto * enemy : enemies)
 		{
-			if(!enemy->alive() || enemy->isShooter() || !enemy->getPosition().isValid())
+			if(!enemy->alive() || IsWarMachine(enemy) || enemy->isShooter() || !enemy->getPosition().isValid())
 				continue;
 
 			const auto distance = static_cast<int>(BattleHex::getDistance(destination, enemy->getPosition()));
@@ -340,12 +345,12 @@ bool HARBot::isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & d
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	int64_t totalEnemyValue = 0;
 	for(const auto * enemy : enemies)
-		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
+		if(enemy->alive() && !IsWarMachine(enemy) && !enemy->isInvincible() && enemy->getPosition().isValid())
 			totalEnemyValue += StackValue(enemy);
 
 	for(const auto * enemy : enemies)
 	{
-		if(!enemy->alive() || enemy->isInvincible() || enemy->isShooter() || !enemy->getPosition().isValid())
+		if(!enemy->alive() || IsWarMachine(enemy) || enemy->isInvincible() || enemy->isShooter() || !enemy->getPosition().isValid())
 			continue;
 
 		const auto enemyValue = StackValue(enemy);
@@ -381,12 +386,12 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 	int64_t totalValue = 0;
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	for(const auto * enemy : enemies)
-		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
+		if(enemy->alive() && !IsWarMachine(enemy) && !enemy->isInvincible() && enemy->getPosition().isValid())
 			totalValue += StackValue(enemy);
 
 	for(const auto * enemy : enemies)
 	{
-		if(!enemy->alive() || enemy->isInvincible() || !enemy->getPosition().isValid())
+		if(!enemy->alive() || IsWarMachine(enemy) || enemy->isInvincible() || !enemy->getPosition().isValid())
 			continue;
 
 		const auto enemyValue = StackValue(enemy);
@@ -435,7 +440,7 @@ bool HARBot::canEnemyThreatenThisRound(const CStack * stack) const
 	{
 		for(const auto * enemy : turn)
 		{
-			if(enemy == stack || enemy->unitSide() == stack->unitSide() || !enemy->alive() || enemy->isInvincible()
+			if(enemy == stack || enemy->unitSide() == stack->unitSide() || !enemy->alive() || IsWarMachine(enemy) || enemy->isInvincible()
 				|| enemy->isShooter() || !enemy->getPosition().isValid() || enemy->getMovementRange() == 0)
 				continue;
 
@@ -476,7 +481,7 @@ bool HARBot::canEnemyReachNextTurn(const CStack * stack) const
 	assert(fastbfs);
 	for(const auto * enemy : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY))
 	{
-		if(!enemy->alive() || enemy->isInvincible() || !enemy->getPosition().isValid() || enemy->getMovementRange() == 0)
+		if(!enemy->alive() || IsWarMachine(enemy) || enemy->isInvincible() || !enemy->getPosition().isValid() || enemy->getMovementRange() == 0)
 			continue;
 
 		if(enemy->isShooter())
@@ -530,7 +535,7 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	int64_t totalEnemyValue = 0;
 	for(const auto * enemy : enemies)
-		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
+		if(enemy->alive() && !IsWarMachine(enemy) && !enemy->isInvincible() && enemy->getPosition().isValid())
 			totalEnemyValue += StackValue(enemy);
 	logAi->debug(
 		"HARBot [%s]: evaluating attacks for %s from %d available hexes against %d enemies",
@@ -541,7 +546,7 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	);
 	const bool shouldRetreat = std::ranges::any_of(enemies, [](const CStack * enemy)
 	{
-		return enemy->alive() && !enemy->isShooter() && enemy->getPosition().isValid();
+		return enemy->alive() && !IsWarMachine(enemy) && !enemy->isShooter() && enemy->getPosition().isValid();
 	});
 	const bool shouldPlanRetreat = shouldRetreat && !forceAttack;
 	const auto waitingExposure = requireExposureImprovement
@@ -566,6 +571,12 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 		if(enemy->isInvincible())
 		{
 			logAi->debug("HARBot [%s]: skipping invincible target %s", colorName, enemy->getDescription());
+			continue;
+		}
+
+		if(IsWarMachine(enemy))
+		{
+			logAi->debug("HARBot [%s]: skipping war machine target %s", colorName, enemy->getDescription());
 			continue;
 		}
 
@@ -729,7 +740,7 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 	};
 	const auto eligible = [](const CStack * enemy)
 	{
-		return enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid();
+		return enemy->alive() && !IsWarMachine(enemy) && !enemy->isInvincible() && enemy->getPosition().isValid();
 	};
 	int64_t totalEnemyValue = 0;
 	for(const auto * enemy : enemies)
