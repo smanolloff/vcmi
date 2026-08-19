@@ -434,36 +434,8 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     if (config.leftHar && config.rightHar)
         throw std::runtime_error("both sides cannot be HAR opponents.");
 
-    if (p1.size() < 2 || p2.size() < 2) {
-        if (vipEnabled())
-            std::cout << "WARNING: leftVip or rightVip, but there are less than 2 total heroes owned by this player on this map. Will not enable VIP shooters.\n";
-        config.leftVip = false;
-        config.rightVip = false;
-        nonvipHero1 = p1[0];
-        nonvipHero2 = p2[0];
-    } else {
-        vipHero1 = p1[0];
-        vipHero2 = p2[0];
-
-        nonvipHero1 = p1[1];
-        nonvipHero2 = p2[1];
-
-        // Remove vip heroes from pools so they can't be chosen via randomHeroes
-        p1.erase(p1.begin(), p1.begin() + 2);
-        p2.erase(p2.begin(), p2.begin() + 2);
-
-        // Mark heres with "VIP shooter" armies via grail in backpack
-        auto grailId = ArtifactID::GRAIL;
-        for (const auto & h : {vipHero1, vipHero2}) {
-            auto artloc = ArtifactLocation(h->id, ArtifactPosition::BACKPACK_START);
-            // XXX: createArtifact (via GS, not GH) must be done BEFORE map is sent to clients?
-            // (does not work if done in setupBattle hook, for example: client does not see new artifact)
-            const auto * art = gs->createArtifact(grailId);
-            ML_VERBOSE("+++++ ADD grail (ArtifactInstanceID=" << art->getId() << ", ArtifactID=" << art->getTypeId() << ") to hero (ObjectInstanceID=" << h->id << ")\n");
-            h->putArtifact(artloc.slot, art);
-            // gh->putArtifact(artloc, art->getId(), false);
-        }
-    }
+    // hero1 = p1[0];
+    // hero2 = p2[0];
 
     if (config.randomHeroes > 0) {
         for (int owner : {0, 1})
@@ -471,7 +443,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
             for (auto &[poolname, pool] : heropools.at(owner)) {
                 ML_VERBOSE("poolname: " << poolname << ", heroes: " << pool.heroes.size() << "\n");
                 if (pool.heroes.size() == 0) {
-                    throw std::runtime_error("randomHeroes requires at leats 1 hero in each pool.");
+                    throw std::runtime_error("randomHeroes requires at least 1 hero in each pool.");
                 }
             }
         }
@@ -594,11 +566,6 @@ void ServerPlugin::handleRandomHeroes(
     // modification by reference
     army1 = hero1->getArmy();
     army2 = hero2->getArmy();
-
-    // Store as nonvip heroes
-    nonvipHero1 = hero1;
-    nonvipHero2 = hero2;
-
 }
 
 void ServerPlugin::handleRandomArmies(
@@ -905,38 +872,10 @@ void ServerPlugin::handleRandomArmies(
     };
 
     const int target = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
-    const bool leftVip = vipHero1 && config.leftVip;
-    const bool rightVip = vipHero2 && config.rightVip;
-    const bool leftHar = config.leftHar;
-    const bool rightHar = config.rightHar;
 
-    if(leftVip)
-    {
-        // std::cout << "RED VIP: TRIGGER\n";
-        // XXX: heroes must be different (objects must have different tempOwner)
-        // modification by reference
-        hero1 = vipHero1;
-        army1 = hero1->getArmy();
-    }
-    else
-    {
-        // std::cout << "RED VIP: SKIP\n";
-        hero1 = nonvipHero1;
-        army1 = nonvipHero1->getArmy();
-    }
-
-    if(rightVip)
-    {
-        // std::cout << "BLUE VIP: TRIGGER " << config.rightVipChance << "\n";
-        hero2 = vipHero2;
-        army2 = hero2->getArmy();
-    }
-    else
-    {
-        // std::cout << "BLUE VIP: SKIP " << config.rightVipChance << "\n";
-        hero2 = nonvipHero2;
-        army2 = nonvipHero2->getArmy();
-    }
+    // modification by reference
+    army1 = hero1->getArmy();
+    army2 = hero2->getArmy();
 
     auto generateArmyForSide = [&target, &generateArmy, &generateVipArmy, &generateHarArmy](bool vip, bool har)
     {
@@ -970,20 +909,20 @@ void ServerPlugin::handleRandomArmies(
 
     std::vector<GeneratedStack> generated1;
     std::vector<GeneratedStack> generated2;
-    if(leftHar)
+    if(config.leftHar)
     {
         generated1 = generateHarArmy(target);
-        generated2 = generateHarOpponentArmy(rightVip, generated1.front().creature->getBaseSpeed());
+        generated2 = generateHarOpponentArmy(config.rightVip, generated1.front().creature->getBaseSpeed());
     }
-    else if(rightHar)
+    else if(config.rightHar)
     {
         generated2 = generateHarArmy(target);
-        generated1 = generateHarOpponentArmy(leftVip, generated2.front().creature->getBaseSpeed());
+        generated1 = generateHarOpponentArmy(config.leftVip, generated2.front().creature->getBaseSpeed());
     }
     else
     {
-        generated1 = generateArmyForSide(leftVip, false);
-        generated2 = generateArmyForSide(rightVip, false);
+        generated1 = generateArmyForSide(config.leftVip, false);
+        generated2 = generateArmyForSide(config.rightVip, false);
     }
 
     auto replaceArmy = [this](const CGHeroInstance * hero, const std::vector<GeneratedStack> & generated)

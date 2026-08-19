@@ -15,20 +15,18 @@
 // =============================================================================
 
 #include "StdInc.h"
+
 #include "CStack.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleHex.h"
 #include "battle/BattleHexArray.h"
-#include "battle/CObstacleInstance.h"
 #include "battle/ReachabilityInfo.h"
 #include "callback/CBattleCallback.h"
-#include "lib/CRandomGenerator.h"
 #include "lib/callback/AIFactory.h"
 
+#include "BAI/v15/graph/nodes/unit.h"
 #include "VIPBot.h"
 #include "schema/v15/constants.h"
-#include <algorithm>
-#include <boost/range/numeric.hpp>
 #include <span>
 #include <stdexcept>
 #include <unordered_map>
@@ -268,6 +266,20 @@ void VIPBot::battleNewRound(const BattleID & bid) {
 }
 
 
+namespace
+{
+    using UnitNode = MMAI::BAI::V15::Graph::Nodes::Unit;
+    int64_t StackValue(const CStack * stack)
+    {
+        const auto valueOne = UnitNode::GetValue(
+            stack->unitType(),
+            stack->isClone(),
+            stack->unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER
+        );
+        return static_cast<int64_t>(stack->getCount()) * valueOne;
+    }
+}
+
 void VIPBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
 {
     vip = nullptr;
@@ -276,18 +288,21 @@ void VIPBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, 
     battle = cb->getBattle(battleID);
     bot->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 
-    // TODO: look for the strongest shooter instead
-    //      + require at least 3 guards (+more if shooter is wide?)
-    const auto * art = battle->battleGetMyHero()->getArt(ArtifactPosition::BACKPACK_START);
-    if (art && art->getTypeId() == ArtifactID::GRAIL) {
-        info("GRAIL found in hero -- looking for VIP stack");
-        for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
-            // growth > 0 excludes ballistas, commanders, etc.
-            if (cstack->unitType()->getGrowth() > 0 && cstack->isShooter()) {
-                vip = cstack;
-                vipStartPos = vip->getPosition();
-                break;
-            }
+    int64_t maxValue = 0;
+
+    info("Looking for VIP stack");
+    for (const auto & cstack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE)) {
+        // growth > 0 excludes ballistas, commanders, etc.
+        if (cstack->unitType()->getGrowth() > 0 && cstack->isShooter()) {
+            int64_t value = StackValue(cstack);
+            if (value < maxValue)
+                continue;
+
+            value = maxValue;
+            vip = cstack;
+            vipStartPos = vip->getPosition();
+
+            break;
         }
     }
 
