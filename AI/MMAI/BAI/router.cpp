@@ -400,8 +400,6 @@ void Router::battleStart(
 			static_cast<int>(realside)
 		);
 
-	logAi->warn("model type: %d", EI(model->getType()));
-	logAi->warn("model name: %s", model->getName());
 	switch(model->getType())
 	{
 		case Schema::ModelType::SCRIPTED:

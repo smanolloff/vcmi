@@ -358,7 +358,6 @@ namespace ML {
 		headless = a.headless;
 		hotseat = a.hotseat && !headless;
 		baggage = new MMAI::Schema::Baggage;
-		std::cout << " LEFT MODEL: " << leftModel->getName() << "\n";
 
 		baggage->modelLeft = leftModel;
 		baggage->modelRight = rightModel;

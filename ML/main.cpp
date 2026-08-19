@@ -19,6 +19,7 @@
 #include <string>
 #include <boost/program_options.hpp>
 #include <boost/core/demangle.hpp>
+#include <unistd.h>
 
 #include "AI/MMAI/schema/base.h"
 #include "ML/model_wrappers/scripted.h"
@@ -306,24 +307,28 @@ namespace ML {
         std::string rightModelFile = "";
 
         if (leftAi == AI_MMAI_USER) {
+            std::cout << "[PID " << getpid() << "] LEFT AI: USER\n";
             leftModel = new UserAgents::AgentV15(benchmark, interactive, autorender, false, recordings);
             // prevent double render if both models are MMAI_USER
             autorender &= !headless;
         } else if (leftAi == AI_MMAI_MODEL) {
+            std::cout << "[PID " << getpid() << "] LEFT AI: MODEL: " << omap.at("left-model") << "\n";
             // BAI will load the actual model based on leftModel->getName()
             leftModel = new ModelWrappers::Path(omap.at("left-model"));
         } else {
-            std::cout << " LEFT AI SCRIPTED: " << leftAi << "\n";
+            std::cout << "[PID " << getpid() << "] LEFT AI: SCRIPTED: " << leftAi << "\n";
             leftModel = new ModelWrappers::Scripted(leftAi, MMAI::Schema::Side::LEFT);
         }
 
         if (rightAi == AI_MMAI_USER) {
+            std::cout << "[PID " << getpid() << "] RIGHT AI: USER\n";
             rightModel = new UserAgents::AgentV15(benchmark, interactive, autorender, false, recordings);
         } else if (rightAi == AI_MMAI_MODEL) {
+            std::cout << "[PID " << getpid() << "] RIGHT AI: MODEL: " << omap.at("right-model") << "\n";
             // BAI will load the actual model based on leftModel->getName()
-            std::cout << " RIGHT AI SCRIPTED: " << leftAi << "\n";
             rightModel = new ModelWrappers::Path(omap.at("right-model"));
         } else {
+            std::cout << "[PID " << getpid() << "] RIGHT AI: SCRIPTED: " << rightAi << "\n";
             rightModel = new ModelWrappers::Scripted(rightAi, MMAI::Schema::Side::RIGHT);
         }
 
