@@ -429,7 +429,10 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     }
 
     if ((config.leftVip && config.leftHar) || (config.rightVip && config.rightHar))
-        throw std::runtime_error("VIP and HAR armies cannot be both enabled for the same side.");
+        throw std::runtime_error("VIP and HAR armies cannot be enabled for the same side.");
+
+    if (config.leftHar && config.rightHar)
+        throw std::runtime_error("both sides cannot be HAR opponents.");
 
     if (p1.size() < 2 || p2.size() < 2) {
         if (vipEnabled())
@@ -935,16 +938,56 @@ void ServerPlugin::handleRandomArmies(
         army2 = nonvipHero2->getArmy();
     }
 
-    auto replaceArmy = [this, &target, &generateArmy, &generateVipArmy, &generateHarArmy](const CGHeroInstance * hero, bool vip, bool har)
+    auto generateArmyForSide = [&target, &generateArmy, &generateVipArmy, &generateHarArmy](bool vip, bool har)
     {
-        std::vector<GeneratedStack> generated;
         if(vip)
-            generated = generateVipArmy(target);
-        else if(har)
-            generated = generateHarArmy(target);
-        else
-            generated = generateArmy(target);
+            return generateVipArmy(target);
+        if(har)
+            return generateHarArmy(target);
+        return generateArmy(target);
+    };
 
+    auto generateHarOpponentArmy = [this, &totalArmyValue, &generateArmyForSide](bool vip, int harPrimarySpeed)
+    {
+        for(int attempt = 0; attempt < 1000; ++attempt)
+        {
+            auto generated = generateArmyForSide(vip, false);
+            const int totalValue = totalArmyValue(generated);
+            const bool valid = std::ranges::all_of(generated, [this, totalValue, harPrimarySpeed](const auto & stack)
+            {
+                const int stackValue = creatureValues.at(stack.creature->getId()) * stack.quantity;
+                return stackValue * 10 < totalValue || stack.creature->getBaseSpeed() < harPrimarySpeed;
+            });
+
+            if(valid)
+                return generated;
+
+            // std::cout << "HAR attempt " << attempt << " failed.\n";
+        }
+
+        throw std::runtime_error("failed to generate an army slower than the main HAR unit with the current randomArmy config");
+    };
+
+    std::vector<GeneratedStack> generated1;
+    std::vector<GeneratedStack> generated2;
+    if(leftHar)
+    {
+        generated1 = generateHarArmy(target);
+        generated2 = generateHarOpponentArmy(rightVip, generated1.front().creature->getBaseSpeed());
+    }
+    else if(rightHar)
+    {
+        generated2 = generateHarArmy(target);
+        generated1 = generateHarOpponentArmy(leftVip, generated2.front().creature->getBaseSpeed());
+    }
+    else
+    {
+        generated1 = generateArmyForSide(leftVip, false);
+        generated2 = generateArmyForSide(rightVip, false);
+    }
+
+    auto replaceArmy = [this](const CGHeroInstance * hero, const std::vector<GeneratedStack> & generated)
+    {
         for(int slot = 0; slot < 7; ++slot)
             if(hero->hasStackAtSlot(SlotID(slot)))
                 gh->eraseStack(StackLocation(hero->id, SlotID(slot)), true);
@@ -955,8 +998,8 @@ void ServerPlugin::handleRandomArmies(
 
     // std::cout << "=================================\n";
 
-    replaceArmy(hero1, leftVip, leftHar);
-    replaceArmy(hero2, rightVip, rightHar);
+    replaceArmy(hero1, generated1);
+    replaceArmy(hero2, generated2);
 }
 
 

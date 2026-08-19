@@ -46,6 +46,7 @@ private:
 	std::shared_ptr<CBattleCallback> cb;
 	std::shared_ptr<CBattleGameInterface> fallbackBot;
 	std::shared_ptr<CPlayerBattleCallback> battle;
+	const CStack * primaryStack = nullptr;
 	std::unordered_set<const CStack *> mustRetreat;
 	std::unordered_map<const CStack *, int> consecutiveRetreats;
 	std::string colorName = "?";

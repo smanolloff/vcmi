@@ -281,7 +281,13 @@ namespace ML {
 		}
 
 		if (a.rightVip && a.rightHar) {
+			// This introduces a conflict in random HAR army generation (where HAR army must have faster units than the enemy)
 			std::cerr << "Bad value for rightHar: cannot be combined with rightVip\n";
+			exit(1);
+		}
+
+		if (a.leftHar && a.rightHar) {
+			std::cerr << "Bad HAR configuration: both sides cannot be HAR opponents\n";
 			exit(1);
 		}
 

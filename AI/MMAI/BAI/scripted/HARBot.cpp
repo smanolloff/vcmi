@@ -51,6 +51,21 @@ void HARBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, 
 {
 	battle = cb->getBattle(battleID);
 	fastbfs = std::make_unique<const FastBFS>(*battle, battle->getAccessibility());
+	primaryStack = nullptr;
+	int64_t primaryValue = -1;
+	for(const auto * stack : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE))
+	{
+		if(!stack->alive() || stack->unitType()->getGrowth() <= 0)
+			continue;
+
+		const auto value = static_cast<int64_t>(stack->getCount()) * stack->unitType()->getAIValue();
+		logAi->debug("HARBot [%s]: primary candidate %s has AI value %lld", colorName, stack->getDescription(), value);
+		if(value > primaryValue)
+		{
+			primaryStack = stack;
+			primaryValue = value;
+		}
+	}
 	mustRetreat.clear();
 	consecutiveRetreats.clear();
 	logAi->info(
@@ -60,6 +75,10 @@ void HARBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, 
 		static_cast<int>(battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_MINE).size()),
 		static_cast<int>(battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY).size())
 	);
+	if(primaryStack)
+		logAi->info("HARBot [%s]: selected primary stack %s with AI value %lld", colorName, primaryStack->getDescription(), primaryValue);
+	else
+		logAi->warn("HARBot [%s]: no regular primary stack found; all stack actions will use %s", colorName, fallback);
 	fallbackBot->battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 
@@ -105,6 +124,18 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 	}
 
 	fastbfs = std::make_unique<const FastBFS>(*battle, battle->getAccessibility());
+
+	if(stack != primaryStack)
+	{
+		delegate(
+			battleID,
+			stack,
+			primaryStack
+				? "stack is not HARBot's primary army stack"
+				: "HARBot has no regular primary army stack"
+		);
+		return;
+	}
 
 	if(!stack->willMove())
 	{
@@ -279,18 +310,38 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 
 bool HARBot::isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & destination) const
 {
-	for(const auto * enemy : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY))
+	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
+	int64_t totalEnemyValue = 0;
+	for(const auto * enemy : enemies)
+		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
+			totalEnemyValue += static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+
+	for(const auto * enemy : enemies)
 	{
 		if(!enemy->alive() || enemy->isInvincible() || enemy->isShooter() || !enemy->getPosition().isValid())
 			continue;
 
-		const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
-		if(battle->battleCanAttackHex(enemyAvailableHexes, enemy, destination))
-			return true;
+		const auto enemyValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		if(totalEnemyValue <= 0 || enemyValue * 10 < totalEnemyValue)
+			continue;
 
+		const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
+		bool canAttack = battle->battleCanAttackHex(enemyAvailableHexes, enemy, destination);
 		const auto occupiedHex = stack->occupiedHex(destination);
-		if(stack->doubleWide() && occupiedHex.isValid()
-			&& battle->battleCanAttackHex(enemyAvailableHexes, enemy, occupiedHex))
+		if(stack->doubleWide() && occupiedHex.isValid())
+			canAttack |= battle->battleCanAttackHex(enemyAvailableHexes, enemy, occupiedHex);
+
+		logAi->debug(
+			"HARBot [%s]: immediate retreat threat enemy=%s value=%lld/%lld (%.1f%%) canAttack=%d destination=%d",
+			colorName,
+			enemy->getDescription(),
+			enemyValue,
+			totalEnemyValue,
+			100.0 * static_cast<double>(enemyValue) / static_cast<double>(totalEnemyValue),
+			canAttack,
+			destination.toInt()
+		);
+		if(canAttack)
 			return true;
 	}
 
