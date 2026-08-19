@@ -17,6 +17,7 @@
 #include "StdInc.h" // IWYU pragma: keep
 
 #include "BAI/v15/fastbfs.h"
+#include "BAI/v15/graph/nodes/unit.h"
 #include "CStack.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleHex.h"
@@ -32,6 +33,20 @@ namespace MMAI::BAI
 {
 
 using FastBFS = MMAI::BAI::V15::FastBFS;
+using UnitNode = MMAI::BAI::V15::Graph::Nodes::Unit;
+
+namespace
+{
+	int64_t StackValue(const CStack * stack)
+	{
+		const auto valueOne = UnitNode::GetValue(
+			stack->unitType(),
+			stack->isClone(),
+			stack->unitSlot() == SlotID::SUMMONED_SLOT_PLACEHOLDER
+		);
+		return static_cast<int64_t>(stack->getCount()) * valueOne;
+	}
+}
 
 HARBot::HARBot(const std::string & fallback)
 	: fallback(fallback), fallbackBot(AIFactory::createBattleAI(fallback))
@@ -58,7 +73,7 @@ void HARBot::battleStart(const BattleID & battleID, const CCreatureSet * army1, 
 		if(!stack->alive() || stack->unitType()->getGrowth() <= 0)
 			continue;
 
-		const auto value = static_cast<int64_t>(stack->getCount()) * stack->unitType()->getAIValue();
+		const auto value = StackValue(stack);
 		logAi->debug("HARBot [%s]: primary candidate %s has AI value %lld", colorName, stack->getDescription(), value);
 		if(value > primaryValue)
 		{
@@ -225,12 +240,24 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 			stack->getDescription(),
 			retreatCount
 		);
-		attackImmediately("consecutive retreat limit reached");
+		consecutiveRetreats.erase(stack);
+		if(attackAndMarkForRetreat(battleID, stack, true, true))
+			return;
+
+		logAi->info(
+			"HARBot [%s]: no immediate attack lowers exposure for %s; waiting instead",
+			colorName,
+			stack->getDescription()
+		);
+		if(!stack->waitedThisTurn)
+			cb->battleMakeUnitAction(battleID, BattleAction::makeWait(stack));
+		else
+			cb->battleMakeUnitAction(battleID, BattleAction::makeDefend(stack));
 		return;
 	}
 	else if(retreatCount > 0)
 	{
-		logAi->info("HARBot [%s]: %s is no longer reachable next turn and resumes its attack cycle", colorName, stack->getDescription());
+		logAi->info("HARBot [%s]: %s is no longer threatened next turn and resumes its attack cycle", colorName, stack->getDescription());
 	}
 
 	if(!stack->waitedThisTurn)
@@ -314,14 +341,14 @@ bool HARBot::isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & d
 	int64_t totalEnemyValue = 0;
 	for(const auto * enemy : enemies)
 		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
-			totalEnemyValue += static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+			totalEnemyValue += StackValue(enemy);
 
 	for(const auto * enemy : enemies)
 	{
 		if(!enemy->alive() || enemy->isInvincible() || enemy->isShooter() || !enemy->getPosition().isValid())
 			continue;
 
-		const auto enemyValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		const auto enemyValue = StackValue(enemy);
 		if(totalEnemyValue <= 0 || enemyValue * 10 < totalEnemyValue)
 			continue;
 
@@ -355,14 +382,14 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	for(const auto * enemy : enemies)
 		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
-			totalValue += static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+			totalValue += StackValue(enemy);
 
 	for(const auto * enemy : enemies)
 	{
 		if(!enemy->alive() || enemy->isInvincible() || !enemy->getPosition().isValid())
 			continue;
 
-		const auto enemyValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		const auto enemyValue = StackValue(enemy);
 
 		const bool canShoot = enemy->isShooter() && battle->battleCanShoot(enemy, destination);
 		const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
@@ -497,14 +524,14 @@ bool HARBot::canEnemyReachNextTurn(const CStack * stack) const
 	return false;
 }
 
-bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack)
+bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack, bool requireExposureImprovement)
 {
 	const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	int64_t totalEnemyValue = 0;
 	for(const auto * enemy : enemies)
 		if(enemy->alive() && !enemy->isInvincible() && enemy->getPosition().isValid())
-			totalEnemyValue += static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+			totalEnemyValue += StackValue(enemy);
 	logAi->debug(
 		"HARBot [%s]: evaluating attacks for %s from %d available hexes against %d enemies",
 		colorName,
@@ -517,12 +544,16 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 		return enemy->alive() && !enemy->isShooter() && enemy->getPosition().isValid();
 	});
 	const bool shouldPlanRetreat = shouldRetreat && !forceAttack;
+	const auto waitingExposure = requireExposureImprovement
+		? calculateExposedEnemyValue(stack, stack->getPosition()).first
+		: int64_t{-1};
 	const CStack * bestTarget = nullptr;
 	BattleHex bestAttackHex;
 	RetreatPlan bestRetreat;
 	bool bestRetreatIsSafe = false;
 	int64_t bestTargetBaseValue = std::numeric_limits<int64_t>::min();
 	int64_t bestTargetValue = std::numeric_limits<int64_t>::min();
+	int64_t bestAttackExposure = -1;
 
 	for(const auto * enemy : enemies)
 	{
@@ -538,7 +569,7 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 			continue;
 		}
 
-		const auto targetBaseValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		const auto targetBaseValue = StackValue(enemy);
 		const auto targetValue = enemy->isShooter() ? targetBaseValue * 4 : targetBaseValue;
 		int attackHexCount = 0;
 		for(const auto & hex : availableHexes)
@@ -547,12 +578,28 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 				continue;
 
 			++attackHexCount;
+			const auto attackExposure = requireExposureImprovement
+				? calculateExposedEnemyValue(stack, hex).first
+				: int64_t{-1};
+			if(requireExposureImprovement && attackExposure >= waitingExposure)
+			{
+				logAi->debug(
+					"HARBot [%s]: reject immediate attack target=%s fromHex=%d: exposure=%lld is not below waiting exposure=%lld",
+					colorName,
+					enemy->getDescription(),
+					hex.toInt(),
+					attackExposure,
+					waitingExposure
+				);
+				continue;
+			}
+
 			const auto retreatPlan = shouldPlanRetreat ? findBestRetreatFrom(stack, hex) : RetreatPlan{};
 			const bool retreatIsSafe = shouldPlanRetreat
 				&& retreatPlan.destination.isValid()
 				&& !isImmediatelyThreatenedAt(stack, retreatPlan.destination);
 			logAi->debug(
-				"HARBot [%s]: attack candidate target=%s shooter=%d baseValue=%lld (%.1f%%) priorityValue=%lld fromHex=%d forceAttack=%d shouldPlanRetreat=%d retreatSafe=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
+				"HARBot [%s]: attack candidate target=%s shooter=%d baseValue=%lld (%.1f%%) priorityValue=%lld fromHex=%d forceAttack=%d requireExposureImprovement=%d attackExposure=%lld waitingExposure=%lld shouldPlanRetreat=%d retreatSafe=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
 				colorName,
 				enemy->getDescription(),
 				enemy->isShooter(),
@@ -561,6 +608,9 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 				targetValue,
 				hex.toInt(),
 				forceAttack,
+				requireExposureImprovement,
+				attackExposure,
+				waitingExposure,
 				shouldPlanRetreat,
 				retreatIsSafe,
 				retreatPlan.destination.toInt(),
@@ -600,6 +650,7 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 				bestRetreatIsSafe = retreatIsSafe;
 				bestTargetBaseValue = targetBaseValue;
 				bestTargetValue = targetValue;
+				bestAttackExposure = attackExposure;
 			}
 		}
 
@@ -634,14 +685,16 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	else if(forceAttack)
 	{
 		logAi->info(
-			"HARBot [%s]: %s immediately attacks %s from hex %d (baseValue=%lld, %.1f%%; priorityValue=%lld) without requiring a viable retreat plan",
+			"HARBot [%s]: %s immediately attacks %s from hex %d (baseValue=%lld, %.1f%%; priorityValue=%lld, exposure=%lld vs waiting=%lld) without requiring a viable retreat plan",
 			colorName,
 			stack->getDescription(),
 			bestTarget->getDescription(),
 			bestAttackHex.toInt(),
 			bestTargetBaseValue,
 			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetBaseValue) / static_cast<double>(totalEnemyValue) : 0.0,
-			bestTargetValue
+			bestTargetValue,
+			bestAttackExposure,
+			waitingExposure
 		);
 		if(shouldRetreat)
 			mustRetreat.insert(stack);
@@ -672,7 +725,7 @@ bool HARBot::advanceTowardsEnemy(const BattleID & battleID, const CStack * stack
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	const auto enemyValue = [](const CStack * enemy)
 	{
-		return static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		return StackValue(enemy);
 	};
 	const auto eligible = [](const CStack * enemy)
 	{

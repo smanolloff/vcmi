@@ -74,7 +74,7 @@ private:
 	bool isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & destination) const;
 	bool canEnemyThreatenThisRound(const CStack * stack) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
-	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack = false);
+	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack = false, bool requireExposureImprovement = false);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
 	RetreatResult retreat(const BattleID & battleID, const CStack * stack);
 	void delegate(const BattleID & battleID, const CStack * stack, const std::string & reason);
