@@ -277,6 +277,26 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 	return best;
 }
 
+bool HARBot::isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & destination) const
+{
+	for(const auto * enemy : battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY))
+	{
+		if(!enemy->alive() || enemy->isInvincible() || enemy->isShooter() || !enemy->getPosition().isValid())
+			continue;
+
+		const auto enemyAvailableHexes = battle->battleGetAvailableHexes(enemy, false);
+		if(battle->battleCanAttackHex(enemyAvailableHexes, enemy, destination))
+			return true;
+
+		const auto occupiedHex = stack->occupiedHex(destination);
+		if(stack->doubleWide() && occupiedHex.isValid()
+			&& battle->battleCanAttackHex(enemyAvailableHexes, enemy, occupiedHex))
+			return true;
+	}
+
+	return false;
+}
+
 std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination) const
 {
 	int64_t exposedValue = 0;
@@ -449,6 +469,8 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	const CStack * bestTarget = nullptr;
 	BattleHex bestAttackHex;
 	RetreatPlan bestRetreat;
+	bool bestRetreatIsSafe = false;
+	int64_t bestTargetBaseValue = std::numeric_limits<int64_t>::min();
 	int64_t bestTargetValue = std::numeric_limits<int64_t>::min();
 
 	for(const auto * enemy : enemies)
@@ -465,7 +487,8 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 			continue;
 		}
 
-		const auto targetValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		const auto targetBaseValue = static_cast<int64_t>(enemy->getCount()) * enemy->unitType()->getAIValue();
+		const auto targetValue = enemy->isShooter() ? targetBaseValue * 4 : targetBaseValue;
 		int attackHexCount = 0;
 		for(const auto & hex : availableHexes)
 		{
@@ -474,15 +497,21 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 
 			++attackHexCount;
 			const auto retreatPlan = shouldPlanRetreat ? findBestRetreatFrom(stack, hex) : RetreatPlan{};
+			const bool retreatIsSafe = shouldPlanRetreat
+				&& retreatPlan.destination.isValid()
+				&& !isImmediatelyThreatenedAt(stack, retreatPlan.destination);
 			logAi->debug(
-				"HARBot [%s]: attack candidate target=%s targetValue=%lld (%.1f%%) fromHex=%d forceAttack=%d shouldPlanRetreat=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
+				"HARBot [%s]: attack candidate target=%s shooter=%d baseValue=%lld (%.1f%%) priorityValue=%lld fromHex=%d forceAttack=%d shouldPlanRetreat=%d retreatSafe=%d retreatHex=%d nearestDistance=%d totalDistance=%d homewardProgress=%d retreatMoveDistance=%d",
 				colorName,
 				enemy->getDescription(),
+				enemy->isShooter(),
+				targetBaseValue,
+				totalEnemyValue > 0 ? 100.0 * static_cast<double>(targetBaseValue) / static_cast<double>(totalEnemyValue) : 0.0,
 				targetValue,
-				totalEnemyValue > 0 ? 100.0 * static_cast<double>(targetValue) / static_cast<double>(totalEnemyValue) : 0.0,
 				hex.toInt(),
 				forceAttack,
 				shouldPlanRetreat,
+				retreatIsSafe,
 				retreatPlan.destination.toInt(),
 				retreatPlan.minimumEnemyDistance,
 				retreatPlan.totalEnemyDistance,
@@ -493,19 +522,32 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 			if(shouldPlanRetreat && !retreatPlan.destination.isValid())
 				continue;
 
-			if(!bestTarget
-				|| (!shouldPlanRetreat && targetValue > bestTargetValue)
-				|| (shouldPlanRetreat
-					&& (std::tie(retreatPlan.minimumEnemyDistance, retreatPlan.totalEnemyDistance, retreatPlan.homewardProgress, targetValue)
-						> std::tie(bestRetreat.minimumEnemyDistance, bestRetreat.totalEnemyDistance, bestRetreat.homewardProgress, bestTargetValue)
-						|| (std::tie(retreatPlan.minimumEnemyDistance, retreatPlan.totalEnemyDistance, retreatPlan.homewardProgress, targetValue)
-							== std::tie(bestRetreat.minimumEnemyDistance, bestRetreat.totalEnemyDistance, bestRetreat.homewardProgress, bestTargetValue)
-							&& retreatPlan.movementDistance < bestRetreat.movementDistance))))
+			bool betterCandidate = !bestTarget;
+			if(bestTarget && !shouldPlanRetreat)
+				betterCandidate = targetValue > bestTargetValue;
+			else if(bestTarget && retreatIsSafe != bestRetreatIsSafe)
+				betterCandidate = retreatIsSafe;
+			else if(bestTarget && retreatIsSafe)
+			{
+				const auto score = std::tie(targetValue, retreatPlan.minimumEnemyDistance, retreatPlan.totalEnemyDistance, retreatPlan.homewardProgress);
+				const auto bestScore = std::tie(bestTargetValue, bestRetreat.minimumEnemyDistance, bestRetreat.totalEnemyDistance, bestRetreat.homewardProgress);
+				betterCandidate = score > bestScore || (score == bestScore && retreatPlan.movementDistance < bestRetreat.movementDistance);
+			}
+			else if(bestTarget)
+			{
+				const auto score = std::tie(retreatPlan.minimumEnemyDistance, retreatPlan.totalEnemyDistance, retreatPlan.homewardProgress, targetValue);
+				const auto bestScore = std::tie(bestRetreat.minimumEnemyDistance, bestRetreat.totalEnemyDistance, bestRetreat.homewardProgress, bestTargetValue);
+				betterCandidate = score > bestScore || (score == bestScore && retreatPlan.movementDistance < bestRetreat.movementDistance);
+			}
+
+			if(betterCandidate)
 			{
 				logAi->debug("HARBot [%s]: candidate becomes the current best attack/retreat plan", colorName);
 				bestTarget = enemy;
 				bestAttackHex = hex;
 				bestRetreat = retreatPlan;
+				bestRetreatIsSafe = retreatIsSafe;
+				bestTargetBaseValue = targetBaseValue;
 				bestTargetValue = targetValue;
 			}
 		}
@@ -523,14 +565,16 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	if(shouldPlanRetreat)
 	{
 		logAi->info(
-			"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld, %.1f%%), planning to retreat toward hex %d (nearest non-shooter distance=%d, moveDistance=%d)",
+			"HARBot [%s]: %s attacks %s from hex %d (baseValue=%lld, %.1f%%; priorityValue=%lld), planning to retreat toward hex %d (immediatelySafe=%d, nearest non-shooter distance=%d, moveDistance=%d)",
 			colorName,
 			stack->getDescription(),
 			bestTarget->getDescription(),
 			bestAttackHex.toInt(),
+			bestTargetBaseValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetBaseValue) / static_cast<double>(totalEnemyValue) : 0.0,
 			bestTargetValue,
-			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetValue) / static_cast<double>(totalEnemyValue) : 0.0,
 			bestRetreat.destination.toInt(),
+			bestRetreatIsSafe,
 			bestRetreat.minimumEnemyDistance,
 			bestRetreat.movementDistance
 		);
@@ -539,13 +583,14 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	else if(forceAttack)
 	{
 		logAi->info(
-			"HARBot [%s]: %s immediately attacks %s from hex %d (targetValue=%lld, %.1f%%) without requiring a viable retreat plan",
+			"HARBot [%s]: %s immediately attacks %s from hex %d (baseValue=%lld, %.1f%%; priorityValue=%lld) without requiring a viable retreat plan",
 			colorName,
 			stack->getDescription(),
 			bestTarget->getDescription(),
 			bestAttackHex.toInt(),
-			bestTargetValue,
-			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetValue) / static_cast<double>(totalEnemyValue) : 0.0
+			bestTargetBaseValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetBaseValue) / static_cast<double>(totalEnemyValue) : 0.0,
+			bestTargetValue
 		);
 		if(shouldRetreat)
 			mustRetreat.insert(stack);
@@ -555,13 +600,14 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 	else
 	{
 		logAi->info(
-			"HARBot [%s]: %s attacks %s from hex %d (targetValue=%lld, %.1f%%) without retreating because no living non-shooter enemies remain",
+			"HARBot [%s]: %s attacks %s from hex %d (baseValue=%lld, %.1f%%; priorityValue=%lld) without retreating because no living non-shooter enemies remain",
 			colorName,
 			stack->getDescription(),
 			bestTarget->getDescription(),
 			bestAttackHex.toInt(),
-			bestTargetValue,
-			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetValue) / static_cast<double>(totalEnemyValue) : 0.0
+			bestTargetBaseValue,
+			totalEnemyValue > 0 ? 100.0 * static_cast<double>(bestTargetBaseValue) / static_cast<double>(totalEnemyValue) : 0.0,
+			bestTargetValue
 		);
 		consecutiveRetreats.erase(stack);
 	}
