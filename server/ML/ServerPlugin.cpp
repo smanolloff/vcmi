@@ -275,7 +275,7 @@ namespace {
      * Format: "hero_<INT>_pool_<STR>"
      * Example: "hero_5123_pool_150k"
      */
-    HeroPools InitHeroPools(CGameState* gs) {
+    HeroPools InitHeroPools(CGameState* gs, const Config & config) {
         auto pattern = std::regex(R"(^hero_\d+_pool_([0-9A-Za-z]+)$)");
         auto res = HeroPools{};
         int counter = 0;
@@ -322,17 +322,20 @@ namespace {
             ++counter;
         }
 
-        for (const auto & [name1, pool1] : res.at(0))
+        if (config.randomHeroes > 0)
         {
-            if (res.at(1).find(name1) == res.at(1).end())
-                throw std::runtime_error("Owners have different pools");
-            auto x = (*res.at(1).find(name1)).second;
-            if (pool1.heroes.size() != (*res.at(1).find(name1)).second.heroes.size())
-                // throw std::runtime_error("Owners have differently sized pools");
-                std::cout << "WARNING: Owners have differently sized pools: " << pool1.heroes.size() << " <> " << (*res.at(1).find(name1)).second.heroes.size() << "\n";
-        }
+            for (const auto & [name1, pool1] : res.at(0))
+            {
+                if (res.at(1).find(name1) == res.at(1).end())
+                    throw std::runtime_error("Owners have different pools");
+                auto x = (*res.at(1).find(name1)).second;
+                if (pool1.heroes.size() != (*res.at(1).find(name1)).second.heroes.size())
+                    // throw std::runtime_error("Owners have differently sized pools");
+                    std::cout << "WARNING: Owners have differently sized pools: " << pool1.heroes.size() << " <> " << (*res.at(1).find(name1)).second.heroes.size() << "\n";
+            }
 
-        ML_VERBOSE("Grouped " << counter << " heroes into " << res.size() << "x" << res.at(0).size() << " pools\n");
+            ML_VERBOSE("Grouped " << counter << " heroes into " << res.size() << "x" << res.at(0).size() << " pools\n");
+        }
 
         return res;
     }
@@ -477,6 +480,9 @@ namespace {
         if (config.statsMode == "disabled")
             return nullptr;
 
+        if (config.randomHeroes == 0)
+            throw std::runtime_error("Cannot track stats when randomHeroes is disabled");
+
         if (config.swapSides > 0) {
             throw std::runtime_error("Cannot track stats for " + config.statsMode + " when swapping sides");
         }
@@ -497,7 +503,7 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 : gh(gh)
 , config(config_)
 , alltowns(InitTowns(gs))
-, heropools(InitHeroPools(gs))
+, heropools(InitHeroPools(gs, config))
 , battleterrains(InitBattleterrains(config.battlefieldPattern))
 , allmachines(InitWarMachines(gs))
 , allcreatures(InitCreatures())
@@ -507,10 +513,6 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 , rng(std::mt19937(config.rngSeed ? config.rngSeed : gh->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
 , creatureValues(InitCreatureValues())
 {
-    // XXX: Take out the first two heroes from the first heropool
-    auto & p1 = heropools.at(0).begin()->second.heroes;
-    auto & p2 = heropools.at(1).begin()->second.heroes;
-
     auto vipEnabled = [this]() {
         return config.leftVip || config.rightVip;
     };
@@ -1152,10 +1154,14 @@ void ServerPlugin::startBattleHook(
     const CGHeroInstance *&hero1,
     const CGHeroInstance *&hero2
 ) {
-    if (!(hero1 && hero2))
-        throw std::runtime_error("Both hero1 and hero2 are required");
-
     battlecounter++;
+
+    if (!(hero1 && hero2)) {
+        std::cout << "hero1: " << hero1 << ", hero2: " << hero2 << "\n";
+        std::cout << "WARNING: hero is missing => skipping all hooks\n";
+        return;
+    }
+
 
     // printf("config.randomHeroes = %d\n", config.randomHeroes);
 

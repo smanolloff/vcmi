@@ -68,9 +68,9 @@ namespace ML {
             const CGHeroInstance * heroDefender
         );
 
+        Config config;
     private:
         CGameHandler * gh;
-        Config config;
         std::vector<CGTownInstance*> alltowns;
         HeroPools heropools;
         const std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
@@ -82,11 +82,6 @@ namespace ML {
         std::mt19937 rng;
 
         std::map<CreatureID, int> creatureValues;
-
-        CGHeroInstance* vipHero1 = nullptr;
-        CGHeroInstance* vipHero2 = nullptr;
-        const CGHeroInstance* nonvipHero1 = nullptr;
-        const CGHeroInstance* nonvipHero2 = nullptr;
 
         int towncounter = 0;
         int battlecounter = 0;

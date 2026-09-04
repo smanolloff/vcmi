@@ -118,7 +118,9 @@ void BattleProcessor::startBattle(const CArmedInstance *army1, const CArmedInsta
 	BattleSideArray<const CArmedInstance *> armies{army1, army2};
 	BattleSideArray<const CGHeroInstance*>heroes{hero1, hero2};
 
-	auto layout = IFML(BattleLayout::createDefaultLayout(gameHandler->gameInfo(), army1, army2), layout_);
+	auto layout = IS_ML && gameHandler->mlplugin->config.randomTerrainChance
+		? BattleLayout::createDefaultLayout(gameHandler->gameInfo(), army1, army2)
+		: layout_;
 
 	auto battleID = setupBattle(tile, armies, heroes, layout, town); //initializes stacks, places creatures on battlefield, blocks and informs player interfaces
 

@@ -409,6 +409,12 @@ namespace ML {
 		Settings(settings.write({"ai", "adventureEnemyAI"}))->String() = "MMAI";
 		Settings(settings.write({"session", "oneGoodAI"}))->Bool() = false;
 
+		// Explicitly set neutral battle AI (AAI is not used to create it)
+		if (rightModel->getName() == "BattleAI" || rightModel->getName() == "StupidAI")
+			Settings(settings.write({"ai", "combatNeutralAI"}))->String() = rightModel->getName();
+		else
+			Settings(settings.write({"ai", "combatNeutralAI"}))->String() = "MMAI";
+
 		// With GUI, the player's "adventure" AI is CPlayerInterface
 		// When auto-combat is pressed, it creates whatever combatAlliedAI says
 		Settings(settings.write({"ai", "combatAlliedAI"}))->String() = "MMAI";

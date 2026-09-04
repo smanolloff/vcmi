@@ -358,8 +358,8 @@ void Router::battleStart(
 		// to accomodate for the "side swapping" training feature.
 		// XXX: dev mode assumes there are no neutral players in battle
 		ASSERT(baggage != nullptr, "baggage is nullptr");
-		ASSERT(cb->getPlayerID()->hasValue(), "cb->getPlayerID() has no value");
-		if (cb->getPlayerID()->num) {
+		// neutral AI has no player ID
+		if (!cb->getPlayerID()->hasValue() || cb->getPlayerID()->num > 0) {
 			model = baggage->modelRight;
 		} else {
 			model = baggage->modelLeft;

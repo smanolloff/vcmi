@@ -1,4 +1,8 @@
 {
+	"adventure" : {
+		"enemyMoveTime" : 25,
+		"heroMoveTime" : 25
+	},
 	"mods" : {
 		"validation" : "off"
 	},
