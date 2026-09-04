@@ -69,9 +69,39 @@ namespace
 			return std::pair{numAdjacentHexes, numDistantHexes};
 		};
 
+		/*
+		 * Term "c":
+		 * increase is linear up to SPEED_KNEE, then diminishes
+		 * Visualize on https://www.desmos.com/calculator:
+		 *
+		 * 		[1] 0.5+\left(s\cdot x\right)\left\{x\le k\right\}
+		 * 		[2] 0.5+\left(s\cdot X\right)\left\{\ x\ge k+1\right\}
+		 * 		[3] X=k+\left(t\cdot\ln\left(1+\frac{\left(x-k\right)}{t}\right)\right)
+		 * 		[4] s=0.2
+		 * 		[5] k=15
+		 * 		[6] t=5
+		 *
+		 * | Speed |  c
+		 * |-------|-----
+		 * | 1     | 0.70
+		 * | 5     | 1.50
+		 * | 10    | 2.50
+		 * | 15    | 3.50
+		 * | 20    | 4.19
+		 * | 30    | 4.89
+		 *
+		 */
+
+		constexpr double SPEED_KNEE = 15.0;
+		constexpr double SPEED_SLOPE = 0.2;
+		constexpr double SPEED_TAIL_WIDTH = 5.0;
+		const auto effectiveSpeed = spd <= SPEED_KNEE
+			? spd
+			: SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
+
 		auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
 		auto b = hp / (1 - std::min(0.7, 0.025 * def));
-		auto c = spd ? std::log(spd * 2) : 0.5;
+		auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
 		auto d = shooter ? 1.5 : 1.0;
 
 		for(const auto & bonus : *bonuses)
