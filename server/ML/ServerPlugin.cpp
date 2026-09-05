@@ -38,6 +38,9 @@
 #include <random>
 #include <stdexcept>
 #include <regex>
+#include "bonuses/BonusParameters.h"
+#include "spells/CSpellHandler.h"
+
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -59,112 +62,203 @@ namespace {
 
     int CalculateValue(const CCreature * cr)
     {
-        /*
-         * Formula:
-         * 10 * (A + B) * C * D1 * D2 * ... * Dn
-         *
-         * A = <offensive factor>
-         * B = <defensive factor>
-         * C = <speed factor>
-         * D* = <bonus factor>
-         */
 
-        auto att = cr->getBaseAttack();
-        auto def = cr->getBaseDefense();
-        auto dmg = (cr->getBaseDamageMax() + cr->getBaseDamageMin()) / 2.0;
-        auto hp = cr->getBaseHitPoints();
-        auto spd = cr->getBaseSpeed();
-        auto shooter = cr->hasBonusOfType(BonusType::SHOOTER);
-        auto bonuses = cr->getAllBonuses(Selector::all);
+		auto att = cr->getBaseAttack();
+		auto def = cr->getBaseDefense();
+		auto dmg = (cr->getBaseDamageMax() + cr->getBaseDamageMin()) / 2.0;
+		auto hp = cr->getBaseHitPoints();
+		auto spd = cr->getBaseSpeed();
+		auto shooter = cr->hasBonusOfType(BonusType::SHOOTER);
+		auto bonuses = cr->getAllBonuses(Selector::all);
 
-        auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
-        auto b = hp / (1 - std::min(0.7, 0.025 * def));
-        auto c = spd ? std::log(spd * 2) : 0.5;
-        auto d = shooter ? 1.5 : 1.0;
+		auto multihexAttackHexcount = [](const std::vector<int> & encodedPath)
+		{
+			// The bonus parameters vector contains encoded info about affected hexes.
+			// The encoding is not known, but also not relevant:
+			// we care only about the number of affected hexes and
+			// whether they are adjacent or remote
+			// (because remote hexes allow to hit "guarded" shooters)
+			// The assumption about this hex encoding is:
+			// "L"=1, "F"=2, "R"=3, "FL"=21, "FFF"=222, etc.
+			// (exact values don't matter, but the number of digits does)
+			int numAdjacentHexes = 0;
+			int numDistantHexes = 0;
+			for(int x : encodedPath)
+				x < 10 ? ++numAdjacentHexes : ++numDistantHexes;
 
-        for(const auto & bonus : *bonuses)
-        {
-            switch(bonus->type)
-            {
-                case BonusType::ADDITIONAL_ATTACK:
-                    d += (shooter ? 0.5 : 0.3);
-                    break;
-                case BonusType::ADDITIONAL_RETALIATION:
-                    d += (bonus->val * 0.1);
-                    break;
-                case BonusType::ATTACKS_ALL_ADJACENT:
-                    d += 0.2;
-                    break;
-                case BonusType::BLOCKS_RETALIATION:
-                    d += 0.3;
-                    break;
-                case BonusType::DEATH_STARE:
-                    d += (bonus->val * 0.02); // 10% = 0.2
-                    break;
-                case BonusType::DOUBLE_DAMAGE_CHANCE:
-                    d += (bonus->val * 0.005); // 20% = 0.1
-                    break;
-                case BonusType::ENEMY_DEFENCE_REDUCTION:
-                    d += (bonus->val * 0.0025); // 40% = 0.1
-                    break;
-                case BonusType::FIRE_SHIELD:
-                    d += (bonus->val * 0.003); // 20% = 0.1
-                    break;
-                case BonusType::FLYING:
-                    d += 0.1;
-                    break;
-                case BonusType::LIFE_DRAIN:
-                    d += (bonus->val * 0.003); // 100% = 0.3
-                    break;
-                case BonusType::NO_DISTANCE_PENALTY:
-                    d += 0.5;
-                    break;
-                case BonusType::NO_MELEE_PENALTY:
-                    d += 0.1;
-                    break;
-                case BonusType::THREE_HEADED_ATTACK:
-                    d += 0.05;
-                    break;
-                case BonusType::TWO_HEX_ATTACK_BREATH:
-                    d += 0.1;
-                    break;
-                case BonusType::UNLIMITED_RETALIATIONS:
-                    d += 0.2;
-                    break;
-                case BonusType::SPELL_LIKE_ATTACK:
-                    switch(bonus->subtype.as<SpellID>())
-                    {
-                        case SpellID::DEATH_CLOUD:
-                            d += 0.2;
-                    }
-                    break;
-                case BonusType::SPELL_AFTER_ATTACK:
-                    switch(bonus->subtype.as<SpellID>())
-                    {
-                        case SpellID::BLIND:
-                        case SpellID::STONE_GAZE:
-                        case SpellID::PARALYZE:
-                            d += (bonus->val * 0.01); // 20% = 0.2
-                            break;
-                        case SpellID::BIND:
-                            d += (bonus->val * 0.001); // 100% = 0.1
-                            break;
-                        case SpellID::WEAKNESS:
-                            d += (bonus->val * 0.001); // 100% = 0.1
-                            break;
-                        case SpellID::AGE:
-                            d += (bonus->val * 0.005); // 20% = 0.1
-                            break;
-                        case SpellID::CURSE:
-                            d += (bonus->val * 0.0025); // 20% = 0.05
-                    }
-            }
-        }
+			return std::pair{numAdjacentHexes, numDistantHexes};
+		};
 
-        // Multiply by 10 to reduce the integer rounding for weak units
-        // (e.g. peasant 7.48 => 7 is a lot, 74.8 => 75 is OK)
-        auto res = static_cast<int>(std::round(10 * (a + b) * c * d));
-        return res;
+		/*
+		 * Term "c":
+		 * increase is linear up to SPEED_KNEE, then diminishes
+		 * Visualize on https://www.desmos.com/calculator:
+		 *
+		 * 		[1] 0.5+\left(s\cdot x\right)\left\{x\le k\right\}
+		 * 		[2] 0.5+\left(s\cdot X\right)\left\{\ x\ge k+1\right\}
+		 * 		[3] X=k+\left(t\cdot\ln\left(1+\frac{\left(x-k\right)}{t}\right)\right)
+		 * 		[4] s=0.2
+		 * 		[5] k=15
+		 * 		[6] t=5
+		 *
+		 * | Speed |  c
+		 * |-------|-----
+		 * | 1     | 0.70
+		 * | 5     | 1.50
+		 * | 10    | 2.50
+		 * | 15    | 3.50
+		 * | 20    | 4.19
+		 * | 30    | 4.89
+		 *
+		 */
+
+        constexpr double SPEED_KNEE = 13.0;
+        constexpr double SPEED_SLOPE = 0.2;
+        constexpr double SPEED_TAIL_WIDTH = 2.0;
+
+		const auto effectiveSpeed = spd <= SPEED_KNEE
+			? spd
+			: SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
+
+		auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
+		auto b = hp / (1 - std::min(0.7, 0.025 * def));
+		auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
+		// auto c = spd ? std::log(spd * 2) : 0.5;
+		auto d = shooter ? 1.5 : 1.0;
+
+		for(const auto & bonus : *bonuses)
+		{
+			switch(bonus->type)
+			{
+				case BonusType::ADDITIONAL_ATTACK:
+					d += (shooter ? 0.5 : 0.3);
+					break;
+				case BonusType::ADDITIONAL_RETALIATION:
+					d += (bonus->val * 0.1);
+					break;
+				case BonusType::ATTACKS_ALL_ADJACENT:
+					d += 0.2;
+					break;
+				case BonusType::BLOCKS_RETALIATION:
+					d += 0.3;
+					break;
+				case BonusType::DEATH_STARE:
+					d += (bonus->val * 0.02);
+					break;
+				case BonusType::DOUBLE_DAMAGE_CHANCE:
+					d += (bonus->val * 0.005);
+					break;
+				case BonusType::ENCHANTER:
+					d += 0.5;
+					break;
+				case BonusType::ENEMY_ATTACK_REDUCTION:
+				case BonusType::ENEMY_DEFENCE_REDUCTION:
+					d += (bonus->val * 0.0025);
+					break;
+				case BonusType::FEROCITY:
+					d += (bonus->val * 0.25);
+					break;
+				case BonusType::FIRE_SHIELD:
+					d += (bonus->val * 0.003);
+					break;
+				case BonusType::FIRST_STRIKE:
+					d += 0.3;
+					break;
+				case BonusType::FLYING:
+					d += 0.1;
+					break;
+				case BonusType::LIFE_DRAIN:
+					d += (bonus->val * 0.003);
+					break;
+				case BonusType::MULTIHEX_ENEMY_ATTACK:
+				{
+					const auto & [adj, dist] = multihexAttackHexcount(bonus->parameters->toVector());
+					d += (adj * 0.03);
+					d += (dist * 0.8);
+				}
+				break;
+				case BonusType::MULTIHEX_UNIT_ATTACK:
+				{
+					const auto & [adj, dist] = multihexAttackHexcount(bonus->parameters->toVector());
+					d += (adj * 0.05);
+					d += (dist * 0.1);
+				}
+				break;
+				case BonusType::NO_DISTANCE_PENALTY:
+					d += 0.5;
+					break;
+				case BonusType::NO_MELEE_PENALTY:
+					d += 0.1;
+					break;
+				case BonusType::RANGED_RETALIATION:
+					d += 0.2;
+					break;
+				case BonusType::REVENGE:
+				case BonusType::THREE_HEADED_ATTACK:
+					d += 0.15; // deprecated by MULTIHEX_ENEMY_ATTACK
+					break;
+				case BonusType::TWO_HEX_ATTACK_BREATH:
+					d += 0.1; // deprecated by MULTIHEX_UNIT_ATTACK
+					break;
+				case BonusType::UNLIMITED_RETALIATIONS:
+					d += 0.2;
+					break;
+				case BonusType::SPELL_LIKE_ATTACK:
+					if(bonus->subtype.as<SpellID>() == SpellID::DEATH_CLOUD)
+						d += 0.2;
+					break;
+				case BonusType::SPELL_AFTER_ATTACK:
+					switch(bonus->subtype.as<SpellID>())
+					{
+						case SpellID::BLIND:
+						case SpellID::STONE_GAZE:
+						case SpellID::PARALYZE:
+							d += (bonus->val * 0.01);
+							break;
+						case SpellID::BIND:
+						case SpellID::WEAKNESS:
+							d += (bonus->val * 0.001);
+							break;
+						case SpellID::AGE:
+							d += (bonus->val * 0.005);
+							break;
+						case SpellID::CURSE:
+							d += (bonus->val * 0.0025);
+							break;
+						case SpellID::DISRUPTING_RAY:
+							d += (bonus->val * 0.002);
+							break;
+						case SpellID::POISON:
+							d += (bonus->val * 0.001);
+							break;
+						default:
+							break;
+					}
+					break;
+				default:
+					break;
+			}
+		}
+
+		/*
+		 * Some examples:
+		 *
+		 * Peasant=8            Gremlin=20          Imp=21             Pixie=24
+		 * Medusa=260           OgreMage=270        Crusader=293       Monk=308
+		 * BoneDragon=1425      Giant=1432          Hydra=1752         Devil=2344
+		 * ArchDevil=4484       GoldDragon=4518     Archangel=4763     Titan=5341
+		 * CrystalDragon=11347  RustDragon=12166    AzureDragon=17988
+		 *
+		 */
+		auto res = static_cast<int>(std::round((a + b) * c * d));
+
+		if(IsMLVerbose())
+		{
+			std::cout << "MMAI_VERBOSE: " << res << " " << cr->getId().toEntity(LIBRARY)->getJsonKey() << " (a=" << a << ", b=" << b << ", c=" << c
+					  << ", d=" << d << ")\n";
+		}
+
+		return res;
     }
 
     std::map<CreatureID, int> InitCreatureValues()
