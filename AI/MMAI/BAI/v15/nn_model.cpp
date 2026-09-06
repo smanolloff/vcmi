@@ -39,6 +39,43 @@ namespace
 		throw std::runtime_error(f.str());
 	}
 
+	const char * nodeTypeName(ET type)
+	{
+		for(const auto & [candidateType, name, _size] : S15::NODE_TYPES)
+			if(candidateType == type)
+				return name;
+
+		throwf("unknown node element type: %d", EU(type));
+	}
+
+	void printActionEdges(const IGraph * graph, int64_t actionId)
+	{
+		const auto * action = graph->getNode(ET::NODE_ACTION, actionId);
+
+		for(const auto & [edgeType, relationName, endpointTypes, _size] : S15::EDGE_TYPES)
+		{
+			const auto & [srcType, dstType] = endpointTypes;
+			if(srcType != ET::NODE_ACTION && dstType != ET::NODE_ACTION)
+				continue;
+
+			std::cout
+				<< "  "
+				<< nodeTypeName(srcType)
+				<< "_"
+				<< relationName
+				<< "_"
+				<< nodeTypeName(dstType)
+				<< '\n';
+
+			for(const auto * edge : graph->getEdges(edgeType))
+			{
+				const auto [src, dst] = edge->endpoints();
+				if(src == action || dst == action)
+					std::cout << "    " << edge->name() << '\n';
+			}
+		}
+	}
+
 	template<typename T>
 	void assertValidTensor(const std::string & name, const Ort::Value & tensor, int ndim)
 	{
@@ -599,6 +636,8 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	logAi->debug(
 		"sample: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d %s", saction, sample.prob, sample.confidence, value, sample.index, sname
 	);
+
+	// ML(printActionEdges(graph, saction));
 
 	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f): %s") % saction % sample.confidence % sname);
 	return static_cast<int>(saction);
