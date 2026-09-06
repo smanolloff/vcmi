@@ -58,9 +58,11 @@ namespace ML {
         int randomObstacles = 0;
         bool mirrorArmies = false;
         bool randomArmies = false;
-        int randomArmyValueMin = 5000;
-        int randomArmyValueMax = 1000000;
+        int randomArmyValueMin = 500;
+        int randomArmyValueMax = 100000;
         int randomArmyTargetVar = 30;
+        int leftUniformChance = 0;
+        int rightUniformChance = 0;
         int tightFormationChance = 0;
         int creatureBankChance = 0;
         int randomTerrainChance = 0;
@@ -133,6 +135,10 @@ namespace ML {
                 "Max total value for randomized armies (default 1000000*)")
             ("random-army-target-var", po::value<int>()->value_name("<N>"),
                 "Percent variance for meeting the target total value (default 30*)")
+            ("left-uniform-chance", po::value<int>()->value_name("<N>"),
+                "Percent chance for to use only one creature type in left army (default 0*)")
+            ("right-uniform-chance", po::value<int>()->value_name("<N>"),
+                "Percent chance for to use only one creature type in right army (default 0*)")
             ("tight-formation-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a tight army formation (default 0*)")
             ("creature-bank-chance", po::value<int>()->value_name("<N>"),
@@ -232,6 +238,12 @@ namespace ML {
 
         if (vm.count("random-army-target-var"))
             randomArmyTargetVar = vm.at("random-army-target-var").as<int>();
+
+        if (vm.count("left-uniform-chance"))
+            leftUniformChance = vm.at("left-uniform-chance").as<int>();
+
+        if (vm.count("right-uniform-chance"))
+            rightUniformChance = vm.at("right-uniform-chance").as<int>();
 
         if (vm.count("tight-formation-chance"))
             tightFormationChance = vm.at("tight-formation-chance").as<int>();
@@ -354,6 +366,8 @@ namespace ML {
             .randomArmyValueMin=randomArmyValueMin,
             .randomArmyValueMax=randomArmyValueMax,
             .randomArmyTargetVar=randomArmyTargetVar,
+            .leftUniformChance=leftUniformChance,
+            .rightUniformChance=rightUniformChance,
             .tightFormationChance=tightFormationChance,
             .creatureBankChance=creatureBankChance,
             .randomTerrainChance=randomTerrainChance,

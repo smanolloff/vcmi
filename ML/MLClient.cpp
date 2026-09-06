@@ -265,6 +265,16 @@ namespace ML {
 			exit(1);
 		}
 
+		if (a.leftUniformChance < 0 || a.leftUniformChance > 100) {
+			std::cerr << "Bad value for leftUniformChance: expected an integer between 0 and 100, got: " << a.leftUniformChance << "\n";
+			exit(1);
+		}
+
+		if (a.rightUniformChance < 0 || a.rightUniformChance > 100) {
+			std::cerr << "Bad value for rightUniformChance: expected an integer between 0 and 100, got: " << a.rightUniformChance << "\n";
+			exit(1);
+		}
+
 		if (a.tightFormationChance < 0 || a.tightFormationChance > 100) {
 			std::cerr << "Bad value for tightFormationChance: expected an integer between 0 and 100, got: " << a.tightFormationChance << "\n";
 			exit(1);
@@ -282,6 +292,16 @@ namespace ML {
 
 		if (a.leftVip && a.leftHar) {
 			std::cerr << "Bad value for leftHar: cannot be combined with leftVip\n";
+			exit(1);
+		}
+
+		if (a.leftUniformChance > 0 && (a.leftVip || a.leftHar)) {
+			std::cerr << "Bad value for leftUniformChance: cannot be combined with left VIP or HAR\n";
+			exit(1);
+		}
+
+		if (a.rightUniformChance > 0 && (a.rightVip || a.rightHar)) {
+			std::cerr << "Bad value for rightUniformChance: cannot be combined with right VIP or HAR\n";
 			exit(1);
 		}
 
@@ -389,6 +409,8 @@ namespace ML {
 		Settings(settings.write({"server", "ML", "randomArmyValueMin"}))->Integer() = a.randomArmyValueMin;
 		Settings(settings.write({"server", "ML", "randomArmyValueMax"}))->Integer() = a.randomArmyValueMax;
 		Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
+		Settings(settings.write({"server", "ML", "leftUniformChance"}))->Integer() = a.leftUniformChance;
+		Settings(settings.write({"server", "ML", "rightUniformChance"}))->Integer() = a.rightUniformChance;
 		Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
 		Settings(settings.write({"server", "ML", "creatureBankChance"}))->Integer() = a.creatureBankChance;
 		Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;

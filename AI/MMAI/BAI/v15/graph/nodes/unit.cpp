@@ -104,6 +104,9 @@ namespace
 		auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
 		auto d = shooter ? 1.5 : 1.0;
 
+        // Enchanters have many "enchanter" bonuses, add only once
+        bool enchanter = false;
+
 		for(const auto & bonus : *bonuses)
 		{
 			switch(bonus->type)
@@ -127,7 +130,11 @@ namespace
 					d += (bonus->val * 0.005);
 					break;
 				case BonusType::ENCHANTER:
-					d += 0.5;
+                    if (!enchanter)
+                    {
+                        d += 0.5;
+                        enchanter = true;
+                    }
 					break;
 				case BonusType::ENEMY_ATTACK_REDUCTION:
 				case BonusType::ENEMY_DEFENCE_REDUCTION:

@@ -93,6 +93,7 @@ namespace ML {
         int battlecounter = 0;
         int poolcounter = 0;
         int redside = 0;
+        bool creatureBankBattle = false;
 
         void handleRandomHeroes(
             const CArmedInstance *&army1,

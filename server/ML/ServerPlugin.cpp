@@ -134,6 +134,9 @@ namespace {
         auto c = spd ? std::log(spd * 2) : 0.5;
         auto d = shooter ? 1.5 : 1.0;
 
+        // Enchanters have many "enchanter" bonuses, add only once
+        bool enchanter = false;
+
         for(const auto & bonus : *bonuses)
         {
             switch(bonus->type)
@@ -157,7 +160,11 @@ namespace {
                     d += (bonus->val * 0.005);
                     break;
                 case BonusType::ENCHANTER:
-                    d += 0.5;
+                    if (!enchanter)
+                    {
+                        d += 0.5;
+                        enchanter = true;
+                    }
                     break;
                 case BonusType::ENEMY_ATTACK_REDUCTION:
                 case BonusType::ENEMY_DEFENCE_REDUCTION:
@@ -527,13 +534,20 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
         return config.leftVip || config.rightVip;
     };
 
-    if ((vipEnabled() || config.leftHar || config.rightHar) && !config.randomArmies) {
-        std::cout << "WARNING: VIP or HAR army enabled, but random armies are not enabled -- will enable random armies\n";
+    const bool uniformEnabled = config.leftUniformChance > 0 || config.rightUniformChance > 0;
+    if ((vipEnabled() || config.leftHar || config.rightHar || uniformEnabled) && !config.randomArmies) {
+        std::cout << "WARNING: VIP, HAR or uniform army enabled, but random armies are not enabled -- will enable random armies\n";
         config.randomArmies = true;
     }
 
     if ((config.leftVip && config.leftHar) || (config.rightVip && config.rightHar))
         throw std::runtime_error("VIP and HAR armies cannot be enabled for the same side.");
+
+    if (config.leftUniformChance > 0 && (config.leftVip || config.leftHar))
+        throw std::runtime_error("uniform armies cannot be combined with VIP or HAR for the left side.");
+
+    if (config.rightUniformChance > 0 && (config.rightVip || config.rightHar))
+        throw std::runtime_error("uniform armies cannot be combined with VIP or HAR for the right side.");
 
     if (config.leftHar && config.rightHar)
         throw std::runtime_error("both sides cannot be HAR opponents.");
@@ -588,23 +602,20 @@ void ServerPlugin::setupBattleHook(
     BattleLayout & layout,
     ui32 & seed
 ) {
-    if (config.creatureBankChance > 0) {
-        auto dist = std::uniform_int_distribution<>(0, 99);
-        if (dist(rng) < config.creatureBankChance) {
-            bool hasDoubleWideDefender = false;
-            for (const auto & entry : defender->Slots()) {
-                const auto * creature = entry.second->getCreature();
-                if (creature && creature->isDoubleWide()) {
-                    hasDoubleWideDefender = true;
-                    break;
-                }
+    if (creatureBankBattle) {
+        bool hasDoubleWideDefender = false;
+        for (const auto & entry : defender->Slots()) {
+            const auto * creature = entry.second->getCreature();
+            if (creature && creature->isDoubleWide()) {
+                hasDoubleWideDefender = true;
+                break;
             }
-
-            const std::string layoutName = hasDoubleWideDefender ? "creatureBankWide" : "creatureBankNarrow";
-            layout = BattleLayout::createLayout(gameInfo, layoutName, attacker, defender);
-            town = nullptr;
-            return;
         }
+
+        const std::string layoutName = hasDoubleWideDefender ? "creatureBankWide" : "creatureBankNarrow";
+        layout = BattleLayout::createLayout(gameInfo, layoutName, attacker, defender);
+        town = nullptr;
+        return;
     }
 
     if (config.randomTerrainChance > 0 && battleterrains.size() > 0) {
@@ -835,29 +846,76 @@ void ServerPlugin::handleRandomArmies(
         return {};
     };
 
-    auto generateArmy = [this, &divCeil, &generateArmyWithStackCount](int targetValue) -> std::vector<GeneratedStack>
+    auto generateArmy = [this, &generateArmyWithStackCount](int targetValue, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
     {
         for(int attempt = 0; attempt < 100; ++attempt)
         {
             // Bias towards fuller armies while still allowing sparse ones sometimes.
-            auto distSlotCount = std::uniform_int_distribution<>(1, 7);
+            auto distSlotCount = std::uniform_int_distribution<>(minStackCount, maxStackCount);
             const int desiredStackCount = std::max(distSlotCount(rng), distSlotCount(rng));
             auto generated = generateArmyWithStackCount(targetValue, allcreatures, desiredStackCount);
             if(!generated.empty())
                 return generated;
         }
 
-        const auto cheapestCreature = std::ranges::min_element(allcreatures, [this](const CreatureID & left, const CreatureID & right)
+        for(int stackCount = minStackCount; stackCount <= maxStackCount; ++stackCount)
         {
-            return creatureValues.at(left) < creatureValues.at(right);
-        });
-        const auto * creature = cheapestCreature->toCreature();
-        const int creatureValue = creatureValues.at(creature->getId());
-        const int quantity = std::max(1, divCeil(targetValue, creatureValue));
-        return { { SlotID(0), creature, quantity } };
+            auto generated = generateArmyWithStackCount(targetValue, allcreatures, stackCount);
+            if(!generated.empty())
+                return generated;
+        }
+
+        throw std::runtime_error("failed to generate random army with the requested stack count");
     };
 
-    auto generateVipArmy = [this, &divCeil, &var, &totalArmyValue, &generateArmyWithStackCount](int targetValue) -> std::vector<GeneratedStack>
+    auto generateUniformArmy = [this, &divCeil, &var](int targetValue, const std::vector<CreatureID> & creaturePool, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
+    {
+        const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
+        const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
+
+        for(int attempt = 0; attempt < 1000; ++attempt)
+        {
+            const int stackCount = std::uniform_int_distribution<>(minStackCount, maxStackCount)(rng);
+            std::vector<const CCreature *> candidates;
+            for(const auto & creatureId : creaturePool)
+            {
+                const int creatureValue = creatureValues.at(creatureId);
+                if(creatureValue <= 0)
+                    continue;
+
+                const int minQuantity = std::max(stackCount, divCeil(minTotalValue, creatureValue));
+                const int maxQuantity = maxTotalValue / creatureValue;
+                if(minQuantity <= maxQuantity)
+                    candidates.push_back(creatureId.toCreature());
+            }
+
+            if(candidates.empty())
+                continue;
+
+            const auto * creature = candidates.at(std::uniform_int_distribution<>(0, static_cast<int>(candidates.size()) - 1)(rng));
+            const int creatureValue = creatureValues.at(creature->getId());
+            const int minQuantity = std::max(stackCount, divCeil(minTotalValue, creatureValue));
+            const int maxQuantity = maxTotalValue / creatureValue;
+            const int totalQuantity = std::uniform_int_distribution<>(minQuantity, maxQuantity)(rng);
+
+            std::array<int, 7> slots = { 0, 1, 2, 3, 4, 5, 6 };
+            std::shuffle(slots.begin(), slots.end(), rng);
+
+            std::vector<GeneratedStack> generated;
+            const int quantityPerStack = totalQuantity / stackCount;
+            const int remainder = totalQuantity % stackCount;
+            for(int stackIndex = 0; stackIndex < stackCount; ++stackIndex)
+            {
+                const int quantity = quantityPerStack + (stackIndex < remainder ? 1 : 0);
+                generated.push_back({ SlotID(slots.at(stackIndex)), creature, quantity });
+            }
+            return generated;
+        }
+
+        throw std::runtime_error("failed to generate uniform random army with the current randomArmy config");
+    };
+
+    auto generateVipArmy = [this, &divCeil, &var, &totalArmyValue, &generateArmyWithStackCount](int targetValue, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
     {
         const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
         const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
@@ -870,7 +928,7 @@ void ServerPlugin::handleRandomArmies(
 
         for(int attempt = 0; attempt < 1000; ++attempt)
         {
-            const int desiredStackCount = std::uniform_int_distribution<>(4, 7)(rng);
+            const int desiredStackCount = std::uniform_int_distribution<>(minStackCount, maxStackCount)(rng);
             const int guardStackCount = desiredStackCount - 1;
             const int minGuardValue = cheapestGuardValue * guardStackCount;
             const int maxGuardValue = (maxTotalValue * 7) / 10;
@@ -933,7 +991,7 @@ void ServerPlugin::handleRandomArmies(
         throw std::runtime_error("failed to generate VIP random army with the current randomArmy config");
     };
 
-    auto generateHarArmy = [this, &divCeil, &var, &meleeCreatures, &fastMeleeCreatures](int targetValue) -> std::vector<GeneratedStack>
+    auto generateHarArmy = [this, &divCeil, &var, &meleeCreatures, &fastMeleeCreatures](int targetValue, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
     {
         const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
         const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
@@ -942,7 +1000,7 @@ void ServerPlugin::handleRandomArmies(
         {
             const auto * primary = fastMeleeCreatures.at(std::uniform_int_distribution<>(0, static_cast<int>(fastMeleeCreatures.size()) - 1)(rng)).toCreature();
             const int primaryUnitValue = creatureValues.at(primary->getId());
-            const int otherStackCount = std::uniform_int_distribution<>(0, 3)(rng);
+            const int otherStackCount = std::uniform_int_distribution<>(minStackCount - 1, maxStackCount - 1)(rng);
 
             const CCreature * other = nullptr;
             int otherQuantity = 0;
@@ -1009,20 +1067,36 @@ void ServerPlugin::handleRandomArmies(
     army1 = hero1->getArmy();
     army2 = hero2->getArmy();
 
-    auto generateArmyForSide = [&target, &generateArmy, &generateVipArmy, &generateHarArmy](bool vip, bool har)
+    auto generateArmyForSide = [&allcreatures = allcreatures, &generateArmy, &generateUniformArmy, &generateVipArmy, &generateHarArmy](int targetValue, bool vip, bool har, bool uniform, int minStackCount, int maxStackCount)
     {
         if(vip)
-            return generateVipArmy(target);
+            return generateVipArmy(targetValue, std::max(4, minStackCount), maxStackCount);
         if(har)
-            return generateHarArmy(target);
-        return generateArmy(target);
+            return generateHarArmy(targetValue, minStackCount, maxStackCount);
+        if(uniform)
+            return generateUniformArmy(targetValue, allcreatures, minStackCount, maxStackCount);
+        return generateArmy(targetValue, minStackCount, maxStackCount);
     };
 
-    auto generateHarOpponentArmy = [this, &totalArmyValue, &generateArmyForSide](bool vip, int harPrimarySpeed)
+    auto generateHarOpponentArmy = [this, &allcreatures = allcreatures, &totalArmyValue, &generateArmyForSide, &generateUniformArmy](int targetValue, bool vip, bool uniform, int harPrimarySpeed, int minStackCount, int maxStackCount)
     {
+        if(uniform)
+        {
+            std::vector<CreatureID> slowCreatures;
+            std::ranges::copy_if(allcreatures, std::back_inserter(slowCreatures), [harPrimarySpeed](const CreatureID & creatureId)
+            {
+                return creatureId.toCreature()->getBaseSpeed() < harPrimarySpeed;
+            });
+
+            if(slowCreatures.empty())
+                throw std::runtime_error("failed to generate a uniform army slower than the main HAR unit");
+
+            return generateUniformArmy(targetValue, slowCreatures, minStackCount, maxStackCount);
+        }
+
         for(int attempt = 0; attempt < 1000; ++attempt)
         {
-            auto generated = generateArmyForSide(vip, false);
+            auto generated = generateArmyForSide(targetValue, vip, false, false, minStackCount, maxStackCount);
             const int totalValue = totalArmyValue(generated);
             const bool valid = std::ranges::all_of(generated, [this, totalValue, harPrimarySpeed](const auto & stack)
             {
@@ -1039,22 +1113,34 @@ void ServerPlugin::handleRandomArmies(
         throw std::runtime_error("failed to generate an army slower than the main HAR unit with the current randomArmy config");
     };
 
+    auto rollChance = [this](int chance)
+    {
+        return chance > 0 && std::uniform_int_distribution<>(0, 99)(rng) < chance;
+    };
+    const bool leftUniform = rollChance(config.leftUniformChance);
+    const bool rightUniform = rollChance(config.rightUniformChance);
+
+    const int leftMinStackCount = creatureBankBattle && config.mirrorArmies ? 4 : 1;
+    const int leftMaxStackCount = creatureBankBattle && config.mirrorArmies ? 5 : 7;
+    const int rightMinStackCount = creatureBankBattle ? 4 : 1;
+    const int rightMaxStackCount = creatureBankBattle ? 5 : 7;
+
     std::vector<GeneratedStack> generated1;
     std::vector<GeneratedStack> generated2;
     if(config.leftHar)
     {
-        generated1 = generateHarArmy(target);
-        generated2 = generateHarOpponentArmy(config.rightVip, generated1.front().creature->getBaseSpeed());
+        generated1 = generateHarArmy(target, leftMinStackCount, std::min(4, leftMaxStackCount));
+        generated2 = generateHarOpponentArmy(totalArmyValue(generated1), config.rightVip, rightUniform, generated1.front().creature->getBaseSpeed(), rightMinStackCount, rightMaxStackCount);
     }
     else if(config.rightHar)
     {
-        generated2 = generateHarArmy(target);
-        generated1 = generateHarOpponentArmy(config.leftVip, generated2.front().creature->getBaseSpeed());
+        generated2 = generateHarArmy(target, rightMinStackCount, rightMaxStackCount);
+        generated1 = generateHarOpponentArmy(totalArmyValue(generated2), config.leftVip, leftUniform, generated2.front().creature->getBaseSpeed(), leftMinStackCount, leftMaxStackCount);
     }
     else
     {
-        generated1 = generateArmyForSide(config.leftVip, false);
-        generated2 = generateArmyForSide(config.rightVip, false);
+        generated1 = generateArmyForSide(target, config.leftVip, false, leftUniform, leftMinStackCount, leftMaxStackCount);
+        generated2 = generateArmyForSide(target, config.rightVip, false, rightUniform, rightMinStackCount, rightMaxStackCount);
     }
 
     auto replaceArmy = [this](const CGHeroInstance * hero, const std::vector<GeneratedStack> & generated)
@@ -1194,6 +1280,9 @@ void ServerPlugin::startBattleHook(
 ) {
     battlecounter++;
 
+    creatureBankBattle = config.creatureBankChance > 0 &&
+        std::uniform_int_distribution<>(0, 99)(rng) < config.creatureBankChance;
+
     if (!(hero1 && hero2)) {
         std::cout << "hero1: " << hero1 << ", hero2: " << hero2 << "\n";
         std::cout << "WARNING: hero is missing => skipping all hooks\n";
@@ -1212,6 +1301,19 @@ void ServerPlugin::startBattleHook(
     // handleSwapSides(hero1, hero2);  // DO NOT USE (causes nasty bugs)
     handleRandomPrimarySkills(hero1, hero2);
     handleRandomSecondarySkills(hero1, hero2);
+
+    auto totalArmyValue = [this](const CArmedInstance * army)
+    {
+        int64_t total = 0;
+        for(const auto & entry : army->Slots())
+        {
+            const auto * stack = entry.second.get();
+            total += static_cast<int64_t>(creatureValues.at(stack->getCreatureID())) * stack->getCount();
+        }
+        return total;
+    };
+
+    std::cout << "Army values: left=" << totalArmyValue(army1) << ", right=" << totalArmyValue(army2) << "\n";
 }
 
 void ServerPlugin::endBattleHook(
