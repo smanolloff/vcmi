@@ -92,9 +92,9 @@ namespace
 		 *
 		 */
 
-		constexpr double SPEED_KNEE = 15.0;
+		constexpr double SPEED_KNEE = 13.0;
 		constexpr double SPEED_SLOPE = 0.2;
-		constexpr double SPEED_TAIL_WIDTH = 5.0;
+		constexpr double SPEED_TAIL_WIDTH = 2.0;
 		const auto effectiveSpeed = spd <= SPEED_KNEE
 			? spd
 			: SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));

@@ -1528,20 +1528,16 @@ namespace
 			if(!action->isActive)
 				continue;
 
+			auto otherside = stack.unitSide() == BattleSide::LEFT_SIDE ? BattleSide::RIGHT_SIDE : BattleSide::LEFT_SIDE;
 			for(const auto & ohex : G.getAll<N::Hex>())
 			{
-				// XXX: this is WRONG in case attacker is wide
-				// Will need to use meleeAttackHexes or similar logic
-				// auto x1 = bhex.getNeighbouringTilesDoubleWide(BattleSide::LEFT_SIDE);
-				// auto x2 = bhex.getNeighbouringTilesDoubleWide(BattleSide::RIGHT_SIDE);
-				auto otherside = stack.unitSide() == BattleSide::LEFT_SIDE ? BattleSide::RIGHT_SIDE : BattleSide::LEFT_SIDE;
 				for(const auto & adjbhex : G.getNearbyPositions().get(ohex->bhex, stack.unitSide(), otherside, stack.doubleWide(), false))
 				{
-					if(distances.at(adjbhex.toInt()) > unit->speed)
-						continue;
-
-					G.add(E::Hex_BecomesMeleeTargetAfter_Action::Create(ohex, action));
-					break;
+					if(distances.at(adjbhex.toInt()) <= unit->speed)
+					{
+						G.add(E::Hex_BecomesMeleeTargetAfter_Action::Create(ohex, action));
+						break;
+					}
 				}
 			}
 		}

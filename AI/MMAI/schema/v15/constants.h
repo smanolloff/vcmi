@@ -363,7 +363,7 @@ template<>
 struct EncodingTraits<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>
 	: detail::EncodingTraitsBase<Graph::EdgeAttributes::Hex_BecomesShootTargetAfter_Action>
 {
-	static constexpr auto element_type = Graph::ElementType::EDGE_UNIT_BECOMES_SHOOT_TARGET_AFTER_ACTION;
+	static constexpr auto element_type = Graph::ElementType::EDGE_HEX_BECOMES_SHOOT_TARGET_AFTER_ACTION;
 	static constexpr std::string_view name = "Hex_BecomesShootTargetAfter_Action";
 	static constexpr encoding_type encoding = {
 		E4(A::DMG_MULT, X::LIN, 1000),

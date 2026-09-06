@@ -94,34 +94,43 @@ namespace {
          * increase is linear up to SPEED_KNEE, then diminishes
          * Visualize on https://www.desmos.com/calculator:
          *
-         *      [1] 0.5+\left(s\cdot x\right)\left\{x\le k\right\}
-         *      [2] 0.5+\left(s\cdot X\right)\left\{\ x\ge k+1\right\}
-         *      [3] X=k+\left(t\cdot\ln\left(1+\frac{\left(x-k\right)}{t}\right)\right)
-         *      [4] s=0.2
-         *      [5] k=15
-         *      [6] t=5
+         *    [1]   a=\ln\left(x\cdot2\right)
+         *    [2]   b=0.5+\left(s\cdot x\right)\left\{x\le k\right\}
+         *    [3]   c=0.5+\left(s\cdot X\right)\left\{\ x\ge k+1\right\}
+         *    [4]   \frac{b}{a}\left\{x>1\right\}
+         *    [5]   X=k+\left(t\cdot\ln\left(1+\frac{\left(x-k\right)}{t}\right)\right)
+         *    [6]   s=0.2
+         *    [7]   k=15
+         *    [8]   t=5
          *
-         * | Speed |  c
-         * |-------|-----
-         * | 1     | 0.70
-         * | 5     | 1.50
-         * | 10    | 2.50
-         * | 15    | 3.50
-         * | 20    | 4.19
-         * | 30    | 4.89
+         *      Use Desmos's visibility toggles to hide/show relevant visualizations:
+         *      - The old speed-factor is visualized by eq. [1]
+         *      - The new speed-factor is visualized by eq. [2] and [3]
+         *      - The new-vs-old relation is visualized by eq. [4]
          *
          */
 
-        constexpr double SPEED_KNEE = 15.0;
-        constexpr double SPEED_SLOPE = 0.2;
-        constexpr double SPEED_TAIL_WIDTH = 5.0;
-        const auto effectiveSpeed = spd <= SPEED_KNEE
-            ? spd
-            : SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
+        // XXX: in BAI v15 Unit there is an identical function CalculateValue
+        //      BUT it uses the new speed-factor for value (with KNEE, TAIL, etc.)
+        //
+        //      The new speed-factor is not used here though. Why?
+        //      Because HARBot's armies becomes too weak:
+        //      1. HAR's army is dominated by a single high-speed unit.
+        //      2. HAR's opponent army is dominated by slow-speed units.
+        //      The new formula assigns less value (i.e. greater qty) to 2.
+        //      => such armies become stronger compared to the old formula.
+        //
+        // constexpr double SPEED_KNEE = 13.0;
+        // constexpr double SPEED_SLOPE = 0.2;
+        // constexpr double SPEED_TAIL_WIDTH = 2.0;
+        // const auto effectiveSpeed = spd <= SPEED_KNEE
+        //     ? spd
+        //     : SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
 
         auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
         auto b = hp / (1 - std::min(0.7, 0.025 * def));
-        auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
+        // auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
+        auto c = spd ? std::log(spd * 2) : 0.5;
         auto d = shooter ? 1.5 : 1.0;
 
         for(const auto & bonus : *bonuses)
