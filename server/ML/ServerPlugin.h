@@ -82,6 +82,8 @@ namespace ML {
         const std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
         const std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         const std::vector<CreatureID> allcreatures;
+        const std::vector<CreatureID> leftCreatures;
+        const std::vector<CreatureID> rightCreatures;
         const std::vector<CreatureID> allshooters;
         const std::vector<CreatureID> allguards;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools

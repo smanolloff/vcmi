@@ -63,6 +63,8 @@ namespace ML {
         int randomArmyTargetVar = 30;
         int leftUniformChance = 0;
         int rightUniformChance = 0;
+        std::string leftWhitelist;
+        std::string rightWhitelist;
         int tightFormationChance = 0;
         int creatureBankChance = 0;
         int randomTerrainChance = 0;
@@ -139,6 +141,10 @@ namespace ML {
                 "Percent chance for to use only one creature type in left army (default 0*)")
             ("right-uniform-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance for to use only one creature type in right army (default 0*)")
+            ("left-whitelist", po::value<std::string>()->value_name("<CSV>"),
+                "Comma-separated creature JSON keys available to left random armies (all creatures if blank*)")
+            ("right-whitelist", po::value<std::string>()->value_name("<CSV>"),
+                "Comma-separated creature JSON keys available to right random armies (all creatures if blank*)")
             ("tight-formation-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a tight army formation (default 0*)")
             ("creature-bank-chance", po::value<int>()->value_name("<N>"),
@@ -244,6 +250,12 @@ namespace ML {
 
         if (vm.count("right-uniform-chance"))
             rightUniformChance = vm.at("right-uniform-chance").as<int>();
+
+        if (vm.count("left-whitelist"))
+            leftWhitelist = vm.at("left-whitelist").as<std::string>();
+
+        if (vm.count("right-whitelist"))
+            rightWhitelist = vm.at("right-whitelist").as<std::string>();
 
         if (vm.count("tight-formation-chance"))
             tightFormationChance = vm.at("tight-formation-chance").as<int>();
@@ -368,6 +380,8 @@ namespace ML {
             .randomArmyTargetVar=randomArmyTargetVar,
             .leftUniformChance=leftUniformChance,
             .rightUniformChance=rightUniformChance,
+            .leftWhitelist=leftWhitelist,
+            .rightWhitelist=rightWhitelist,
             .tightFormationChance=tightFormationChance,
             .creatureBankChance=creatureBankChance,
             .randomTerrainChance=randomTerrainChance,

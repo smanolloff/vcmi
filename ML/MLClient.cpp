@@ -411,6 +411,8 @@ namespace ML {
 		Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
 		Settings(settings.write({"server", "ML", "leftUniformChance"}))->Integer() = a.leftUniformChance;
 		Settings(settings.write({"server", "ML", "rightUniformChance"}))->Integer() = a.rightUniformChance;
+		Settings(settings.write({"server", "ML", "leftWhitelist"}))->String() = a.leftWhitelist;
+		Settings(settings.write({"server", "ML", "rightWhitelist"}))->String() = a.rightWhitelist;
 		Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
 		Settings(settings.write({"server", "ML", "creatureBankChance"}))->Integer() = a.creatureBankChance;
 		Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;

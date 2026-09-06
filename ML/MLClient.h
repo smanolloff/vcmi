@@ -69,6 +69,8 @@ namespace ML {
         const int randomArmyTargetVar;
         const int leftUniformChance;
         const int rightUniformChance;
+        const std::string leftWhitelist;
+        const std::string rightWhitelist;
         const int tightFormationChance;
         const int creatureBankChance;
         const int randomTerrainChance;
