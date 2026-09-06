@@ -17,6 +17,7 @@
 #include "ServerPlugin.h"
 #include "BattleFieldHandler.h"
 #include "Global.h"
+#include "battle/BattleLayout.h"
 #include "TerrainHandler.h"
 #include "constants/EntityIdentifiers.h"
 #include "gameState/CGameState.h"
@@ -577,7 +578,35 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
     }
 }
 
-void ServerPlugin::setupBattleHook(const CGTownInstance *& town, TerrainId & terrain, BattleField & terType, ui32 & seed) {
+void ServerPlugin::setupBattleHook(
+    const IGameInfoCallback & gameInfo,
+    const CArmedInstance * attacker,
+    const CArmedInstance * defender,
+    const CGTownInstance *& town,
+    TerrainId & terrain,
+    BattleField & terType,
+    BattleLayout & layout,
+    ui32 & seed
+) {
+    if (config.creatureBankChance > 0) {
+        auto dist = std::uniform_int_distribution<>(0, 99);
+        if (dist(rng) < config.creatureBankChance) {
+            bool hasDoubleWideDefender = false;
+            for (const auto & entry : defender->Slots()) {
+                const auto * creature = entry.second->getCreature();
+                if (creature && creature->isDoubleWide()) {
+                    hasDoubleWideDefender = true;
+                    break;
+                }
+            }
+
+            const std::string layoutName = hasDoubleWideDefender ? "creatureBankWide" : "creatureBankNarrow";
+            layout = BattleLayout::createLayout(gameInfo, layoutName, attacker, defender);
+            town = nullptr;
+            return;
+        }
+    }
+
     if (config.randomTerrainChance > 0 && battleterrains.size() > 0) {
         auto dist = std::uniform_int_distribution<>(0, 99);
         auto roll = dist(rng);

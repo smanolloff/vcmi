@@ -256,12 +256,13 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 	else if (heroes[BattleSide::ATTACKER] && heroes[BattleSide::ATTACKER]->inBoat() && heroes[BattleSide::DEFENDER] && heroes[BattleSide::DEFENDER]->inBoat())
 		battlefieldType = BattleField(*LIBRARY->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
 
+	auto battleLayout = layout;
 	ui32 seed = 0;
-	ML(gameHandler->mlplugin->setupBattleHook(town, terrain, battlefieldType, seed));
+	ML(gameHandler->mlplugin->setupBattleHook(gameHandler->gameInfo(), armies[BattleSide::ATTACKER], armies[BattleSide::DEFENDER], town, terrain, battlefieldType, battleLayout, seed));
 
 	//send info about battles
 	BattleStart bs;
-	bs.info = BattleInfo::setupBattle(&gameHandler->gameInfo(), tile, terrain, battlefieldType, armies, heroes, layout, town, seed);
+	bs.info = BattleInfo::setupBattle(&gameHandler->gameInfo(), tile, terrain, battlefieldType, armies, heroes, battleLayout, town, seed);
 	bs.battleID = gameHandler->gameState().nextBattleID;
 
 	engageIntoBattle(bs.info->getSide(BattleSide::ATTACKER).color);

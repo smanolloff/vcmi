@@ -270,6 +270,11 @@ namespace ML {
 			exit(1);
 		}
 
+		if (a.creatureBankChance < 0 || a.creatureBankChance > 100) {
+			std::cerr << "Bad value for creatureBankChance: expected an integer between 0 and 100, got: " << a.creatureBankChance << "\n";
+			exit(1);
+		}
+
 		if (a.randomTerrainChance < 0 || a.randomTerrainChance > 100) {
 			std::cerr << "Bad value for randomTerrainChance: expected an integer between 0 and 100, got: " << a.randomTerrainChance << "\n";
 			exit(1);
@@ -385,6 +390,7 @@ namespace ML {
 		Settings(settings.write({"server", "ML", "randomArmyValueMax"}))->Integer() = a.randomArmyValueMax;
 		Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
 		Settings(settings.write({"server", "ML", "tightFormationChance"}))->Integer() = a.tightFormationChance;
+		Settings(settings.write({"server", "ML", "creatureBankChance"}))->Integer() = a.creatureBankChance;
 		Settings(settings.write({"server", "ML", "randomTerrainChance"}))->Integer() = a.randomTerrainChance;
 		Settings(settings.write({"server", "ML", "leftVip"}))->Bool() = a.leftVip;
 		Settings(settings.write({"server", "ML", "rightVip"}))->Bool() = a.rightVip;

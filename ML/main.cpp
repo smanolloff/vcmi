@@ -62,6 +62,7 @@ namespace ML {
         int randomArmyValueMax = 1000000;
         int randomArmyTargetVar = 30;
         int tightFormationChance = 0;
+        int creatureBankChance = 0;
         int randomTerrainChance = 0;
         std::string battlefieldPattern = "";
         int townChance = 0;
@@ -134,6 +135,8 @@ namespace ML {
                 "Percent variance for meeting the target total value (default 30*)")
             ("tight-formation-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a tight army formation (default 0*)")
+            ("creature-bank-chance", po::value<int>()->value_name("<N>"),
+                "Percent chance to use a creature bank battlefield layout (default 0*)")
             ("random-terrain-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance to set a random terrain (default 0*)")
             ("battlefield-pattern", po::value<std::string>()->value_name("<REGEX>"),
@@ -232,6 +235,9 @@ namespace ML {
 
         if (vm.count("tight-formation-chance"))
             tightFormationChance = vm.at("tight-formation-chance").as<int>();
+
+        if (vm.count("creature-bank-chance"))
+            creatureBankChance = vm.at("creature-bank-chance").as<int>();
 
         if (vm.count("random-terrain-chance"))
             randomTerrainChance = vm.at("random-terrain-chance").as<int>();
@@ -349,6 +355,7 @@ namespace ML {
             .randomArmyValueMax=randomArmyValueMax,
             .randomArmyTargetVar=randomArmyTargetVar,
             .tightFormationChance=tightFormationChance,
+            .creatureBankChance=creatureBankChance,
             .randomTerrainChance=randomTerrainChance,
             .leftVip=(leftAi == AI_VIPBOT),
             .rightVip=(rightAi == AI_VIPBOT),

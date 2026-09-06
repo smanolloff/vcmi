@@ -28,6 +28,8 @@
 VCMI_LIB_NAMESPACE_BEGIN
 
 class CGameHandler; // forward declaration
+class IGameInfoCallback;
+struct BattleLayout;
 
 namespace ML {
     class HeroPool {
@@ -49,9 +51,13 @@ namespace ML {
         ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_);
 
         void setupBattleHook(
+            const IGameInfoCallback & gameInfo,
+            const CArmedInstance * attacker,
+            const CArmedInstance * defender,
             const CGTownInstance *& town,
             TerrainId & terrain,
             BattleField & terType,
+            BattleLayout & layout,
             ui32 & seed
         );
 

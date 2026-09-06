@@ -68,6 +68,7 @@ namespace ML {
         const int randomArmyValueMax;
         const int randomArmyTargetVar;
         const int tightFormationChance;
+        const int creatureBankChance;
         const int randomTerrainChance;
         const bool leftVip;
         const bool rightVip;

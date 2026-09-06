@@ -37,6 +37,7 @@ namespace ML {
             randomArmyValueMax = settings["server"]["ML"]["randomArmyValueMax"].Integer();
             randomArmyTargetVar = settings["server"]["ML"]["randomArmyTargetVar"].Integer();
             tightFormationChance = settings["server"]["ML"]["tightFormationChance"].Integer();
+            creatureBankChance = settings["server"]["ML"]["creatureBankChance"].Integer();
             randomTerrainChance = settings["server"]["ML"]["randomTerrainChance"].Integer();
             leftVip = settings["server"]["ML"]["leftVip"].Bool();
             rightVip = settings["server"]["ML"]["rightVip"].Bool();
@@ -68,6 +69,7 @@ namespace ML {
         int randomArmyValueMax = 0;
         int randomArmyTargetVar = 0;
         int tightFormationChance = 0;
+        int creatureBankChance = 0;
         int randomTerrainChance = 0;
         bool leftVip = false;
         bool rightVip = false;
