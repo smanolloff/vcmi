@@ -49,6 +49,7 @@ private:
 	const CStack * primaryStack = nullptr;
 	std::unordered_set<const CStack *> mustRetreat;
 	std::unordered_map<const CStack *, int> consecutiveRetreats;
+	mutable std::unordered_map<int, int64_t> retreatExposureCache;
 	std::string colorName = "?";
 
 	std::unique_ptr<const MMAI::BAI::V15::FastBFS> fastbfs;
@@ -56,6 +57,9 @@ private:
 	struct RetreatPlan
 	{
 		BattleHex destination;
+		const CStack * attackTarget = nullptr;
+		int64_t attackTargetValue = -1;
+		int64_t exposedEnemyValue = std::numeric_limits<int64_t>::max();
 		int minimumEnemyDistance = -1;
 		int totalEnemyDistance = -1;
 		int homewardProgress = -1;
@@ -65,16 +69,17 @@ private:
 	enum class RetreatResult : std::uint8_t
 	{
 		MOVED,
+		ATTACKED,
 		NOT_VIABLE,
 		UNAVAILABLE
 	};
 
 	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition) const;
-	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination) const;
+	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination, bool currentRoundOnly = false, bool logDetails = true) const;
 	bool isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & destination) const;
 	bool canEnemyThreatenThisRound(const CStack * stack) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
-	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack = false, bool requireExposureImprovement = false);
+	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack = false, bool requireExposureImprovement = false, bool currentRoundExposureOnly = false);
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
 	RetreatResult retreat(const BattleID & battleID, const CStack * stack);
 	void delegate(const BattleID & battleID, const CStack * stack, const std::string & reason);

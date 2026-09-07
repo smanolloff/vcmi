@@ -580,16 +580,6 @@ ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
 , rng(std::mt19937(config.rngSeed ? config.rngSeed : gh->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
 , creatureValues(InitCreatureValues())
 {
-    auto vipEnabled = [this]() {
-        return config.leftVip || config.rightVip;
-    };
-
-    const bool uniformEnabled = config.leftUniformChance > 0 || config.rightUniformChance > 0;
-    if ((vipEnabled() || config.leftHar || config.rightHar || uniformEnabled) && !config.randomArmies) {
-        std::cout << "WARNING: VIP, HAR or uniform army enabled, but random armies are not enabled -- will enable random armies\n";
-        config.randomArmies = true;
-    }
-
     if ((config.leftVip && config.leftHar) || (config.rightVip && config.rightHar))
         throw std::runtime_error("VIP and HAR armies cannot be enabled for the same side.");
 
@@ -652,6 +642,15 @@ void ServerPlugin::setupBattleHook(
     BattleLayout & layout,
     ui32 & seed
 ) {
+    if (!config.randomArmies) {
+        const bool vipEnabled = config.leftVip || config.rightVip;
+        const bool harEnabled = config.leftHar || config.rightHar;
+        const bool uniformEnabled = config.leftUniformChance > 0 || config.rightUniformChance > 0;
+        if (vipEnabled || harEnabled || uniformEnabled) {
+            std::cout << "WARNING: VIP, HAR or uniform army enabled, but will have no effect because random armies are not enabled.\n";
+        }
+    }
+
     if (creatureBankBattle) {
         bool hasDoubleWideDefender = false;
         for (const auto & entry : defender->Slots()) {
@@ -1371,7 +1370,8 @@ void ServerPlugin::startBattleHook(
         return total;
     };
 
-    std::cout << "Army values: left=" << totalArmyValue(army1) << ", right=" << totalArmyValue(army2) << "\n";
+    if(IsMLVerbose())
+        std::cout << "Army values: left=" << totalArmyValue(army1) << ", right=" << totalArmyValue(army2) << "\n";
 }
 
 void ServerPlugin::endBattleHook(
