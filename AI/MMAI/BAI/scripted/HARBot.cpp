@@ -317,19 +317,29 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 			const auto retreatPlan = findBestRetreatFrom(stack, stack->getPosition(), true);
 			int64_t bestAttackExposure = std::numeric_limits<int64_t>::max();
 			const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
+			const auto distances = battle->battleGetDistances(stack, stack->getPosition());
 			const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
-			BattleHexArray attackHexes;
 			for(const auto * enemy : enemies)
 			{
 				if(!enemy->alive() || enemy->isInvincible() || IsWarMachine(enemy))
 					continue;
 
 				for(const auto & hex : availableHexes)
-					if(CStack::isMeleeAttackPossible(stack, enemy, hex))
-						attackHexes.checkAndPush(hex);
+				{
+					if(!CStack::isMeleeAttackPossible(stack, enemy, hex))
+						continue;
+
+					BattleAttackInfo attackInfo(stack, enemy, static_cast<int>(distances.at(hex.toInt())), false);
+					attackInfo.attackerPos = hex;
+					attackInfo.defenderPos = enemy->getPosition();
+					const auto attack = battle->battleEstimateDamage(attackInfo);
+					const auto expectedKillsTwice = attack.kills.min + attack.kills.max;
+					bestAttackExposure = std::min(
+						bestAttackExposure,
+						calculateExposedEnemyValue(stack, hex, true, false, enemy, expectedKillsTwice).first
+					);
+				}
 			}
-			for(const auto & hex : attackHexes)
-				bestAttackExposure = std::min(bestAttackExposure, calculateExposedEnemyValue(stack, hex, true, false).first);
 
 			const bool retreatIsViable = retreatPlan.destination.isValid()
 				&& remainingHealth > 0
@@ -385,7 +395,7 @@ void HARBot::activeStack(const BattleID & battleID, const CStack * stack)
 	delegate(battleID, stack, "no legal advance toward an enemy was found");
 }
 
-HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition, bool currentRoundExposureOnly) const
+HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition, bool currentRoundExposureOnly, const CStack * attackedEnemy, int64_t expectedKillsTwice) const
 {
 	assert(fastbfs);
 	const auto distances = fastbfs->run(
@@ -431,9 +441,16 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 		}
 
 		int64_t exposedEnemyValue;
-		if(currentRoundExposureOnly)
+		if(currentRoundExposureOnly || attackedEnemy)
 		{
-			exposedEnemyValue = calculateExposedEnemyValue(stack, destination, true, false).first;
+			exposedEnemyValue = calculateExposedEnemyValue(
+				stack,
+				destination,
+				currentRoundExposureOnly,
+				false,
+				attackedEnemy,
+				expectedKillsTwice
+			).first;
 		}
 		else
 		{
@@ -546,7 +563,7 @@ bool HARBot::isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & d
 	return false;
 }
 
-std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination, bool currentRoundOnly, bool logDetails) const
+std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination, bool currentRoundOnly, bool logDetails, const CStack * attackedEnemy, int64_t expectedKillsTwice) const
 {
 	std::unordered_set<const battle::Unit *> enemiesActingThisRound;
 	std::unordered_set<const battle::Unit *> enemiesActingBeforeNextTurn;
@@ -624,13 +641,23 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 		if(!isRelevant(enemy))
 			continue;
 
+		const int64_t survivingCountTwice = enemy == attackedEnemy
+			? std::max<int64_t>(0, (static_cast<int64_t>(enemy->getCount()) * 2) - expectedKillsTwice)
+			: static_cast<int64_t>(enemy->getCount()) * 2;
+		if(survivingCountTwice == 0)
+			continue;
+		const auto adjustForCasualties = [enemy, survivingCountTwice](int64_t damage)
+		{
+			return damage * survivingCountTwice / (static_cast<int64_t>(enemy->getCount()) * 2);
+		};
+
 		const bool canShoot = enemy->isShooter() && battle->battleCanShoot(enemy, destination);
 		if(canShoot)
 		{
 			BattleAttackInfo attackInfo(enemy, stack, 0, true);
 			attackInfo.attackerPos = enemy->getPosition();
 			attackInfo.defenderPos = destination;
-			const auto expectedDamage = ExpectedDamage(battle->battleEstimateDamage(attackInfo).damage, stack);
+			const auto expectedDamage = adjustForCasualties(ExpectedDamage(battle->battleEstimateDamage(attackInfo).damage, stack));
 			rangedDamage += expectedDamage;
 			++rangedAttackerCount;
 			if(logDetails)
@@ -682,7 +709,7 @@ std::pair<int64_t, int64_t> HARBot::calculateExposedEnemyValue(const CStack * st
 				BattleAttackInfo attackInfo(enemy, stack, movementDistance, false);
 				attackInfo.attackerPos = attackFrom;
 				attackInfo.defenderPos = destination;
-				const auto expectedDamage = ExpectedDamage(battle->battleEstimateDamage(attackInfo).damage, stack);
+				const auto expectedDamage = adjustForCasualties(ExpectedDamage(battle->battleEstimateDamage(attackInfo).damage, stack));
 				const auto existing = std::ranges::find_if(attackOptions, [&footprint](const auto & option)
 				{
 					return option.footprint == footprint;
@@ -882,6 +909,7 @@ bool HARBot::canEnemyReachNextTurn(const CStack * stack) const
 bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack, bool requireNoExposureIncrease, bool currentRoundExposureOnly)
 {
 	const auto availableHexes = battle->battleGetAvailableHexes(stack, false);
+	const auto distances = battle->battleGetDistances(stack, stack->getPosition());
 	const auto enemies = battle->battleGetStacks(CBattleInfoEssentials::EStackOwnership::ONLY_ENEMY);
 	int64_t totalEnemyValue = 0;
 	for(const auto * enemy : enemies)
@@ -940,16 +968,23 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 				continue;
 
 			++attackHexCount;
+			BattleAttackInfo attackInfo(stack, enemy, static_cast<int>(distances.at(hex.toInt())), false);
+			attackInfo.attackerPos = hex;
+			attackInfo.defenderPos = enemy->getPosition();
+			const auto attack = battle->battleEstimateDamage(attackInfo);
+			const auto expectedKillsTwice = attack.kills.min + attack.kills.max;
 			const auto attackExposure = preferLowerExposure
-				? calculateExposedEnemyValue(stack, hex, currentRoundExposureOnly).first
+				? calculateExposedEnemyValue(stack, hex, currentRoundExposureOnly, false, enemy, expectedKillsTwice).first
 				: int64_t{-1};
 
-			const auto retreatPlan = shouldPlanRetreat ? findBestRetreatFrom(stack, hex) : RetreatPlan{};
+			const auto retreatPlan = shouldPlanRetreat
+				? findBestRetreatFrom(stack, hex, false, enemy, expectedKillsTwice)
+				: RetreatPlan{};
 			const bool retreatIsSafe = shouldPlanRetreat
 				&& retreatPlan.destination.isValid()
 				&& !isImmediatelyThreatenedAt(stack, retreatPlan.destination);
 			logAi->debug(
-				"HARBot [%s]: attack candidate target=%s shooter=%d baseValue=%lld (%.1f%%) priorityValue=%lld fromHex=%d forceAttack=%d preferLowerExposure=%d requireNoExposureIncrease=%d attackExposure=%lld waitingExposure=%lld shouldPlanRetreat=%d retreatSafe=%d retreatHex=%d retreatExposure=%lld retreatAttackTarget=%s surroundingHexes=%d nearestDistance=%d totalDistance=%d retreatMoveDistance=%d",
+				"HARBot [%s]: attack candidate target=%s shooter=%d baseValue=%lld (%.1f%%) priorityValue=%lld fromHex=%d forceAttack=%d preferLowerExposure=%d requireNoExposureIncrease=%d expectedKills=%.1f attackExposure=%lld waitingExposure=%lld shouldPlanRetreat=%d retreatSafe=%d retreatHex=%d retreatExposure=%lld retreatAttackTarget=%s surroundingHexes=%d nearestDistance=%d totalDistance=%d retreatMoveDistance=%d",
 				colorName,
 				enemy->getDescription(),
 				enemy->isShooter(),
@@ -960,6 +995,7 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 				forceAttack,
 				preferLowerExposure,
 				requireNoExposureIncrease,
+				static_cast<double>(expectedKillsTwice) / 2.0,
 				attackExposure,
 				waitingExposure,
 				shouldPlanRetreat,

@@ -75,8 +75,8 @@ private:
 		UNAVAILABLE
 	};
 
-	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition, bool currentRoundExposureOnly = false) const;
-	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination, bool currentRoundOnly = false, bool logDetails = true) const;
+	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition, bool currentRoundExposureOnly = false, const CStack * attackedEnemy = nullptr, int64_t expectedKillsTwice = 0) const;
+	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination, bool currentRoundOnly = false, bool logDetails = true, const CStack * attackedEnemy = nullptr, int64_t expectedKillsTwice = 0) const;
 	bool isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & destination) const;
 	bool canEnemyThreatenThisRound(const CStack * stack) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
