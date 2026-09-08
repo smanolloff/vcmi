@@ -355,68 +355,73 @@ namespace {
         return res;
     }
 
-    std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> InitBattleterrains(std::string battlefieldPattern) {
-        auto res = std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> {};
-        auto lands = std::set<const TerrainType*> {};
-        auto pattern = std::regex();
+    BattleTerrains InitBattleterrains(std::string battlefieldPattern)
+    {
+        std::map<const BattleFieldInfo *, std::vector<const TerrainType *>> grouped;
+        std::vector<const TerrainType *> lands;
+        auto pattern = battlefieldPattern.empty()
+            ? std::regex(".")
+            : std::regex(battlefieldPattern);
 
-        if (battlefieldPattern.empty()) {
-            pattern = std::regex(".");
-        } else {
-            pattern = std::regex(battlefieldPattern);
+        LIBRARY->terrainTypeHandler->forEach(
+            [&grouped, &lands, &pattern](const TerrainType * terrain, bool &)
+            {
+                if(terrain->isLand() && terrain->isPassable())
+                    lands.push_back(terrain);
+
+                for(const auto & battlefield : terrain->battleFields)
+                {
+                    const auto * info = battlefield.getInfo();
+
+                    if(std::regex_search(info->getJsonKey(), pattern))
+                        grouped[info].push_back(terrain);
+                    else
+                        ML_VERBOSE("Filtering out " << info->getJsonKey() << "\n");
+                }
+            });
+
+        std::ranges::sort(lands, {}, [](const TerrainType * terrain)
+        {
+            return terrain->getJsonKey();
+        });
+
+        LIBRARY->battlefieldsHandler->forEach(
+            [&grouped, &lands, &pattern](const BattleFieldInfo * info, bool &)
+            {
+                if(grouped.contains(info))
+                    return;
+
+                if(std::regex_search(info->getJsonKey(), pattern))
+                {
+                    if(info->getJsonKey() != "core:ship_to_ship")
+                        grouped[info] = lands;
+                }
+                else
+                {
+                    ML_VERBOSE("Filtering out " << info->getJsonKey() << "\n");
+                }
+            });
+
+        BattleTerrains result;
+        result.reserve(grouped.size());
+
+        for(auto & [battlefield, terrains] : grouped)
+        {
+            std::ranges::sort(terrains, {}, [](const TerrainType * terrain)
+            {
+                return terrain->getJsonKey();
+            });
+
+            result.emplace_back(battlefield, std::move(terrains));
         }
 
-        LIBRARY->terrainTypeHandler->forEach([&res, &lands, &pattern] (const TerrainType * terrain, bool &_) {
-            if (terrain->isLand() && terrain->isPassable()) {
-                lands.insert(terrain);
-            }
-
-            for (const auto & bf : terrain->battleFields) {
-                if (std::regex_search(bf.getInfo()->getJsonKey(), pattern)) {
-                    res[bf.getInfo()].push_back(terrain);
-                } else {
-                    ML_VERBOSE("Filtering out " << bf.getInfo()->getJsonKey() << "\n");
-                }
-            }
+        std::ranges::sort(result, {}, [](const auto & entry)
+        {
+            return entry.first->getJsonKey();
         });
 
-        LIBRARY->battlefieldsHandler->forEach([&res, &lands, &pattern](const BattleFieldInfo * bi, bool &_) {
-            if (!res.contains(bi)) {
-                if (std::regex_search(bi->getJsonKey(), pattern)) {
-                    if (bi->getJsonKey() == "core:ship_to_ship") {
-                        // XXX: ship-to-ship battles are buggy
-                        //      See https://github.com/vcmi/vcmi/issues/4781
-                        // res[bi] = {VLC->terrainTypeHandler->getByIndex(TerrainId::WATER)}
-                    } else {
-                        res[bi].insert(res[bi].end(), lands.begin(), lands.end());
-                    }
-                } else {
-                    ML_VERBOSE("Filtering out " << bi->getJsonKey() << "\n");
-                }
-            }
-        });
-
-        if (!battlefieldPattern.empty()) {
-            ML_VERBOSE("Filtered battlefields matching pattern: '" << battlefieldPattern << "'\n");
-
-            if (res.size() == 0) {
-                std::cout << "ALL BATTLEFIELDS WERE FILTERED OUT\n";
-            }
-
-            if (IsMLVerbose()) {
-                for (auto &[bi, terrains] : res) {
-                    std::cout << bi->getJsonKey() << " ->";
-                    for (auto &t : terrains) {
-                        std::cout << " " << t->getJsonKey();
-                    }
-                    std::cout << "\n";
-                 }
-            }
-         }
-
-        return res;
+        return result;
     }
-
 
     std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
@@ -1120,6 +1125,28 @@ void ServerPlugin::handleRandomArmies(
     const int baseTarget = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
     const int leftTarget = static_cast<int>(std::lround(baseTarget * config.leftTargetMod));
     const int rightTarget = static_cast<int>(std::lround(baseTarget * config.rightTargetMod));
+    if(IsMLVerbose())
+    {
+        const auto targetRange = [var](int target)
+        {
+            return std::pair(
+                static_cast<int>(std::ceil(target * (1 - var))),
+                static_cast<int>(std::floor(target * (1 + var)))
+            );
+        };
+        const auto [leftMinimum, leftMaximum] = targetRange(leftTarget);
+        const auto [rightMinimum, rightMaximum] = targetRange(rightTarget);
+        std::cout
+            << "Random army targets: configuredRange=[" << config.randomArmyValueMin << "," << config.randomArmyValueMax << "]"
+            << ", variance=" << config.randomArmyTargetVar << "%"
+            << ", base=" << baseTarget
+            << ", leftMod=" << config.leftTargetMod
+            << ", leftTarget=" << leftTarget
+            << ", leftAllowed=[" << leftMinimum << "," << leftMaximum << "]"
+            << ", rightMod=" << config.rightTargetMod
+            << ", rightTarget=" << rightTarget
+            << ", rightAllowed=[" << rightMinimum << "," << rightMaximum << "]\n";
+    }
 
     // modification by reference
     army1 = hero1->getArmy();
@@ -1202,6 +1229,23 @@ void ServerPlugin::handleRandomArmies(
     const bool leftUniform = rollChance(config.leftUniformChance);
     const bool rightUniform = rollChance(config.rightUniformChance);
 
+    if(IsMLVerbose())
+    {
+        std::cout
+            << "Random army modes: left={har=" << config.leftHar
+            << ",vip=" << config.leftVip
+            << ",uniformChance=" << config.leftUniformChance
+            << ",uniform=" << leftUniform
+            << ",creaturePool=" << leftCreatures.size()
+            << "}, right={har=" << config.rightHar
+            << ",vip=" << config.rightVip
+            << ",uniformChance=" << config.rightUniformChance
+            << ",uniform=" << rightUniform
+            << ",creaturePool=" << rightCreatures.size()
+            << "}, creatureBank=" << creatureBankBattle
+            << ", mirror=" << config.mirrorArmies << "\n";
+    }
+
     const int leftMinStackCount = creatureBankBattle && config.mirrorArmies ? 4 : 1;
     const int leftMaxStackCount = creatureBankBattle && config.mirrorArmies ? 5 : 7;
     const int rightMinStackCount = creatureBankBattle ? 4 : 1;
@@ -1225,6 +1269,27 @@ void ServerPlugin::handleRandomArmies(
     {
         generated1 = generateArmyForSide(leftTarget, leftCreatures, config.leftVip, leftUniform, leftMinStackCount, leftMaxStackCount);
         generated2 = generateArmyForSide(rightTarget, rightCreatures, config.rightVip, rightUniform, rightMinStackCount, rightMaxStackCount);
+    }
+
+    if(IsMLVerbose())
+    {
+        const auto logGeneratedArmy = [this, &totalArmyValue](const char * side, int target, const std::vector<GeneratedStack> & generated)
+        {
+            std::cout << "Generated " << side << " army: target=" << target << ", value=" << totalArmyValue(generated) << ", stacks=" << generated.size() << "\n";
+            for(const auto & stack : generated)
+            {
+                const int unitValue = creatureValues.at(stack.creature->getId());
+                std::cout
+                    << "  slot=" << static_cast<int>(stack.slot)
+                    << ", creature=" << stack.creature->getId().toEntity(LIBRARY)->getJsonKey()
+                    << ", speed=" << stack.creature->getBaseSpeed()
+                    << ", quantity=" << stack.quantity
+                    << ", unitValue=" << unitValue
+                    << ", stackValue=" << unitValue * stack.quantity << "\n";
+            }
+        };
+        logGeneratedArmy("left", leftTarget, generated1);
+        logGeneratedArmy("right", rightTarget, generated2);
     }
 
     auto replaceArmy = [this](const CGHeroInstance * hero, const std::vector<GeneratedStack> & generated)

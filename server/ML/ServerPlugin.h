@@ -46,6 +46,8 @@ namespace ML {
     // dims: per-owner pools (assume there are only 2 players on the map)
     using HeroPools = std::array<std::map<std::string, HeroPool>, 2>;
 
+    using BattleTerrains = std::vector<std::pair<const BattleFieldInfo *, std::vector<const TerrainType *>>>;
+
     class DLL_LINKAGE ServerPlugin {
     public:
         ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_);
@@ -79,7 +81,7 @@ namespace ML {
         CGameHandler * gh;
         std::vector<CGTownInstance*> alltowns;
         HeroPools heropools;
-        const std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
+        const BattleTerrains battleterrains;
         const std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         const std::vector<CreatureID> allcreatures;
         const std::vector<CreatureID> leftCreatures;
