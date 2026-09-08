@@ -111,27 +111,16 @@ namespace {
          *
          */
 
-        // XXX: in BAI v15 Unit there is an identical function CalculateValue
-        //      BUT it uses the new speed-factor for value (with KNEE, TAIL, etc.)
-        //
-        //      The new speed-factor is not used here though. Why?
-        //      Because HARBot's armies becomes too weak:
-        //      1. HAR's army is dominated by a single high-speed unit.
-        //      2. HAR's opponent army is dominated by slow-speed units.
-        //      The new formula assigns less value (i.e. greater qty) to 2.
-        //      => such armies become stronger compared to the old formula.
-        //
-        // constexpr double SPEED_KNEE = 13.0;
-        // constexpr double SPEED_SLOPE = 0.2;
-        // constexpr double SPEED_TAIL_WIDTH = 2.0;
-        // const auto effectiveSpeed = spd <= SPEED_KNEE
-        //     ? spd
-        //     : SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
+        constexpr double SPEED_KNEE = 13.0;
+        constexpr double SPEED_SLOPE = 0.2;
+        constexpr double SPEED_TAIL_WIDTH = 2.0;
+        const auto effectiveSpeed = spd <= SPEED_KNEE
+            ? spd
+            : SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
 
         auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
         auto b = hp / (1 - std::min(0.7, 0.025 * def));
-        // auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
-        auto c = spd ? std::log(spd * 2) : 0.5;
+        auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
         auto d = shooter ? 1.5 : 1.0;
 
         // Enchanters have many "enchanter" bonuses, add only once
@@ -772,6 +761,16 @@ void ServerPlugin::handleRandomArmies(
     if ((config.randomArmyValueMin < 500) || (config.randomArmyValueMax < config.randomArmyValueMin) || (config.randomArmyTargetVar < 0) || (config.randomArmyTargetVar > 100))
         throw std::runtime_error("invalid randomArmy config given");
 
+    const auto validTargetModifier = [this](double modifier)
+    {
+        return std::isfinite(modifier)
+            && modifier > 0
+            && std::lround(config.randomArmyValueMin * modifier) >= 1
+            && config.randomArmyValueMax * modifier <= std::numeric_limits<int>::max();
+    };
+    if(!validTargetModifier(config.leftTargetMod) || !validTargetModifier(config.rightTargetMod))
+        throw std::runtime_error("random army target modifiers must be positive, finite, and produce targets within integer range");
+
     if(allcreatures.empty())
         throw std::runtime_error("cannot generate random armies without valid creatures");
 
@@ -1033,12 +1032,12 @@ void ServerPlugin::handleRandomArmies(
         throw std::runtime_error("failed to generate VIP random army with the current randomArmy config");
     };
 
-    auto generateHarArmy = [this, &divCeil, &var](int targetValue, const std::vector<CreatureID> & creaturePool, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
+    auto generateHarArmy = [this, &divCeil, &var](int targetValue, const std::vector<CreatureID> & creaturePool, int minimumPrimarySpeed, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
     {
         const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
         const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
         std::vector<CreatureID> meleeCreatures;
-        std::vector<CreatureID> fastMeleeCreatures;
+        std::vector<CreatureID> primaryCreatures;
         for(const auto & creatureId : creaturePool)
         {
             const auto * creature = creatureId.toCreature();
@@ -1046,16 +1045,16 @@ void ServerPlugin::handleRandomArmies(
                 continue;
 
             meleeCreatures.push_back(creatureId);
-            if(creature->getBaseSpeed() > 7)
-                fastMeleeCreatures.push_back(creatureId);
+            if(creature->getBaseSpeed() >= minimumPrimarySpeed)
+                primaryCreatures.push_back(creatureId);
         }
 
-        if(fastMeleeCreatures.empty())
-            throw std::runtime_error("cannot generate HAR random army: whitelist must contain a fast melee creature");
+        if(primaryCreatures.empty())
+            throw std::runtime_error("cannot generate HAR random army: whitelist must contain a melee creature at least 2 speed faster than an opponent creature");
 
         for(int attempt = 0; attempt < 1000; ++attempt)
         {
-            const auto * primary = fastMeleeCreatures.at(std::uniform_int_distribution<>(0, static_cast<int>(fastMeleeCreatures.size()) - 1)(rng)).toCreature();
+            const auto * primary = primaryCreatures.at(std::uniform_int_distribution<>(0, static_cast<int>(primaryCreatures.size()) - 1)(rng)).toCreature();
             const int primaryUnitValue = creatureValues.at(primary->getId());
             const int otherStackCount = std::uniform_int_distribution<>(minStackCount - 1, maxStackCount - 1)(rng);
 
@@ -1118,56 +1117,82 @@ void ServerPlugin::handleRandomArmies(
         throw std::runtime_error("failed to generate HAR random army with the current randomArmy config");
     };
 
-    const int target = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
+    const int baseTarget = std::uniform_int_distribution<>(config.randomArmyValueMin, config.randomArmyValueMax)(rng);
+    const int leftTarget = static_cast<int>(std::lround(baseTarget * config.leftTargetMod));
+    const int rightTarget = static_cast<int>(std::lround(baseTarget * config.rightTargetMod));
 
     // modification by reference
     army1 = hero1->getArmy();
     army2 = hero2->getArmy();
 
-    auto generateArmyForSide = [&generateArmy, &generateUniformArmy, &generateVipArmy, &generateHarArmy](int targetValue, const std::vector<CreatureID> & creaturePool, bool vip, bool har, bool uniform, int minStackCount, int maxStackCount)
+    auto generateArmyForSide = [&generateArmy, &generateUniformArmy, &generateVipArmy](int targetValue, const std::vector<CreatureID> & creaturePool, bool vip, bool uniform, int minStackCount, int maxStackCount)
     {
         if(vip)
             return generateVipArmy(targetValue, creaturePool, std::max(4, minStackCount), maxStackCount);
-        if(har)
-            return generateHarArmy(targetValue, creaturePool, minStackCount, maxStackCount);
         if(uniform)
             return generateUniformArmy(targetValue, creaturePool, minStackCount, maxStackCount);
         return generateArmy(targetValue, creaturePool, minStackCount, maxStackCount);
     };
 
-    auto generateHarOpponentArmy = [this, &totalArmyValue, &generateArmyForSide, &generateUniformArmy](int targetValue, const std::vector<CreatureID> & creaturePool, bool vip, bool uniform, int harPrimarySpeed, int minStackCount, int maxStackCount)
+    auto minimumHarPrimarySpeed = [this](const std::vector<CreatureID> & opponentPool, bool opponentVip)
+    {
+        auto minimumSpeed = [](const std::vector<CreatureID> & creatures)
+        {
+            const auto creature = std::ranges::min_element(creatures, [](const CreatureID & left, const CreatureID & right)
+            {
+                return left.toCreature()->getBaseSpeed() < right.toCreature()->getBaseSpeed();
+            });
+            return creature->toCreature()->getBaseSpeed();
+        };
+
+        if(!opponentVip)
+            return minimumSpeed(opponentPool) + 2;
+
+        const auto allowed = [&opponentPool](const CreatureID & creatureId)
+        {
+            return std::ranges::find(opponentPool, creatureId) != opponentPool.end();
+        };
+        std::vector<CreatureID> guards;
+        std::vector<CreatureID> shooters;
+        std::ranges::copy_if(allguards, std::back_inserter(guards), allowed);
+        std::ranges::copy_if(allshooters, std::back_inserter(shooters), allowed);
+        if(guards.empty() || shooters.empty())
+            throw std::runtime_error("cannot generate VIP HAR opponent: whitelist must contain shooter and guard creatures");
+
+        return std::max(minimumSpeed(guards), minimumSpeed(shooters)) + 2;
+    };
+
+    auto generateHarOpponentArmy = [this, &totalArmyValue, &generateArmyForSide](int targetValue, const std::vector<CreatureID> & creaturePool, bool vip, bool uniform, int harPrimarySpeed, int minStackCount, int maxStackCount)
     {
         if(uniform)
         {
-            std::vector<CreatureID> slowCreatures;
-            std::ranges::copy_if(creaturePool, std::back_inserter(slowCreatures), [harPrimarySpeed](const CreatureID & creatureId)
+            std::vector<CreatureID> slowerCreatures;
+            std::ranges::copy_if(creaturePool, std::back_inserter(slowerCreatures), [harPrimarySpeed](const CreatureID & creatureId)
             {
-                return creatureId.toCreature()->getBaseSpeed() < harPrimarySpeed;
+                return creatureId.toCreature()->getBaseSpeed() <= harPrimarySpeed - 2;
             });
 
-            if(slowCreatures.empty())
-                throw std::runtime_error("failed to generate a uniform army slower than the main HAR unit");
+            if(slowerCreatures.empty())
+                throw std::runtime_error("cannot generate uniform HAR opponent army: whitelist must contain a creature at least 2 speed slower than the main HAR unit");
 
-            return generateUniformArmy(targetValue, slowCreatures, minStackCount, maxStackCount);
+            return generateArmyForSide(targetValue, slowerCreatures, vip, true, minStackCount, maxStackCount);
         }
 
         for(int attempt = 0; attempt < 1000; ++attempt)
         {
-            auto generated = generateArmyForSide(targetValue, creaturePool, vip, false, false, minStackCount, maxStackCount);
+            auto generated = generateArmyForSide(targetValue, creaturePool, vip, false, minStackCount, maxStackCount);
             const int totalValue = totalArmyValue(generated);
             const bool valid = std::ranges::all_of(generated, [this, totalValue, harPrimarySpeed](const auto & stack)
             {
                 const int stackValue = creatureValues.at(stack.creature->getId()) * stack.quantity;
-                return stackValue * 10 < totalValue || stack.creature->getBaseSpeed() < harPrimarySpeed;
+                return stackValue * 20 < totalValue || stack.creature->getBaseSpeed() <= harPrimarySpeed - 2;
             });
 
             if(valid)
                 return generated;
-
-            // std::cout << "HAR attempt " << attempt << " failed.\n";
         }
 
-        throw std::runtime_error("failed to generate an army slower than the main HAR unit with the current randomArmy config");
+        throw std::runtime_error("failed to generate HAR opponent army satisfying the speed and value constraints");
     };
 
     auto rollChance = [this](int chance)
@@ -1186,18 +1211,20 @@ void ServerPlugin::handleRandomArmies(
     std::vector<GeneratedStack> generated2;
     if(config.leftHar)
     {
-        generated1 = generateHarArmy(target, leftCreatures, leftMinStackCount, std::min(4, leftMaxStackCount));
-        generated2 = generateHarOpponentArmy(totalArmyValue(generated1), rightCreatures, config.rightVip, rightUniform, generated1.front().creature->getBaseSpeed(), rightMinStackCount, rightMaxStackCount);
+        const int minimumPrimarySpeed = minimumHarPrimarySpeed(rightCreatures, config.rightVip);
+        generated1 = generateHarArmy(leftTarget, leftCreatures, minimumPrimarySpeed, leftMinStackCount, std::min(4, leftMaxStackCount));
+        generated2 = generateHarOpponentArmy(rightTarget, rightCreatures, config.rightVip, rightUniform, generated1.front().creature->getBaseSpeed(), rightMinStackCount, rightMaxStackCount);
     }
     else if(config.rightHar)
     {
-        generated2 = generateHarArmy(target, rightCreatures, rightMinStackCount, rightMaxStackCount);
-        generated1 = generateHarOpponentArmy(totalArmyValue(generated2), leftCreatures, config.leftVip, leftUniform, generated2.front().creature->getBaseSpeed(), leftMinStackCount, leftMaxStackCount);
+        const int minimumPrimarySpeed = minimumHarPrimarySpeed(leftCreatures, config.leftVip);
+        generated2 = generateHarArmy(rightTarget, rightCreatures, minimumPrimarySpeed, rightMinStackCount, rightMaxStackCount);
+        generated1 = generateHarOpponentArmy(leftTarget, leftCreatures, config.leftVip, leftUniform, generated2.front().creature->getBaseSpeed(), leftMinStackCount, leftMaxStackCount);
     }
     else
     {
-        generated1 = generateArmyForSide(target, leftCreatures, config.leftVip, false, leftUniform, leftMinStackCount, leftMaxStackCount);
-        generated2 = generateArmyForSide(target, rightCreatures, config.rightVip, false, rightUniform, rightMinStackCount, rightMaxStackCount);
+        generated1 = generateArmyForSide(leftTarget, leftCreatures, config.leftVip, leftUniform, leftMinStackCount, leftMaxStackCount);
+        generated2 = generateArmyForSide(rightTarget, rightCreatures, config.rightVip, rightUniform, rightMinStackCount, rightMaxStackCount);
     }
 
     auto replaceArmy = [this](const CGHeroInstance * hero, const std::vector<GeneratedStack> & generated)

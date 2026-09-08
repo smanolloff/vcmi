@@ -252,6 +252,9 @@ void Router::actionStarted(const BattleID & bid, const BattleAction & action)
 
 void Router::onNewSystemMessageReceived(const std::string & msg) const
 {
+	if(!bai)
+		return;
+
 	MMAI_LOG_TAG;
 	bai->onNewSystemMessageReceived(msg);
 }

@@ -22,6 +22,8 @@
 #include <boost/stacktrace/stacktrace.hpp>
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <condition_variable>
 #include <termios.h>
@@ -265,6 +267,21 @@ namespace ML {
 			exit(1);
 		}
 
+		if (!std::isfinite(a.leftTargetMod) || a.leftTargetMod <= 0 || std::lround(static_cast<double>(a.randomArmyValueMin) * a.leftTargetMod) < 1 || static_cast<double>(a.randomArmyValueMax) * a.leftTargetMod > std::numeric_limits<int>::max()) {
+			std::cerr << "Bad value for leftTargetMod: expected a positive finite multiplier producing a target within integer range, got: " << a.leftTargetMod << "\n";
+			exit(1);
+		}
+
+		if (!std::isfinite(a.rightTargetMod) || a.rightTargetMod <= 0 || std::lround(static_cast<double>(a.randomArmyValueMin) * a.rightTargetMod) < 1 || static_cast<double>(a.randomArmyValueMax) * a.rightTargetMod > std::numeric_limits<int>::max()) {
+			std::cerr << "Bad value for rightTargetMod: expected a positive finite multiplier producing a target within integer range, got: " << a.rightTargetMod << "\n";
+			exit(1);
+		}
+
+		if (!a.randomArmies && (a.leftTargetMod != 1.0f || a.rightTargetMod != 1.0f)) {
+			std::cerr << "Bad target modifier: --left-target-mod and --right-target-mod require --random-armies\n";
+			exit(1);
+		}
+
 		if (a.leftUniformChance < 0 || a.leftUniformChance > 100) {
 			std::cerr << "Bad value for leftUniformChance: expected an integer between 0 and 100, got: " << a.leftUniformChance << "\n";
 			exit(1);
@@ -409,6 +426,8 @@ namespace ML {
 		Settings(settings.write({"server", "ML", "randomArmyValueMin"}))->Integer() = a.randomArmyValueMin;
 		Settings(settings.write({"server", "ML", "randomArmyValueMax"}))->Integer() = a.randomArmyValueMax;
 		Settings(settings.write({"server", "ML", "randomArmyTargetVar"}))->Integer() = a.randomArmyTargetVar;
+		Settings(settings.write({"server", "ML", "leftTargetMod"}))->Float() = a.leftTargetMod;
+		Settings(settings.write({"server", "ML", "rightTargetMod"}))->Float() = a.rightTargetMod;
 		Settings(settings.write({"server", "ML", "leftUniformChance"}))->Integer() = a.leftUniformChance;
 		Settings(settings.write({"server", "ML", "rightUniformChance"}))->Integer() = a.rightUniformChance;
 		Settings(settings.write({"server", "ML", "leftWhitelist"}))->String() = a.leftWhitelist;

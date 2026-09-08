@@ -36,6 +36,8 @@ namespace ML {
             randomArmyValueMin = settings["server"]["ML"]["randomArmyValueMin"].Integer();
             randomArmyValueMax = settings["server"]["ML"]["randomArmyValueMax"].Integer();
             randomArmyTargetVar = settings["server"]["ML"]["randomArmyTargetVar"].Integer();
+            leftTargetMod = settings["server"]["ML"]["leftTargetMod"].Float();
+            rightTargetMod = settings["server"]["ML"]["rightTargetMod"].Float();
             leftUniformChance = settings["server"]["ML"]["leftUniformChance"].Integer();
             rightUniformChance = settings["server"]["ML"]["rightUniformChance"].Integer();
             leftWhitelist = settings["server"]["ML"]["leftWhitelist"].String();
@@ -72,6 +74,8 @@ namespace ML {
         int randomArmyValueMin = 0;
         int randomArmyValueMax = 0;
         int randomArmyTargetVar = 0;
+        double leftTargetMod = 1.0;
+        double rightTargetMod = 1.0;
         int leftUniformChance = 0;
         int rightUniformChance = 0;
         std::string leftWhitelist;

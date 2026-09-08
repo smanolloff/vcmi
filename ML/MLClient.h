@@ -67,6 +67,8 @@ namespace ML {
         const int randomArmyValueMin;
         const int randomArmyValueMax;
         const int randomArmyTargetVar;
+        const float leftTargetMod;
+        const float rightTargetMod;
         const int leftUniformChance;
         const int rightUniformChance;
         const std::string leftWhitelist;

@@ -61,6 +61,8 @@ namespace ML {
         int randomArmyValueMin = 500;
         int randomArmyValueMax = 100000;
         int randomArmyTargetVar = 30;
+        float leftTargetMod = 1.0f;
+        float rightTargetMod = 1.0f;
         int leftUniformChance = 0;
         int rightUniformChance = 0;
         std::string leftWhitelist;
@@ -137,6 +139,10 @@ namespace ML {
                 "Max total value for randomized armies (default 1000000*)")
             ("random-army-target-var", po::value<int>()->value_name("<N>"),
                 "Percent variance for meeting the target total value (default 30*)")
+            ("left-target-mod", po::value<float>()->value_name("<FLOAT>"),
+                "Multiplier for the left random army target value (default 1.0*)")
+            ("right-target-mod", po::value<float>()->value_name("<FLOAT>"),
+                "Multiplier for the right random army target value (default 1.0*)")
             ("left-uniform-chance", po::value<int>()->value_name("<N>"),
                 "Percent chance for to use only one creature type in left army (default 0*)")
             ("right-uniform-chance", po::value<int>()->value_name("<N>"),
@@ -244,6 +250,12 @@ namespace ML {
 
         if (vm.count("random-army-target-var"))
             randomArmyTargetVar = vm.at("random-army-target-var").as<int>();
+
+        if (vm.count("left-target-mod"))
+            leftTargetMod = vm.at("left-target-mod").as<float>();
+
+        if (vm.count("right-target-mod"))
+            rightTargetMod = vm.at("right-target-mod").as<float>();
 
         if (vm.count("left-uniform-chance"))
             leftUniformChance = vm.at("left-uniform-chance").as<int>();
@@ -378,6 +390,8 @@ namespace ML {
             .randomArmyValueMin=randomArmyValueMin,
             .randomArmyValueMax=randomArmyValueMax,
             .randomArmyTargetVar=randomArmyTargetVar,
+            .leftTargetMod=leftTargetMod,
+            .rightTargetMod=rightTargetMod,
             .leftUniformChance=leftUniformChance,
             .rightUniformChance=rightUniformChance,
             .leftWhitelist=leftWhitelist,
