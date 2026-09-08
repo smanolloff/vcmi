@@ -1040,6 +1040,8 @@ void ServerPlugin::handleRandomArmies(
 
     auto generateHarArmy = [this, &divCeil, &var](int targetValue, const std::vector<CreatureID> & creaturePool, int minimumPrimarySpeed, int minStackCount, int maxStackCount) -> std::vector<GeneratedStack>
     {
+        constexpr int HAR_MINIMUM_PRIMARY_SPEED = 7;
+        const int requiredPrimarySpeed = std::max(minimumPrimarySpeed, HAR_MINIMUM_PRIMARY_SPEED);
         const int minTotalValue = static_cast<int>(std::ceil(targetValue * (1 - var)));
         const int maxTotalValue = static_cast<int>(std::floor(targetValue * (1 + var)));
         std::vector<CreatureID> meleeCreatures;
@@ -1051,12 +1053,12 @@ void ServerPlugin::handleRandomArmies(
                 continue;
 
             meleeCreatures.push_back(creatureId);
-            if(creature->getBaseSpeed() >= minimumPrimarySpeed)
+            if(creature->getBaseSpeed() >= requiredPrimarySpeed)
                 primaryCreatures.push_back(creatureId);
         }
 
         if(primaryCreatures.empty())
-            throw std::runtime_error("cannot generate HAR random army: whitelist must contain a melee creature at least 2 speed faster than an opponent creature");
+            throw std::runtime_error("cannot generate HAR random army: whitelist must contain a melee creature with speed at least 7 that is at least 2 speed faster than an opponent creature");
 
         for(int attempt = 0; attempt < 1000; ++attempt)
         {
@@ -1190,108 +1192,84 @@ void ServerPlugin::handleRandomArmies(
         return std::max(minimumSpeed(guards), minimumSpeed(shooters)) + 2;
     };
 
-    auto generateHarOpponentArmy = [this, &totalArmyValue, &generateArmyForSide, var](int targetValue, const std::vector<CreatureID> & creaturePool, bool vip, bool uniform, int harPrimarySpeed, int minStackCount, int maxStackCount)
+    auto generateHarOpponentArmy = [this, &generateArmyForSide, var](int targetValue, const std::vector<CreatureID> & creaturePool, bool vip, bool uniform, int harPrimarySpeed, int minStackCount, int maxStackCount)
     {
-        if(uniform)
+        std::vector<CreatureID> slowerCreatures;
+        std::ranges::copy_if(creaturePool, std::back_inserter(slowerCreatures), [harPrimarySpeed](const CreatureID & creatureId)
         {
-            std::vector<CreatureID> slowerCreatures;
-            std::ranges::copy_if(creaturePool, std::back_inserter(slowerCreatures), [harPrimarySpeed](const CreatureID & creatureId)
-            {
-                return creatureId.toCreature()->getBaseSpeed() <= harPrimarySpeed - 2;
-            });
-
+            return creatureId.toCreature()->getBaseSpeed() <= harPrimarySpeed - 2;
+        });
+        try
+        {
             if(slowerCreatures.empty())
-                throw std::runtime_error("cannot generate uniform HAR opponent army: whitelist must contain a creature at least 2 speed slower than the main HAR unit");
+                throw std::runtime_error("no creature satisfies the HAR opponent speed constraint");
 
-            return generateArmyForSide(targetValue, slowerCreatures, vip, true, minStackCount, maxStackCount);
+            return generateArmyForSide(targetValue, slowerCreatures, vip, uniform, minStackCount, maxStackCount);
         }
-
-        std::ostringstream rejectedOptions;
-        for(int attempt = 0; attempt < 1000; ++attempt)
+        catch(const std::runtime_error & exception)
         {
-            auto generated = generateArmyForSide(targetValue, creaturePool, vip, false, minStackCount, maxStackCount);
-            const int totalValue = totalArmyValue(generated);
-            const bool valid = std::ranges::all_of(generated, [this, totalValue, harPrimarySpeed](const auto & stack)
-            {
-                const int stackValue = creatureValues.at(stack.creature->getId()) * stack.quantity;
-                return stackValue * 20 < totalValue || stack.creature->getBaseSpeed() <= harPrimarySpeed - 2;
-            });
-
-            if(valid)
-                return generated;
-
-            rejectedOptions << "\n  option " << attempt + 1 << ": totalValue=" << totalValue << ", stacks=" << generated.size();
-            for(const auto & stack : generated)
-            {
-                const int unitValue = creatureValues.at(stack.creature->getId());
-                const int stackValue = unitValue * stack.quantity;
-                const bool belowValueThreshold = stackValue * 20 < totalValue;
-                const bool slowEnough = stack.creature->getBaseSpeed() <= harPrimarySpeed - 2;
-                rejectedOptions
-                    << "\n    slot=" << static_cast<int>(stack.slot)
-                    << ", creature=" << stack.creature->getId().toEntity(LIBRARY)->getJsonKey()
-                    << ", speed=" << stack.creature->getBaseSpeed()
-                    << ", quantity=" << stack.quantity
-                    << ", unitValue=" << unitValue
-                    << ", stackValue=" << stackValue
-                    << ", below5Percent=" << belowValueThreshold
-                    << ", slowEnough=" << slowEnough
-                    << ", valid=" << (belowValueThreshold || slowEnough);
-            }
-        }
-
-        std::ostringstream error;
-        error
-            << "failed to generate HAR opponent army satisfying the speed and value constraints"
-            << "\nserver.ML config:"
-            << "\n  seed=" << config.rngSeed
-            << "\n  randomHeroes=" << config.randomHeroes
-            << "\n  randomObstacles=" << config.randomObstacles
-            << "\n  townChance=" << config.townChance
-            << "\n  warmachineChance=" << config.warmachineChance
-            << "\n  mirrorArmies=" << config.mirrorArmies
-            << "\n  randomArmies=" << config.randomArmies
-            << "\n  randomArmyValueMin=" << config.randomArmyValueMin
-            << "\n  randomArmyValueMax=" << config.randomArmyValueMax
-            << "\n  randomArmyTargetVar=" << config.randomArmyTargetVar
-            << "\n  leftTargetMod=" << config.leftTargetMod
-            << "\n  rightTargetMod=" << config.rightTargetMod
-            << "\n  leftUniformChance=" << config.leftUniformChance
-            << "\n  rightUniformChance=" << config.rightUniformChance
-            << "\n  leftWhitelist=\"" << config.leftWhitelist << "\""
-            << "\n  rightWhitelist=\"" << config.rightWhitelist << "\""
-            << "\n  tightFormationChance=" << config.tightFormationChance
-            << "\n  creatureBankChance=" << config.creatureBankChance
-            << "\n  randomTerrainChance=" << config.randomTerrainChance
-            << "\n  leftVip=" << config.leftVip
-            << "\n  rightVip=" << config.rightVip
-            << "\n  leftHar=" << config.leftHar
-            << "\n  rightHar=" << config.rightHar
-            << "\n  battlefieldPattern=\"" << config.battlefieldPattern << "\""
-            << "\n  swapSides=" << config.swapSides
-            << "\n  manaMin=" << config.manaMin
-            << "\n  manaMax=" << config.manaMax
-            << "\n  randomPrimarySkills=" << config.randomPrimarySkills
-            << "\ninputs: targetValue=" << targetValue
-            << ", allowedValueRange=[" << static_cast<int>(std::ceil(targetValue * (1 - var)))
-            << "," << static_cast<int>(std::floor(targetValue * (1 + var))) << "]"
-            << ", vip=" << vip
-            << ", uniform=" << uniform
-            << ", harPrimarySpeed=" << harPrimarySpeed
-            << ", maximumOpponentSpeed=" << harPrimarySpeed - 2
-            << ", stackCountRange=[" << minStackCount << "," << maxStackCount << "]"
-            << "\ncreature pool (" << creaturePool.size() << "):";
-        for(const auto & creatureId : creaturePool)
-        {
-            const auto * creature = creatureId.toCreature();
+            std::ostringstream error;
             error
-                << "\n  creature=" << creatureId.toEntity(LIBRARY)->getJsonKey()
-                << ", speed=" << creature->getBaseSpeed()
-                << ", unitValue=" << creatureValues.at(creatureId)
-                << ", slowEnough=" << (creature->getBaseSpeed() <= harPrimarySpeed - 2);
+                << "failed to generate HAR opponent army satisfying the speed and value constraints"
+                << "\nserver.ML config:"
+                << "\n  seed=" << config.rngSeed
+                << "\n  randomHeroes=" << config.randomHeroes
+                << "\n  randomObstacles=" << config.randomObstacles
+                << "\n  townChance=" << config.townChance
+                << "\n  warmachineChance=" << config.warmachineChance
+                << "\n  mirrorArmies=" << config.mirrorArmies
+                << "\n  randomArmies=" << config.randomArmies
+                << "\n  randomArmyValueMin=" << config.randomArmyValueMin
+                << "\n  randomArmyValueMax=" << config.randomArmyValueMax
+                << "\n  randomArmyTargetVar=" << config.randomArmyTargetVar
+                << "\n  leftTargetMod=" << config.leftTargetMod
+                << "\n  rightTargetMod=" << config.rightTargetMod
+                << "\n  leftUniformChance=" << config.leftUniformChance
+                << "\n  rightUniformChance=" << config.rightUniformChance
+                << "\n  leftWhitelist=\"" << config.leftWhitelist << "\""
+                << "\n  rightWhitelist=\"" << config.rightWhitelist << "\""
+                << "\n  tightFormationChance=" << config.tightFormationChance
+                << "\n  creatureBankChance=" << config.creatureBankChance
+                << "\n  randomTerrainChance=" << config.randomTerrainChance
+                << "\n  leftVip=" << config.leftVip
+                << "\n  rightVip=" << config.rightVip
+                << "\n  leftHar=" << config.leftHar
+                << "\n  rightHar=" << config.rightHar
+                << "\n  battlefieldPattern=\"" << config.battlefieldPattern << "\""
+                << "\n  swapSides=" << config.swapSides
+                << "\n  manaMin=" << config.manaMin
+                << "\n  manaMax=" << config.manaMax
+                << "\n  randomPrimarySkills=" << config.randomPrimarySkills
+                << "\ninputs: targetValue=" << targetValue
+                << ", allowedValueRange=[" << static_cast<int>(std::ceil(targetValue * (1 - var)))
+                << "," << static_cast<int>(std::floor(targetValue * (1 + var))) << "]"
+                << ", vip=" << vip
+                << ", uniform=" << uniform
+                << ", harPrimarySpeed=" << harPrimarySpeed
+                << ", maximumOpponentSpeed=" << harPrimarySpeed - 2
+                << ", stackCountRange=[" << minStackCount << "," << maxStackCount << "]"
+                << "\ncreature pool (" << creaturePool.size() << "):";
+            for(const auto & creatureId : creaturePool)
+            {
+                const auto * creature = creatureId.toCreature();
+                error
+                    << "\n  creature=" << creatureId.toEntity(LIBRARY)->getJsonKey()
+                    << ", speed=" << creature->getBaseSpeed()
+                    << ", unitValue=" << creatureValues.at(creatureId)
+                    << ", slowEnough=" << (creature->getBaseSpeed() <= harPrimarySpeed - 2);
+            }
+            error << "\neligible creature options (" << slowerCreatures.size() << "):";
+            for(const auto & creatureId : slowerCreatures)
+            {
+                const auto * creature = creatureId.toCreature();
+                error
+                    << "\n  creature=" << creatureId.toEntity(LIBRARY)->getJsonKey()
+                    << ", speed=" << creature->getBaseSpeed()
+                    << ", unitValue=" << creatureValues.at(creatureId);
+            }
+            error << "\nunderlying error: " << exception.what();
+            throw std::runtime_error(error.str());
         }
-        error << "\nrejected options:" << rejectedOptions.str();
-        throw std::runtime_error(error.str());
     };
 
     auto rollChance = [this](int chance)
