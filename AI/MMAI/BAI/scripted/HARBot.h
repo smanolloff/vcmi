@@ -16,9 +16,9 @@
 
 #pragma once
 
+#include "AI/MMAI/BAI/v15/fastbfs.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
-#include "AI/MMAI/BAI/v15/fastbfs.h"
 
 #include <cstdint>
 #include <limits>
@@ -34,14 +34,23 @@ public:
 	explicit HARBot(const std::string & fallback);
 
 	void initBattleInterface(std::shared_ptr<Environment> env, std::shared_ptr<CBattleCallback> cb, AICombatOptions aiCombatOptions) override;
-	void battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed) override;
+	void battleStart(
+		const BattleID & battleID,
+		const CCreatureSet * army1,
+		const CCreatureSet * army2,
+		int3 tile,
+		const CGHeroInstance * hero1,
+		const CGHeroInstance * hero2,
+		BattleSide side,
+		bool replayAllowed
+	) override;
 	void yourTacticPhase(const BattleID & battleID, int distance) override;
 	void activeStack(const BattleID & battleID, const CStack * stack) override;
 	void battleNewRound(const BattleID & battleID) override;
 	void actionStarted(const BattleID & battleID, const BattleAction & action) override;
 
 private:
-    const std::string fallback = "?";
+	const std::string fallback = "?";
 
 	std::shared_ptr<CBattleCallback> cb;
 	std::shared_ptr<CBattleGameInterface> fallbackBot;
@@ -53,6 +62,20 @@ private:
 	std::string colorName = "?";
 
 	std::unique_ptr<const MMAI::BAI::V15::FastBFS> fastbfs;
+
+	struct ExposureEstimate
+	{
+		int64_t expectedDamage = 0;
+		int64_t remainingHealth = 0;
+	};
+
+	struct ExposureOptions
+	{
+		bool currentRoundOnly = false;
+		bool logDetails = true;
+		const CStack * attackedEnemy = nullptr;
+		int64_t expectedKillsTwice = 0;
+	};
 
 	struct RetreatPlan
 	{
@@ -67,6 +90,52 @@ private:
 		int movementDistance = std::numeric_limits<int>::max();
 	};
 
+	struct AttackOptions
+	{
+		bool force = false;
+		bool requireNoExposureIncrease = false;
+		bool currentRoundExposureOnly = false;
+	};
+
+	struct AttackCandidate
+	{
+		const CStack * target = nullptr;
+		BattleHex attackHex;
+		RetreatPlan retreat;
+		bool retreatIsSafe = false;
+		int64_t targetBaseValue = std::numeric_limits<int64_t>::min();
+		int64_t targetValue = std::numeric_limits<int64_t>::min();
+		int64_t attackExposure = -1;
+		int64_t expectedKillsTwice = 0;
+	};
+
+	struct StagingCandidate
+	{
+		BattleHex destination;
+		const CStack * target = nullptr;
+		int threatenedRetreatHexes = -1;
+		int64_t reachableValue = -1;
+		int64_t toleratedThreatValue = std::numeric_limits<int64_t>::max();
+		int minimumEnemyDistance = -1;
+		uint32_t nextAttackDistance = 0;
+		int64_t targetValue = -1;
+	};
+
+	struct StagingThreats
+	{
+		bool unsafe = false;
+		int64_t toleratedValue = 0;
+		int minimumEnemyDistance = std::numeric_limits<int>::max();
+	};
+
+	struct ReachableEnemies
+	{
+		const CStack * target = nullptr;
+		uint32_t attackDistance = 0;
+		int64_t targetValue = -1;
+		int64_t totalValue = 0;
+	};
+
 	enum class RetreatResult : std::uint8_t
 	{
 		MOVED,
@@ -75,12 +144,32 @@ private:
 		UNAVAILABLE
 	};
 
-	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition, bool currentRoundExposureOnly = false, const CStack * attackedEnemy = nullptr, int64_t expectedKillsTwice = 0) const;
-	std::pair<int64_t, int64_t> calculateExposedEnemyValue(const CStack * stack, const BattleHex & destination, bool currentRoundOnly = false, bool logDetails = true, const CStack * attackedEnemy = nullptr, int64_t expectedKillsTwice = 0) const;
+	bool handlePendingRetreat(const BattleID & battleID, const CStack * stack, bool & actAsAlreadyRetreated);
+	bool handleFollowUpRetreat(const BattleID & battleID, const CStack * stack, bool actAsAlreadyRetreated);
+	bool handlePreWaitTurn(const BattleID & battleID, const CStack * stack);
+	void attackImmediatelyOrDelegate(const BattleID & battleID, const CStack * stack, const std::string & reason);
+
+	RetreatPlan findBestRetreatFrom(const CStack * stack, const BattleHex & assumedPosition, const ExposureOptions & exposure) const;
+	ExposureEstimate calculateExposure(const CStack * stack, const BattleHex & destination, const ExposureOptions & options) const;
 	bool isImmediatelyThreatenedAt(const CStack * stack, const BattleHex & destination) const;
 	bool canEnemyThreatenThisRound(const CStack * stack) const;
 	bool canEnemyReachNextTurn(const CStack * stack) const;
-	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, bool forceAttack = false, bool requireNoExposureIncrease = false, bool currentRoundExposureOnly = false);
+	bool attackAndMarkForRetreat(const BattleID & battleID, const CStack * stack, const AttackOptions & options);
+	AttackCandidate evaluateAttackCandidate(
+		const CStack * stack,
+		const CStack * enemy,
+		const BattleHex & attackHex,
+		int movementDistance,
+		bool preferLowerExposure,
+		bool shouldPlanRetreat,
+		bool currentRoundExposureOnly
+	) const;
+	bool isBetterAttackCandidate(const AttackCandidate & candidate, const AttackCandidate & best, bool preferLowerExposure, bool shouldPlanRetreat) const;
+	bool isBetterStagingCandidate(const StagingCandidate & candidate, const StagingCandidate & best) const;
+	StagingThreats assessStagingThreats(const CStack * stack, const BattleHex & destination, const TStacks & enemies, int64_t totalEnemyValue) const;
+	V15::FastBFS::Distances getDistancesFromStaging(const CStack * stack, const BattleHex & destination) const;
+	int countThreatenedRetreatHexes(const CStack * stack, const BattleHex & destination, const TStacks & enemies, const BattleHexArray & availableHexes) const;
+	ReachableEnemies findReachableEnemies(const CStack * stack, const TStacks & enemies, const V15::FastBFS::Distances & distances) const;
 	bool advanceTowardsEnemy(const BattleID & battleID, const CStack * stack);
 	RetreatResult retreat(const BattleID & battleID, const CStack * stack);
 	void delegate(const BattleID & battleID, const CStack * stack, const std::string & reason);

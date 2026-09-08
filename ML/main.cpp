@@ -70,7 +70,7 @@ namespace ML {
         int tightFormationChance = 0;
         int creatureBankChance = 0;
         int randomTerrainChance = 0;
-        std::string battlefieldPattern = "";
+        std::string battlefieldPattern;
         int townChance = 0;
         int warmachineChance = 0;
         int manaMin = 0;
