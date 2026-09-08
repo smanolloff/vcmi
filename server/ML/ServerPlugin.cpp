@@ -651,22 +651,6 @@ void ServerPlugin::setupBattleHook(
         }
     }
 
-    if (creatureBankBattle) {
-        bool hasDoubleWideDefender = false;
-        for (const auto & entry : defender->Slots()) {
-            const auto * creature = entry.second->getCreature();
-            if (creature && creature->isDoubleWide()) {
-                hasDoubleWideDefender = true;
-                break;
-            }
-        }
-
-        const std::string layoutName = hasDoubleWideDefender ? "creatureBankWide" : "creatureBankNarrow";
-        layout = BattleLayout::createLayout(gameInfo, layoutName, attacker, defender);
-        town = nullptr;
-        return;
-    }
-
     if (config.randomTerrainChance > 0 && battleterrains.size() > 0) {
         auto dist = std::uniform_int_distribution<>(0, 99);
         auto roll = dist(rng);
@@ -687,6 +671,22 @@ void ServerPlugin::setupBattleHook(
             terType = bi->battlefield;
             terrain = (*it2)->getId();
         }
+    }
+
+    if (creatureBankBattle) {
+        bool hasDoubleWideDefender = false;
+        for (const auto & entry : defender->Slots()) {
+            const auto * creature = entry.second->getCreature();
+            if (creature && creature->isDoubleWide()) {
+                hasDoubleWideDefender = true;
+                break;
+            }
+        }
+
+        const std::string layoutName = hasDoubleWideDefender ? "creatureBankWide" : "creatureBankNarrow";
+        layout = BattleLayout::createLayout(gameInfo, layoutName, attacker, defender);
+        town = nullptr;
+        return;
     }
 
     if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
