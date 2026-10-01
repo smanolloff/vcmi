@@ -28,9 +28,9 @@
 #include "battle/BattleSide.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "battle/CUnitState.h"
-#include "battle/DamageCalculator.h"
 #include "bonuses/BonusEnum.h"
 #include "bonuses/BonusParameters.h" // IWYU pragma: keep (needed for bonus->parameters)
+#include "common.h"
 #include "entities/building/TownFortifications.h"
 #include "networkPacks/PacksForClientBattle.h"
 
@@ -38,6 +38,7 @@
 #include "spells/CSpellHandler.h"
 #include "spells/ISpellMechanics.h"
 #include "spells/ProxyCaster.h"
+#include <stdexcept>
 
 namespace MMAI::BAI::V15
 {
@@ -286,7 +287,12 @@ namespace
 
 	// Stolen from BattleActionProcessor::handleDeathStare
 	// Calculates number of kills
-	double CalcDeathStare(const CPlayerBattleCallback & battle, const battle::CUnitState * attacker, const battle::CUnitState * defender, bool ranged)
+	double CalcDeathStare(
+		const CPlayerBattleCallback & battle,
+		const battle::CUnitState * attacker,
+		const battle::CUnitState * defender,
+		const BonusList & deathStareBonuses,
+		bool ranged)
 	{
 		/*
 		 * Death stare:
@@ -302,27 +308,47 @@ namespace
 		 * - different mechanic: kills depend on level
 		 */
 
-		auto subtype = BonusCustomSubtype::deathStareGorgon;
+		int vMelee = 0;
+		int vRanged = 0;
+		int vRangedWithPenalty = 0;
+		int vCommander = 0;
 
-		if(ranged)
+		for (const auto & b : deathStareBonuses)
 		{
-			bool distancePenalty = battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition());
-			bool obstaclePenalty = battle.battleHasWallPenalty(attacker, attacker->getPosition(), defender->getPosition());
+			const auto & jparams = b->parameters->toCustom<JsonNode>();
+			ASSERT(jparams.isStruct(), "death stare bonus params is not a struct");
+			auto it = jparams.Struct().find("situation");
+			ASSERT(it != jparams.Struct().end(), "death stare bonus params does not contain 'situation' key");
+			ASSERT(it->second.isString(), "death stare bonus param value for 'situation' is not a string");
 
-			if(distancePenalty)
-				subtype = obstaclePenalty ? BonusCustomSubtype::deathStareRangeObstaclePenalty : BonusCustomSubtype::deathStareRangePenalty;
-			else
-				subtype = obstaclePenalty ? BonusCustomSubtype::deathStareObstaclePenalty : BonusCustomSubtype::deathStareNoRangePenalty;
+			auto situation = it->second.String();
+			if (situation == "melee")
+				vMelee += b->val;
+			else if (situation == "ranged")
+				vRanged += b->val;
+			else if (situation == "rangedDistancePenalty")
+				vRangedWithPenalty += b->val;
+			else if (situation == "commander")
+				vCommander += b->val;
+			// else
+			// 	logAi->warn("Unknown deathStare situation: " + situation);
 		}
 
+		int v = 0;
+
+		if(ranged)
+			// XXX: it seems deathStareObstaclePenalty was never ported to Lua
+			v += battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition())
+				? vRangedWithPenalty
+				: vRanged;
+		else
+			v += vMelee;
+
 		// Non-commander death stare
-		int n = attacker->getCount();
-		int x = attacker->valOfBonuses(BonusType::DEATH_STARE, subtype);
-		double kills = n * x / 100.0;
+		double kills = attacker->getCount() * v / 100.0;
 
 		// Commander death stare
-		int x1 = attacker->valOfBonuses(BonusType::DEATH_STARE, BonusCustomSubtype::deathStareCommander);
-		kills += static_cast<double>(x1 * attacker->creatureLevel()) / defender->creatureLevel();
+		kills += static_cast<double>(vCommander * attacker->creatureLevel()) / defender->creatureLevel();
 
 		return kills;
 	}
@@ -361,9 +387,9 @@ namespace
 		const auto & B_state = states.b.cstate;
 
 		auto A_bai = BattleAttackInfo(A_state.get(), B_state.get(), 0, ranged);
-		auto estimation = std::make_shared<DamageEstimation>(DamageCalculator(battle, A_bai).calculateDmgRange());
-		auto A_dmg_min = static_cast<int>(estimation->damage.min);
-		auto A_dmg_max = static_cast<int>(estimation->damage.max);
+		auto estimation = battle.calculateDmgRange(A_bai);
+		auto A_dmg_min = static_cast<int>(estimation.damage.min);
+		auto A_dmg_max = static_cast<int>(estimation.damage.max);
 		auto A_dmg_mean = static_cast<int64_t>(0.5 * (A_dmg_min + A_dmg_max));
 
 		int B_qty_old = B_state->getCount();
@@ -380,13 +406,22 @@ namespace
 		bool B_isLiving = B_state->isLiving();
 		if(B_isLiving)
 		{
-			if(A_state->hasBonusOfType(BonusType::LIFE_DRAIN) && states.a.cstack->getTotalHealth() != states.a.calcAvailableHealth())
+
+			// if(N::Unit::HasCombatScript(states.a.cstack, "lifeDrain")
+			auto lifeDrainScriptID = N::Unit::CombatScriptID("lifeDrain");
+			auto lifeDrainBonuses = states.a.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(lifeDrainScriptID)));
+			// auto bonusVal = states.a.cstack->valOfBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(scriptID)));
+
+			if(!lifeDrainBonuses->empty() && states.a.cstack->getTotalHealth() != states.a.calcAvailableHealth())
 			{
-				int64_t toHeal = A_dmg_mean * A_state->valOfBonuses(BonusType::LIFE_DRAIN) / 100;
+				int64_t toHeal = A_dmg_mean * lifeDrainBonuses->totalValue() / 100;
 				A_state->heal(toHeal, EHealLevel::RESURRECT, EHealPower::PERMANENT);
 			}
 
-			if(int ss = A_state->valOfBonuses(BonusType::SOUL_STEAL))
+			auto soulStealScriptID = N::Unit::CombatScriptID("soulSteal");
+			auto soulStealBonuses = states.a.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(soulStealScriptID)));
+
+			if(int ss = soulStealBonuses->totalValue())
 			{
 				int64_t toHeal = static_cast<int64_t>(A_kills_mean) * ss * A_state->getMaxHealth();
 				A_state->heal(toHeal, EHealLevel::OVERHEAL, EHealPower::ONE_BATTLE);
@@ -395,19 +430,23 @@ namespace
 
 		// 2. Handle FIRE_SHIELD (triggers even if B is not alive)
 		// Stolen from BattleActionProcessor::applyBattleEffects
-		if(!ranged && !B_state->isClone() && B_state->hasBonusOfType(BonusType::FIRE_SHIELD)
+		auto fireShieldScriptID = N::Unit::CombatScriptID("fireShield");
+		auto fireShieldBonuses = states.b.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(fireShieldScriptID)));
+		if(!ranged && !B_state->isClone() && !fireShieldBonuses->empty()
 		   && !A_state->hasBonusOfType(BonusType::SPELL_SCHOOL_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE))
 		   && !A_state->hasBonusOfType(BonusType::NEGATIVE_EFFECTS_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE))
 		   && A_state->valOfBonuses(BonusType::SPELL_DAMAGE_REDUCTION, BonusSubtypeID(SpellSchool::FIRE)) < 100 && !B_state->isInvincible())
 		{
-			auto dmg = (std::min(static_cast<int64_t>(states.b.calcAvailableHealth()), A_dmg_mean) * B_state->valOfBonuses(BonusType::FIRE_SHIELD)) / 100;
+			auto dmg = (std::min(static_cast<int64_t>(states.b.calcAvailableHealth()), A_dmg_mean) * fireShieldBonuses->totalValue()) / 100;
 			A_state->damage(dmg);
 		}
 
 		// 3. Handle DEATH_STARE (must come last; uses attacker qty left after fire shield)
-		if(B_state->alive() && B_isLiving && A_state->hasBonusOfType(BonusType::DEATH_STARE))
+		auto deathStareScriptID = N::Unit::CombatScriptID("deathStare");
+		auto deathStareBonuses = states.a.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(deathStareScriptID)));
+		if(B_state->alive() && B_isLiving && !deathStareBonuses->empty())
 		{
-			auto staredeaths = static_cast<int>(std::round(CalcDeathStare(battle, A_state.get(), B_state.get(), ranged)));
+			auto staredeaths = static_cast<int>(std::round(CalcDeathStare(battle, A_state.get(), B_state.get(), *deathStareBonuses, ranged)));
 
 			while(staredeaths > 0 && B_state->alive())
 			{
@@ -1789,7 +1828,7 @@ namespace
 			if(!inserted)
 				continue;
 
-			assert(CStack::isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
+			assert(battle.isMeleeAttackPossible(&unit->cstack, &ounit->cstack, hex->bhex));
 
 			const auto amove = N::Action::Create({.actionType = AT::AMOVE, .by = unit, .target = ounit, .endsAt = move->endsAt, .flags = {}});
 
@@ -1881,7 +1920,7 @@ namespace
 				auto aim = spells::Target{};
 				aim.emplace_back(ohex->bhex);
 				for(const auto & tstack : mech->getAffectedStacks(aim))
-					targets.emplace(tstack);
+					targets.emplace_back(tstack);
 			}
 
 			for(const auto & tstack : targets)

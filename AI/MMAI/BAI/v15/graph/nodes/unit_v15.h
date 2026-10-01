@@ -85,6 +85,9 @@ public:
 	void setattr(Attribute a, int value);
 
 	static int GetValue(const CCreature * creature, bool isClone = false, bool isSummon = false);
+	static ScriptID CombatScriptID(const std::string & name);
+	static bool RunsCombatScript(const Bonus & bonus, const std::string & script);
+	static bool HasCombatScript(const CStack * cstack, const std::string & script);
 
 	const CStack & cstack;
 	const std::string alias;

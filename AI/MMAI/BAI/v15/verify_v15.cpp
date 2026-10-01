@@ -341,8 +341,12 @@ namespace
 						vassert(v, cstack.hasBonusOfType(BonusType::FLYING), "UNIT.HAS_FLYING", cstack.getDescription());
 						break;
 					case A::HAS_LIFE_DRAIN:
-						vassert(v, 10 * cstack.valOfBonuses(BonusType::LIFE_DRAIN), "UNIT.HAS_LIFE_DRAIN", cstack.getDescription());
+					{
+						auto scriptID = N::Unit::CombatScriptID("lifeDrain");
+						auto bonusVal = cstack.valOfBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(scriptID)));
+						vassert(v, 10 * bonusVal, "UNIT.HAS_LIFE_DRAIN", cstack.getDescription());
 						break;
+					}
 					case A::HAS_NON_LIVING:
 					{
 						auto undead = cstack.hasBonusOfType(BonusType::UNDEAD);
@@ -642,7 +646,7 @@ namespace
 								expect(isReachable(actor, endBhex), "ACTION.ACTION_TYPE[AMOVE]: endBhex unreachable");
 								expect(action->target != nullptr, "ACTION.ACTION_TYPE[AMOVE]: target is nullptr");
 								expect(
-									CStack::isMeleeAttackPossible(&actor, &action->target->cstack, endBhex),
+									ctx.battle.isMeleeAttackPossible(&actor, &action->target->cstack, endBhex),
 									"ACTION.ACTION_TYPE[AMOVE]: melee attack is impossible"
 								);
 								break;
@@ -768,7 +772,7 @@ namespace
 			const bool unblockable = blocked.canShootBlocked() || blocked.hasBonusOfType(BonusType::SIEGE_WEAPON);
 			expect(!unblockable, "EDGE_UNIT_BLOCKED_BY_ACTION: blocked unit is unblockable");
 
-			const auto & attackHexes = CStack::meleeAttackHexes(&actor, &blocked, action->endsAt.at(0)->bhex, blocked.getPosition());
+			const auto & attackHexes = ctx.battle.meleeAttackHexes(&actor, &blocked, action->endsAt.at(0)->bhex, blocked.getPosition());
 
 			// NOTE: this will be incorrect if either stack is berserk
 			expect(
@@ -1137,7 +1141,7 @@ void Verify(const State * state) // NOLINT(readability-function-cognitive-comple
 
 					expect(edge->srcNode == edge->dstNode->target, "EDGE_UNIT_IS_MELEED_BY_ACTION: target mismatch: " + edge->name());
 					expect(
-						CStack::isMeleeAttackPossible(&edge->dstNode->by->cstack, &edge->srcNode->cstack, edge->dstNode->endsAt.at(0)->bhex),
+						ctx.battle.isMeleeAttackPossible(&edge->dstNode->by->cstack, &edge->srcNode->cstack, edge->dstNode->endsAt.at(0)->bhex),
 						"EDGE_UNIT_IS_MELEED_BY_ACTION: attack not possible: " + edge->name()
 					);
 				}

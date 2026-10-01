@@ -34,7 +34,7 @@ public:
 	void activeStack(const BattleID & bid, const CStack * stack) override;
 	void battleNewRound(const BattleID & bid) override;
 	void yourTacticPhase(const BattleID & bid, int distance) override;
-	void battleStackMoved(const BattleID & battleID, const CStack * stack, const BattleHexArray & dest, int distance, bool teleport) override;
+	void actionFinished(const BattleID & bid, const BattleAction & action) override;
 
 	void battleStacksAttacked(
 		const BattleID & bid,

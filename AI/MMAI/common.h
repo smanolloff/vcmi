@@ -86,6 +86,16 @@ inline bool isMMAIAutoVerify()
 	return value;
 }
 
+inline bool isMMAILegacyValue()
+{
+	static const bool value = []
+	{
+		const char * envvar = std::getenv("MMAI_LEGACY_VALUE");
+		return envvar != nullptr && std::strcmp(envvar, "1") == 0;
+	}();
+	return value;
+}
+
 /*
  * RAII for temporarily setting a new name for the current thread.
  * The thread name appears in messages logged through VCMI's logger.

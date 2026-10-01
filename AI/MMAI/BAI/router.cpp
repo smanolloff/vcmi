@@ -204,6 +204,8 @@ void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_p
 	colorname = cb->getPlayerID()->toString();
 	aiCombatOptions = aiCombatOptions_;
 
+	cb->waitTillRealize = false;
+
 	// During training, baggage is used for injecting the model-in-training
 	// (which acts as a bridge to vcmi-gym)
 	auto & any = aiCombatOptions.other;

@@ -14,9 +14,12 @@
 
 #include "AI/MMAI/common.h"
 #include "GameLibrary.h"
+#include "battle/CombatValue.h"
 #include "bonuses/BonusEnum.h"
 #include "bonuses/Propagators.h"
 #include "constants/EntityIdentifiers.h"
+#include "modding/IdentifierStorage.h"
+#include "modding/ModScope.h"
 #include "schema/v15/constants.h"
 
 // XXX: clangd warns these are unused, but they are in fact required
@@ -25,6 +28,35 @@
 
 namespace MMAI::BAI::V15::Graph::Nodes
 {
+
+ScriptID Unit::CombatScriptID(const std::string & name)
+{
+	auto index = LIBRARY->identifiers()->getIdentifier(ModScope::scopeGame(), "script", name, false);
+	return index.has_value() ? ScriptID(*index) : ScriptID::NONE;
+}
+
+
+// static
+bool Unit::RunsCombatScript(const Bonus & bonus, const std::string & script)
+{
+	if(bonus.type != BonusType::COMBAT_EVENT_TRIGGER)
+		return false;
+
+	auto scriptID = CombatScriptID(script);
+
+	return scriptID != ScriptID::NONE && bonus.subtype.as<ScriptID>() == scriptID;
+}
+
+// static
+bool Unit::HasCombatScript(const CStack * cstack, const std::string & script)
+{
+	auto scriptID = CombatScriptID(script);
+
+	if(scriptID == ScriptID::NONE)
+		return false;
+
+	return cstack->hasBonus(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(scriptID)));
+}
 
 namespace
 {
@@ -82,11 +114,11 @@ namespace
 		constexpr double SPEED_TAIL_WIDTH = 2.0;
 		const auto effectiveSpeed = spd <= SPEED_KNEE
 			? spd
-			: SPEED_KNEE + SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH);
+			: SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
 
 		auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
 		auto b = hp / (1 - std::min(0.7, 0.025 * def));
-		auto c = spd ? 0.5 + SPEED_SLOPE * effectiveSpeed : 0.5;
+		auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
 		auto d = shooter ? 1.5 : 1.0;
 
 		// Enchanters have multiple ENCHANTER bonuses, but their value should only be counted once.
@@ -108,8 +140,13 @@ namespace
 				case BonusType::BLOCKS_RETALIATION:
 					d += 0.3;
 					break;
-				case BonusType::DEATH_STARE:
-					d += (bonus->val * 0.02);
+				case BonusType::COMBAT_EVENT_TRIGGER:
+					if(Unit::RunsCombatScript(*bonus, "deathStare"))
+						d += (bonus->val * 0.02); // 10% = 0.2
+					else if(Unit::RunsCombatScript(*bonus, "fireShield"))
+						d += (bonus->val * 0.003); // 20% = 0.1
+					else if(Unit::RunsCombatScript(*bonus, "lifeDrain"))
+						d += (bonus->val * 0.003); // 100% = 0.3
 					break;
 				case BonusType::DOUBLE_DAMAGE_CHANCE:
 					d += (bonus->val * 0.005);
@@ -128,17 +165,11 @@ namespace
 				case BonusType::FEROCITY:
 					d += (bonus->val * 0.25);
 					break;
-				case BonusType::FIRE_SHIELD:
-					d += (bonus->val * 0.003);
-					break;
 				case BonusType::FIRST_STRIKE:
 					d += 0.3;
 					break;
 				case BonusType::FLYING:
 					d += 0.1;
-					break;
-				case BonusType::LIFE_DRAIN:
-					d += (bonus->val * 0.003);
 					break;
 				case BonusType::MULTIHEX_ENEMY_ATTACK:
 				{
@@ -249,23 +280,35 @@ namespace
 // static
 int Unit::GetValue(const CCreature * creature, bool isClone, bool isSummon)
 {
-	static const CreatureValues CREATURE_VALUES = InitCreatureValues();
-
 	if(!creature)
 		throw std::runtime_error("GetValue: nullptr given");
 
-	const auto & it = CREATURE_VALUES.find(creature->getIndex());
+	int v;
 
-	if(it == CREATURE_VALUES.end())
-		throwf("GetValue: no value for creature with ID=%1%", creature->getIndex());
+	if (isMMAILegacyValue())
+	{
+		static const CreatureValues CREATURE_VALUES = InitCreatureValues();
 
-	auto v = it->second;
+		const auto & it = CREATURE_VALUES.find(creature->getIndex());
 
-	if(isClone)
-		v *= 5;
+		if(it == CREATURE_VALUES.end())
+			throwf("GetValue: no value for creature with ID=%1%", creature->getIndex());
 
-	if(isSummon)
-		v /= 5;
+		v = it->second;
+
+		if(isClone)
+			v *= 5;
+
+		if(isSummon)
+			v /= 5;
+
+		return v;
+	}
+	else
+	{
+		static constexpr double combatValueScale = 0.47;
+		v = static_cast<int>(std::lround(LIBRARY->creh->getCombatValue().getAIValue(creature) * combatValueScale));
+	}
 
 	return v;
 }
@@ -381,8 +424,9 @@ Unit::Unit(const Args & args)
 			case BonusType::RETURN_AFTER_STRIKE:
 				setattr(UA::HAS_RETURN_AFTER_STRIKE, 1);
 				break;
-			case BonusType::LIFE_DRAIN:
-				setattr(UA::HAS_LIFE_DRAIN, permille(bonus->val, 100));
+			case BonusType::COMBAT_EVENT_TRIGGER:
+				if(Unit::RunsCombatScript(*bonus, "lifeDrain"))
+					setattr(UA::HAS_LIFE_DRAIN, permille(bonus->val, 100));
 				break;
 			case BonusType::DOUBLE_DAMAGE_CHANCE:
 				setattr(UA::HAS_DOUBLE_DAMAGE_CHANCE, permille(bonus->val, 100));

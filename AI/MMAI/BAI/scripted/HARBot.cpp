@@ -490,7 +490,7 @@ bool HARBot::handlePreWaitTurn(const BattleID & battleID, const CStack * stack)
 
 			for(const auto & hex : availableHexes)
 			{
-				if(!CStack::isMeleeAttackPossible(stack, enemy, hex))
+				if(!battle->isMeleeAttackPossible(stack, enemy, hex))
 					continue;
 
 				BattleAttackInfo attackInfo(stack, enemy, static_cast<int>(distances.at(hex.toInt())), false);
@@ -634,7 +634,7 @@ HARBot::RetreatPlan HARBot::findBestRetreatFrom(const CStack * stack, const Batt
 		for(const auto * enemy : enemies)
 		{
 			if(!enemy->alive() || IsWarMachine(enemy) || enemy->isInvincible() || !enemy->getPosition().isValid()
-			   || !CStack::isMeleeAttackPossible(stack, enemy, destination))
+			   || !battle->isMeleeAttackPossible(stack, enemy, destination))
 				continue;
 
 			BattleAttackInfo attackInfo(stack, enemy, movementDistance, false);
@@ -1000,7 +1000,7 @@ bool HARBot::attackAndMarkForRetreat(const BattleID & battleID, const CStack * s
 		int attackHexCount = 0;
 		for(const auto & hex : availableHexes)
 		{
-			if(!CStack::isMeleeAttackPossible(stack, enemy, hex))
+			if(!battle->isMeleeAttackPossible(stack, enemy, hex))
 				continue;
 
 			++attackHexCount;

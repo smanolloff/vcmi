@@ -57,9 +57,7 @@
 #include "client/CServerHandler.h"
 #include "client/ClientCommandManager.h"
 #include "client/gui/CursorHandler.h"
-#include "client/eventsSDL/InputHandler.h"
 #include "client/render/Graphics.h"
-#include "client/render/IScreenHandler.h"
 #include "client/CPlayerInterface.h"
 #include "client/gui/WindowHandler.h"
 

@@ -21,6 +21,7 @@
 #include "battle/BattleAction.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CCallback.h"
+#include "constants/EntityIdentifiers.h"
 #include "lib/callback/AIFactory.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
@@ -47,6 +48,7 @@ AAI::AAI()
 AAI::~AAI()
 {
 	info("--- (destructor) ---");
+	restoreWaitTillRealize();
 }
 
 std::string AAI::getBattleAIName() const
@@ -55,9 +57,25 @@ std::string AAI::getBattleAIName() const
 	return "MMAI";
 }
 
+void AAI::suspendWaitTillRealize()
+{
+	assert(!waitTillRealizeBeforeBattle.has_value());
+	waitTillRealizeBeforeBattle = cbc->waitTillRealize;
+	cbc->waitTillRealize = false;
+}
+
+void AAI::restoreWaitTillRealize()
+{
+	if(waitTillRealizeBeforeBattle.has_value())
+	{
+		cbc->waitTillRealize = *waitTillRealizeBeforeBattle;
+		waitTillRealizeBeforeBattle.reset();
+	}
+}
+
 /*
-     * Hybrid call-ins (conecrning both AAI and BAI)
-     */
+* Hybrid call-ins (conecrning both AAI and BAI)
+*/
 
 void AAI::battleStart(
 	const BattleID & bid,
@@ -71,6 +89,7 @@ void AAI::battleStart(
 )
 {
 	info("*** battleStart ***");
+	suspendWaitTillRealize();
 
 	side = side_;
 
@@ -129,11 +148,12 @@ void AAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 	}
 
 	battleAI.reset();
+	restoreWaitTillRealize();
 }
 
 /*
-     * AAI call-ins
-     */
+ * AAI call-ins
+ */
 std::optional<BattleAction> AAI::makeSurrenderRetreatDecision(const BattleID & bid, const BattleStateInfoForRetreat & bs)
 {
 	debug("*** makeSurrenderRetreatDecision ***");
@@ -177,7 +197,7 @@ void AAI::yourTurn(QueryID queryID)
 			const auto * h = heroes.at(0);
 
 			// Move 1 tile to the right
-			cb->moveHero(h, h->pos + int3{1, 0, 0}, false);
+			cb->moveHero(h, h->pos + int3{1, 0, 0}, false, EPathfindingLayer::LAND);
 		}
 	);
 }
@@ -506,8 +526,8 @@ void AAI::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, Qu
 }
 
 /*
-     * BAI call-ins
-     */
+ * BAI call-ins
+ */
 
 void AAI::actionFinished(const BattleID & bid, const BattleAction & action)
 {

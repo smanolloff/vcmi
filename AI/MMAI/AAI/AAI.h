@@ -185,6 +185,10 @@ private:
 
 	BattleSide side;
 
+	std::optional<bool> waitTillRealizeBeforeBattle;
+	void suspendWaitTillRealize();
+	void restoreWaitTillRealize();
+
 	void error(const std::string & text) const;
 	void warn(const std::string & text) const;
 	void info(const std::string & text) const;

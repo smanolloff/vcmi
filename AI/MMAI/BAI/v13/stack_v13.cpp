@@ -19,7 +19,7 @@
 #include "modding/IdentifierStorage.h"
 #include "modding/ModScope.h"
 
-#include "BAI/v13/stack.h"
+#include "BAI/v13/stack_v13.h"
 #include "schema/v13/constants.h"
 #include "schema/v13/types.h"
 

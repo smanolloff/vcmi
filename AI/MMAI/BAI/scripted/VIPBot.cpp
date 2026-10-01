@@ -957,7 +957,7 @@ void VIPBot::handleGuard(const BattleID & bid, const CStack * guard, const CStac
                 // if target hex has a neighbouring enemy => move + attack
                 for (const auto & enemy : battle->battleGetStacks())
                 {
-                    if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, hex))
+                    if (guard->unitSide() != enemy->unitSide() && battle->isMeleeAttackPossible(guard, enemy, hex))
                     {
                         info("Will attack from hex %d at %s...", target.toInt(), enemy->getDescription());
                         cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, hex));
@@ -1033,7 +1033,7 @@ void VIPBot::handleGuard(const BattleID & bid, const CStack * guard, const CStac
     // if target hex has a neighbouring enemy => move + attack
     for (const auto & enemy : battle->battleGetStacks())
     {
-        if (guard->unitSide() != enemy->unitSide() && CStack::isMeleeAttackPossible(guard, enemy, target))
+        if (guard->unitSide() != enemy->unitSide() && battle->isMeleeAttackPossible(guard, enemy, target))
         {
             info("Will move to hex %d and attack at %s", target.toInt(), enemy->getDescription());
             cb->battleMakeUnitAction(bid, BattleAction::makeMeleeAttack(guard, enemy, target));

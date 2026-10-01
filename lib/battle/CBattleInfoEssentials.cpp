@@ -269,7 +269,7 @@ const CGHeroInstance * CBattleInfoEssentials::battleGetFightingHero(BattleSide s
 
 	if(!battleDoWeKnowAbout(side))
 	{
-		logGlobal->error("FIXME: %s access check ", __FUNCTION__);
+		logGlobal->warn("FIXME: %s access check ", __FUNCTION__);
 		return nullptr;
 	}
 

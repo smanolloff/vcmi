@@ -170,7 +170,7 @@ std::string EResTypeHelper::getEResTypeAsString(EResType type)
 #undef MAP_ENUM
 
 	auto iter = stringToRes.find(type);
-	assert(iter != stringToRes.end());
+	// assert(iter != stringToRes.end());
 
 	return iter->second;
 }

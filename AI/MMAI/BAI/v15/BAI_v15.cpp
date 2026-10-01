@@ -319,7 +319,7 @@ namespace
 			case AT::AMOVE:
 				assert(a->by && &a->by->cstack == acstack);
 				assert(a->endsAt.size() > 0);
-				assert(a->target && CStack::isMeleeAttackPossible(acstack, &a->target->cstack, a->endsAt.front()->bhex));
+				assert(a->target && battle.isMeleeAttackPossible(acstack, &a->target->cstack, a->endsAt.front()->bhex));
 				return BattleAction::makeMeleeAttack(acstack, &a->target->cstack, a->endsAt.front()->bhex);
 			case AT::SHOOT:
 				assert(a->by && &a->by->cstack == acstack);
@@ -438,9 +438,9 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	cb->battleMakeUnitAction(bid, ba);
 }
 
-void BAI::battleStackMoved(const BattleID & battleID, const CStack * stack, const BattleHexArray & dest, int distance, bool teleport)
+void BAI::actionFinished(const BattleID & bid, const BattleAction & action)
 {
-	tacticsHandler->onStackMoved(stack);
+	tacticsHandler->onActionFinished(action);
 }
 
 std::string BAI::renderANSI() const

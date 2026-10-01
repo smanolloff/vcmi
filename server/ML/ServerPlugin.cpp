@@ -19,6 +19,7 @@
 #include "Global.h"
 #include "battle/BattleLayout.h"
 #include "TerrainHandler.h"
+#include "battle/CombatValue.h"
 #include "constants/EntityIdentifiers.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
@@ -40,8 +41,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <regex>
-#include "bonuses/BonusParameters.h"
-#include "spells/CSpellHandler.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
 
@@ -65,203 +64,11 @@ namespace {
     //      (may be outdated)
     int CalculateValue(const CCreature * cr)
     {
-        auto att = cr->getBaseAttack();
-        auto def = cr->getBaseDefense();
-        auto dmg = (cr->getBaseDamageMax() + cr->getBaseDamageMin()) / 2.0;
-        auto hp = cr->getBaseHitPoints();
-        auto spd = cr->getBaseSpeed();
-        auto shooter = cr->hasBonusOfType(BonusType::SHOOTER);
-        auto bonuses = cr->getAllBonuses(Selector::all);
-
-        auto multihexAttackHexcount = [](const std::vector<int> & encodedPath)
-        {
-            // The bonus parameters vector contains encoded info about affected hexes.
-            // The encoding is not known, but also not relevant:
-            // we care only about the number of affected hexes and
-            // whether they are adjacent or remote
-            // (because remote hexes allow to hit "guarded" shooters)
-            // The assumption about this hex encoding is:
-            // "L"=1, "F"=2, "R"=3, "FL"=21, "FFF"=222, etc.
-            // (exact values don't matter, but the number of digits does)
-            int numAdjacentHexes = 0;
-            int numDistantHexes = 0;
-            for(int x : encodedPath)
-                x < 10 ? ++numAdjacentHexes : ++numDistantHexes;
-
-            return std::pair{numAdjacentHexes, numDistantHexes};
-        };
-
-        /*
-         * Term "c":
-         * increase is linear up to SPEED_KNEE, then diminishes
-         * Visualize on https://www.desmos.com/calculator:
-         *
-         *    [1]   a=\ln\left(x\cdot2\right)
-         *    [2]   b=0.5+\left(s\cdot x\right)\left\{x\le k\right\}
-         *    [3]   c=0.5+\left(s\cdot X\right)\left\{\ x\ge k+1\right\}
-         *    [4]   \frac{b}{a}\left\{x>1\right\}
-         *    [5]   X=k+\left(t\cdot\ln\left(1+\frac{\left(x-k\right)}{t}\right)\right)
-         *    [6]   s=0.2
-         *    [7]   k=15
-         *    [8]   t=5
-         *
-         *      Use Desmos's visibility toggles to hide/show relevant visualizations:
-         *      - The old speed-factor is visualized by eq. [1]
-         *      - The new speed-factor is visualized by eq. [2] and [3]
-         *      - The new-vs-old relation is visualized by eq. [4]
-         *
-         */
-
-        constexpr double SPEED_KNEE = 13.0;
-        constexpr double SPEED_SLOPE = 0.2;
-        constexpr double SPEED_TAIL_WIDTH = 2.0;
-        const auto effectiveSpeed = spd <= SPEED_KNEE
-            ? spd
-            : SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
-
-        auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
-        auto b = hp / (1 - std::min(0.7, 0.025 * def));
-        auto c = spd ? 0.5 + (SPEED_SLOPE * effectiveSpeed) : 0.5;
-        auto d = shooter ? 1.5 : 1.0;
-
-        // Enchanters have many "enchanter" bonuses, add only once
-        bool enchanter = false;
-
-        for(const auto & bonus : *bonuses)
-        {
-            switch(bonus->type)
-            {
-                case BonusType::ADDITIONAL_ATTACK:
-                    d += (shooter ? 0.5 : 0.3);
-                    break;
-                case BonusType::ADDITIONAL_RETALIATION:
-                    d += (bonus->val * 0.1);
-                    break;
-                case BonusType::ATTACKS_ALL_ADJACENT:
-                    d += 0.2;
-                    break;
-                case BonusType::BLOCKS_RETALIATION:
-                    d += 0.3;
-                    break;
-                case BonusType::DEATH_STARE:
-                    d += (bonus->val * 0.02);
-                    break;
-                case BonusType::DOUBLE_DAMAGE_CHANCE:
-                    d += (bonus->val * 0.005);
-                    break;
-                case BonusType::ENCHANTER:
-                    if (!enchanter)
-                    {
-                        d += 0.5;
-                        enchanter = true;
-                    }
-                    break;
-                case BonusType::ENEMY_ATTACK_REDUCTION:
-                case BonusType::ENEMY_DEFENCE_REDUCTION:
-                    d += (bonus->val * 0.0025);
-                    break;
-                case BonusType::FEROCITY:
-                    d += (bonus->val * 0.25);
-                    break;
-                case BonusType::FIRE_SHIELD:
-                    d += (bonus->val * 0.003);
-                    break;
-                case BonusType::FIRST_STRIKE:
-                    d += 0.3;
-                    break;
-                case BonusType::FLYING:
-                    d += 0.1;
-                    break;
-                case BonusType::LIFE_DRAIN:
-                    d += (bonus->val * 0.003);
-                    break;
-                case BonusType::MULTIHEX_ENEMY_ATTACK:
-                {
-                    const auto & [adj, dist] = multihexAttackHexcount(bonus->parameters->toVector());
-                    d += (adj * 0.03);
-                    d += (dist * 0.8);
-                }
-                break;
-                case BonusType::MULTIHEX_UNIT_ATTACK:
-                {
-                    const auto & [adj, dist] = multihexAttackHexcount(bonus->parameters->toVector());
-                    d += (adj * 0.05);
-                    d += (dist * 0.1);
-                }
-                break;
-                case BonusType::NO_DISTANCE_PENALTY:
-                    d += 0.5;
-                    break;
-                case BonusType::NO_MELEE_PENALTY:
-                    d += 0.1;
-                    break;
-                case BonusType::RANGED_RETALIATION:
-                    d += 0.2;
-                    break;
-                case BonusType::REVENGE:
-                case BonusType::THREE_HEADED_ATTACK:
-                    d += 0.15; // deprecated by MULTIHEX_ENEMY_ATTACK
-                    break;
-                case BonusType::TWO_HEX_ATTACK_BREATH:
-                    d += 0.1; // deprecated by MULTIHEX_UNIT_ATTACK
-                    break;
-                case BonusType::UNLIMITED_RETALIATIONS:
-                    d += 0.2;
-                    break;
-                case BonusType::SPELL_LIKE_ATTACK:
-                    if(bonus->subtype.as<SpellID>() == SpellID::DEATH_CLOUD)
-                        d += 0.2;
-                    break;
-                case BonusType::SPELL_AFTER_ATTACK:
-                    switch(bonus->subtype.as<SpellID>())
-                    {
-                        case SpellID::BLIND:
-                        case SpellID::STONE_GAZE:
-                        case SpellID::PARALYZE:
-                            d += (bonus->val * 0.01);
-                            break;
-                        case SpellID::BIND:
-                        case SpellID::WEAKNESS:
-                            d += (bonus->val * 0.001);
-                            break;
-                        case SpellID::AGE:
-                            d += (bonus->val * 0.005);
-                            break;
-                        case SpellID::CURSE:
-                            d += (bonus->val * 0.0025);
-                            break;
-                        case SpellID::DISRUPTING_RAY:
-                            d += (bonus->val * 0.002);
-                            break;
-                        case SpellID::POISON:
-                            d += (bonus->val * 0.001);
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        /*
-         * Some examples:
-         *
-         * Peasant=8            Gremlin=20          Imp=21             Pixie=24
-         * Medusa=260           OgreMage=270        Crusader=293       Monk=308
-         * BoneDragon=1425      Giant=1432          Hydra=1752         Devil=2344
-         * ArchDevil=4484       GoldDragon=4518     Archangel=4763     Titan=5341
-         * CrystalDragon=11347  RustDragon=12166    AzureDragon=17988
-         *
-         */
-        auto res = static_cast<int>(std::round((a + b) * c * d));
+        static constexpr double combatValueScale = 0.47;
+        auto res = static_cast<int>(std::lround(LIBRARY->creh->getCombatValue().getAIValue(cr) * combatValueScale));
 
         if(IsMLVerbose())
-        {
-            std::cout << "ML_VERBOSE: " << res << " " << cr->getId().toEntity(LIBRARY)->getJsonKey() << " (a=" << a << ", b=" << b << ", c=" << c
-                      << ", d=" << d << ")\n";
-        }
+            std::cout << "ML_VERBOSE: " << res << " " << cr->getId().toEntity(LIBRARY)->getJsonKey() << "\n";
 
         return res;
     }

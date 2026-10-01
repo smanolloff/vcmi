@@ -25,7 +25,6 @@ add_executable(mlclient-cli
 
 add_dependencies(mlclient-cli mlclient)
 target_include_directories(mlclient PUBLIC "${CMAKE_SOURCE_DIR}/AI/MMAI")
-target_link_libraries(mlclient PRIVATE SDL2::SDL2 SDL2::Image SDL2::Mixer SDL2::TTF)
 target_link_libraries(mlclient PUBLIC vcmi vcmiclientcommon)
 target_link_libraries(mlclient-cli PRIVATE mlclient)
 
