@@ -455,7 +455,7 @@ set(lib_MAIN_HEADERS
 	../include/vcmi/Team.h
 
 	battle/AccessibilityInfo.h
-	battle/AICombatOptions.h
+	battle/AutocombatPreferences.h
 	battle/BattleAction.h
 	battle/BattleAttackInfo.h
 	battle/BattleHex.h
@@ -521,7 +521,7 @@ set(lib_MAIN_HEADERS
 	callback/GameRandomizer.h
 	callback/MapInfoCallback.h
 	callback/EditorCallback.h
-	
+
 	campaign/CampaignBonus.h
 	campaign/CampaignConstants.h
 	campaign/CampaignHandler.h

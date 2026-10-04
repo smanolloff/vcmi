@@ -120,7 +120,7 @@ void AAI::battleStart(
 
 	auto ainame = getBattleAIName();
 	battleAI = AIFactory::createBattleAI("MMAI");
-	battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+	battleAI->initBattleInterface(env, cbc, autocombatPreferences);
 	battleAI->battleStart(bid, army1, army2, tile, hero1, hero2, side_, replayAllowed);
 }
 
@@ -160,16 +160,16 @@ std::optional<BattleAction> AAI::makeSurrenderRetreatDecision(const BattleID & b
 	return std::nullopt;
 }
 
-void AAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions_)
+void AAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AutocombatPreferences AP)
 {
 	info("*** initGameInterface ***");
 
-	aiCombatOptions = aiCombatOptions_;
 	color = CB->getPlayerID()->toString();
 
 	env = ENV;
 	cb = CB;
 	cbc = CB;
+	autocombatPreferences = AP;
 
 	// XXX: not sure if needed
 	cb->waitTillRealize = true;

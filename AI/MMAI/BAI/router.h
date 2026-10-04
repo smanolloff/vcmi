@@ -12,7 +12,7 @@
 
 #include "AI/MMAI/common.h" // IWYU pragma: keep
 
-#include "battle/AICombatOptions.h"
+#include "battle/AutocombatPreferences.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
 #include "AI/MMAI/schema/base.h"
@@ -35,7 +35,7 @@ public:
 	 * Handled locally (not delegated)
 	 */
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP) override;
 
 	/*
 	 * Delegated to BAI
@@ -74,10 +74,9 @@ public:
 private:
 	std::shared_ptr<Environment> env;
 	std::shared_ptr<CBattleCallback> cb;
-
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
-	AICombatOptions aiCombatOptions;
+	AutocombatPreferences autocombatPreferences;
 	Schema::Baggage * baggage = nullptr;
 
 	std::string addrstr = "?";

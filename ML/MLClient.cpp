@@ -578,9 +578,9 @@ namespace ML {
 		// TODO: add flag in GameEngine to skip sound and music init if headless
 		ENGINE = std::make_unique<GameEngine>(headless);
 
-		auto aco = AICombatOptions();
-		aco.other = std::make_any<MMAI::Schema::Baggage*>(baggage);
-		GAME = std::make_unique<GameInstance>(aco);
+		auto ap = AutocombatPreferences();
+		ap.other = std::make_any<MMAI::Schema::Baggage*>(baggage);
+		GAME = std::make_unique<GameInstance>(ap);
 
 		if (!headless)
 			ENGINE->setEngineUser(GAME.get());

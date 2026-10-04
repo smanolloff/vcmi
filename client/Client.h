@@ -16,7 +16,7 @@
 #include "../lib/callback/CGameInfoCallback.h"
 #include "../lib/ConditionalWait.h"
 #include "../lib/ResourceSet.h"
-#include "../lib/battle/AICombatOptions.h"
+#include "../lib/battle/AutocombatPreferences.h"
 
 
 struct CPackForClient;
@@ -129,7 +129,7 @@ class CClient : public Environment, public IClient, public ClientSession
 
 public:
 	std::unique_ptr<BattleAction> currentBattleAction;
-	AICombatOptions aiCombatOptions;
+	AutocombatPreferences autocombatPreferences;
 
 	CClient();
 	~CClient();

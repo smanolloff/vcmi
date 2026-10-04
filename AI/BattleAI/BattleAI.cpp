@@ -13,7 +13,6 @@
 #include "BattleExchangeVariant.h"
 
 #include "StackWithBonuses.h"
-#include "battle/AICombatOptions.h"
 #include "tbb/parallel_for.h"
 #include "../../lib/CStopWatch.h"
 #include "../../lib/CThreadHelper.h"
@@ -52,11 +51,11 @@ void logHexNumbers()
 #endif
 }
 
-void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions_)
+void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP)
 {
 	env = ENV;
 	cb = CB;
-	aiCombatOptions = aiCombatOptions_;
+	autobattlePreferences = AP;
 	playerID = *CB->getPlayerID();
 	movesSkippedByDefense = 0;
 
@@ -152,7 +151,7 @@ void CBattleAI::activeStack(const BattleID & battleID, const CStack * stack )
 
 	result = evaluator.selectStackAction(stack);
 
-	if(aiCombatOptions.enableSpellsUsage && !evaluator.canCastSpell())
+	if(autobattlePreferences.enableSpellsUsage && !evaluator.canCastSpell())
 	{
 		auto spelCasted = evaluator.attemptCastingSpell(stack);
 
@@ -202,7 +201,7 @@ void CBattleAI::battleStart(const BattleID & battleID, const CCreatureSet *army1
 {
 	LOG_TRACE(logAi);
 	side = Side;
-	auto tacticsSettings = TacticsHandler::Settings{.enabled = aiCombatOptions.enableTacticsUsage};
+	auto tacticsSettings = TacticsHandler::Settings{.enabled = autobattlePreferences.enableTacticsUsage};
 	tacticsHandler = std::make_unique<TacticsHandler>(cb, battleID, tacticsSettings);
 }
 
@@ -251,6 +250,3 @@ std::optional<BattleAction> CBattleAI::considerFleeingOrSurrendering(const Battl
 
 	return result;
 }
-
-
-

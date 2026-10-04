@@ -12,7 +12,6 @@
 #include "../../lib/battle/BattleHex.h"
 #include "../../lib/battle/ReachabilityInfo.h"
 #include "../../lib/callback/CBattleGameInterface.h"
-#include "battle/AICombatOptions.h"
 
 class EnemyInfo;
 
@@ -28,7 +27,7 @@ public:
 	CStupidAI();
 	~CStupidAI();
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP) override;
 
 	void actionFinished(const BattleID & battleID, const BattleAction &action) override;//occurs AFTER every action taken by any stack or by the hero
 	void actionStarted(const BattleID & battleID, const BattleAction &action) override;//occurs BEFORE every action taken by any stack or by the hero
@@ -52,4 +51,3 @@ private:
 	BattleAction goTowards(const BattleID & battleID, const CStack * stack, BattleHexArray hexes) const;
 	bool moveStackToClosestEnemy(const BattleID & battleID, const CStack * stack, const ReachabilityInfo & dists, const std::vector<EnemyInfo> & enemyInfos);
 };
-

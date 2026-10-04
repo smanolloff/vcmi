@@ -11,7 +11,7 @@
 
 #include "IBattleEventsReceiver.h"
 
-#include "../battle/AICombatOptions.h"
+#include "../battle/AutocombatPreferences.h"
 
 static constexpr int AI_INTERFACE_VER = 1;
 
@@ -26,7 +26,7 @@ public:
 	std::string dllName;
 
 	virtual ~CBattleGameInterface() {};
-	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions){};
+	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences){};
 
 	//battle call-ins
 	virtual void activeStack(const BattleID & battleID, const CStack * stack)=0; //called when it's turn of that stack

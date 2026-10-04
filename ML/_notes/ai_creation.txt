@@ -17,7 +17,7 @@ CPI - reads settings["friendlyAI"]
 
 All adventure AIs have been modified to pass an "AICombatOptions" struct
 to the newly created battle interface:
-battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+battleAI->initBattleInterface(env, cbc, autocombatPreferences);
 it contains autocombat options + a special "other" std::any object which
 is non-null if an MMAI model was loaded. BAI uses it for action predictions.
 
@@ -40,4 +40,3 @@ When attacker is "MMAI":
 CPI creates battle interfaces as per settings["friendlyAI"]
 => must set that setting also (see further down)
 (Note: CPI had to be modded to pass the baggage)
-

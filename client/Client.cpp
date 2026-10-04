@@ -213,7 +213,7 @@ void CClient::initPlayerEnvironments()
 		session["spectate-skip-battle-result"].Bool() = true;
 		session["spectate-ignore-hero"].Bool() = true;
 	}
-	
+
 	if(settings["session"]["spectate"].Bool())
 	{
 		playerEnvironments[PlayerColor::SPECTATOR] = std::make_shared<CPlayerEnvironment>(
@@ -324,7 +324,7 @@ void CClient::installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInte
 
 	auto cb = std::make_shared<CCallback>(gamestate, callbackPlayer, this);
 	battleCallbacks[color] = cb;
-	gameInterface->initGameInterface(playerEnvironments.at(color), cb, aiCombatOptions);
+	gameInterface->initGameInterface(playerEnvironments.at(color), cb, autocombatPreferences);
 
 	installNewBattleInterface(gameInterface, color, battlecb);
 }
@@ -338,7 +338,7 @@ void CClient::installNewBattleInterface(std::shared_ptr<CBattleGameInterface> ba
 		logGlobal->trace("\tInitializing the battle interface for player %s", color.toString());
 		auto cbc = std::make_shared<CBattleCallback>(color, this);
 		battleCallbacks[color] = cbc;
-		battleInterface->initBattleInterface(playerEnvironments.at(color), cbc, aiCombatOptions);
+		battleInterface->initBattleInterface(playerEnvironments.at(color), cbc, autocombatPreferences);
 	}
 }
 
@@ -559,19 +559,19 @@ void CClient::battleStarted(const BattleID & battleID)
 		if(vstd::contains(battleints, color))
 			battleints[color]->battleStart(info->battleID, leftSide.getArmy(), rightSide.getArmy(), info->tile, leftSide.getHero(), rightSide.getHero(), side, info->replayAllowed);
 	};
-	
+
 	callBattleStart(leftSide.color, BattleSide::LEFT_SIDE);
 	callBattleStart(rightSide.color, BattleSide::RIGHT_SIDE);
 	callBattleStart(PlayerColor::UNFLAGGABLE, BattleSide::RIGHT_SIDE);
 	if(settings["session"]["spectate"].Bool() && !settings["session"]["spectate-skip-battle"].Bool())
 		callBattleStart(PlayerColor::SPECTATOR, BattleSide::RIGHT_SIDE);
-	
+
 	if(vstd::contains(playerint, leftSide.color) && playerint[leftSide.color]->human)
 		att = std::dynamic_pointer_cast<CPlayerInterface>(playerint[leftSide.color]);
 
 	if(vstd::contains(playerint, rightSide.color) && playerint[rightSide.color]->human)
 		def = std::dynamic_pointer_cast<CPlayerInterface>(playerint[rightSide.color]);
-	
+
 	//Remove player interfaces for auto battle (quickCombat option)
 	if((att && att->isAutoFightOn) || (def && def->isAutoFightOn))
 	{

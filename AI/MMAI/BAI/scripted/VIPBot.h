@@ -30,7 +30,7 @@ public:
     explicit VIPBot(const std::string & delegate);
     ~VIPBot() override;
 
-    void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions) override;
+    void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP) override;
     void battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed) override;
     void yourTacticPhase(const BattleID & battleID, int distance) override;
 

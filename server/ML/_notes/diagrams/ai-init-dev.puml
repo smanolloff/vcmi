@@ -30,7 +30,7 @@ endswitch
 ://// AAI.cpp//
 
 battleAI = CDynLibHandler::getNewBattleAI("MMAI")
-battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+battleAI->initBattleInterface(env, cbc, autocombatPreferences);
 
 switch (//// BAI.cpp//\n\nmodel.getName())
 case (MMAI_MODEL)

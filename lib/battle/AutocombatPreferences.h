@@ -9,7 +9,7 @@
  */
 #pragma once
 
-struct AICombatOptions
+struct AutocombatPreferences
 {
 	bool enableSpellsUsage = true;
 	bool enableTacticsUsage = true;

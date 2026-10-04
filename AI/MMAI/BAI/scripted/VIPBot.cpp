@@ -199,12 +199,12 @@ VIPBot::~VIPBot()
     info("--- destructor ---");
 }
 
-void VIPBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions)
+void VIPBot::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP)
 {
     info("*** initBattleInterface ***");
     cb = CB;
     colorname = cb->getPlayerID()->toString();
-    bot->initBattleInterface(ENV, cb, aiCombatOptions);
+    bot->initBattleInterface(ENV, CB, AP);
 }
 
 void VIPBot::addmsg(const CStack* astack, const CStack* vip, const std::string & event) {

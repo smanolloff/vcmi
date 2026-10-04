@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "battle/AICombatOptions.h"
+#include "battle/AutocombatPreferences.h"
 #include "callback/CAdventureAI.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
@@ -105,7 +105,7 @@ public:
 	void heroSecondarySkillChanged(const CGHeroInstance * hero, int which, int val) override;
 	void heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start) override;
 	void heroVisitsTown(const CGHeroInstance * hero, const CGTownInstance * town) override;
-	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions) override;
+	void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AutocombatPreferences AP) override;
 	void newObject(const CGObjectInstance * obj) override;
 	void objectPropertyChanged(const SetObjectProperty * sop) override;
 	void objectRemoved(const CGObjectInstance * obj, const PlayerColor & initiator) override;

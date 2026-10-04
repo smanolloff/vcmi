@@ -33,7 +33,7 @@ class HARBot : public CBattleGameInterface
 public:
 	explicit HARBot(const std::string & fallback);
 
-	void initBattleInterface(std::shared_ptr<Environment> env, std::shared_ptr<CBattleCallback> cb, AICombatOptions aiCombatOptions) override;
+	void initBattleInterface(std::shared_ptr<Environment> env, std::shared_ptr<CBattleCallback> cb, AutocombatPreferences ap) override;
 	void battleStart(
 		const BattleID & battleID,
 		const CCreatureSet * army1,

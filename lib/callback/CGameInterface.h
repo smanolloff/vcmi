@@ -26,10 +26,10 @@ class MetaString;
 class DLL_LINKAGE CGameInterface : public CBattleGameInterface, public IGameEventsReceiver
 {
 public:
-	AICombatOptions aiCombatOptions;
+	AutocombatPreferences autocombatPreferences;
 
 	virtual ~CGameInterface() = default;
-	virtual void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AICombatOptions aiCombatOptions){};
+	virtual void initGameInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CCallback> CB, AutocombatPreferences autocombatPreferences){};
 	virtual void yourTurn(QueryID askID){}; //called AFTER playerStartsTurn(player)
 
 	//pskill is gained primary skill, interface has to choose one of given skills and call callback with selection id

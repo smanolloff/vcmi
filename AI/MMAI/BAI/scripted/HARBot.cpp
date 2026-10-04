@@ -259,12 +259,12 @@ HARBot::HARBot(const std::string & fallback) : fallback(fallback), fallbackBot(A
 	logAi->debug("HARBot: constructed with %s fallback", fallback);
 }
 
-void HARBot::initBattleInterface(std::shared_ptr<Environment> env, std::shared_ptr<CBattleCallback> cb_, AICombatOptions aiCombatOptions)
+void HARBot::initBattleInterface(std::shared_ptr<Environment> env, std::shared_ptr<CBattleCallback> cb_, AutocombatPreferences ap)
 {
 	cb = cb_;
 	colorName = cb->getPlayerID()->toString();
-	logAi->info("HARBot [%s]: initializing battle interface (spells=%d)", colorName, aiCombatOptions.enableSpellsUsage);
-	fallbackBot->initBattleInterface(env, cb, aiCombatOptions);
+	logAi->info("HARBot [%s]: initializing battle interface (spells=%d)", colorName, ap.enableSpellsUsage);
+	fallbackBot->initBattleInterface(env, cb, ap);
 }
 
 void HARBot::battleStart(

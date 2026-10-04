@@ -51,7 +51,6 @@
 #include "../lib/StartInfo.h"
 #include "../lib/TurnTimerInfo.h"
 #include "../lib/VCMIDirs.h"
-#include "../lib/battle/AICombatOptions.h"
 #include "../lib/campaign/CampaignState.h"
 #include "../lib/gameState/CGameState.h"
 #include "../lib/gameState/HighScore.h"
@@ -117,7 +116,7 @@ void CServerHandler::endNetwork()
 	waitForNetworkThread();
 }
 
-CServerHandler::CServerHandler(AICombatOptions aiCombatOptions)
+CServerHandler::CServerHandler(AutocombatPreferences ap)
 	: networkHandler(INetworkHandler::createHandler())
 	, lobbyClient(std::make_unique<GlobalLobbyClient>())
 	, gameChat(std::make_unique<GameChatHandler>())
@@ -131,7 +130,7 @@ CServerHandler::CServerHandler(AICombatOptions aiCombatOptions)
 	, hotseatMode(false)
 	, battleMode(false)
 	, client(nullptr)
-	, aiCombatOptions(aiCombatOptions)
+	, autocombatPreferences(ap)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());
 }
@@ -620,7 +619,7 @@ void CServerHandler::sendRestartGame() const
 		ENGINE->windows().createAndPushWindow<CLoadingScreen>(si->campState->getLoadingBackground());
 	else
 		ENGINE->windows().createAndPushWindow<CLoadingScreen>();
-	
+
 	LobbyRestartGame endGame;
 	sendLobbyPack(endGame);
 }
@@ -665,7 +664,7 @@ void CServerHandler::sendStartGame(bool allowOnlyAI, bool verify) const
 		else
 			ENGINE->windows().createAndPushWindow<CLoadingScreen>();
 	}
-	
+
 	LobbyPrepareStartGame lpsg;
 	sendLobbyPack(lpsg);
 
@@ -717,7 +716,7 @@ void CServerHandler::startGameplay(std::shared_ptr<CGameState> gameState)
 	if (isGuest())
 		networkLagCompensator = std::make_unique<NetworkLagCompensator>(getNetworkHandler(), gameState);
 
-	client->aiCombatOptions = aiCombatOptions;
+	client->autocombatPreferences = autocombatPreferences;
 
 	switch(si->mode)
 	{
@@ -929,7 +928,7 @@ void CServerHandler::showServerError(const std::string & txt) const
 {
 	if(auto w = ENGINE->windows().topWindow<CLoadingScreen>())
 		ENGINE->windows().popWindow(w);
-	
+
 	CInfoWindow::showInfoDialog(txt, {});
 }
 

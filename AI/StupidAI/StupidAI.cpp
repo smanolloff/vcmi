@@ -28,7 +28,7 @@ CStupidAI::~CStupidAI()
 	print("destroyed");
 }
 
-void CStupidAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions _aiCombatOptions)
+void CStupidAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP)
 {
 	print("init called, saving ptr to IBattleCallback");
 	env = ENV;

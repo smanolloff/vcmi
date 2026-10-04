@@ -18,7 +18,7 @@
 #include "../lib/mapping/CMapInfo.h"
 #include "../lib/mapping/CMapHeader.h"
 #include "../lib/gameState/GameStatistics.h"
-#include "../lib/battle/AICombatOptions.h"
+#include "../lib/battle/AutocombatPreferences.h"
 
 class GameConnection;
 class PlayerColor;
@@ -125,7 +125,7 @@ class CServerHandler final : public IServerAPI, public LobbyInfo, public INetwor
 	bool lobbyPreviewMode = false;
 	std::function<void()> onLobbyPreviewJoin;
 
-	AICombatOptions aiCombatOptions;
+	AutocombatPreferences autocombatPreferences;
 
 	void threadRunNetwork();
 	void waitForServerShutdown();
@@ -163,9 +163,9 @@ public:
 	std::unique_ptr<CStopWatch> th;
 	std::unique_ptr<CClient> client;
 
-	CServerHandler(AICombatOptions aiCombatOptions = {});
+	CServerHandler(AutocombatPreferences ap = {});
 	~CServerHandler();
-	
+
 	void resetStateForLobby(EStartMode mode, ESelectionScreen screen, EServerMode serverMode, const std::vector<std::string> & playerNames);
 	void startLocalServerAndConnect(bool connectToLobby);
 	void connectToServer(const std::string & addr, const ui16 port);

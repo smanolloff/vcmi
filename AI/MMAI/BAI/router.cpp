@@ -197,29 +197,27 @@ Router::Router() : addrstr(MakeAddrStr(this)), basetag(addrstr + ":MMAI"), logta
 
 Router::~Router() = default;
 
-void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AICombatOptions aiCombatOptions_)
+void Router::initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP)
 {
 	env = ENV;
 	cb = CB;
+	autocombatPreferences = AP;
 	colorname = cb->getPlayerID()->toString();
-	aiCombatOptions = aiCombatOptions_;
-
-	cb->waitTillRealize = false;
 
 	// During training, baggage is used for injecting the model-in-training
 	// (which acts as a bridge to vcmi-gym)
-	auto & any = aiCombatOptions.other;
+	auto & any = autocombatPreferences.other;
 	if(any.has_value())
 	{
 		auto & t = typeid(Schema::Baggage *);
 		ASSERT(
 			any.type() == t,
 			boost::str(
-				boost::format("Bad std::any payload type for aiCombatOptions.other: want: %s/%u, have: %s/%u") % boost::core::demangle(t.name())
+				boost::format("Bad std::any payload type for autocombatPreferences.other: want: %s/%u, have: %s/%u") % boost::core::demangle(t.name())
 				% t.hash_code() % boost::core::demangle(any.type().name()) % any.type().hash_code()
 			)
 		);
-		baggage = std::any_cast<Schema::Baggage *>(aiCombatOptions.other);
+		baggage = std::any_cast<Schema::Baggage *>(autocombatPreferences.other);
 
 		logAi->info("Baggage decoded");
 #ifndef ENABLE_ML
@@ -408,23 +406,23 @@ void Router::battleStart(
 			if(model->getName() == "StupidAI")
 			{
 				bai = std::make_shared<CStupidAI>();
-				bai->initBattleInterface(env, cb, aiCombatOptions);
+				bai->initBattleInterface(env, cb, autocombatPreferences);
 			}
 			else if(model->getName() == "BattleAI")
 			{
 				bai = std::make_shared<CBattleAI>();
-				bai->initBattleInterface(env, cb, aiCombatOptions);
+				bai->initBattleInterface(env, cb, autocombatPreferences);
 			}
 #ifdef ENABLE_ML
 			else if(model->getName() == "VIPBot")
 			{
 				bai = std::make_shared<VIPBot>("BattleAI");
-				bai->initBattleInterface(env, cb, aiCombatOptions);
+				bai->initBattleInterface(env, cb, autocombatPreferences);
 			}
 			else if(model->getName() == "HARBot")
 			{
 				bai = std::make_shared<HARBot>("BattleAI");
-				bai->initBattleInterface(env, cb, aiCombatOptions);
+				bai->initBattleInterface(env, cb, autocombatPreferences);
 			}
 #endif
 			else
@@ -435,7 +433,7 @@ void Router::battleStart(
 		case Schema::ModelType::NN:
 		case Schema::ModelType::USER:
 			// XXX: must not call initBattleInterface here
-			bai = CreateBAI(model, env, cb, aiCombatOptions.enableSpellsUsage, aiCombatOptions.enableTacticsUsage);
+			bai = CreateBAI(model, env, cb, autocombatPreferences.enableSpellsUsage, autocombatPreferences.enableTacticsUsage);
 #ifdef ENABLE_ML
 			{
 				if(model->getVersion() == 13) {

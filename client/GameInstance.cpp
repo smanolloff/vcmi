@@ -16,6 +16,7 @@
 #include "GameEngine.h"
 #include "Translator.h"
 #include "adventureMap/AdventureMapInterface.h"
+#include "battle/AutocombatPreferences.h"
 #include "gui/WindowHandler.h"
 #include "mapView/mapHandler.h"
 #include "globalLobby/GlobalLobbyClient.h"
@@ -30,9 +31,9 @@
 
 std::unique_ptr<GameInstance> GAME = nullptr;
 
-GameInstance::GameInstance(AICombatOptions aco)
+GameInstance::GameInstance(AutocombatPreferences ap)
 	: translatorInstance(std::make_unique<CompositeTranslator>())
-	, serverInstance(std::make_unique<CServerHandler>(aco))
+	, serverInstance(std::make_unique<CServerHandler>(ap))
 	, interfaceInstance(nullptr)
 {
 }

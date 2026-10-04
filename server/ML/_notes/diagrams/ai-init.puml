@@ -16,7 +16,7 @@ baggage = ML::InitBaggage(settings["MMAI"]);
 ://// CAdventureAI::battleStart (called by VCAI and NKAI's battleStart)//
 
 battleAI = CDynLibHandler::getNewBattleAI(getBattleAIName())
-battleAI->initBattleInterface(env, cbc, aiCombatOptions);
+battleAI->initBattleInterface(env, cbc, autocombatPreferences);
 
 :if (baggage->devMode == false)
   ASSERT(baggage->model->getName() == "MMAI_MODEL");
