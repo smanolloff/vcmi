@@ -44,13 +44,7 @@ BAI::BAI(
 	bool enableSpells,
 	bool enableTactics
 )
-	: model(model)
-	, version(version)
-	, logger(cb->getPlayerID()->toString())
-	, env(env)
-	, cb(cb)
-	, enableSpells(enableSpells)
-	, enableTactics(enableTactics)
+	: model(model), version(version), logger(cb->getPlayerID()->toString()), env(env), cb(cb), enableSpells(enableSpells), enableTactics(enableTactics)
 {
 }
 

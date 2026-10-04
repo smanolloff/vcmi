@@ -57,14 +57,7 @@ namespace
 			if(srcType != ET::NODE_ACTION && dstType != ET::NODE_ACTION)
 				continue;
 
-			std::cout
-				<< "  "
-				<< nodeTypeName(srcType)
-				<< "_"
-				<< relationName
-				<< "_"
-				<< nodeTypeName(dstType)
-				<< '\n';
+			std::cout << "  " << nodeTypeName(srcType) << "_" << relationName << "_" << nodeTypeName(dstType) << '\n';
 
 			for(const auto * edge : graph->getEdges(edgeType))
 			{
@@ -101,15 +94,16 @@ namespace
 			using HA = S15::Graph::NodeAttributes::Hex;
 			using EA = S15::Graph::EdgeAttributes::Unit_MeleeDmg_Unit;
 
-			std::cout
-				<< "-------\n"
-				<< "src: " << srcNode->name() << " (y=" << srcHex->rawAttributes().at(EU(HA::Y_COORD)) << " x=" << srcHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
-				<< "dst: " << dstNode->name() << " (y=" << dstHex->rawAttributes().at(EU(HA::Y_COORD)) << " x=" << dstHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
-				<< "ESTIMATED_NET_VALUE_REL_BF:         " << attrs.at(EI(EA::ESTIMATED_NET_VALUE_REL_BF)) << "\n"
-				<< "ESTIMATED_ATTACKER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_SELF)) << "\n"
-				<< "ESTIMATED_ATTACKER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_BF)) << "\n"
-				<< "ESTIMATED_DEFENDER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_SELF)) << "\n"
-				<< "ESTIMATED_DEFENDER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_BF)) << "\n";
+			std::cout << "-------\n"
+					  << "src: " << srcNode->name() << " (y=" << srcHex->rawAttributes().at(EU(HA::Y_COORD))
+					  << " x=" << srcHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
+					  << "dst: " << dstNode->name() << " (y=" << dstHex->rawAttributes().at(EU(HA::Y_COORD))
+					  << " x=" << dstHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
+					  << "ESTIMATED_NET_VALUE_REL_BF:         " << attrs.at(EI(EA::ESTIMATED_NET_VALUE_REL_BF)) << "\n"
+					  << "ESTIMATED_ATTACKER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_SELF)) << "\n"
+					  << "ESTIMATED_ATTACKER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_BF)) << "\n"
+					  << "ESTIMATED_DEFENDER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_SELF)) << "\n"
+					  << "ESTIMATED_DEFENDER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_BF)) << "\n";
 		}
 	}
 #endif

@@ -11,9 +11,9 @@
 #pragma once
 
 #include "battle/AccessibilityInfo.h"
-#include "battle/CPlayerBattleCallback.h"
 #include "battle/BattleHex.h"
 #include "battle/CObstacleInstance.h"
+#include "battle/CPlayerBattleCallback.h"
 #include "battle/ReachabilityInfo.h"
 #include "constants/Enumerations.h"
 
@@ -87,6 +87,10 @@ private:
 
 	void setStateMask(EAccessibility accessibility, const std::vector<std::shared_ptr<const CObstacleInstance>> & obstacles, BattleSide side);
 
-	void setActionMask(const CPlayerBattleCallback * battle, const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks);
+	void setActionMask(
+		const CPlayerBattleCallback * battle,
+		const std::shared_ptr<ActiveStackInfo> & astackinfo,
+		const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks
+	);
 };
 }

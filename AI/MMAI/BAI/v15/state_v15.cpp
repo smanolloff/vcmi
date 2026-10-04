@@ -291,7 +291,8 @@ namespace
 		const battle::CUnitState * attacker,
 		const battle::CUnitState * defender,
 		const BonusList & deathStareBonuses,
-		bool ranged)
+		bool ranged
+	)
 	{
 		/*
 		 * Death stare:
@@ -314,7 +315,7 @@ namespace
 		int vRanged = 0;
 		int vCommander = 0;
 
-		for (const auto & b : deathStareBonuses)
+		for(const auto & b : deathStareBonuses)
 		{
 			const auto & jparams = b->parameters->toCustom<JsonNode>();
 			ASSERT(jparams.isStruct(), "death stare bonus params is not a struct");
@@ -323,17 +324,17 @@ namespace
 			ASSERT(it->second.isString(), "death stare bonus param value for 'situation' is not a string");
 
 			auto situation = it->second.String();
-			if (situation == "melee")
+			if(situation == "melee")
 				vMelee += b->val;
-			else if (situation == "rangedDistanceAndWallPenalty")
+			else if(situation == "rangedDistanceAndWallPenalty")
 				vRangedDistanceAndWallPenalty += b->val;
-			else if (situation == "rangedDistancePenalty")
+			else if(situation == "rangedDistancePenalty")
 				vRangedDistancePenalty += b->val;
-			else if (situation == "rangedWallPenalty")
+			else if(situation == "rangedWallPenalty")
 				vRangedWallPenalty += b->val;
-			else if (situation == "ranged") // must be after ranged penalties
+			else if(situation == "ranged") // must be after ranged penalties
 				vRanged += b->val;
-			else if (situation == "commander")
+			else if(situation == "commander")
 				vCommander += b->val;
 			// else
 			// 	logAi->warn("Unknown deathStare situation: " + situation);
@@ -348,9 +349,9 @@ namespace
 
 			if(hasDistancePenalty && hasWallPenalty)
 				v += vRangedDistanceAndWallPenalty;
-			else if (hasDistancePenalty)
+			else if(hasDistancePenalty)
 				v += vRangedDistancePenalty;
-			else if (hasWallPenalty)
+			else if(hasWallPenalty)
 				v += vRangedWallPenalty;
 			else
 				v += vRanged;

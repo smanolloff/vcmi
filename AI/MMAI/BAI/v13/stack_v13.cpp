@@ -159,7 +159,6 @@ Stack::Stack(
 		throw std::runtime_error("unknown creature id: " + std::to_string(cstack->creatureId().num));
 #endif
 
-
 	if(cstack->willMove())
 	{
 		setflag(F1::WILL_ACT);

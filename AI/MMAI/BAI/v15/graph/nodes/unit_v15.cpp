@@ -36,7 +36,6 @@ ScriptID Unit::CombatScriptID(const std::string & name)
 	return index.has_value() ? ScriptID(*index) : ScriptID::NONE;
 }
 
-
 // static
 bool Unit::RunsCombatScript(const Bonus & bonus, const std::string & script)
 {
@@ -116,9 +115,7 @@ namespace
 		constexpr double SPEED_KNEE = 13.0;
 		constexpr double SPEED_SLOPE = 0.2;
 		constexpr double SPEED_TAIL_WIDTH = 2.0;
-		const auto effectiveSpeed = spd <= SPEED_KNEE
-			? spd
-			: SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
+		const auto effectiveSpeed = spd <= SPEED_KNEE ? spd : SPEED_KNEE + (SPEED_TAIL_WIDTH * std::log1p((spd - SPEED_KNEE) / SPEED_TAIL_WIDTH));
 
 		auto a = 3 * dmg * (1 + std::min(4.0, 0.05 * att));
 		auto b = hp / (1 - std::min(0.7, 0.025 * def));
@@ -289,9 +286,7 @@ namespace
 	         * No need to multiply by 0.47, though (MMAI uses relative values).
 			 */
 
-			int v = isMMAILegacyValue()
-				? CalculateValue(creature.get())
-				: static_cast<int>(LIBRARY->creh->getCombatValue().getAIValue(creature.get()));
+			int v = isMMAILegacyValue() ? CalculateValue(creature.get()) : static_cast<int>(LIBRARY->creh->getCombatValue().getAIValue(creature.get()));
 
 			if(isMMAIVerbose())
 				std::cout << "MMAI_VERBOSE: " << v << " " << creature->getJsonKey() << "\n";
@@ -343,7 +338,7 @@ Unit::Unit(const Args & args)
 	// Unlikely to ever trigger, currently 1 azureDragon is valued at ~41K,
 	// and the enforced limit is ~430K, more than 10 times higher.
 	int64_t v64 = static_cast<int64_t>(valueOne) * cstack.getCount();
-	if (v64 > std::numeric_limits<int>().max())
+	if(v64 > std::numeric_limits<int>().max())
 	{
 		int max = std::numeric_limits<int>().max();
 		logAi->warn("Stack %s AI value=%ld will be capped at %d", cstack.getDescription(), v64, max);

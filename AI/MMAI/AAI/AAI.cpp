@@ -22,8 +22,8 @@
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CCallback.h"
 #include "constants/EntityIdentifiers.h"
-#include "lib/callback/AIFactory.h"
 #include "gameState/CGameState.h"
+#include "lib/callback/AIFactory.h"
 #include "mapObjects/CGHeroInstance.h"
 #include "networkPacks/BattleChanges.h"
 #include "networkPacks/PacksForClientBattle.h"
@@ -184,7 +184,6 @@ void AAI::yourTurn(QueryID queryID)
 		[this, queryID]()
 		{
 			std::shared_lock gsLock(CGameState::mutex);
-
 
 			if(queryID != -1)
 			{
@@ -548,7 +547,6 @@ void AAI::onNewSystemMessageReceived(const std::string & msg) const
 {
 	battleAI->onNewSystemMessageReceived(msg);
 }
-
 
 void AAI::battleAttack(const BattleID & bid, const BattleAttack * ba)
 {

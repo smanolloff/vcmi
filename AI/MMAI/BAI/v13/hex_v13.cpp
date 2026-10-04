@@ -318,7 +318,11 @@ void Hex::setStateMask(const EAccessibility accessibility, const std::vector<std
 	}
 }
 
-void Hex::setActionMask(const CPlayerBattleCallback * battle, const std::shared_ptr<ActiveStackInfo> & astackinfo, const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks)
+void Hex::setActionMask(
+	const CPlayerBattleCallback * battle,
+	const std::shared_ptr<ActiveStackInfo> & astackinfo,
+	const std::map<BattleHex, std::shared_ptr<Stack>> & hexstacks
+)
 {
 	const auto * astack = astackinfo->stack;
 

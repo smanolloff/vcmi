@@ -21,10 +21,10 @@
 #include "../../StupidAI/StupidAI.h"
 
 #include "BAI/factory.h"
-#include "BAI/scripted/VIPBot.h"
-#include "BAI/scripted/HARBot.h"
-#include "BAI/scripted/scripted_model.h"
 #include "BAI/router.h"
+#include "BAI/scripted/HARBot.h"
+#include "BAI/scripted/VIPBot.h"
+#include "BAI/scripted/scripted_model.h"
 #include "BAI/v13/BAI_v13.h"
 
 #include "AI/MMAI/common.h"
@@ -51,7 +51,8 @@ namespace
 	{
 		auto repo = std::make_unique<ModelRepository>();
 
-		if (baggage) {
+		if(baggage)
+		{
 			repo->seed = baggage->seed;
 			repo->temperature = baggage->temperature;
 
@@ -359,9 +360,12 @@ void Router::battleStart(
 		// XXX: dev mode assumes there are no neutral players in battle
 		ASSERT(baggage != nullptr, "baggage is nullptr");
 		// neutral AI has no player ID
-		if (!cb->getPlayerID()->hasValue() || cb->getPlayerID()->num > 0) {
+		if(!cb->getPlayerID()->hasValue() || cb->getPlayerID()->num > 0)
+		{
 			model = baggage->modelRight;
-		} else {
+		}
+		else
+		{
 			model = baggage->modelLeft;
 		}
 		ASSERT(model != nullptr, "model is nullptr");
@@ -436,8 +440,9 @@ void Router::battleStart(
 			bai = CreateBAI(model, env, cb, autocombatPreferences.enableSpellsUsage, autocombatPreferences.enableTacticsUsage);
 #ifdef ENABLE_ML
 			{
-				if(model->getVersion() == 13) {
-					auto bai_ = dynamic_cast<V13::BAI*>(bai.get());
+				if(model->getVersion() == 13)
+				{
+					auto bai_ = dynamic_cast<V13::BAI *>(bai.get());
 					ASSERT(bai_, "dynamic cast to V13::BAI failed");
 				}
 			}
