@@ -29,6 +29,7 @@
 namespace MMAI::BAI::V15::Graph::Nodes
 {
 
+// static
 ScriptID Unit::CombatScriptID(const std::string & name)
 {
 	auto index = LIBRARY->identifiers()->getIdentifier(ModScope::scopeGame(), "script", name, false);
@@ -55,7 +56,7 @@ bool Unit::HasCombatScript(const CStack * cstack, const std::string & script)
 	if(scriptID == ScriptID::NONE)
 		return false;
 
-	return cstack->hasBonus(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(scriptID)));
+	return cstack->hasBonusOfType(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(scriptID));
 }
 
 namespace
@@ -80,6 +81,9 @@ namespace
 		}
 	}
 
+	// This calculator is obsolete.
+	// However, it is still needed for MMAI debugging, since it was used
+	// during the training of (some) v15 models.
 	int CalculateValue(const CCreature * cr)
 	{
 		auto att = cr->getBaseAttack();
@@ -252,13 +256,6 @@ namespace
 		 *
 		 */
 		auto res = static_cast<int>(std::round((a + b) * c * d));
-
-		if(isMMAIVerbose())
-		{
-			std::cout << "MMAI_VERBOSE: " << res << " " << cr->getId().toEntity(LIBRARY)->getJsonKey() << " (a=" << a << ", b=" << b << ", c=" << c
-					  << ", d=" << d << ")\n";
-		}
-
 		return res;
 	}
 
@@ -269,8 +266,37 @@ namespace
 
 		for(const auto & creature : LIBRARY->creh->objects)
 		{
-			if(creature)
-				values.try_emplace(creature->getIndex(), CalculateValue(creature.get()));
+			if(!creature)
+				continue;
+
+			/*
+			 * MMAI's own calculated values used during training are ~0.35x of
+			 * the values calculated by VCMI's calculator (as of develop@185ef7ec25)
+			 *
+			 * | Creature       | MMAI  | VCMI  | Scale |
+			 * | -------------- | ----- | ----- | ----- |
+			 * | peasant        | 5     | 14    | 0.36  |
+			 * | pikeman        | 24    | 89    | 0.27  |
+			 * | master gremlin | 5     | 62    | 0.35  |
+			 * | imp            | 14    | 51    | 0.27  |
+			 * | sprite         | 31    | 84    | 0.37  |
+			 * | marksman       | 70    | 189   | 0.37  |
+			 * | battle dwarf   | 55    | 205   | 0.27  |
+			 * | gog            | 51    | 148   | 0.37  |
+			 * | magog          | 68    | 257   | 0.26  |
+			 *
+			 * Averaged, this scale is ~0.47
+	         * No need to multiply by 0.47, though (MMAI uses relative values).
+			 */
+
+			int v = isMMAILegacyValue()
+				? CalculateValue(creature.get())
+				: static_cast<int>(LIBRARY->creh->getCombatValue().getAIValue(creature.get()));
+
+			if(isMMAIVerbose())
+				std::cout << "MMAI_VERBOSE: " << v << " " << creature->getJsonKey() << "\n";
+
+			values.try_emplace(creature->getIndex(), v);
 		}
 
 		return values;
@@ -285,30 +311,19 @@ int Unit::GetValue(const CCreature * creature, bool isClone, bool isSummon)
 
 	int v;
 
-	if (isMMAILegacyValue())
-	{
-		static const CreatureValues CREATURE_VALUES = InitCreatureValues();
+	static const CreatureValues CREATURE_VALUES = InitCreatureValues();
+	const auto & it = CREATURE_VALUES.find(creature->getIndex());
 
-		const auto & it = CREATURE_VALUES.find(creature->getIndex());
+	if(it == CREATURE_VALUES.end())
+		throwf("GetValue: no value for creature with ID=%1%", creature->getIndex());
 
-		if(it == CREATURE_VALUES.end())
-			throwf("GetValue: no value for creature with ID=%1%", creature->getIndex());
+	v = it->second;
 
-		v = it->second;
+	if(isClone)
+		v *= 5;
 
-		if(isClone)
-			v *= 5;
-
-		if(isSummon)
-			v /= 5;
-
-		return v;
-	}
-	else
-	{
-		static constexpr double combatValueScale = 0.47;
-		v = static_cast<int>(std::lround(LIBRARY->creh->getCombatValue().getAIValue(creature) * combatValueScale));
-	}
+	if(isSummon)
+		v /= 5;
 
 	return v;
 }
@@ -324,7 +339,18 @@ Unit::Unit(const Args & args)
 {
 	guardflags.set(); // See note for attr()/setattr() in Unit.h
 
-	auto value = valueOne * cstack.getCount();
+	// Warn against potential overflows by e.g. 5000 azure dragons (vcmiazure cheat)
+	// Unlikely to ever trigger, currently 1 azureDragon is valued at ~41K,
+	// and the enforced limit is ~430K, more than 10 times higher.
+	int64_t v64 = static_cast<int64_t>(valueOne) * cstack.getCount();
+	if (v64 > std::numeric_limits<int>().max())
+	{
+		int max = std::numeric_limits<int>().max();
+		logAi->warn("Stack %s AI value=%ld will be capped at %d", cstack.getDescription(), v64, max);
+		v64 = max;
+	}
+
+	auto value = static_cast<int>(v64);
 
 	// damage modifiers that care if attack is ranged (e.g. archery skill)
 	// would affect max and min proportionally which would have no effect

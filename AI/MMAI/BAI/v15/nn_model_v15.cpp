@@ -675,8 +675,10 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 		"sample: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d %s", saction, sample.prob, sample.confidence, value, sample.index, sname
 	);
 
-	// ML(printActionEdges(graph, saction));
-	ML(printMeleeDmgEdges(graph, saction));
+#ifdef ENABLE_ML
+	if(isMMAIVerbose())
+		printMeleeDmgEdges(graph, saction); // printActionEdges(graph, saction);
+#endif
 
 	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f): %s") % saction % sample.confidence % sname);
 	return static_cast<int>(saction);

@@ -22,7 +22,6 @@
 #include "BAI/v13/render_v13.h"
 #include "BAI/v13/supplementary_data_v13.h"
 #include "common.h"
-#include "schema/base.h"
 #include "schema/v13/types.h"
 
 namespace MMAI::BAI::V13
@@ -87,7 +86,7 @@ void BAI::battleEnd(const BattleID & bid, const BattleResult * br, QueryID query
 {
 	try
 	{
-		state->onBattleEnd(br, roundcounter);
+		state->onBattleEnd(br);
 	}
 	catch(const std::exception & e)
 	{
@@ -322,13 +321,6 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
-#ifdef ENABLE_ML
-	if (roundcounter > Schema::V13::MAX_ROUNDS) {
-		logger.warn("Max rounds (%d) exceeded, retreating...", Schema::V13::MAX_ROUNDS);
-		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
-		return;
-	}
-#else
 	// Guard against infinite battles
 	// (print warning once, make only fallback actions from there on)
 	if(!inFallback && getActionTotalCalls >= 100)
@@ -343,9 +335,8 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
-#endif
 
-	state->onActiveStack(astack, roundcounter);
+	state->onActiveStack(astack);
 
 #ifndef ENABLE_ML
 	if(maybeCastSpell(astack, bid))
@@ -436,12 +427,6 @@ std::shared_ptr<BattleAction> BAI::buildBattleAction()
 	auto [x, y] = Hex::CalcXY(acstack->getPosition());
 	const auto & hex = bf->hexes->at(y).at(x);
 	std::shared_ptr<BattleAction> res = nullptr;
-
-	if(state->action->action == Schema::ACTION_ERROR)
-	{
-		logger.error("ACTION_ERROR");
-		return nullptr;
-	}
 
 	if(!state->action->hex)
 	{
@@ -771,7 +756,7 @@ std::string BAI::renderANSI() const
 
 void BAI::actionStarted(const BattleID & bid, const BattleAction & action)
 {
-	state->onActionStarted(action, roundcounter);
+	state->onActionStarted(action);
 };
 
 void BAI::actionFinished(const BattleID & bid, const BattleAction & action)

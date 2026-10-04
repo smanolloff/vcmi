@@ -38,7 +38,6 @@
 #include "spells/CSpellHandler.h"
 #include "spells/ISpellMechanics.h"
 #include "spells/ProxyCaster.h"
-#include <stdexcept>
 
 namespace MMAI::BAI::V15
 {
@@ -309,8 +308,10 @@ namespace
 		 */
 
 		int vMelee = 0;
+		int vRangedDistanceAndWallPenalty = 0;
+		int vRangedDistancePenalty = 0;
+		int vRangedWallPenalty = 0;
 		int vRanged = 0;
-		int vRangedWithPenalty = 0;
 		int vCommander = 0;
 
 		for (const auto & b : deathStareBonuses)
@@ -324,10 +325,14 @@ namespace
 			auto situation = it->second.String();
 			if (situation == "melee")
 				vMelee += b->val;
-			else if (situation == "ranged")
-				vRanged += b->val;
+			else if (situation == "rangedDistanceAndWallPenalty")
+				vRangedDistanceAndWallPenalty += b->val;
 			else if (situation == "rangedDistancePenalty")
-				vRangedWithPenalty += b->val;
+				vRangedDistancePenalty += b->val;
+			else if (situation == "rangedWallPenalty")
+				vRangedWallPenalty += b->val;
+			else if (situation == "ranged") // must be after ranged penalties
+				vRanged += b->val;
 			else if (situation == "commander")
 				vCommander += b->val;
 			// else
@@ -337,12 +342,23 @@ namespace
 		int v = 0;
 
 		if(ranged)
-			// XXX: it seems deathStareObstaclePenalty was never ported to Lua
-			v += battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition())
-				? vRangedWithPenalty
-				: vRanged;
+		{
+			bool hasDistancePenalty = battle.battleHasDistancePenalty(attacker, attacker->getPosition(), defender->getPosition());
+			bool hasWallPenalty = battle.battleHasWallPenalty(attacker, attacker->getPosition(), defender->getPosition());
+
+			if(hasDistancePenalty && hasWallPenalty)
+				v += vRangedDistanceAndWallPenalty;
+			else if (hasDistancePenalty)
+				v += vRangedDistancePenalty;
+			else if (hasWallPenalty)
+				v += vRangedWallPenalty;
+			else
+				v += vRanged;
+		}
 		else
+		{
 			v += vMelee;
+		}
 
 		// Non-commander death stare
 		double kills = attacker->getCount() * v / 100.0;
@@ -407,10 +423,8 @@ namespace
 		if(B_isLiving)
 		{
 
-			// if(N::Unit::HasCombatScript(states.a.cstack, "lifeDrain")
 			auto lifeDrainScriptID = N::Unit::CombatScriptID("lifeDrain");
-			auto lifeDrainBonuses = states.a.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(lifeDrainScriptID)));
-			// auto bonusVal = states.a.cstack->valOfBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(scriptID)));
+			auto lifeDrainBonuses = states.a.cstack->getBonusesOfType(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(lifeDrainScriptID));
 
 			if(!lifeDrainBonuses->empty() && states.a.cstack->getTotalHealth() != states.a.calcAvailableHealth())
 			{
@@ -419,7 +433,7 @@ namespace
 			}
 
 			auto soulStealScriptID = N::Unit::CombatScriptID("soulSteal");
-			auto soulStealBonuses = states.a.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(soulStealScriptID)));
+			auto soulStealBonuses = states.a.cstack->getBonusesOfType(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(soulStealScriptID));
 
 			if(int ss = soulStealBonuses->totalValue())
 			{
@@ -431,7 +445,7 @@ namespace
 		// 2. Handle FIRE_SHIELD (triggers even if B is not alive)
 		// Stolen from BattleActionProcessor::applyBattleEffects
 		auto fireShieldScriptID = N::Unit::CombatScriptID("fireShield");
-		auto fireShieldBonuses = states.b.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(fireShieldScriptID)));
+		auto fireShieldBonuses = states.b.cstack->getBonusesOfType(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(fireShieldScriptID));
 		if(!ranged && !B_state->isClone() && !fireShieldBonuses->empty()
 		   && !A_state->hasBonusOfType(BonusType::SPELL_SCHOOL_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE))
 		   && !A_state->hasBonusOfType(BonusType::NEGATIVE_EFFECTS_IMMUNITY, BonusSubtypeID(SpellSchool::FIRE))
@@ -443,7 +457,7 @@ namespace
 
 		// 3. Handle DEATH_STARE (must come last; uses attacker qty left after fire shield)
 		auto deathStareScriptID = N::Unit::CombatScriptID("deathStare");
-		auto deathStareBonuses = states.a.cstack->getBonuses(Selector::typeSubtype(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(deathStareScriptID)));
+		auto deathStareBonuses = states.a.cstack->getBonusesOfType(BonusType::COMBAT_EVENT_TRIGGER, BonusSubtypeID(deathStareScriptID));
 		if(B_state->alive() && B_isLiving && !deathStareBonuses->empty())
 		{
 			auto staredeaths = static_cast<int>(std::round(CalcDeathStare(battle, A_state.get(), B_state.get(), *deathStareBonuses, ranged)));

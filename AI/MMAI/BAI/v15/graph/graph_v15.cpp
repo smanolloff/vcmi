@@ -252,6 +252,7 @@ std::vector<const S15::Graph::IEdge *> Graph::getEdges(Schema::V15::Graph::Eleme
 	);
 }
 
+#ifdef ML
 std::vector<const S15::Graph::IEdge *> Graph::getEdgesBySrc(ET t, const S15::Graph::INode * src) const
 {
 	return withNodeStore(
@@ -338,6 +339,7 @@ const S15::Graph::IEdge * Graph::getEdgeBySrcDst(ET t, const S15::Graph::INode *
 		}
 	);
 }
+#endif
 
 int64_t Graph::getNodeIndex(const S15::Graph::INode * inode) const
 {

@@ -293,9 +293,12 @@ public:
 	std::vector<const S15::Graph::INode *> getNodes(ET t) const override;
 
 	std::vector<const S15::Graph::IEdge *> getEdges(ET t) const override;
+
+#ifdef ML
 	std::vector<const S15::Graph::IEdge *> getEdgesBySrc(ET t, const S15::Graph::INode * src) const override;
 	std::vector<const S15::Graph::IEdge *> getEdgesByDst(ET t, const S15::Graph::INode * dst) const override;
 	const S15::Graph::IEdge * getEdgeBySrcDst(ET t, const S15::Graph::INode * src, const S15::Graph::INode * dst) const override;
+#endif
 
 	int64_t getNodeIndex(const S15::Graph::INode * node) const override;
 	int64_t getEdgeIndex(const S15::Graph::IEdge * edge) const override;

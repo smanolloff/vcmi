@@ -30,7 +30,7 @@ public:
 
 	int getAttr(GlobalAttribute a) const override;
 	int attr(GlobalAttribute a) const;
-	void update(BattleSide side, CombatResult res, int value, int hp, bool canWait, int round);
+	void update(BattleSide side, CombatResult res, int value, int hp, bool canWait);
 	void setattr(GlobalAttribute a, int value);
 	GlobalAttrs attrs = {};
 	GlobalActionMask actmask = 0; // for active stack only
