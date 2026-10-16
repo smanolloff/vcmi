@@ -335,6 +335,9 @@ class IGraph
 public:
 	virtual std::vector<const INode *> getNodes(ElementType t) const = 0;
 	virtual std::vector<const IEdge *> getEdges(ElementType t) const = 0;
+	virtual std::vector<const IEdge *> getEdgesByDst(ElementType, const INode *) const = 0;
+	virtual std::vector<const IEdge *> getEdgesBySrc(ElementType, const INode *) const = 0;
+	virtual const IEdge * getEdgeBySrcDst(ElementType, const INode *, const INode *) const = 0;
 	virtual int64_t getNodeIndex(const INode *) const = 0;
 	virtual int64_t getEdgeIndex(const IEdge *) const = 0;
 	virtual const INode * getNode(ElementType t, std::size_t ind) const = 0;

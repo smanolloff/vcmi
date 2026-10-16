@@ -116,7 +116,7 @@ void CServerHandler::endNetwork()
 	waitForNetworkThread();
 }
 
-CServerHandler::CServerHandler()
+CServerHandler::CServerHandler(AutocombatPreferences ap)
 	: networkHandler(INetworkHandler::createHandler())
 	, lobbyClient(std::make_unique<GlobalLobbyClient>())
 	, gameChat(std::make_unique<GameChatHandler>())
@@ -130,6 +130,7 @@ CServerHandler::CServerHandler()
 	, hotseatMode(false)
 	, battleMode(false)
 	, client(nullptr)
+	, autocombatPreferences(ap)
 {
 	uuid = boost::uuids::to_string(boost::uuids::random_generator()());
 }
@@ -220,6 +221,8 @@ void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 		si->difficulty = static_cast<ui8>(EMapDifficulty::EASY);
 	else
 		si->difficulty = settings["general"]["lastDifficulty"].Integer();
+
+	ML(si->mlconfig.init(settings));
 
 	logNetwork->trace("\tStarting local server");
 	serverRunner->start(loadMode == ELoadMode::MULTI, connectToLobby, si);
@@ -618,7 +621,7 @@ void CServerHandler::sendRestartGame() const
 		ENGINE->windows().createAndPushWindow<CLoadingScreen>(si->campState->getLoadingBackground());
 	else
 		ENGINE->windows().createAndPushWindow<CLoadingScreen>();
-	
+
 	LobbyRestartGame endGame;
 	sendLobbyPack(endGame);
 }
@@ -715,6 +718,8 @@ void CServerHandler::startGameplay(std::shared_ptr<CGameState> gameState)
 
 	if (isGuest())
 		networkLagCompensator = std::make_unique<NetworkLagCompensator>(getNetworkHandler(), gameState);
+
+	client->autocombatPreferences = autocombatPreferences;
 
 	switch(si->mode)
 	{
@@ -928,7 +933,7 @@ void CServerHandler::showServerError(const std::string & txt) const
 {
 	if(auto w = ENGINE->windows().topWindow<CLoadingScreen>())
 		ENGINE->windows().popWindow(w);
-	
+
 	CInfoWindow::showInfoDialog(txt, {});
 }
 
@@ -963,19 +968,24 @@ ELoadMode CServerHandler::getLoadMode()
 	return loadMode;
 }
 
-void CServerHandler::debugStartTest(std::string filename, bool save)
+void CServerHandler::debugStartTest(std::string filename, bool save, const std::vector<std::string> & playerNames, bool hotseat)
 {
 	logGlobal->info("Starting debug test with file: %s", filename);
 	auto mapInfo = std::make_shared<CMapInfo>();
 	if(save)
 	{
-		resetStateForLobby(EStartMode::LOAD_GAME, ESelectionScreen::loadGame, EServerMode::LOCAL, {});
+		resetStateForLobby(EStartMode::LOAD_GAME, ESelectionScreen::loadGame, EServerMode::LOCAL, playerNames);
 		mapInfo->saveInit(ResourcePath(filename, EResType::SAVEGAME));
 	}
 	else
 	{
-		resetStateForLobby(EStartMode::NEW_GAME, ESelectionScreen::newGame, EServerMode::LOCAL, {});
+		resetStateForLobby(EStartMode::NEW_GAME, ESelectionScreen::newGame, EServerMode::LOCAL, playerNames);
 		mapInfo->mapInit(filename);
+	}
+	if(hotseat)
+	{
+		loadMode = ELoadMode::MULTI;
+		hotseatMode = true;
 	}
 	if(settings["session"]["donotstartserver"].Bool())
 		connectToServer(getLocalHostname(), getLocalPort());
@@ -992,10 +1002,13 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 		setMapInfo(mapInfo);
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
-	// "Click" on color to remove us from it
-	setPlayer(myFirstColor());
-	while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	if(settings["session"]["onlyai"].Bool())
+	{
+		// "Click" on color to remove us from it
+		setPlayer(myFirstColor());
+		while(myFirstColor() != PlayerColor::CANNOT_DETERMINE)
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
 
 	while(true)
 	{

@@ -1,0 +1,283 @@
+@startuml "vcmi-1.32-routing-server-lobby-c4"
+
+!include <C4/C4_Container>
+!include <tupadr3/font-awesome/arrow_circle_right>
+
+
+HIDE_STEREOTYPE()
+LAYOUT_LEFT_RIGHT()
+skinparam DefaultFontName monospaced
+
+title "VCMI-1.3.2 routing for LobbyClientConnected packets (client → server)"
+
+<style>
+note {
+  MaximumWidth 500
+}
+</style>
+
+!$nbsp = "<U+00A0>"
+
+' black
+!$c1 = "#000000"
+' blue
+!$c2 = "#0000FF"
+' fuchsia
+!$c3 = "#FF00FF"
+' green
+!$c4 = "#008000"
+' lime
+!$c5 = "#00FF00"
+' red
+!$c6 = "#FF0000"
+' teal
+!$c7 = "#008080"
+
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+' avoids super long note lines in the diagram
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+
+!function $cm($class, $method) return "<font size=8 color=CCC>"+$class+"</font>"+"\n"+$method
+!function $fn($method, $args) return $method+"\n<font size=8 color=CCC>("+$args+")</font>"
+
+!function $ctag()
+  !if %not(%variable_exists("$c"))
+    !%set_variable_value("$c", 0)
+  !elseif (%get_variable_value("$c") >= 7)
+    !%set_variable_value("$c", 0)
+  !endif
+
+  !%set_variable_value("$c", %get_variable_value("$c") + 1)
+
+  !return "c"+%get_variable_value("$c")
+!endfunction
+
+!function $inc()
+  !if %not(%variable_exists("$i"))
+    !%set_variable_value("$i", 0)
+  !endif
+
+  !%set_variable_value("$i", %get_variable_value("$i") + 1)
+
+  !return %get_variable_value("$i")
+!endfunction
+
+!function $call($args) return $inc() + $nbsp + "(" + $args + ")"
+
+' misc calls are hidden
+' uncomment to show them (the diagram is a mess)
+!$HIDE_MISC_CALLS = "true"
+
+AddElementTag("start", $borderColor="yellow", $shape=EightSidedShape(), $sprite="arrow_circle_right")
+
+AddRelTag("c1", $textColor=$c1, $lineColor=$c1)
+AddRelTag("c2", $textColor=$c2, $lineColor=$c2)
+AddRelTag("c3", $textColor=$c3, $lineColor=$c3)
+AddRelTag("c4", $textColor=$c4, $lineColor=$c4)
+AddRelTag("c5", $textColor=$c5, $lineColor=$c5)
+AddRelTag("c6", $textColor=$c6, $lineColor=$c6)
+AddRelTag("c7", $textColor=$c7, $lineColor=$c7)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CLASSES
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Boundary(CVCMIServer, "CVCMIServer") {
+  Container(CVCMIServer_threadHandleClient, "<<INCOMING DATA>>\n\nthreadHandleClient\n", $tags="start")
+  note bottom of CVCMIServer_threadHandleClient
+Server receives LobbyClientConnected packet
+(a player has joined the game)
+  end note
+
+  Container(CVCMIServer_handleReceivedPack, $fn("handleReceivedPack", "CPackForLobby"))
+
+  note top of CVCMIServer_handleReceivedPack
+Confusing naming in the source code here:
+
+apply = applier->getApplier(...)
+
+**applier** here is more like... an applierProvider or Registry.
+And **apply** here is referred to as applier later in the code.
+  end note
+
+  !if ($HIDE_MISC_CALLS != "true")
+  Container(CVCMIServer_misc, "***")
+  !endif
+}
+
+Boundary(LobbyClientConnected, "LobbyClientConnected < CPackForLobby < CPack") {
+  Container(LobbyClientConnected_visit, $fn("visit", "ICPackVisitor"))
+  Container(LobbyClientConnected_visitBasic, $fn("visitBasic", "ICPackVisitor"))
+  Container(LobbyClientConnected_visitTyped, $fn("visitTyped", "ICPackVisitor"))
+
+  !if ($HIDE_MISC_CALLS != "true")
+  Container(LobbyClientConnected_misc, "***")
+  !endif
+}
+
+Boundary(CVCMIServerPackVisitor, "CVCMIServerPackVisitor < ICPackVisitor") {
+  Container(CVCMIServerPackVisitor_visitForLobby, $fn("visitForLobby", "CPackForLobby"))
+}
+
+Boundary(ClientPermissionsCheckerNetPackVisitor, "ClientPermissionsCheckerNetPackVisitor < ICPackVisitor") {
+  Container(ClientPermissionsCheckerNetPackVisitor_visitForLobby, $fn("visitForLobby", "CPackForLobby"))
+
+  note top of ClientPermissionsCheckerNetPackVisitor_visitForLobby
+    Checks if packet comes from the host client
+    (irrelevant in lobby)
+  end note
+
+  Container(ClientPermissionsCheckerNetPackVisitor_visitLobbyClientConnected, $fn("visitLobbyClientConnected", "LobbyClientConnected"))
+
+  note top of ClientPermissionsCheckerNetPackVisitor_visitLobbyClientConnected
+    Checks if packet comes from a known client
+    (irrelevant in lobby)
+  end note
+
+  !if ($HIDE_MISC_CALLS != "true")
+  Container(ClientPermissionsCheckerNetPackVisitor_misc, "***")
+  !endif
+}
+
+Boundary(ApplyOnServerNetPackVisitor, "ApplyOnServerNetPackVisitor < ICPackVisitor") {
+  Container(ApplyOnServerNetPackVisitor_visitForLobby, "visitForLobby")
+
+  note top of ApplyOnServerNetPackVisitor_visitForLobby
+    noop
+  end note
+
+  Container(ApplyOnServerNetPackVisitor_visitLobbyClientConnected, $fn("visitLobbyClientConnected", "LobbyClientConnected"))
+
+  note top of ApplyOnServerNetPackVisitor_visitLobbyClientConnected
+    core processing logic
+  end note
+
+  !if ($HIDE_MISC_CALLS != "true")
+  Container(ApplyOnServerNetPackVisitor_misc, "***")
+  !endif
+}
+
+Boundary(CApplier, "CApplier") {
+  Container(CApplier_getApplier, $fn("getApplier", "uint16"))
+}
+
+Boundary(CApplyOnServer, "CApplyOnServer<LobbyClientConnected> < CBaseForServerApply") {
+  Container(CApplyOnServer_applyOnServerBefore, $fn("applyOnServerBefore", "CVCMIServer,"+$nbsp+"void*"))
+
+  note top of CApplyOnServer_applyOnServerBefore
+     $str("The `void*` is then static_cast-ed to its specific type according to \
+the class specialization\n\
+(`LobbyClientConnected` in this case)")
+  end note
+}
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' CALLS
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Rel(CVCMIServer_threadHandleClient, LobbyClientConnected_visit, $call("CVCMIServerPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visit, LobbyClientConnected_visitBasic, $call("CVCMIServerPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visitBasic, CVCMIServerPackVisitor_visitForLobby, $call("LobbyClientConnected"), $tags="$ctag()")
+Rel(CVCMIServerPackVisitor_visitForLobby, CVCMIServer_handleReceivedPack, $call("LobbyClientConnected"), $tags="$ctag()")
+Rel(CVCMIServer_handleReceivedPack, CApplier_getApplier, $call("uint16"), $tags="$ctag()")
+Rel(CVCMIServer_handleReceivedPack, CApplyOnServer_applyOnServerBefore, $call("CVCMIServer, any"), $tags="$ctag()")
+Rel(CApplyOnServer_applyOnServerBefore, LobbyClientConnected_visit, $call("ClientPermissionsCheckerNetPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visit, LobbyClientConnected_visitBasic, $call("ClientPermissionsCheckerNetPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visitBasic, ClientPermissionsCheckerNetPackVisitor_visitForLobby, $call("LobbyClientConnected"), $tags="$ctag()")
+
+!if ($HIDE_MISC_CALLS != "true")
+Rel(ClientPermissionsCheckerNetPackVisitor_visitForLobby, LobbyClientConnected_misc, $inc(), $tags="$ctag()")
+Rel(ClientPermissionsCheckerNetPackVisitor_visitForLobby, LobbyClientConnected_misc, $inc(), $tags="$ctag()")
+Rel(ClientPermissionsCheckerNetPackVisitor_visitForLobby, CVCMIServer_misc, $inc(), $tags="$ctag()")
+!endif
+
+Rel(LobbyClientConnected_visit, LobbyClientConnected_visitTyped, $call("ClientPermissionsCheckerNetPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visitTyped, ClientPermissionsCheckerNetPackVisitor_visitLobbyClientConnected, $call("LobbyClientConnected"), $tags="$ctag()")
+
+!if ($HIDE_MISC_CALLS != "true")
+Rel(ClientPermissionsCheckerNetPackVisitor_visitLobbyClientConnected, CVCMIServer_misc, $inc(), $tags="$ctag()")
+Rel(ClientPermissionsCheckerNetPackVisitor_visitLobbyClientConnected, LobbyClientConnected_misc, $inc(), $tags="$ctag()")
+Rel(CApplyOnServer_applyOnServerBefore, ClientPermissionsCheckerNetPackVisitor_misc, $inc(), $tags="$ctag()")
+!endif
+
+Rel(CApplyOnServer_applyOnServerBefore, LobbyClientConnected_visit, $call("ApplyOnServerNetPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visit, LobbyClientConnected_visitBasic, $call("ApplyOnServerNetPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visitBasic, ApplyOnServerNetPackVisitor_visitForLobby, $call("LobbyClientConnected"), $tags="$ctag()")
+Rel(LobbyClientConnected_visit, LobbyClientConnected_visitTyped, $call("ApplyOnServerNetPackVisitor"), $tags="$ctag()")
+Rel(LobbyClientConnected_visitTyped, ApplyOnServerNetPackVisitor_visitLobbyClientConnected, $call("LobbyClientConnected"), $tags="$ctag()")
+
+!if ($HIDE_MISC_CALLS != "true")
+Rel(ApplyOnServerNetPackVisitor_visitLobbyClientConnected, CVCMIServer_misc, $inc(), $tags="$ctag()")
+Rel(ApplyOnServerNetPackVisitor_visitLobbyClientConnected, LobbyClientConnected_misc, $inc(), $tags="$ctag()")
+Rel(CApplyOnServer_applyOnServerBefore, ApplyOnServerNetPackVisitor_misc, $inc(), $tags="$ctag()")
+!endif
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''' LEGEND
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+AddBoundaryTag("legend_boundary", $borderColor="lightgray", $fontColor="#AAA")
+AddElementTag("legend_element", $bgColor="#EBD8F7", $fontColor="#AAA")
+AddRelTag("legend_rel", $textColor="#AAA", $lineColor="#AAA")
+
+Boundary(Legend, "<<Legend>>\nClassName < ParentClassName", $tags="legend_boundary") {
+  Container(Legend_fn1, "<<function name>>\n<font size=8 color=BBB>(<<argument list>>)</font>\n\nsquareArea\n<font size=8 color=BBB>(int)</font>", $tags="legend_element")
+  Container(Legend_fn2, "<<function name>>\n<font size=8 color=BBB>(<<argument list>>)</font>\n\nmultiply\n<font size=8 color=BBB>(float, float)</font>", $tags="legend_element")
+}
+
+Rel(Legend_fn1, Legend_fn2, "<<TRACK>> (<<call args>>)\n \n8 (int, int)", $tags="legend_rel")
+
+' Lay_Distance(Legend_fn1, Legend_fn2, 1)
+' Lay_Distance(CPack, Visitor, 1)
+
+!function $ids_legend($denom)
+  !$res = $denom
+  !$denom = $denom + 7
+  !while $i > $denom
+    !$res=$res + "," + $nbsp + $denom
+    !$denom = $denom + 7
+  !endwhile
+  !return $res
+!endfunction
+
+skinparam legend {
+  FontColor Black
+  BackgroundColor White
+  ' does not work for some reason
+  BorderColor White
+  BorderThickness 0
+}
+
+legend bottom left
+  | Color | Track |
+  | <$c1> | $ids_legend(1) |
+  | <$c2> | $ids_legend(2) |
+  | <$c3> | $ids_legend(3) |
+  | <$c4> | $ids_legend(4) |
+  | <$c5> | $ids_legend(5) |
+  | <$c6> | $ids_legend(6) |
+  | <$c7> | $ids_legend(7) |
+endlegend
+
+@enduml
