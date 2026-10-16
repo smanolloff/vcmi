@@ -473,7 +473,11 @@ SDL_Window * ScreenHandler::createWindowImpl(Point dimensions, int flags, bool c
 	int displayIndex = getPreferredDisplayIndex();
 	int positionFlags = center ? SDL_WINDOWPOS_CENTERED_DISPLAY(displayIndex) : SDL_WINDOWPOS_UNDEFINED_DISPLAY(displayIndex);
 
-	return SDL_CreateWindow(GameConstants::VCMI_PROJECT_NAME_VERSIONED, positionFlags, positionFlags, dimensions.x, dimensions.y, flags);
+	const char * windowTitle = std::getenv("ML_WINDOW_TITLE");
+	if(windowTitle == nullptr || *windowTitle == '\0')
+		windowTitle = GameConstants::VCMI_PROJECT_NAME_VERSIONED;
+
+	return SDL_CreateWindow(windowTitle, positionFlags, positionFlags, dimensions.x, dimensions.y, flags);
 }
 
 SDL_Window * ScreenHandler::createWindow()

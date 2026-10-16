@@ -1373,6 +1373,9 @@ namespace
 				if(CheckMoatfixTrigger(G, unit, hex, battle, isWideMoat))
 					continue;
 
+				// NOTE: similarly to the moat, MMAI does not know the dmg of the arrow towers
+				// I can't think of any runtime fix, will have to address it in the next MMAI version.
+
 				auto stackhexes = std::vector<HexPtr>{};
 				for(const auto & stackbhex : stack.getHexes(hex->bhex))
 					if(stackbhex.isAvailable())

@@ -1,0 +1,146 @@
+@startuml "vcmi-1.32-connector-v2-render"
+
+title "VCMI dual-model training"
+title "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+
+skinparam sequenceBoxBorderColor #FFF
+
+!$nbsp = "<U+00A0>"
+
+' workaround the fact that text alignment can only be
+' set globally. Using hspace(n) returns N monospaced
+' $nbsp chars
+!function $hspace($length)
+  !$res = ""
+  !$i = $length
+  !while $i > 0
+    !$res = $res + $nbsp
+    !$i = $i - 1
+  !endwhile
+  !return "<font:monospaced>"+$res+"</font>"
+!endfunction
+
+!function $desc($txt)
+  !return "<font:Arial><color:Gray><i>// "+$txt+"</i></color></font>"
+!endfunction
+
+!function $lock_acq_fail_text()
+  !return "<back:yellow><color:red>acquire lock</color></back>"
+!endfunction
+
+!procedure $lock_acq_fail($node)
+  $node -> $node : $lock_acq_fail_text()
+  activate $node #red
+!endprocedure
+
+!procedure $lock_acq_direct($node)
+  $node -> $node : <back:yellow>acquire lock</back>
+!endprocedure
+
+!procedure $lock_acq_latent($node)
+  $lock_acq_direct($node)
+  deactivate $node
+!endprocedure
+
+!procedure $cond_wait($node)
+  $node -> $node : <back:red>cond.wait</back>\n<color:yellow><back:black>release lock</back></color>
+  activate $node #red
+!endprocedure
+
+!procedure $cond_notify($NodeA, $NodeB)
+  $NodeA --[#blue]> $NodeB : <color:blue>cond.notify</color>
+  $NodeB --[#red]> $NodeB : $lock_acq_fail_text()
+!endfunction
+
+!procedure $cond_switch($NodeA, $NodeB)
+  $cond_notify($NodeA, $NodeB)
+  $cond_wait($NodeA)
+  $lock_acq_latent($NodeB)
+!endfunction
+
+!function $replace($txt, $search, $repl)
+  !$replaced = ""
+  !while %strpos($txt, $search) >= 0
+    !$position = %strpos($txt, $search)
+    !$replaced = $replaced + %substr($txt, 0, $position) + $repl
+    !$txt = %substr($txt, $position + %strlen($search))
+  !endwhile
+  !return $replaced + $txt
+!endfunction
+
+!procedure $sharevar($node1, $node2, $txt)
+  $node1 <--[#gray]> $node2 : <color:gray>$replace($txt,"\n","</color>\n<color:gray>")</color>
+!endfunction
+
+!procedure $sharevar($txt)
+  $sharevar(C1, C2, $txt)
+!endfunction
+
+' avoids super long note lines in the diagram
+!function $str($txt)
+  !return $replace($txt, "\n", %newline())
+!endfunction
+
+box "T1"
+  participant "//DualEnv 1//\n$desc(T1)" as E1
+  participant "//Controller//\n$desc(T1)" as C1
+end box
+
+participant VcmiEnv as env
+
+box "T2"
+  participant "//Controller//\n$desc(T2)" as C2
+  participant "//DualEnv 2//\n$desc(T2)" as E2
+end box
+
+
+' ========= DIAGRAM START ========
+
+-> E1 ++ : reset(env)
+E2 <-] ++ : reset(env)
+
+E1 -> C1 ++ : reset()
+$lock_acq_direct(C1)
+
+E2 -> C2 ++ : reset()
+$lock_acq_fail(C2)
+
+note over C1
+state is RESET
+ => flow REG_A
+end note
+
+$sharevar("state = REG_A")
+$cond_wait(C1)
+$lock_acq_latent(C2)
+
+note over C2
+state is REG_A
+ => flow REG_B
+end note
+
+$sharevar("state = REG_B")
+$cond_switch(C2, C1)
+
+note over C1 : assert(state == REG_B)
+
+C1 -> env ++ : reset()
+note over env
+info contains
+the active Side
+end note
+
+env --> C1 -- : obs, info
+
+$sharevar("state = OBS_A")
+
+C1 --> E1 -- : "A", obs
+E1 -> E1 : self.side="A"
+[<-- E1 -- : obs
+
+
+== CASE A => A ... ==
+== CASE A => B ... ==
+== CASE A => END ... ==
+
+@enduml

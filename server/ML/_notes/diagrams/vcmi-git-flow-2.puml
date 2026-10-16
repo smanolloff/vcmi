@@ -1,0 +1,86 @@
+@startuml "vcmi-git-flow"
+title "VCMI release flow\n\n\n"
+
+' skinparam DefaultFontName monospaced
+skinparam defaultTextAlignment center
+skinparam NoteTextAlignment left
+
+' Used in place of " " where line wrapping is undesired
+!$nbsp = "<U+00A0>"
+
+!function $code($txt)
+  !return "<font:monospaced><b>"+$txt+"</b></font>"
+!endfunction
+
+!procedure $desc($txt)
+
+<color:gray>$txt</color>
+!endprocedure
+
+|You|
+start
+->\n;
+: Identify problem;
+
+if (kind?) is (bug) then
+  : Open a GitHub Issue
+  $desc("Mention that you are also fixing it");
+else (missing\nfeature)
+  : Share it on Discord
+  $desc("Channel #vcmi-discussion");
+
+  |VCMI Team|
+  : Discuss the idea &
+  evaluate the benefit;
+
+  |You|
+  if (Approved?) is (no) then
+    : Sorry :(;
+    end
+  else (yes)
+  endif
+endif
+
+: Branch from $code(beta);
+
+: Implement, test & push changes;
+
+: Open a GitHub PR against $code("develop")
+$desc("Mention the issue above")
+
+<color:red><b>(high risk of merge conflicts);
+
+: Share it on Discord
+$desc("Channel #development-main");
+
+repeat
+  repeat :Wait for CI builds;
+  backward :Update code;
+  repeat while (CI build) is (Failed) not (Successful)
+  |#AntiqueWhite|VCMI Team|
+backward :Update code;
+repeat while (Review code) is (Changes\nrequested) not (Approved)
+
+if (Evaluate risk) is (low) then
+  : Request to update PR target to $code("beta");
+  ->\n;
+|You|
+  : Update PR target branch to $code("beta")
+
+<color:red><b>(high risk of merge conflicts);
+  |VCMI Team|
+  :Merge PR into $code("beta");
+else (high)
+|VCMI Team|
+  : Merge PR into $code("develop");
+  : Add to dev changelog\n(for next major version);
+  -[dashed]-> \n\n\n\n\n\nDev testing\nuntil next **major** release\n(could take months)\n\n\n\n\n;
+  : Merge $code("develop") into $code("beta");
+endif
+: Beta testing;
+-[dashed]-> \n\nBeta testing\nuntil next release\n(up to 2 weeks)\n\n;
+: Merge $code("beta") into $code("master");
+: Release new VCMI version;
+stop
+
+@enduml

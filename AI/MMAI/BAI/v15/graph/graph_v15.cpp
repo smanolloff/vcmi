@@ -252,6 +252,95 @@ std::vector<const S15::Graph::IEdge *> Graph::getEdges(Schema::V15::Graph::Eleme
 	);
 }
 
+#ifdef ML
+std::vector<const S15::Graph::IEdge *> Graph::getEdgesBySrc(ET t, const S15::Graph::INode * src) const
+{
+	return withNodeStore(
+		src->getType(),
+		[&](const auto & store)
+		{
+			using Store = std::decay_t<decltype(store)>;
+			using Node = typename Store::node_type;
+
+			const auto * node = dynamic_cast<const Node *>(src);
+			if(!node)
+				throwf("Node type does not match element type: %1%", EI(src->getType()));
+
+			std::vector<const S15::Graph::IEdge *> result;
+			return withEdgeStore(
+				t,
+				[&](const auto & edgeStore)
+				{
+					for(const auto & edge : edgeStore.entries())
+						if(edge->endpoints().first == src)
+							result.push_back(edge.get());
+
+					return result;
+				}
+			);
+		}
+	);
+}
+
+std::vector<const S15::Graph::IEdge *> Graph::getEdgesByDst(ET t, const S15::Graph::INode * dst) const
+{
+	return withNodeStore(
+		dst->getType(),
+		[&](const auto & store)
+		{
+			using Store = std::decay_t<decltype(store)>;
+			using Node = typename Store::node_type;
+
+			const auto * node = dynamic_cast<const Node *>(dst);
+			if(!node)
+				throwf("Node type does not match element type: %1%", EI(dst->getType()));
+
+			std::vector<const S15::Graph::IEdge *> result;
+			return withEdgeStore(
+				t,
+				[&](const auto & edgeStore)
+				{
+					for(const auto & edge : edgeStore.entries())
+						if(edge->endpoints().second == dst)
+							result.push_back(edge.get());
+
+					return result;
+				}
+			);
+		}
+	);
+}
+
+const S15::Graph::IEdge * Graph::getEdgeBySrcDst(ET t, const S15::Graph::INode * src, const S15::Graph::INode * dst) const
+{
+	return withNodeStore(
+		dst->getType(),
+		[&](const auto & store)
+		{
+			using Store = std::decay_t<decltype(store)>;
+			using Node = typename Store::node_type;
+
+			const auto * node = dynamic_cast<const Node *>(dst);
+			if(!node)
+				throwf("Node type does not match element type: %1%", EI(dst->getType()));
+
+			const S15::Graph::IEdge * result = nullptr;
+			return withEdgeStore(
+				t,
+				[&](const auto & edgeStore)
+				{
+					for(const auto & edge : edgeStore.entries())
+						if(edge->endpoints().first == src && edge->endpoints().second == dst)
+							result = edge.get();
+
+					return result;
+				}
+			);
+		}
+	);
+}
+#endif
+
 int64_t Graph::getNodeIndex(const S15::Graph::INode * inode) const
 {
 	return withNodeStore(

@@ -548,8 +548,12 @@ SDL_Window * ScreenHandler::createWindowImpl(Point dimensions, uint64_t flags, b
 			dimensions = heroes3Resolution;
 	}
 
+	const char * windowTitle = std::getenv("ML_WINDOW_TITLE");
+	if(windowTitle == nullptr || *windowTitle == '\0')
+		windowTitle = GameConstants::VCMI_PROJECT_NAME_VERSIONED;
+
 	// SDL3 no longer takes the position on creation, it has to be applied afterwards
-	SDL_Window * result = SDL_CreateWindow(GameConstants::VCMI_PROJECT_NAME_VERSIONED, dimensions.x, dimensions.y, flags);
+	SDL_Window * result = SDL_CreateWindow(windowTitle, dimensions.x, dimensions.y, flags);
 
 	if (result != nullptr)
 		SDL_SetWindowPosition(result, positionFlags, positionFlags);

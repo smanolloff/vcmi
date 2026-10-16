@@ -1,0 +1,87 @@
+############## Setup guide for Ubuntu 22.04 with CONAN (ie. compiled boost & qt instead of downloaded via apt)
+
+
+* pip3 was unavailable
+
+		$ sudo apt install python3-pip
+
+* conan was not in $PATH => add `export PATH="$PATH:/home/simo/.local/bin"` to ~/.bash_profile
+* A warning when creating the conan profile 
+
+		$ conan profile new default --detect
+		Found gcc 11
+		gcc>=5, using the major as version
+
+		************************* WARNING: GCC OLD ABI COMPATIBILITY ***********************
+		 
+		Conan detected a GCC version > 5 but has adjusted the 'compiler.libcxx' setting to
+		'libstdc++' for backwards compatibility.
+		Your compiler is likely using the new CXX11 ABI by default (libstdc++11).
+
+		If you want Conan to use the new ABI for the default profile, run:
+
+		    $ conan profile update settings.compiler.libcxx=libstdc++11 default
+
+		Or edit '/home/simo/.conan/profiles/default' and set compiler.libcxx=libstdc++11
+
+		************************************************************************************
+
+	=> run the suggested command:
+
+		$ conan profile update settings.compiler.libcxx=libstdc++11 default
+
+
+* Install some dependencies
+
+		sudo apt-get install cmake libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev
+
+* first-time `conan install` gave several errors:
+
+		ERROR: sdl_mixer/2.0.4: option 'nativemidi' doesn't exist
+		Possible options are ['shared', 'fPIC', 'cmd', 'wav', 'flac', 'mpg123', 'mad', 'ogg', 'opus', 'mikmod', 'modplug', 'fluidsynth', 'tinymidi']
+
+		ERROR: onetbb/2021.10.0: option 'shared' doesn't exist
+		Possible options are ['tbbmalloc', 'tbbproxy', 'tbbbind', 'interprocedural_optimization']
+
+		ERROR: Conflict in qt/5.15.12:
+		    'qt/5.15.12' requires 'xkbcommon/1.5.0' while 'sdl/2.26.5' requires 'xkbcommon/1.6.0'.
+		    To fix this conflict you need to override the package 'xkbcommon' in your root package.
+
+		ERROR: There are invalid packages (packages that cannot exist for this configuration):
+		qt/5.15.12: Invalid ID: with_fontconfig cannot be enabled if with_freetype is disabled.
+		ffmpeg/4.4.4: Invalid ID: FFmpeg 'with_libalsa' option requires 'avdevice' option to be enabled
+
+		vaapi/system: ERROR: while executing system_requirements(): System requirements: 'libva-dev' are missing but can't install because tools.system.package_manager:mode is 'check'.Please update packages manually or set 'tools.system.package_manager:mode' to 'install' in the [conf] section of the profile, or in the command line using '-c tools.system.package_manager:mode=install'
+
+		xorg/system: ERROR: while executing system_requirements(): System requirements: 'libx11-xcb-dev, libfontenc-dev, libxaw7-dev, libxcomposite-dev, libxdamage-dev, libxkbfile-dev, libxmu-dev, libxmuu-dev, libxpm-dev, libxres-dev, libxtst-dev, libxcb-glx0-dev, libxcb-render0-dev, libxcb-render-util0-dev, libxcb-xkb-dev, libxcb-icccm4-dev, libxcb-image0-dev, libxcb-keysyms1-dev, libxcb-randr0-dev, libxcb-shape0-dev, libxcb-sync-dev, libxcb-xfixes0-dev, libxcb-xinerama0-dev, libxcb-dri3-dev, libxcb-cursor-dev, libxcb-dri2-0-dev, libxcb-dri3-dev, libxcb-present-dev, libxcb-composite0-dev, libxcb-ewmh-dev, libxcb-res0-dev' are missing but can't install because tools.system.package_manager:mode is 'check'.Please update packages manually or set 'tools.system.package_manager:mode' to 'install' in the [conf] section of the profile, or in the command line using '-c tools.system.package_manager:mode=install'
+
+	fixing them is done by modifying conanfile.py:
+
+	1. Add to requirements:
+
+		self.requires("mpg123/1.31.2", override=True)
+		self.requires("xkbcommon/1.6.0", override=True)
+
+	2. comment-out those lines:
+
+		"onetbb/*:shared": True
+        self.options["ffmpeg"].avdevice = False
+        self.options["ffmpeg"].avfilter = False
+
+    3. change this line:
+
+        - self.options["qt"].with_freetype = self.settings.os == "Android"
+        + self.options["qt"].with_freetype = True # self.settings.os == "Android"
+
+    4. install packages
+
+    	$ sudo apt-get install libva-dev libvdpau-dev libx11-xcb-dev libfontenc-dev libxaw7-dev libxcomposite-dev libxdamage-dev libxkbfile-dev libxmu-dev libxmuu-dev libxpm-dev libxres-dev libxtst-dev libxcb-glx0-dev libxcb-render0-dev libxcb-render-util0-dev libxcb-xkb-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-xinerama0-dev libxcb-dri3-dev libxcb-cursor-dev libxcb-dri2-0-dev libxcb-dri3-dev libxcb-present-dev libxcb-composite0-dev libxcb-ewmh-dev libxcb-res0-dev sudo apt-get install libxcb-util-dev libxcb-util0-dev 
+
+    .... and  eventually qt fails with a cryptic error:
+
+		ERROR: qt/5.15.12: Error in build() method, line 823
+			self.run(self._make_program())
+			ConanException: Error 2 while executing make
+
+	at this point I opted for the apt packages instead.
+

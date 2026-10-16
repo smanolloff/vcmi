@@ -10,4 +10,5 @@
 
 #pragma once
 
+#include "AAI/AAI.h"
 #include "BAI/router.h"
