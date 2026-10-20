@@ -26,6 +26,7 @@
 #include "BAI/scripted/VIPBot.h"
 #include "BAI/scripted/scripted_model.h"
 #include "BAI/v13/BAI_v13.h"
+#include "BAI/v15/BAI_v15.h"
 
 #include "AI/MMAI/common.h"
 
@@ -261,6 +262,13 @@ void Router::activeStack(const BattleID & bid, const CStack * astack)
 {
 	MMAI_LOG_TAG;
 	bai->activeStack(bid, astack);
+}
+
+void ActionAdvisor::activeStack(const BattleID & bid, const CStack * stack)
+{
+	auto * advisor = dynamic_cast<V15::BAI *>(bai.get());
+	if(advisor)
+		advisor->evaluateActionProbabilities(stack);
 }
 
 void Router::battleAttack(const BattleID & bid, const BattleAttack * ba)

@@ -71,10 +71,12 @@ public:
 	void battleUnitsChanged(const BattleID & bid, const std::vector<UnitChanges> & changes) override;
 	void yourTacticPhase(const BattleID & bid, int distance) override;
 
+protected:
+	std::shared_ptr<CBattleGameInterface> bai;
+
 private:
 	std::shared_ptr<Environment> env;
 	std::shared_ptr<CBattleCallback> cb;
-	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
 	AutocombatPreferences autocombatPreferences;
 	Schema::Baggage * baggage = nullptr;
@@ -83,5 +85,11 @@ private:
 	std::string colorname = "?";
 	const std::string basetag = "?";
 	std::string logtag = "?";
+};
+
+class ActionAdvisor final : public Router
+{
+public:
+	void activeStack(const BattleID & bid, const CStack * stack) override;
 };
 }

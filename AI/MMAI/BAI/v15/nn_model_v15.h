@@ -31,6 +31,7 @@ public:
 	int getVersion() override;
 	Schema::Side getSide() override;
 	int getAction(const MMAI::Schema::IState * s) override;
+	void evaluateActionProbabilities(const MMAI::Schema::IState * s);
 	double getValue(const MMAI::Schema::IState * s) override;
 
 private:

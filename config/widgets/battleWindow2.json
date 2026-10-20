@@ -58,6 +58,26 @@
 		},
 
 		{
+			"type": "toggleButton",
+			"name": "actionProbabilityHeatmap",
+			"position": {"x": 211, "y": 560},
+			"image": "settingsWindow/button46",
+			"help": "vcmi.battle.actionProbabilityHeatmap",
+			"callback": "actionProbabilityHeatmapChanged",
+			"items":
+			[
+				{
+					"type": "label",
+					"text": "vcmi.battle.actionProbabilityHeatmap.short",
+					"font": "small",
+					"alignment": "center",
+					"color": "yellow",
+					"position": {"x": 23, "y": 22}
+				}
+			]
+		},
+
+		{
 			"type": "button",
 			"name": "cast",
 			"position": {"x": 646, "y": 560},
@@ -105,8 +125,8 @@
 		{
 			"type": "battleConsole",
 			"name": "console",
-			"imagePosition" : { "x" : 214, "y" : 7 },
-			"rect": {"x": 215, "y": 562, "w": 400, "h": 32}
+			"imagePosition" : { "x" : 261, "y" : 7 },
+			"rect": {"x": 262, "y": 562, "w": 353, "h": 32}
 		},
 		
 		{

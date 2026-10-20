@@ -2110,6 +2110,11 @@ namespace
 					//      => make sure to not duplicate it.
 					continue;
 
+				// NOTE: if a friendly stack is attacked via AoE (e.g. dragon breath)
+				// the UNIT_IS_MELEED_BY_ACTION edge gives no information as to how bad it is
+				// since no UNIT_MELEE_DMG_UNIT edge exists between friendly units
+				// Due to this, MMAI be unable to properly assess such actions
+
 				const auto & tunit = G.getByExtraIndex<N::Unit>(tstack->unitId());
 				G.add(E::Unit_IsMeleedBy_Action::Create(tunit, amove, false));
 

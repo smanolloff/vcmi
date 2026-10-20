@@ -14,6 +14,7 @@
 #include "BattleConsole.h"
 #include "BattleFieldController.h"
 #include "BattleInterface.h"
+#include "BattleOverlayLogVisualizer.h"
 #include "BattleStacksController.h"
 #include "HeroInfoWindow.h"
 #include "QuickSpellPanel.h"
@@ -56,7 +57,211 @@
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/spells/CSpell.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
+#include "../../lib/logging/VisualLogger.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
+
+namespace
+{
+	float normalizeBattleValue(float value)
+	{
+		static constexpr std::array points = {
+			std::pair{0.3f, 0.0f},
+			std::pair{0.5f, 0.1f},
+			std::pair{0.6f, 0.2f},
+			std::pair{0.7f, 0.4f},
+			std::pair{0.8f, 0.7f},
+			std::pair{0.9f, 0.9f},
+			std::pair{1.0f, 1.0f}
+		};
+
+		const float magnitude = std::abs(value);
+		if(magnitude <= points.front().first)
+			return 0.0f;
+		if(magnitude >= points.back().first)
+			return std::copysign(1.0f, value);
+
+		for(std::size_t i = 1; i < points.size(); ++i)
+		{
+			if(magnitude <= points[i].first)
+			{
+				const auto [x0, y0] = points[i - 1];
+				const auto [x1, y1] = points[i];
+				const float t = (magnitude - x0) / (x1 - x0);
+				return std::copysign(vstd::lerp(y0, y1, t), value);
+			}
+		}
+		return 0.0f;
+	}
+}
+
+class BattleActionProbabilityOverlay : public CIntObject
+{
+	float probability = 0.0f;
+	float relativeProbability = 0.0f;
+	bool visible = false;
+	bool showPercentage = false;
+	bool preferred = false;
+	float outlinePhase = 0.0f;
+
+public:
+	explicit BattleActionProbabilityOverlay(Point dimensions)
+		: CIntObject(0)
+	{
+		pos.w = dimensions.x;
+		pos.h = dimensions.y;
+		setRedrawParent(true);
+		addUsedEvents(TIME);
+	}
+
+	void tick(uint32_t msPassed) override
+	{
+    if(!visible || !preferred)
+        return;
+
+    outlinePhase = std::fmod(outlinePhase + msPassed * 0.0005f, 1.0f);
+    redraw();
+	}
+
+	void setValue(float newProbability, float maximumProbability, bool newVisible, bool newShowPercentage, bool newPreferred)
+	{
+		probability = std::clamp(newProbability, 0.0f, 1.0f);
+		relativeProbability = maximumProbability > 0.0f ? probability / maximumProbability : 0.0f;
+		visible = newVisible;
+		showPercentage = newShowPercentage;
+		preferred = newPreferred;
+	}
+
+	void showAll(Canvas & canvas) override
+	{
+		if(!visible || probability <= 0.0f)
+			return;
+
+		canvas.drawColorBlended(pos, battleActionProbabilityColor(relativeProbability));
+
+
+		if(preferred)
+		{
+		    const int perimeter = 2 * (pos.w + pos.h - 2);
+
+		    const auto drawPixel = [&](int x, int y, int i)
+		    {
+		        const float position = static_cast<float>(i) / perimeter;
+
+		        const auto intensityBehind = [position](float head)
+		        {
+		            const float distance = head >= position
+		                ? head - position
+		                : head + 1.0f - position;
+		            return std::max(0.0f, 1.0f - distance / 0.22f);
+		        };
+
+		        const float intensity = std::max(
+		            intensityBehind(outlinePhase),
+		            intensityBehind(std::fmod(outlinePhase + 0.5f, 1.0f)));
+
+		        if(intensity <= 0.0f)
+		            return;
+
+		        canvas.drawColorBlended(
+		            Rect(pos.x + x, pos.y + y, 1, 1),
+		            ColorRGBA(
+		                255,
+		                static_cast<uint8_t>(std::lround(160.0f + 80.0f * intensity)),
+		                static_cast<uint8_t>(std::lround(32.0f + 96.0f * intensity)),
+		                static_cast<uint8_t>(std::lround(255.0f * intensity))));
+		    };
+
+		    int i = 0;
+		    for(int x = 0; x < pos.w; ++x)
+		        drawPixel(x, 0, i++);
+		    for(int y = 1; y < pos.h; ++y)
+		        drawPixel(pos.w - 1, y, i++);
+		    for(int x = pos.w - 2; x >= 0; --x)
+		        drawPixel(x, pos.h - 1, i++);
+		    for(int y = pos.h - 2; y > 0; --y)
+		        drawPixel(0, y, i++);
+		}
+
+		if(showPercentage)
+		{
+			const auto text = std::to_string(std::lround(probability * 100.0f));
+			canvas.drawText(pos.center() + Point(1, 1), FONT_TINY, Colors::BLACK, ETextAlignment::CENTER, text);
+			canvas.drawText(pos.center(), FONT_TINY, Colors::WHITE, ETextAlignment::CENTER, text);
+		}
+	}
+};
+
+class BattleValueOverlay : public CIntObject
+{
+	float value = 0.0f;
+	bool visible = false;
+	bool showValue = false;
+	bool positiveToRight = true;
+
+public:
+	explicit BattleValueOverlay(Rect area)
+		: CIntObject(0)
+	{
+		pos = area;
+		setRedrawParent(true);
+	}
+
+	void setValue(float newValue, bool newVisible, bool newShowValue, bool newPositiveToRight)
+	{
+		value = newValue;
+		visible = newVisible;
+		showValue = newShowValue;
+		positiveToRight = newPositiveToRight;
+	}
+
+	void show(Canvas & canvas) override
+	{
+		showAll(canvas);
+		CIntObject::show(canvas);
+	}
+
+	void showAll(Canvas & canvas) override
+	{
+		if(!visible)
+			return;
+
+		canvas.drawColorBlended(pos, ColorRGBA(0, 0, 0, 190));
+		canvas.drawBorder(pos, ColorRGBA(198, 164, 104), 1);
+
+		const float normalized = normalizeBattleValue(value);
+		const int centerX = pos.center().x;
+		const int halfWidth = (pos.w / 2) - 2;
+		const int fillWidth = static_cast<int>(std::lround(std::abs(normalized) * static_cast<float>(halfWidth)));
+		const bool fillToRight = (value >= 0.0f) == positiveToRight;
+		if(fillWidth > 0)
+		{
+			const Rect fill = fillToRight
+				? Rect(centerX + 1, pos.y + 2, fillWidth, pos.h - 4)
+				: Rect(centerX - fillWidth, pos.y + 2, fillWidth, pos.h - 4);
+			const auto color = normalized > 0.0f ? ColorRGBA(32, 224, 64, 210) : ColorRGBA(240, 48, 32, 210);
+			canvas.drawColorBlended(fill, color);
+		}
+		canvas.drawLine(Point(centerX, pos.y + 1), Point(centerX, pos.bottom() - 2), Colors::WHITE, Colors::WHITE);
+
+		if(showValue)
+		{
+			const auto text = boost::str(boost::format("%+.2f") % value);
+			Point textPosition;
+			ETextAlignment alignment;
+			if(std::abs(normalized) >= 0.5f)
+			{
+				textPosition = Point(fillToRight ? centerX + 1 + (fillWidth / 2) : centerX - (fillWidth / 2), pos.center().y - 7);
+			}
+			else
+			{
+				textPosition = Point(fillToRight ? centerX + fillWidth + 6 : centerX - fillWidth - 6, pos.center().y - 7);
+			}
+			alignment = fillToRight ? ETextAlignment::CENTERLEFT : ETextAlignment::CENTERRIGHT;
+			canvas.drawText(textPosition + Point(1, 1), FONT_TINY, Colors::BLACK, alignment, text);
+			canvas.drawText(textPosition, FONT_TINY, Colors::WHITE, alignment, text);
+		}
+	}
+};
 
 BattleWindow::BattleWindow(BattleInterface & Owner)
 	: owner(Owner)
@@ -73,9 +278,27 @@ BattleWindow::BattleWindow(BattleInterface & Owner)
 	onlyOnePlayerHuman = isDefenderHuman != isAttackerHuman;
 
 	REGISTER_BUILDER("battleConsole", &BattleWindow::buildBattleConsole);
-	
+
 	const JsonNode config(JsonPath::builtin("config/widgets/BattleWindow2.json"));
-	
+	logVisual->clearBattleActionProbabilities();
+	addCallback("actionProbabilityHeatmapChanged", [this](bool)
+	{
+		const bool heatmapVisible = settings["battle"]["showActionProbabilityHeatmap"].Bool();
+		const bool percentagesVisible = settings["battle"]["showActionProbabilityPercentages"].Bool();
+		const bool newHeatmapVisible = !heatmapVisible || !percentagesVisible;
+		const bool newPercentagesVisible = heatmapVisible && !percentagesVisible;
+
+		Settings heatmapSetting = settings.write["battle"]["showActionProbabilityHeatmap"];
+		Settings percentagesSetting = settings.write["battle"]["showActionProbabilityPercentages"];
+		heatmapSetting->Bool() = newHeatmapVisible;
+		percentagesSetting->Bool() = newPercentagesVisible;
+		widget<CToggleButton>("actionProbabilityHeatmap")->setSelectedSilent(newHeatmapVisible);
+		if(newHeatmapVisible)
+			owner.getCurrentPlayerInterface()->updateBattleActionHint();
+		owner.redrawBattlefield();
+		ENGINE->windows().totalRedraw();
+	});
+
 	addShortcut(EShortcut::BATTLE_TOGGLE_QUICKSPELL, [this](){ this->toggleStickyQuickSpellVisibility();});
 	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_0,  [this](){ useSpellIfPossible(0);  });
 	addShortcut(EShortcut::BATTLE_SPELL_SHORTCUT_1,  [this](){ useSpellIfPossible(1);  });
@@ -120,7 +343,17 @@ BattleWindow::BattleWindow(BattleInterface & Owner)
 			GAME->interface()->proposeQuickLoadingGame(); });
 
 	build(config);
-	
+
+	auto heatmapButton = widget<CToggleButton>("actionProbabilityHeatmap");
+	heatmapButton->setSelectedSilent(settings["battle"]["showActionProbabilityHeatmap"].Bool());
+
+	auto waitButton = widget<CButton>("wait");
+	waitProbabilityOverlay = std::make_shared<BattleActionProbabilityOverlay>(waitButton->pos.dimensions() - Point(6, 6));
+	waitButton->setOverlay(waitProbabilityOverlay);
+	auto defendButton = widget<CButton>("defence");
+	defendProbabilityOverlay = std::make_shared<BattleActionProbabilityOverlay>(defendButton->pos.dimensions() - Point(6, 6));
+	defendButton->setOverlay(defendProbabilityOverlay);
+
 	console = widget<BattleConsole>("console");
 
 	owner.console = console;
@@ -132,6 +365,11 @@ BattleWindow::BattleWindow(BattleInterface & Owner)
 	createQuickSpellWindow();
 	createStickyHeroInfoWindows();
 	createTimerInfoWindows();
+
+	battleValueOverlay = std::make_shared<BattleValueOverlay>(Rect(0, 0, 120, 12));
+	addChild(battleValueOverlay.get());
+	updateBattleValueOverlayPosition();
+	refreshActionProbabilityOverlays();
 
 	if ( owner.isInTacticsMode() )
 		tacticPhaseStarted();
@@ -309,6 +547,34 @@ void BattleWindow::useSpellIfPossible(int slot)
 	}
 };
 
+void BattleWindow::refreshActionProbabilityOverlays()
+{
+	std::optional<BattleActionProbabilities> probabilities;
+	const auto revision = logVisual->getBattleActionProbabilities(probabilities);
+	const bool heatmapVisible = settings["battle"]["showActionProbabilityHeatmap"].Bool() && owner.stacksController && owner.stacksController->getActiveStack();
+	const bool percentagesVisible = settings["battle"]["showActionProbabilityPercentages"].Bool();
+	if(revision == actionProbabilityRevision && heatmapVisible == actionProbabilityHeatmapVisible && percentagesVisible == actionProbabilityPercentagesVisible)
+		return;
+
+	actionProbabilityRevision = revision;
+	actionProbabilityHeatmapVisible = heatmapVisible;
+	actionProbabilityPercentagesVisible = percentagesVisible;
+	const float wait = probabilities ? probabilities->wait : 0.0f;
+	const float defend = probabilities ? probabilities->defend : 0.0f;
+	const float maximumProbability = probabilities ? probabilities->maximum() : 0.0f;
+	waitProbabilityOverlay->setValue(wait, maximumProbability, heatmapVisible, percentagesVisible, wait > 0.0f && wait == maximumProbability);
+	defendProbabilityOverlay->setValue(defend, maximumProbability, heatmapVisible, percentagesVisible, defend > 0.0f && defend == maximumProbability);
+	const bool positiveToRight = probabilities && probabilities->side == BattleSide::DEFENDER;
+	battleValueOverlay->setValue(probabilities ? probabilities->value : 0.0f, heatmapVisible && probabilities.has_value(), percentagesVisible, positiveToRight);
+}
+
+void BattleWindow::updateBattleValueOverlayPosition()
+{
+	if(!battleValueOverlay || !queue)
+		return;
+	battleValueOverlay->moveTo(Point(queue->pos.center().x - (battleValueOverlay->pos.w / 2), queue->pos.bottom() + 3));
+}
+
 void BattleWindow::toggleQueueVisibility()
 {
 	if(settings["battle"]["showQueue"].Bool())
@@ -356,6 +622,7 @@ void BattleWindow::hideQueue()
 	}
 	pos = center();
 	setPositionInfoWindow();
+	updateBattleValueOverlayPosition();
 	ENGINE->windows().totalRedraw();
 }
 
@@ -370,6 +637,7 @@ void BattleWindow::showQueue()
 	createQueue();
 	updateQueue();
 	setPositionInfoWindow();
+	updateBattleValueOverlayPosition();
 	ENGINE->windows().totalRedraw();
 }
 
@@ -506,7 +774,7 @@ void BattleWindow::updateStackInfoWindow(const CStack * stack)
 	}
 	else
 		defenderStackWindow = nullptr;
-	
+
 	if(stack && stack->unitSide() == BattleSide::ATTACKER)
 	{
 		attackerStackWindow = std::make_shared<StackInfoBasicPanel>(stack, true);
@@ -514,7 +782,7 @@ void BattleWindow::updateStackInfoWindow(const CStack * stack)
 	}
 	else
 		attackerStackWindow = nullptr;
-	
+
 	createTimerInfoWindows();
 	setPositionInfoWindow();
 	redraw();
@@ -581,9 +849,11 @@ void BattleWindow::tacticPhaseStarted()
 	auto menuTactics = widget<CIntObject>("menuTactics");
 	auto tacticNext = widget<CIntObject>("tacticNext");
 	auto tacticEnd = widget<CIntObject>("tacticEnd");
+	auto heatmap = widget<CIntObject>("actionProbabilityHeatmap");
 
 	menuBattle->disable();
 	console->disable();
+	heatmap->disable();
 
 	menuTactics->enable();
 	tacticNext->enable();
@@ -599,9 +869,11 @@ void BattleWindow::tacticPhaseEnded()
 	auto menuTactics = widget<CIntObject>("menuTactics");
 	auto tacticNext = widget<CIntObject>("tacticNext");
 	auto tacticEnd = widget<CIntObject>("tacticEnd");
+	auto heatmap = widget<CIntObject>("actionProbabilityHeatmap");
 
 	menuBattle->enable();
 	console->enable();
+	heatmap->enable();
 
 	menuTactics->disable();
 	tacticNext->disable();
@@ -974,7 +1246,7 @@ std::optional<uint32_t> BattleWindow::getQueueHoveredUnitId()
 	return queue->getHoveredUnitIdIfAny();
 }
 
-void BattleWindow::endWithAutocombat() 
+void BattleWindow::endWithAutocombat()
 {
 	if(!owner.makingTurn())
 		return;
@@ -998,6 +1270,7 @@ void BattleWindow::endWithAutocombat()
 
 void BattleWindow::showAll(Canvas & to)
 {
+	refreshActionProbabilityOverlays();
 	if(owner.curInt->cb->getMapHeader()->battleOnly)
 		to.fillTexture(ENGINE->renderHandler().loadImage(ImagePath::builtin("DiBoxBck"), EImageBlitMode::OPAQUE));
 	CIntObject::showAll(to);

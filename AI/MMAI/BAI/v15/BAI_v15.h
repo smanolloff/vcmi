@@ -56,6 +56,7 @@ public:
 	) override; //called by engine when battle starts; side=0 - left, side=1 - right
 
 	Schema::Action getNonRenderAction();
+	void evaluateActionProbabilities(const CStack * stack);
 
 	// Subsequent versions may override this with subclasses of State
 	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);

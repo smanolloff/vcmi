@@ -83,6 +83,15 @@ std::shared_ptr<CBattleGameInterface> AIFactory::createBattleAI(const std::strin
 	return std::make_shared<CEmptyAI>();
 }
 
+std::shared_ptr<CBattleGameInterface> AIFactory::createBattleActionAdvisor()
+{
+#ifdef ENABLE_MMAI
+	return std::make_shared<MMAI::BAI::ActionAdvisor>();
+#else
+	return nullptr;
+#endif
+}
+
 bool AIFactory::isAvailableAdventureAI(const std::string & name)
 {
 	if(name == "EmptyAI")

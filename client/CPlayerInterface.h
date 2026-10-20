@@ -106,6 +106,7 @@ public: // TODO: make private
 
 	//During battle is quick combat mode is used
 	std::shared_ptr<CBattleGameInterface> autofightingAI; //AI that makes decisions
+	std::shared_ptr<CBattleGameInterface> battleActionAdvisor;
 	bool isAutoFightOn; //Flag, switch it to stop quick combat. Don't touch if there is no battle interface.
 	bool isAutoFightEndBattle; //Flag, if battle forced to end with autocombat
 
@@ -248,6 +249,8 @@ public: // public interface for use by client via GAME->interface() access
 	void unregisterBattleInterface(std::shared_ptr<CBattleGameInterface> battleEvents);
 
 	void prepareAutoFightingAI(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side);
+	void prepareBattleActionAdvisor(const BattleID &bid, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide side);
+	void updateBattleActionHint();
 
 	CPlayerInterface(PlayerColor Player);
 	~CPlayerInterface();

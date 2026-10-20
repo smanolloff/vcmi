@@ -16,6 +16,7 @@ namespace AIFactory
 {
 	DLL_LINKAGE std::shared_ptr<CGlobalAI> createAdventureAI(const std::string & name);
 	DLL_LINKAGE std::shared_ptr<CBattleGameInterface> createBattleAI(const std::string & name);
+	DLL_LINKAGE std::shared_ptr<CBattleGameInterface> createBattleActionAdvisor();
 
 	/// Returns true if the given name maps to a known statically-linked adventure AI.
 	DLL_LINKAGE bool isAvailableAdventureAI(const std::string & name);

@@ -10,6 +10,8 @@
 
 #include "nn_model_v15.h"
 
+#include "BAI/v15/graph/nodes/action_v15.h"
+#include "logging/VisualLogger.h"
 #include "schema/base.h"
 #include "schema/v15/constants.h"
 #include "schema/v15/graph.h"
@@ -219,8 +221,145 @@ namespace
 		double prob; // original (non-tempered) probability
 	};
 
+	std::vector<double> temperatureAdjustedProbabilities(const std::vector<float> & probs, float temperature)
+	{
+		if(temperature < 0.0f)
+			throwf("sample: negative temperature");
+		if(probs.empty())
+			throwf("sample: no probabilities");
+
+		bool hasPositiveProbability = false;
+		for(const auto probability : probs)
+		{
+			if(!std::isfinite(probability) || probability < 0.0f)
+				throwf("sample: invalid probability: %f", probability);
+			hasPositiveProbability |= probability > 0.0f;
+		}
+		if(!hasPositiveProbability)
+			throwf("sample: all probabilities are 0");
+
+		if(temperature < 1e-5f)
+		{
+			auto result = std::vector<double>(probs.size(), 0.0);
+			const auto best = std::ranges::max_element(probs);
+			result.at(std::distance(probs.begin(), best)) = 1.0;
+			return result;
+		}
+
+		auto logWeights = std::vector<double>(probs.size(), -std::numeric_limits<double>::infinity());
+		double maxLogWeight = -std::numeric_limits<double>::infinity();
+		for(std::size_t i = 0; i < probs.size(); ++i)
+		{
+			if(probs[i] > 0.0f)
+			{
+				logWeights[i] = std::log(probs[i]) / temperature;
+				maxLogWeight = std::max(maxLogWeight, logWeights[i]);
+			}
+		}
+
+		auto result = std::vector<double>(probs.size(), 0.0);
+		double sum = 0.0;
+		for(std::size_t i = 0; i < probs.size(); ++i)
+		{
+			if(std::isfinite(logWeights[i]))
+			{
+				result[i] = std::exp(logWeights[i] - maxLogWeight);
+				sum += result[i];
+			}
+		}
+		if(sum <= 0.0)
+			throwf("sample: invalid probability sum: %f", sum);
+		for(auto & probability : result)
+			probability /= sum;
+		return result;
+	}
+
+	void publishActionProbabilities(
+		const S15::Graph::IGraph * graph,
+		const std::vector<int64_t> & activeActionIds,
+		const std::vector<double> & adjustedProbs,
+		float value)
+	{
+		auto policy = BattleActionProbabilities{};
+		policy.value = value;
+		for(std::size_t i = 0; i < activeActionIds.size(); ++i)
+		{
+			const auto * node = graph->getNode(ET::NODE_ACTION, activeActionIds[i]);
+			auto * action = dynamic_cast<const Graph::Nodes::Action *>(node);
+			if(!action)
+				throwf("getAction: action node has unexpected type");
+			if(!action->by)
+				throwf("getAction: action node has no acting unit");
+			const auto actionSide = action->by->cstack.unitSide();
+			if(policy.side != BattleSide::NONE && policy.side != actionSide)
+				throwf("getAction: active actions have inconsistent sides");
+			policy.side = actionSide;
+
+			std::cout << "PROB: " << adjustedProbs[i] << " " << action->name() << "\n";
+
+			const auto probability = static_cast<float>(adjustedProbs[i]);
+			switch(action->actionType)
+			{
+				case S15::ActionType::MOVE:
+				{
+					auto & moveProbability = policy.moves[action->endsAt.front()->bhex];
+					moveProbability = std::max(moveProbability, probability);
+					break;
+				}
+				case S15::ActionType::AMOVE:
+				{
+					if(!action->target)
+						throwf("getAction: attack action has no target");
+					auto & targetProbability = policy.attackTargets[action->target->cstack.getPosition()];
+					targetProbability = std::max(targetProbability, probability);
+
+					bool directionFound = false;
+					for(const auto & attackerHex : action->endsAt)
+					{
+						for(const auto & targetHex : action->target->cstack.getHexes())
+						{
+							const auto direction = BattleHex::mutualPosition(attackerHex->bhex, targetHex);
+							if(direction == BattleHex::NONE)
+								continue;
+							const auto directionIndex = static_cast<std::size_t>(direction);
+							auto & directionProbability = policy.meleeAttacks[attackerHex->bhex].at(directionIndex);
+							if(!directionProbability || probability > *directionProbability)
+							{
+								directionProbability = probability;
+								policy.meleeAttackTargets[attackerHex->bhex].at(directionIndex) = action->target->cstack.getPosition();
+							}
+							directionFound = true;
+							break;
+						}
+						if(directionFound)
+							break;
+					}
+					break;
+				}
+				case S15::ActionType::SHOOT:
+				{
+					if(!action->target)
+						throwf("getAction: attack action has no target");
+					auto & targetProbability = policy.attackTargets[action->target->cstack.getPosition()];
+					targetProbability = std::max(targetProbability, probability);
+					break;
+				}
+				case S15::ActionType::WAIT:
+					policy.wait += probability;
+					break;
+				case S15::ActionType::DEFEND:
+					policy.defend += probability;
+					break;
+				default:
+					throwf("getAction: unexpected action type: %d", EI(action->actionType));
+			}
+		}
+		logVisual->setBattleActionProbabilities(std::move(policy));
+	}
+
 	std::pair<Sample, Sample> categorical(
 		const std::vector<float> & probs,
+		const std::vector<double> & adjustedProbs,
 		float temperature,
 		std::mt19937 & rng,
 		const std::vector<int64_t> & activeActionIds,
@@ -229,11 +368,7 @@ namespace
 	{
 		auto sample = Sample{};
 		auto greedy = Sample{};
-
-		if(temperature < 0.0f)
-			throwf("sample: negative temperature");
-
-		bool isGreedy = temperature < 1e-5;
+		bool isGreedy = temperature < 1e-5f;
 
 		// Greedy sample: argmax, first tie.
 		{
@@ -262,48 +397,7 @@ namespace
 		if(isGreedy)
 			return {greedy, greedy};
 
-		// Stochastic sample (only if temperature > 0)
-		// Sample with weights w_i = exp(log(p_i)/T), and return original probs[idx].
-		std::vector logw(probs.size(), -std::numeric_limits<double>::infinity());
-		double max_logw = -std::numeric_limits<double>::infinity();
-		bool valid = false;
-
-		for(std::size_t i = 0; i < probs.size(); ++i)
-		{
-			float p = probs[i];
-			if(p < 0.0f)
-				throwf("sample: negative probabilities");
-
-			if(p > 0.0f)
-			{
-				valid = true;
-				double lw = std::log(p) / temperature;
-				logw[i] = lw;
-				max_logw = std::max(lw, max_logw);
-			}
-		}
-
-		if(!valid)
-			throwf("sample: all probabilities are 0");
-
-		std::vector weights(probs.size(), 0.0);
-		double wsum = 0.0;
-
-		for(std::size_t i = 0; i < probs.size(); ++i)
-		{
-			if(std::isfinite(logw[i]))
-			{
-				// shift by max for numerical stability
-				double wi = std::exp(logw[i] - max_logw);
-				weights[i] = wi;
-				wsum += wi;
-			}
-		}
-
-		if(wsum <= 0.0)
-			throwf("sample: negative weight sum: %f", wsum);
-
-		std::discrete_distribution<int> dist(weights.begin(), weights.end());
+		std::discrete_distribution<int> dist(adjustedProbs.begin(), adjustedProbs.end());
 
 		if(isMMAIVerbose())
 		{
@@ -320,7 +414,7 @@ namespace
 		int idx = dist(rng);
 		sample.index = idx;
 		sample.prob = probs[idx];
-		sample.confidence = weights[idx] / wsum;
+		sample.confidence = adjustedProbs[idx];
 
 		return {sample, greedy};
 	}
@@ -625,6 +719,7 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 
 	if(gnode->rawAttributes().at(EU(GA::BATTLE_WINNER)) != EU(S15::CombatResult::NONE))
 	{
+		logVisual->clearBattleActionProbabilities();
 		timer.name = boost::str(boost::format("MMAI action: %d (battle ended)") % MMAI::Schema::ACTION_RESET);
 		return MMAI::Schema::ACTION_RESET;
 	}
@@ -647,7 +742,8 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	if(activeActionIdsOut != activeActionIds)
 		throwf("getAction: active action ids output mismatch");
 
-	const auto [sample, greedy] = categorical(activeProbs, temperature, rng, activeActionIds, graph);
+	const auto adjustedProbs = temperatureAdjustedProbabilities(activeProbs, temperature);
+	const auto [sample, greedy] = categorical(activeProbs, adjustedProbs, temperature, rng, activeActionIds, graph);
 
 	if(sample.prob == 0)
 		throwf("getAction: sample has 0 probability");
@@ -657,6 +753,9 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 
 	if(modelGreedyAction != gaction)
 		throwf("getAction: model greedy action mismatch: output: %d, probabilities: %d", modelGreedyAction, gaction);
+
+	// publishActionProbabilities(graph, activeActionIds, adjustedProbs, value);
+	publishActionProbabilities(graph, activeActionIds, std::vector<double>(activeProbs.begin(), activeProbs.end()), value);
 
 	const auto sname = graph->getNode(ET::NODE_ACTION, saction)->name();
 	const auto gname = graph->getNode(ET::NODE_ACTION, gaction)->name();
@@ -677,6 +776,43 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f): %s") % saction % sample.confidence % sname);
 	return static_cast<int>(saction);
 };
+
+void NNModel::evaluateActionProbabilities(const MMAI::Schema::IState * s)
+{
+	NestedLogTag _("evaluateActionProbabilities");
+	auto any = s->getSupplementaryData();
+	if(s->version() != version)
+		throwf("evaluateActionProbabilities: unsupported IState version: want: %d, have: %d", version, s->version());
+	if(!any.has_value())
+		throw std::runtime_error("evaluateActionProbabilities: supplementary data is empty");
+
+	auto err = MMAI::Schema::AnyCastError(any, typeid(const S15::ISupplementaryData *));
+	if(!err.empty())
+		throwf("evaluateActionProbabilities: anycast failed: %s", err);
+	const auto * sup = std::any_cast<const S15::ISupplementaryData *>(any);
+	if(!sup || sup->getType() != S15::ISupplementaryData::Type::REGULAR)
+		throwf("evaluateActionProbabilities: invalid supplementary data");
+	const auto * graph = sup->getGraph();
+	if(!graph)
+		throwf("evaluateActionProbabilities: null graph");
+
+	auto inputs = prepareInputs(graph);
+	auto outputs = container->session->Run(Ort::RunOptions(), inputNames.data(), inputs.data(), inputs.size(), outputNames.data(), outputNames.size());
+	if(outputs.size() != 4)
+		throwf("evaluateActionProbabilities: bad output size: want: 4, have: %d", outputs.size());
+
+	const auto activeActionIds = graph->getActiveActionIds();
+	if(activeActionIds.empty())
+		throwf("evaluateActionProbabilities: no active actions");
+	const auto activeProbs = toVec1D<float>("active_probs", outputs[1], static_cast<int64_t>(activeActionIds.size()));
+	const auto value = toScalar<float>("value", outputs[2]);
+	const auto activeActionIdsOut = toVec1D<int64_t>("active_action_ids_out", outputs[3], static_cast<int64_t>(activeActionIds.size()));
+	if(activeActionIdsOut != activeActionIds)
+		throwf("evaluateActionProbabilities: active action ids output mismatch");
+
+	// publishActionProbabilities(graph, activeActionIds, temperatureAdjustedProbabilities(activeProbs, temperature), value);
+	publishActionProbabilities(graph, activeActionIds, std::vector<double>(activeProbs.begin(), activeProbs.end()), value);
+}
 
 double NNModel::getValue(const MMAI::Schema::IState * s)
 {

@@ -72,7 +72,35 @@ void VisualLogger::visualize(IBattleOverlayLogVisualizer & visulizer)
 
 void VisualLogger::setKey(const std::string & key)
 {
+	std::lock_guard lock(mutex);
 	keyToShow = key;
+}
+
+void VisualLogger::setBattleActionProbabilities(BattleActionProbabilities probabilities)
+{
+	std::lock_guard lock(mutex);
+	battleActionProbabilities = std::move(probabilities);
+	++battleActionProbabilitiesRevision;
+}
+
+void VisualLogger::clearBattleActionProbabilities()
+{
+	std::lock_guard lock(mutex);
+	battleActionProbabilities.reset();
+	++battleActionProbabilitiesRevision;
+}
+
+uint64_t VisualLogger::getBattleActionProbabilitiesRevision()
+{
+	std::lock_guard lock(mutex);
+	return battleActionProbabilitiesRevision;
+}
+
+uint64_t VisualLogger::getBattleActionProbabilities(std::optional<BattleActionProbabilities> & output)
+{
+	std::lock_guard lock(mutex);
+	output = battleActionProbabilities;
+	return battleActionProbabilitiesRevision;
 }
 
 void IVisualLogBuilder::addText(int3 tile, const std::string & text, PlayerColor background)

@@ -11,7 +11,6 @@
 #include "BattleOptionsTab.h"
 
 #include "../../battle/BattleInterface.h"
-#include "../../GameEngine.h"
 #include "../../../lib/CConfigHandler.h"
 #include "../../../lib/filesystem/ResourcePath.h"
 #include "../../../lib/texts/CGeneralTextHandler.h"
@@ -181,6 +180,7 @@ void BattleOptionsTab::viewGridChangedCallback(bool value, BattleInterface * par
 	if(parentBattleInterface)
 		parentBattleInterface->redrawBattlefield();
 }
+
 
 void BattleOptionsTab::movementShadowChangedCallback(bool value, BattleInterface * parentBattleInterface)
 {

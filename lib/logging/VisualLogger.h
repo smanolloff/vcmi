@@ -12,6 +12,7 @@
 #include "../int3.h"
 #include "../constants/EntityIdentifiers.h"
 #include "../battle/BattleHex.h"
+#include "../battle/BattleSide.h"
 #include "../Color.h"
 
 class IMapOverlayLogVisualizer
@@ -25,6 +26,32 @@ class IBattleOverlayLogVisualizer
 {
 public:
 	virtual void drawText(const BattleHex & tile, int lineNumber, const std::string & text) = 0;
+};
+
+struct DLL_LINKAGE BattleActionProbabilities
+{
+	std::map<BattleHex, float> attackTargets;
+	std::map<BattleHex, float> moves;
+	std::map<BattleHex, std::array<std::optional<float>, 6>> meleeAttacks;
+	std::map<BattleHex, std::array<std::optional<BattleHex>, 6>> meleeAttackTargets;
+	float wait = 0.0f;
+	float defend = 0.0f;
+	float value = 0.0f;
+	BattleSide side = BattleSide::NONE;
+
+	float maximum() const
+	{
+		float result = std::max(wait, defend);
+		for(const auto & entry : attackTargets)
+			result = std::max(result, entry.second);
+		for(const auto & entry : moves)
+			result = std::max(result, entry.second);
+		for(const auto & entry : meleeAttacks)
+			for(const auto & probability : entry.second)
+				if(probability)
+					result = std::max(result, *probability);
+		return result;
+	}
 };
 
 class DLL_LINKAGE IVisualLogBuilder
@@ -104,6 +131,8 @@ private:
 	std::map<std::string, std::vector<Text<BattleHex>>> battleTexts;
 	std::mutex mutex;
 	std::string keyToShow;
+	std::optional<BattleActionProbabilities> battleActionProbabilities;
+	uint64_t battleActionProbabilitiesRevision = 0;
 
 public:
 
@@ -111,6 +140,11 @@ public:
 	void visualize(IMapOverlayLogVisualizer & visulizer);
 	void visualize(IBattleOverlayLogVisualizer & visulizer);
 	void setKey(const std::string & key);
+
+	void setBattleActionProbabilities(BattleActionProbabilities probabilities);
+	void clearBattleActionProbabilities();
+	uint64_t getBattleActionProbabilitiesRevision();
+	uint64_t getBattleActionProbabilities(std::optional<BattleActionProbabilities> & output);
 };
 
 extern DLL_LINKAGE VisualLogger * logVisual;

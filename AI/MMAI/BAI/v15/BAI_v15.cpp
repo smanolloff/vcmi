@@ -12,12 +12,14 @@
 
 #include "AI/BattleAI/BattleEvaluator.h"
 #include "BAI/v15/graph/nodes/action_v15.h"
+#include "BAI/v15/nn_model_v15.h"
 #include "battle/BattleAction.h"
 #include "battle/BattleHex.h"
 #include "battle/BattleStateInfoForRetreat.h"
 #include "battle/CBattleInfoEssentials.h"
 #include "battle/ReachabilityInfo.h"
 #include "callback/CBattleCallback.h"
+#include "logging/VisualLogger.h"
 
 #include "AI/MMAI/common.h"
 #include "BAI/v15/render_v15.h"
@@ -49,6 +51,16 @@ BAI::BAI(
 )
 	: model(model), version(version), logger(cb->getPlayerID().value().toString()), env(env), cb(cb), enableSpells(enableSpells), enableTactics(enableTactics)
 {
+}
+
+void BAI::evaluateActionProbabilities(const CStack * stack)
+{
+	logVisual->clearBattleActionProbabilities();
+	state->onActiveStack(stack, roundcounter);
+	auto * nnModel = dynamic_cast<NNModel *>(model);
+	if(!nnModel)
+		return;
+	nnModel->evaluateActionProbabilities(state.get());
 }
 
 Schema::Action BAI::getNonRenderAction()
@@ -368,6 +380,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 
 void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 {
+	logVisual->clearBattleActionProbabilities();
 	if(const auto ba = maybeBuildAutoAction(astack, bid))
 	{
 		logger.info("Making automatic action with %s", astack->getDescription());
