@@ -124,8 +124,10 @@ public:
 	bool captureChildren; //all newly created objects will get their parents from stack and will be added to parents children list
 	std::list<CIntObject *> createdObj; //stack of objs being created
 
-	GameEngine();
+	GameEngine(bool headless = false);
 	~GameEngine();
+
+	void init();
 
 	/// Creates sound and music players. They read game data on creation, so the game library must be loaded
 	void initAudio();

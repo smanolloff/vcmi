@@ -19,6 +19,7 @@
 #include "../lib/mapping/CMapHeader.h"
 #include "../lib/mapping/ScenarioList.h"
 #include "../lib/gameState/GameStatistics.h"
+#include "../lib/battle/AutocombatPreferences.h"
 
 class GameConnection;
 class PlayerColor;
@@ -129,6 +130,8 @@ class CServerHandler final : public IServerAPI, public LobbyInfo, public INetwor
 	bool lobbyPreviewMode = false;
 	std::function<void()> onLobbyPreviewJoin;
 
+	AutocombatPreferences autocombatPreferences;
+
 	void threadRunNetwork();
 	void waitForServerShutdown();
 	/// Closes connection to server, if any, without notifying the server
@@ -181,9 +184,9 @@ public:
 	std::unique_ptr<CStopWatch> th;
 	std::unique_ptr<CClient> client;
 
-	CServerHandler();
+	CServerHandler(AutocombatPreferences ap = {});
 	~CServerHandler();
-	
+
 	void resetStateForLobby(EStartMode mode, ESelectionScreen screen, EServerMode serverMode, const std::vector<std::string> & playerNames);
 	void startLocalServerAndConnect(bool connectToLobby);
 	void connectToServer(const std::string & addr, const ui16 port);
@@ -245,7 +248,7 @@ public:
 
 	void startScenarioAfterConnection(const ScenarioSelection & selection);
 	bool validateGameStart(bool allowOnlyAI = false) const;
-	void debugStartTest(std::string filename, bool save = false);
+	void debugStartTest(std::string filename, bool save = false, const std::vector<std::string> & playerNames = {}, bool hotseat = false);
 
 	void startGameplay(std::shared_ptr<CGameState> gameState);
 	void quickLoadGame();

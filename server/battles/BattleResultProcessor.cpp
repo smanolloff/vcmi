@@ -8,6 +8,7 @@
  *
  */
 #include "StdInc.h"
+#include "CVCMIServer.h"
 #include "BattleResultProcessor.h"
 #include "battle/BattleInfo.h"
 
@@ -30,6 +31,8 @@
 #include "../../lib/mapping/CMap.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/networkPacks/PacksForClientBattle.h"
+//#include "../../lib/spells/CSpellHandler.h"
+//#include "../../client/CMT.h"
 
 #include <vcmi/spells/Spell.h>
 
@@ -270,6 +273,8 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	if(heroDefender)
 		battleResult->exp[BattleSide::DEFENDER] = heroDefender->calculateXp(battleResult->exp[BattleSide::DEFENDER]);
 
+	ML(gameHandler->mlplugin->endBattleHook(battleResult, heroAttacker, heroDefender));
+
 	const auto * defenderPlayer = gameHandler->gameInfo().tryGetPlayerState(battle.getBattle()->getSidePlayer(BattleSide::DEFENDER));
 	bool isDefenderHuman = defenderPlayer && defenderPlayer->isHuman();
 
@@ -284,7 +289,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	bool isAttackerHuman = attackerPlayer && attackerPlayer->isHuman();
 	bool onlyOnePlayerHuman = isAttackerHuman != isDefenderHuman;
 	// in battles against neutrals attacker can ask to replay battle manually, additionally in battles against AI player human side can also ask for replay
-	if(onlyOnePlayerHuman)
+	if(onlyOnePlayerHuman || IFML(true, false))
 	{
 		auto battleDialogActivity = std::make_shared<BattleResultActivity>(gameHandler, battle.getBattle(), typedBattleActivity.result);
 		battleResult->questionID = battleDialogActivity->askQuestion();

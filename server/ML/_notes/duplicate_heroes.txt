@@ -1,0 +1,19 @@
+
+// server
+server has gs->allheroes (incl. not on map) - 1 per hero type
+  [0] -> (orrin)
+  [1] -> (valeska)
+  ...
+  [80] -> (lorelei)
+  ...
+
+Serialization of CGHeroInstance* `h` (e.g. the 7th of the 10 "lorelei" on the map) is:
+  1. find index of h->type->id in gs->allheroes (i.e. find 80)
+    The data stored inside is the *first* lorelei hero on the map.
+  2. send "80" (the type ID for "lorelei")
+
+// client
+Deserialization of CGHeroInstance* is:
+  1. get gs->allheroes[80] which is the *first* lorelei on the map
+  => client sets up battle with this hero, which is a different lorelei
+     from the one in the server-side battle

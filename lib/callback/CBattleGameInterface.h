@@ -26,10 +26,11 @@ public:
 	std::string dllName;
 
 	virtual ~CBattleGameInterface() {};
-	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB){};
 	virtual void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences){};
 
 	//battle call-ins
 	virtual void activeStack(const BattleID & battleID, const CStack * stack)=0; //called when it's turn of that stack
 	virtual void yourTacticPhase(const BattleID & battleID, int distance)=0; //called when interface has opportunity to use Tactics skill -> use cb->battleMakeTacticAction from this function
+
+	virtual void onNewSystemMessageReceived(const std::string & msg) const {};
 };

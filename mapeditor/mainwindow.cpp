@@ -193,8 +193,8 @@ void EditorMainWindow::loadUserSettings()
 	{
 		move(position);
 	}
-	lastSavingDir = s.value(lastDirectorySetting).toString();
-	if(lastSavingDir.isEmpty())
+	// lastSavingDir = s.value(lastDirectorySetting).toString();
+	// if(lastSavingDir.isEmpty())
 		lastSavingDir = pathToQString(VCMIDirs::get().userDataPath().make_preferred());
 	ui->objectView->setGridIconSize(s.value(objectBrowserIconSizeSetting, ui->objectView->gridIconSize()).toInt());
 	ui->viewModeButton->setChecked(s.value(objectBrowserListSetting).toBool());
@@ -673,7 +673,7 @@ void EditorMainWindow::on_actionOpen_triggered()
 		return;
 
 	auto title = tr("Open map");
-	auto dir = pathToQString(VCMIDirs::get().userDataPath().make_preferred());
+	auto dir = pathToQString((VCMIDirs::get().userDataPath() / "Maps" / "gym").make_preferred());
 	auto filter = tr("All supported maps (*.vmap *.h3m);;VCMI maps(*.vmap);;HoMM3 maps(*.h3m)");
 
 	auto filenameSelect = EditorFileDialog::getOpenFileName(this, title, dir, filter);

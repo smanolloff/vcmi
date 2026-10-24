@@ -301,17 +301,18 @@ bool Unit::HasCombatScript(const CStack * cstack, const std::string & script)
 // static
 int Unit::GetValue(const CCreature * creature, bool isClone, bool isSummon)
 {
-	static const CreatureValues CREATURE_VALUES = InitCreatureValues();
-
 	if(!creature)
 		throw std::runtime_error("GetValue: nullptr given");
 
+	int v;
+
+	static const CreatureValues CREATURE_VALUES = InitCreatureValues();
 	const auto & it = CREATURE_VALUES.find(creature->getIndex());
 
 	if(it == CREATURE_VALUES.end())
 		throwf("GetValue: no value for creature with ID=%1%", creature->getIndex());
 
-	auto v = it->second;
+	v = it->second;
 
 	if(isClone)
 		v *= 5;

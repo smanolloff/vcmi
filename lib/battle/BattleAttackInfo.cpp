@@ -7,9 +7,7 @@
  * Full text of license available in license.txt file, in main folder
  *
  */
-#include "StdInc.h"
 #include "BattleAttackInfo.h"
-#include "CUnitState.h"
 
 BattleAttackInfo::BattleAttackInfo(const battle::Unit * Attacker, const battle::Unit * Defender, int chargeDistance, bool Shooting)
 	: attacker(Attacker),

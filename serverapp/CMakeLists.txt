@@ -17,6 +17,11 @@ set(serverapp_LIBS vcmi)
 if(CMAKE_SYSTEM_NAME MATCHES FreeBSD OR HAIKU)
 	list(APPEND serverapp_LIBS execinfo)
 endif()
+
+if(ENABLE_ML)
+	set(serverapp_LIBS mlserverplugin ${serverapp_LIBS})
+endif()
+
 target_link_libraries(vcmiserver PRIVATE ${serverapp_LIBS} minizip::minizip vcmiservercommon)
 
 target_include_directories(vcmiserver

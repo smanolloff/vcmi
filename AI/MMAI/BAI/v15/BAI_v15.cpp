@@ -23,6 +23,7 @@
 #include "entities/building/TownFortifications.h"
 #include "mapObjects/CGTownInstance.h"
 #include "schema/base.h"
+#include "schema/v15/constants.h"
 #include "schema/v15/types.h"
 
 namespace MMAI::BAI::V15
@@ -365,6 +366,9 @@ namespace
 
 void BAI::activeStack(const BattleID & bid, const CStack * astack)
 {
+#ifdef ENABLE_ML
+	_activeStack(bid, astack);
+#else
 	try
 	{
 		_activeStack(bid, astack);
@@ -376,6 +380,7 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
+#endif
 }
 
 void BAI::_activeStack(const BattleID & bid, const CStack * astack)
@@ -389,6 +394,14 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifdef ENABLE_ML
+	if(roundcounter > S15::MAX_ROUNDS)
+	{
+		logger.warn("Max rounds (%d) exceeded, retreating...", S15::MAX_ROUNDS);
+		cb->battleMakeUnitAction(bid, BattleAction::makeRetreat(battle->battleGetMySide()));
+		return;
+	}
+#else
 	// Guard against infinite battles
 	// (print warning once, make only fallback actions from there on)
 	if(!inFallback && getActionTotalCalls >= MMAIFallbackTrigger())
@@ -403,9 +416,11 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 		return;
 	}
+#endif
 
 	state->onActiveStack(astack, roundcounter);
 
+#ifndef ENABLE_ML
 	if(useHeroSpells || useCreatureSpells)
 	{
 		auto evaluator = createBattleAIEvaluator(astack, bid);
@@ -426,6 +441,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 
 	logger.debug("Not conceding.");
+#endif
 
 	auto t0 = std::chrono::steady_clock::now();
 	int a = getNonRenderAction();

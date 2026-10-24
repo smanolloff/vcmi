@@ -93,6 +93,19 @@ static_assert(sizeof(bool) == 1, "Bool needs to be 1 byte in size.");
 #  endif
 #endif
 
+/* ---------------------------------------------------------------------------- */
+/* A macro which expands to nothing unless ENABLE_ML compile flag is set */
+/* ---------------------------------------------------------------------------- */
+#ifdef ENABLE_ML
+#define ML(STMT) STMT
+#define IFML(STMT_TRUE, STMT_FALSE) STMT_TRUE
+#define IS_ML true
+#else
+#define ML(STMT)
+#define IFML(STMT_TRUE, STMT_FALSE) STMT_FALSE
+#define IS_ML false
+#endif
+
 // Required for building boost::stacktrace on macOS.
 // See https://github.com/boostorg/stacktrace/issues/88
 #if defined(VCMI_APPLE)

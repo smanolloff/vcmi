@@ -34,7 +34,7 @@ out/
 /CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
-Makefile
+#Makefile
 cmake_install.cmake
 install_manifest.txt
 moc_*.cpp
@@ -78,3 +78,14 @@ compile_commands.json
 # CLion
 .idea/
 .qtcreator/
+
+# ML
+.cmake
+*.sqlite3
+*.db
+rel/
+actions.txt
+
+data/*
+!data/config/
+dependencies-mac-arm.txz
