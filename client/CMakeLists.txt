@@ -1,5 +1,6 @@
 set(vcmiclientcommon_SRCS
 	StdInc.cpp
+	BattleActionAdvisor.cpp
 
 	adventureMap/AdventureMapInterface.cpp
 	adventureMap/AdventureMapShortcuts.cpp
@@ -13,6 +14,8 @@ set(vcmiclientcommon_SRCS
 	adventureMap/MapAudioPlayer.cpp
 	adventureMap/TurnTimerWidget.cpp
 
+	battle/BattleAdvisor.cpp
+	battle/BattleAdvisorField.cpp
 	battle/BattleActionsController.cpp
 	battle/BattleAnimationClasses.cpp
 	battle/BattleConsole.cpp
@@ -222,6 +225,8 @@ set(vcmiclientcommon_HEADERS
 	adventureMap/TurnTimerWidget.h
 
 	battle/BattleActionEntry.h
+	battle/BattleAdvisor.h
+	battle/BattleAdvisorField.h
 	battle/BattleActionsController.h
 	battle/BattleAnimationClasses.h
 	battle/BattleConsole.h

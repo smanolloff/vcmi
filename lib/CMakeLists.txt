@@ -25,6 +25,7 @@ set(lib_SRCS
 	json/JsonValidator.cpp
 	json/JsonWriter.cpp
 
+	logging/BattleActionProbabilities.cpp
 	logging/CBasicLogConfigurator.cpp
 	logging/CLogger.cpp
 	logging/VisualLogger.cpp
@@ -399,6 +400,7 @@ set(lib_HEADERS
 	json/JsonValidator.h
 	json/JsonWriter.h
 
+	logging/BattleActionProbabilities.h
 	logging/CBasicLogConfigurator.h
 	logging/CLogger.h
 	logging/VisualLogger.h

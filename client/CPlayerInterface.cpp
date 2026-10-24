@@ -25,7 +25,6 @@
 #include "battle/BattleFieldController.h"
 #include "battle/BattleInterface.h"
 #include "battle/BattleResultWindow.h"
-#include "battle/BattleStacksController.h"
 #include "battle/BattleWindow.h"
 
 #include "events/InputHandler.h"
@@ -806,20 +805,7 @@ void CPlayerInterface::activeStack(const BattleID & battleID, const CStack * sta
 		return;
 	}
 
-	if(battleActionAdvisor && settings["battle"]["showActionProbabilityHeatmap"].Bool())
-	{
-		try
-		{
-			auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
-			battleActionAdvisor->activeStack(battleID, stack);
-		}
-		catch(const std::exception & e)
-		{
-			logAi->error("MMAI action advisor failed: %s", e.what());
-			GAME->server().client->unregisterBattleInterface(battleActionAdvisor, playerID);
-			battleActionAdvisor.reset();
-		}
-	}
+	evaluateBattleActionAdvisor(battleID, stack);
 
 	assert(battleInt);
 	if(!battleInt)
@@ -834,11 +820,7 @@ void CPlayerInterface::activeStack(const BattleID & battleID, const CStack * sta
 void CPlayerInterface::battleEnd(const BattleID & battleID, const BattleResult *br, QuestionID questionID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	if(battleActionAdvisor)
-	{
-		GAME->server().client->unregisterBattleInterface(battleActionAdvisor, playerID);
-		battleActionAdvisor.reset();
-	}
+	stopBattleActionAdvisor();
 	if(isAutoFightOn || autofightingAI)
 	{
 		isAutoFightOn = false;
@@ -2176,51 +2158,6 @@ void CPlayerInterface::prepareAutoFightingAI(const BattleID &bid, const CCreatur
 	autofightingAI->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
 	isAutoFightOn = true;
 	registerBattleInterface(autofightingAI);
-}
-
-void CPlayerInterface::prepareBattleActionAdvisor(
-	const BattleID & bid,
-	const CCreatureSet * army1,
-	const CCreatureSet * army2,
-	int3 tile,
-	const CGHeroInstance * hero1,
-	const CGHeroInstance * hero2,
-	BattleSide side)
-{
-	try
-	{
-		battleActionAdvisor = AIFactory::createBattleActionAdvisor();
-		if(!battleActionAdvisor)
-			return;
-		battleActionAdvisor->initBattleInterface(env, cb, autocombatPreferences);
-		battleActionAdvisor->battleStart(bid, army1, army2, tile, hero1, hero2, side, false);
-		GAME->server().client->registerBattleInterface(battleActionAdvisor, playerID);
-	}
-	catch(const std::exception & e)
-	{
-		logAi->error("Failed to initialize MMAI action advisor: %s", e.what());
-		battleActionAdvisor.reset();
-	}
-}
-
-void CPlayerInterface::updateBattleActionHint()
-{
-	if(!battleActionAdvisor || !battleInt)
-		return;
-	const auto * stack = battleInt->stacksController->getActiveStack();
-	if(!stack)
-		return;
-
-	try
-	{
-		battleActionAdvisor->activeStack(battleInt->getBattleID(), stack);
-	}
-	catch(const std::exception & e)
-	{
-		logAi->error("MMAI action advisor failed: %s", e.what());
-		GAME->server().client->unregisterBattleInterface(battleActionAdvisor, playerID);
-		battleActionAdvisor.reset();
-	}
 }
 
 void CPlayerInterface::showWorldViewEx(const std::vector<ObjectPosInfo>& objectPositions, bool showTerrain)

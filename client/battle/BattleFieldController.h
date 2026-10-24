@@ -17,7 +17,7 @@
 
 class CStack;
 class Rect;
-struct BattleActionProbabilities;
+class BattleAdvisorField;
 
 class BattleHero;
 class CAnimation;
@@ -66,10 +66,7 @@ class BattleFieldController : public CIntObject
 	std::shared_ptr<IImage> cellUnitMovementHighlight;
 	std::shared_ptr<IImage> cellUnitMaxMovementHighlight;
 	std::shared_ptr<IImage> cellShade;
-	std::vector<Rect> cellShadeOpaqueRuns;
-	std::vector<Rect> cellShadeCenterRuns;
-	std::array<std::vector<Rect>, 6> cellShadeAttackRuns;
-	float actionProbabilityOutlinePhase = 0.0f;
+	std::shared_ptr<BattleAdvisorField> advisor;
 	std::shared_ptr<CAnimation> rangedFullDamageLimitImages;
 	std::shared_ptr<CAnimation> shootingRangeLimitImages;
 
@@ -90,7 +87,6 @@ class BattleFieldController : public CIntObject
 
 	/// Set when the background is stale; the rebuild itself must happen at paint time
 	bool backgroundNeedsRebuild = true;
-	uint64_t actionProbabilityRevision = 0;
 
 	void rebuildBackgroundWithHexes();
 
@@ -144,8 +140,6 @@ class BattleFieldController : public CIntObject
 	void showBackgroundImage(Canvas & canvas);
 	void showBackgroundImageWithHexes(Canvas & canvas);
 	void showHighlightedHexes(Canvas & canvas);
-	void showActionProbabilityHeatmap(Canvas & canvas, const BattleActionProbabilities & probabilities);
-	void showActionProbabilityLabels(Canvas & canvas, const BattleActionProbabilities & probabilities);
 	void updateAccessibleHexes();
 
 	BattleHex getHexAtPosition(Point hoverPosition);

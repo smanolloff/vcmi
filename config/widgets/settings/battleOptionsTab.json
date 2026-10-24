@@ -94,8 +94,7 @@
 				}
 			]
 		},
-
-	/////////////////////////////////////// Left section - checkboxes
+/////////////////////////////////////// Left section - checkboxes
 		{
 			"name": "generalOptionsLabels",
 			"type" : "verticalLayout",
@@ -131,7 +130,7 @@
 					"text": "core.genrltxt.406",
 				},
 				{
-					"text": "vcmi.battleOptions.skipBattleIntroMusic.hover"
+					"text": "vcmi.battleOptions.skipBattleIntroMusic.hover",
 				}
 			]
 		},

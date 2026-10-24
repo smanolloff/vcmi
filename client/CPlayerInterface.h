@@ -256,6 +256,9 @@ public: // public interface for use by client via GAME->interface() access
 	~CPlayerInterface();
 
 private:
+	void evaluateBattleActionAdvisor(const BattleID & battleID, const CStack * stack);
+	void stopBattleActionAdvisor();
+
 	struct IgnoreEvents
 	{
 		CPlayerInterface & owner;

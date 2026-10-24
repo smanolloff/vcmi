@@ -14,6 +14,7 @@ set(MMAI_FILES
   BAI/factory.cpp
   BAI/router.cpp
   BAI/router.h
+  BAI/action_advisor.cpp
   BAI/scripted/scripted_model.h
   BAI/scripted/scripted_model.cpp
   BAI/scripted/VIPBot.h
@@ -52,6 +53,12 @@ set(MMAI_FILES
 
   BAI/v15/BAI_v15.cpp
   BAI/v15/BAI_v15.h
+  BAI/v15/action_probabilities_v15.cpp
+  BAI/v15/action_probabilities_v15.h
+  BAI/v15/advisor_model_v15.cpp
+  BAI/v15/nn_model_util_v15.h
+  BAI/v15/temperature_v15.cpp
+  BAI/v15/temperature_v15.h
   BAI/v15/nn_model_v15.h
   BAI/v15/nn_model_v15.cpp
   BAI/v15/attack_log_v15.h

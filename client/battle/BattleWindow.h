@@ -28,12 +28,13 @@ class HeroInfoBasicPanel;
 class StackInfoBasicPanel;
 class QuickSpellPanel;
 class UnitActionPanel;
-class BattleActionProbabilityOverlay;
-class BattleValueOverlay;
+class BattleAdvisor;
 
 /// GUI object that handles functionality of panel at the bottom of combat screen
 class BattleWindow : public InterfaceObjectConfigurable
 {
+	friend class BattleAdvisor;
+
 	BattleInterface & owner;
 
 	std::shared_ptr<StackQueue> queue;
@@ -45,9 +46,7 @@ class BattleWindow : public InterfaceObjectConfigurable
 
 	std::shared_ptr<QuickSpellPanel> quickSpellWindow;
 	std::shared_ptr<UnitActionPanel> unitActionWindow;
-	std::shared_ptr<BattleActionProbabilityOverlay> waitProbabilityOverlay;
-	std::shared_ptr<BattleActionProbabilityOverlay> defendProbabilityOverlay;
-	std::shared_ptr<BattleValueOverlay> battleValueOverlay;
+	std::shared_ptr<BattleAdvisor> advisor;
 
 	std::shared_ptr<TurnTimerWidget> attackerTimerWidget;
 	std::shared_ptr<TurnTimerWidget> defenderTimerWidget;
@@ -94,15 +93,10 @@ class BattleWindow : public InterfaceObjectConfigurable
 	void createStickyHeroInfoWindows();
 	void createQuickSpellWindow();
 	void createTimerInfoWindows();
-	void refreshActionProbabilityOverlays();
-	void updateBattleValueOverlayPosition();
 
 	std::shared_ptr<BattleConsole> buildBattleConsole(const JsonNode &) const;
 
 	bool onlyOnePlayerHuman;
-	uint64_t actionProbabilityRevision = std::numeric_limits<uint64_t>::max();
-	bool actionProbabilityHeatmapVisible = false;
-	bool actionProbabilityPercentagesVisible = false;
 
 	bool hasSpaceForQuickActions() const;
 	bool quickActionsPanelActive() const;

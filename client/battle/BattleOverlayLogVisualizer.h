@@ -15,8 +15,6 @@
 class Canvas;
 class BattleInterface;
 
-ColorRGBA battleActionProbabilityColor(float probability);
-
 class BattleOverlayLogVisualizer : public IBattleOverlayLogVisualizer
 {
 private:
