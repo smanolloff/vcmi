@@ -1,0 +1,25 @@
+{
+    "name": "MMAI",
+    "description": "MMAI is a combat AI powered by machine learning.",
+    "author": "Simeon Manolov <s.manolloff@gmail.com>",
+    "contact": "https://github.com/vcmi-mods/mmai/issues",
+    "version": "1.2",
+    "modType": "AI",
+    "changelog": {
+        "1.0": ["Initial release"],
+        "1.1": ["Add comment regarding temperature in mmai-settings.json"],
+        "1.2": [
+            "Fixed issue on crowded battlefields (30+ units)",
+            "Improved model inference speed via dynamic inputs"
+        ]
+    },
+    "compatibility": {
+        "min": "1.7.0"
+    },
+    "licenseName": "Apache License, Version 2.0",
+    "licenseURL": "http://www.apache.org/licenses/LICENSE-2.0",
+    "filesystem": {
+        "MMAI/CONFIG/": [{"path": "/config","type": "dir"}],
+        "MMAI/MODELS/": [{"path": "/models","type": "dir"}]
+    }
+}

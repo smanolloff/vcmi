@@ -81,3 +81,5 @@ CheckOptions:
     value:           '800'
   - key:             misc-include-cleaner.IgnoreHeaders
     value:           'StdInc.h'
+  - key:             readability-function-cognitive-complexity.IgnoreMacros
+    value:           true

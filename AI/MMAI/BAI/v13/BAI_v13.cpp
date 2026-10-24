@@ -283,6 +283,9 @@ void BAI::activeStack(const BattleID & bid, const CStack * astack)
 	}
 	catch(const std::exception & e) // NOSONAR
 	{
+#ifdef ENABLE_ML
+		throw;
+#endif
 		logger.error("Falling back to BattleAI due to MMAI error: " + std::string(e.what()));
 		auto evaluator = BattleEvaluator(env, cb, astack, cb->getPlayerID().value(), bid, battle->battleGetMySide(), 1.0f, 2);
 		cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
@@ -318,8 +321,10 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 
 	state->onActiveStack(astack);
 
+#ifndef ENABLE_ML
 	if(maybeCastSpell(astack, bid))
 		return;
+#endif
 
 	if(state->battlefield->astack == nullptr)
 	{
@@ -333,6 +338,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 		return;
 	}
 
+#ifndef ENABLE_ML
 	auto concede = maybeFleeOrSurrender(bid);
 	if(concede)
 	{
@@ -342,6 +348,7 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	}
 
 	logger.debug("Not conceding.");
+#endif
 
 	while(true)
 	{
@@ -379,11 +386,15 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 
 			if(errcounter > 10)
 			{
+#ifdef ENABLE_ML
+				throw std::runtime_error("Got 10 consecutive errors");
+#else
 				logger.warn("Got 10 consecutive errors, will fall back to BattleAI until this combat ends");
 				auto evaluator = BattleEvaluator(env, cb, astack, cb->getPlayerID().value(), bid, battle->battleGetMySide(), 1.0f, 2);
 				cb->battleMakeUnitAction(bid, evaluator.selectStackAction(astack));
 				inFallback = true;
 				break;
+#endif
 			}
 		}
 	}

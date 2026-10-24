@@ -61,8 +61,7 @@ public:
 	CBattleAI();
 	~CBattleAI();
 
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB) override;
-	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences autocombatPreferences) override;
+	void initBattleInterface(std::shared_ptr<Environment> ENV, std::shared_ptr<CBattleCallback> CB, AutocombatPreferences AP) override;
 
 	void activeStack(const BattleID & battleID, const CStack * stack) override; //called when it's turn of that stack
 	void yourTacticPhase(const BattleID & battleID, int distance) override;

@@ -1,0 +1,51 @@
+======== Serialization of a MoveHero command packet
+==== Client.cpp:551
+==== Sending a request "N10LIB_CLIENT8MoveHeroE". It'll have an ID=6.
+
+
+= BinarySerializer::save(&MoveHero)
+
+\x01   // ui8   hlp (true, ie. not null)
+235    // ui16  tid (typeid)
+
+= CPointerSaver<MoveHero>::savePtr(&serializer, &MoveHero)
+
+== MoveHero::serialize<BinarySerializer>(BinarySerializer, int version)
+
+// h & static_cast<CPackForServer &>(*this):
+=== BinarySerializer::save((CPackForServer)this)   (cast self to CPackForServer)
+==== CPackForServer::serialize<BinarySerializer>(BinarySerializer, int version)
+===== BinarySerializer::save<...>(PlayerColor)
+====== BaseForID::serialize(...)
+\0    // ui8    color
+===== BinarySerializer::save<si32>(requestID)
+5     // si32   requestID
+
+// h & dest
+=== BinarySerializer::save(int3)
+==== int3::serialize(...)
+7     // si32   x
+12    // si32   y
+0     // si32   z
+
+// h & hid
+=== BinarySerializer::save(int32)
+501   // si32   hid (object instance id)
+
+// h & transit
+=== BinarySerializer::save(bool)  (weird specialization with std::enable_if < std::is_same<T, bool>)
+false // ui8    transit
+
+
+----> hex dump (LE, ie. LSB first):
+----- https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/32bit-Endianess.svg/800px-32bit-Endianess.svg.png
+
+01           // \x01  ui8   hlp (true, ie. not null)
+eb 00        // 235   ui16  tid (typeid)
+00           // \0    ui8   color
+05 00 00 00  // 32    si32  requestID
+07 00 00 00  // 7     si32  dst.x
+0C 00 00 00  // 12    si32  dst.y
+00 00 00 00  // 0     si32  dst.z
+F5 01 00 00  // 501   si32  hid (501 = 0x01F5, but bytes (not bits) are reversed in LE)
+00           // false ui8

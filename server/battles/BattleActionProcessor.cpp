@@ -574,7 +574,10 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 		while(movementSuccess)
 		{
 			if (movementsLeft<tilesToMove)
-				throw std::runtime_error("Movement terminated abnormally");
+			{
+				logGlobal->error("Movement terminated abnormally");
+				IFML(break, throw std::runtime_error("Movement terminated abnormally"));
+			}
 
 			bool gateStateChanging = false;
 			//special handling for opening gate on from starting hex

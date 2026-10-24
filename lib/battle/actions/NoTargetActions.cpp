@@ -148,11 +148,13 @@ bool RetreatAction::isBattleEndAction() const
 
 bool RetreatAction::validate(const IGameInfoCallback & game, const CBattleInfoCallback & battle, const BattleAction & action, spells::Problem & problem) const
 {
+#ifndef ML // retreat is used for restarting *any* battle in ML
 	if(!battle.battleCanFlee(battle.sideToPlayer(action.side)))
 	{
 		problem.add(MetaString::createFromRawString("Cannot retreat!"));
 		return false;
 	}
+#endif
 	return true;
 }
 

@@ -106,4 +106,7 @@ public:
 
 private:
 	const BattleInfo * battle; //do not serialize
+#ifdef ML
+	std::string desc;
+#endif
 };
