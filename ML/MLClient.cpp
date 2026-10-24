@@ -568,7 +568,8 @@ namespace ML {
 		Settings(settings.write({"video", "fullscreen"}))->Bool() = false;
 		Settings(settings.write({"battle", "cellBorders"}))->Bool() = true;
 		Settings(settings.write({"battle", "rangeLimitHighlightOnHover"}))->Bool() = true;
-		Settings(settings.write({"battle", "speedFactor"}))->Integer() = 9;
+		Settings(settings.write({"battle", "speedFactor"}))->Integer() = 18;
+		Settings(settings.write({"gameTweaks", "skipBattleIntroMusic"}))->Bool() = true;
 
 		// logGlobal->debug("settings = %s", settings.toJsonNode().toJson());
 
