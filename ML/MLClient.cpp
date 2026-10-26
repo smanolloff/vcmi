@@ -403,6 +403,7 @@ namespace ML {
 		baggage->modelRight = rightModel;
 		baggage->seed = a.seed;
 		baggage->temperature = a.temperature;
+		baggage->useCreatureSpells = a.useCreatureSpells;
 
 		Settings(settings.write({"adventure", "quickCombat"}))->Bool() = headless;
 		Settings(settings.write({"session", "headless"}))->Bool() = headless;

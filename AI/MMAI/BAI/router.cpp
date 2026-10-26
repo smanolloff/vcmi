@@ -55,6 +55,7 @@ namespace
 		{
 			repo->seed = baggage->seed;
 			repo->temperature = baggage->temperature;
+			repo->useCreatureSpells = baggage->useCreatureSpells;
 
 			// Since ML client cannot load onnx models, it sends PATH
 			// "models" whose getName() returns the path to the model to load
@@ -352,7 +353,6 @@ void Router::battleStart(
 	Schema::IModel * model;
 
 	std::string modelkey = side == BattleSide::ATTACKER ? "attacker" : "defender";
-
 	if(baggage)
 	{
 		// During training, the model object is provided via the baggage
@@ -361,6 +361,7 @@ void Router::battleStart(
 		// to accomodate for the "side swapping" training feature.
 		// XXX: dev mode assumes there are no neutral players in battle
 		ASSERT(baggage != nullptr, "baggage is nullptr");
+
 		// neutral AI has no player ID
 		if(!cb->getPlayerID()->hasValue() || cb->getPlayerID()->num > 0)
 		{
@@ -379,6 +380,12 @@ void Router::battleStart(
 			// while defender is nullptr which stands for "load a pre-trained
 			// model as usual"
 			model = GetModel(modelkey, baggage);
+		}
+		else
+		{
+			// force static init of repo now, otherwise later it would be initialized w/o baggage
+			// when calling GetModelRepository()->useCreatureSpells
+			GetModelRepository(baggage);
 		}
 
 		ASSERT(model != nullptr, "model is nullptr");

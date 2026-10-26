@@ -117,6 +117,7 @@ struct MMAI_DLL_LINKAGE Baggage
 	// Tempearture is used when sampling actions for ModelType::PATH models
 	// (i.e. models provided via mlclient CLI's --left-model / --right-model)
 	float temperature;
+	bool useCreatureSpells;
 };
 
 // Convenience formatter for std::any cast errors

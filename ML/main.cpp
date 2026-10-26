@@ -86,6 +86,7 @@ namespace ML {
         bool headless = false;
         bool hotseat = false;
 
+        bool useCreatureSpells = false;
         float temperature = 0.;
 
         // std::vector<std::string> ais = {"StupidAI", "BattleAI", "MMAI", "MMAI_MODEL"};
@@ -176,6 +177,8 @@ namespace ML {
                 ("Path to model.zip (" + omap.at("left-model") + "*)").c_str())
             ("right-model", po::value<std::string>()->value_name("<FILE>"),
                 ("Path to model.zip (" + omap.at("right-model") + "*)").c_str())
+            ("use-creature-spells", po::bool_switch(&useCreatureSpells),
+                "Cast spells with creatures (affects MMAI_MODEL only)")
             ("temperature", po::value<float>()->value_name("<FLOAT>"),
                 ("Model temperature for both --left-model and --right-model (default: 0*)"))
             ("loglevel-global", po::value<std::string>()->value_name("<LVL>"),
@@ -377,6 +380,7 @@ namespace ML {
         return {leftModel, rightModel, {
             .leftModelFile="",
             .rightModelFile="",
+            .useCreatureSpells=useCreatureSpells,
             .temperature=temperature,
             .mapname=omap.at("map"),
             .maxBattles=maxBattles,

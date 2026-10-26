@@ -1,6 +1,6 @@
-MAKEFLAGS += --always-make
 SHELL := bash
 .SHELLFLAGS := -euxo pipefail -c
+.PHONY: help _require_cmake dependencies vastai-build build rel
 
 help:
 	@echo "Tasks:"
@@ -43,3 +43,9 @@ vastai-build:
 		-D ENABLE_MMAI=1 \
 		-D ONNXRUNTIME_ROOT=/opt/onnxruntime
 	cmake --build rel -- -j$$(nproc)
+
+build:
+	cmake --build build/ -- -j$$(nproc)
+rel:
+	cmake --build rel/ -- -j$$(nproc)
+
