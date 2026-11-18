@@ -159,8 +159,7 @@ namespace ML {
 		// must be executed before reset - since unique_ptr resets pointer to null before calling destructor
 		ENGINE->async().wait();
 		ENGINE.reset();
-		delete LIBRARY;
-		LIBRARY = nullptr;
+		setGameLibrary(nullptr);
 		logConfig->deconfigure();
 		delete logConfig;
 
@@ -193,10 +192,7 @@ namespace ML {
 		exit(1);
 	}
 
-	void validateArguments(
-		MMAI::Schema::IModel * leftModel,
-		MMAI::Schema::IModel * rightModel,
-		const InitArgs & a)
+	void validateArguments(const InitArgs & a)
 	{
 		auto wd = boost::filesystem::current_path();
 
@@ -370,19 +366,6 @@ namespace ML {
 			exit(1);
 		}
 
-		// Prevent misconfigured paths at boot during ML training
-		for (auto &model : {leftModel, rightModel}) {
-			if (model->getType() != MMAI::Schema::ModelType::PATH)
-				continue;
-
-			auto rpath = ResourcePath(model->getName());
-			auto loaders = CResourceHandler::get()->getResourcesWithName(rpath);
-
-			if (loaders.size() != 1) {
-				std::cerr << "Bad torch model path: " << model->getName() << "\nMust be a valid VCMI filesystem path, e.g. MMAI/models/defender-v5.pt";
-				exit(1);
-			}
-		}
 
 		if (a.temperature < 0) {
 			std::cerr << "Bad value for temperature: expected a non-negative float, got: " << a.temperature << "\n";
@@ -546,11 +529,11 @@ namespace ML {
 		logConfig = new CBasicLogConfigurator(logPath, console);
 		logConfig->configureDefault();
 
-		LIBRARY = new GameLibrary;
-		LIBRARY->initializeFilesystem(false);
+		initializeBaseFilesystem(false);
+		auto library = std::make_unique<GameLibrary>();
+		library->initializeFilesystem();
 
-		// validating after preinitDLL as the VCMIDirs are not initialized before it
-		validateArguments(leftModel, rightModel, a);
+		validateArguments(a);
 		processArguments(leftModel, rightModel, a);
 
 		// printf("map: %s\n", map.c_str());
@@ -587,11 +570,11 @@ namespace ML {
 		if (!headless)
 			ENGINE->setEngineUser(GAME.get());
 
-		std::thread loading([]() {
+		std::thread loading([&library]() {
 			try
 			{
 				CStopWatch tmh;
-				LIBRARY->initializeLibrary();
+				library->initializeLibrary();
 				logGlobal->info("Initializing VCMI_Lib: %d ms", tmh.getDiff());
 			}
 			catch (const DataLoadingException & e)
@@ -605,7 +588,24 @@ namespace ML {
 		if (criticalInitializationError.has_value())
 			handleFatalError(criticalInitializationError.value(), false);
 
+		setGameLibrary(std::move(library));
+
+		// Model paths can refer to resources in the active library's mods.
+		for (auto &model : {leftModel, rightModel}) {
+			if (model->getType() != MMAI::Schema::ModelType::PATH)
+				continue;
+
+			auto rpath = ResourcePath(model->getName());
+			auto loaders = CResourceHandler::get()->getResourcesWithName(rpath);
+
+			if (loaders.size() != 1) {
+				std::cerr << "Bad torch model path: " << model->getName() << "\nMust be a valid VCMI filesystem path, e.g. MMAI/models/defender-v5.pt";
+				exit(1);
+			}
+		}
+
 		if (!headless) {
+			ENGINE->initAudio();
 			graphics = new Graphics(); // should be before curh
 			ENGINE->renderHandler().onLibraryLoadingFinished(LIBRARY);
 			CMessage::init();

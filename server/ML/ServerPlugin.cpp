@@ -75,9 +75,9 @@ namespace {
     {
         std::map<CreatureID, int> values;
 
-        for(const auto & creature : LIBRARY->creh->objects)
+        for(const auto & creature : LIBRARY->creh->getObjects())
             if(creature)
-                values.try_emplace(creature->getId(), CalculateValue(creature.get()));
+                values.try_emplace(creature->getId(), CalculateValue(creature));
 
         return values;
     }
