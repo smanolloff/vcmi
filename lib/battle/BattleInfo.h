@@ -24,9 +24,12 @@ class CStackInstance;
 class CStackBasicDescriptor;
 class BattleField;
 struct BattleLayout;
+namespace ML { class BattleCheckpoint; }
 
 class DLL_LINKAGE BattleInfo : public CBonusSystemNode, public CBattleInfoCallback, public IBattleState, public GameCallbackHolder
 {
+	friend class ML::BattleCheckpoint;
+
 	BattleSideArray<SideInBattle> sides; //sides[0] - attacker, sides[1] - defender
 	std::unique_ptr<BattleLayout> layout;
 	si32 round;

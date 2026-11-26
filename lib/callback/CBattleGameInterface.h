@@ -32,5 +32,11 @@ public:
 	virtual void activeStack(const BattleID & battleID, const CStack * stack)=0; //called when it's turn of that stack
 	virtual void yourTacticPhase(const BattleID & battleID, int distance)=0; //called when interface has opportunity to use Tactics skill -> use cb->battleMakeTacticAction from this function
 
+#ifdef ENABLE_ML
+	/// Returns a reusable restore operation for the controller's current decision state.
+	virtual std::function<void()> checkpointBattleController() { return {}; }
+	virtual void battleRolloutEnded(const BattleResult & result) {}
+#endif
+
 	virtual void onNewSystemMessageReceived(const std::string & msg) const {};
 };

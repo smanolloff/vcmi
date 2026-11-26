@@ -15,6 +15,12 @@ class INetworkClientListener;
 
 class CVCMIServer;
 
+#ifdef ENABLE_ML
+class CGameHandler;
+class BattleID;
+namespace ML { class BattleCheckpoint; }
+#endif
+
 class IServerRunner
 {
 public:
@@ -43,6 +49,11 @@ public:
 	int exitCode() override;
 
 	void connect(INetworkHandler & network, INetworkClientListener & listener) override;
+
+#ifdef ENABLE_ML
+	std::shared_ptr<const ML::BattleCheckpoint> captureBattleCheckpoint(const BattleID & battleID) const;
+	void runOnLocalGameServer(std::function<void(CGameHandler &)> operation) const;
+#endif
 
 	ServerThreadRunner();
 	~ServerThreadRunner();

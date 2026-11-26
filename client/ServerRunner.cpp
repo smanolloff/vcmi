@@ -16,6 +16,9 @@
 #include "../lib/network/NetworkInterface.h"
 #include "../lib/CConfigHandler.h"
 #include "../server/CVCMIServer.h"
+#ifdef ENABLE_ML
+#include "../server/CGameHandler.h"
+#endif
 
 #ifdef ENABLE_SERVER_PROCESS
 
@@ -91,6 +94,39 @@ void ServerThreadRunner::connect(INetworkHandler & network, INetworkClientListen
 		network.createInternalConnection(listener, server->getNetworkServer());
 	}
 }
+
+#ifdef ENABLE_ML
+std::shared_ptr<const ML::BattleCheckpoint> ServerThreadRunner::captureBattleCheckpoint(const BattleID & battleID) const
+{
+	auto snapshot = std::make_shared<std::shared_ptr<const ML::BattleCheckpoint>>();
+	runOnLocalGameServer([snapshot, battleID](CGameHandler & handler) {
+		*snapshot = handler.mlplugin->captureCheckpoint(battleID);
+	});
+	return *snapshot;
+}
+
+void ServerThreadRunner::runOnLocalGameServer(std::function<void(CGameHandler &)> operation) const
+{
+	if(!server || lobbyMode)
+		throw std::logic_error("Battle checkpoint requires a local threaded server");
+
+	auto & context = server->getNetworkHandler().getContext();
+	auto started = std::make_shared<std::atomic<bool>>(false);
+	auto task = std::make_shared<std::packaged_task<void()>>([srv = server.get(), op = std::move(operation), started] {
+		if(started->exchange(true))
+			return;
+		if(srv->getState() != EServerState::GAMEPLAY || !srv->gh || !srv->gh->mlplugin)
+			throw std::logic_error("Battle checkpoint requires an active ML game");
+		op(*srv->gh);
+	});
+	auto result = task->get_future();
+	boost::asio::post(context, [task] { (*task)(); });
+	// Only cancel work that has not started; a restore already running must complete.
+	if(result.wait_for(std::chrono::seconds(5)) != std::future_status::ready && !started->exchange(true))
+		throw std::runtime_error("Timed out waiting for the server battle checkpoint operation");
+	result.get();
+}
+#endif
 
 #ifdef ENABLE_SERVER_PROCESS
 

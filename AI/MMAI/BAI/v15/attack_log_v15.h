@@ -21,13 +21,17 @@ namespace MMAI::BAI::V15
 
 class AttackLog : public Schema::V15::IAttackLog
 {
-	using UnitPtr = std::shared_ptr<const Graph::Nodes::Unit>;
-
 public:
+	struct UnitInfo
+	{
+		BattleSide side;
+		std::string alias;
+	};
+
 	AttackLog(
 		const BattleStackAttacked & bsa,
-		const UnitPtr & attacker,
-		const UnitPtr & defender,
+		const std::optional<UnitInfo> & attacker,
+		const std::optional<UnitInfo> & defender,
 		const int dmg,
 		const int dmgPermille,
 		const int units,
@@ -67,8 +71,8 @@ public:
 	 */
 
 	const BattleStackAttacked bsa;
-	const UnitPtr attacker;
-	const UnitPtr defender;
+	const std::optional<UnitInfo> attacker;
+	const std::optional<UnitInfo> defender;
 	const int dmg;
 	const int dmgPermille;
 	const int units;

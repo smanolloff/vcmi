@@ -33,6 +33,9 @@ public:
 	void actionStarted(const BattleID & battleID, const BattleAction &action) override;//occurs BEFORE every action taken by any stack or by the hero
 	void activeStack(const BattleID & battleID, const CStack * stack) override; //called when it's turn of that stack
 	void yourTacticPhase(const BattleID & battleID, int distance) override;
+#ifdef ENABLE_ML
+	std::function<void()> checkpointBattleController() override { return [] {}; }
+#endif
 
 	void battleAttack(const BattleID & battleID, const BattleAttack *ba) override; //called when stack is performing attack
 	void battleStacksAttacked(const BattleID & battleID, const std::vector<BattleStackAttacked> & bsa, bool ranged) override; //called when stack receives damage (after battleAttack())

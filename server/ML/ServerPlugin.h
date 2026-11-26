@@ -30,6 +30,16 @@ class IGameInfoCallback;
 struct BattleLayout;
 
 namespace ML {
+    class BattleCheckpoint;
+
+    struct DLL_LINKAGE RolloutResult {
+        EBattleResult result;
+        BattleSide winner;
+    };
+
+    DLL_LINKAGE std::shared_ptr<const BattleCheckpoint> captureClientBattle(const CGameState & state, BattleID battleID);
+    DLL_LINKAGE void restoreClientBattle(CGameState & state, const BattleCheckpoint & checkpoint);
+
     class HeroPool {
     public:
         HeroPool(int id, std::string name)
@@ -74,9 +84,28 @@ namespace ML {
             const CGHeroInstance * heroDefender
         );
 
+        /// Capture a decision state without changing rollout mode.
+        std::shared_ptr<const BattleCheckpoint> captureCheckpoint(BattleID battleID) const;
+        /// Capture a decision state and enable speculative results for this battle.
+        std::shared_ptr<const BattleCheckpoint> checkpoint(BattleID battleID);
+        /// Begin client-driven rollouts at the current decision.
+        void beginRollout(BattleID battleID, std::function<void(RolloutResult)> onTerminal);
+        /// Restore a decision state and discard any speculative terminal result.
+        void restore(const BattleCheckpoint & checkpoint);
+        /// Restore the chosen root and resume normal battle finalization.
+        void finishRollout(const BattleCheckpoint & root);
+        bool isRollingOut(BattleID battleID) const;
+        std::optional<RolloutResult> rolloutResult(BattleID battleID) const;
+        bool captureRolloutResult(BattleID battleID, EBattleResult result, BattleSide winner);
+
         Config config;
     private:
         CGameHandler * gh;
+        CGameState & gameState;
+        std::optional<BattleID> rolloutBattle;
+        std::optional<BattleID> endingBattle;
+        std::optional<RolloutResult> terminalResult;
+        std::function<void(RolloutResult)> notifyRolloutEnded;
         std::vector<CGTownInstance*> alltowns;
         HeroPools heropools;
         const BattleTerrains battleterrains;

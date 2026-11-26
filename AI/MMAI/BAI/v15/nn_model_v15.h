@@ -24,6 +24,8 @@ namespace MMAI::BAI::V15
 
 class NNModel : public MMAI::Schema::IModel
 {
+	friend class BAI;
+
 public:
 	explicit NNModel(const std::shared_ptr<NNContainer> & container, float temperature, uint64_t seed);
 

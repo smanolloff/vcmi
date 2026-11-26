@@ -10,7 +10,8 @@ else()
     set(SQLITE3_TARGET SQLite::SQLite3)
 endif()
 
-add_library(mlserverplugin SHARED
+add_library(mlserverplugin_objects OBJECT
+  BattleCheckpoint.cpp
   Config.h
   ServerPlugin.cpp
   ServerPlugin.h
@@ -20,7 +21,16 @@ add_library(mlserverplugin SHARED
   StdInc.h
 )
 
-add_dependencies(mlserverplugin vcmi)
+set_target_properties(mlserverplugin_objects PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(mlserverplugin_objects PRIVATE vcmi ${SQLITE3_TARGET})
+enable_pch(mlserverplugin_objects)
+
+add_library(mlserverplugin SHARED $<TARGET_OBJECTS:mlserverplugin_objects>)
 target_link_libraries(mlserverplugin PRIVATE vcmi ${SQLITE3_TARGET})
 vcmi_set_output_dir(mlserverplugin "")
-enable_pch(mlserverplugin)
+
+if(ENABLE_TEST)
+    # vcmitest links the core objects, so the plugin must use the same library globals.
+    add_library(mlserverplugin_test STATIC $<TARGET_OBJECTS:mlserverplugin_objects>)
+    target_link_libraries(mlserverplugin_test PRIVATE ${SQLITE3_TARGET})
+endif()

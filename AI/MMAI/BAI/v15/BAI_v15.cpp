@@ -11,6 +11,9 @@
 #include "BAI/v15/BAI_v15.h"
 
 #include "BAI/v15/graph/nodes/action_v15.h"
+#ifdef ENABLE_ML
+#include "BAI/v15/nn_model_v15.h"
+#endif
 #include "battle/BattleAction.h"
 #include "battle/BattleHex.h"
 #include "battle/BattleStateInfoForRetreat.h"
@@ -132,6 +135,45 @@ void BAI::battleStart(
 		}
 	);
 }
+
+#ifdef ENABLE_ML
+std::function<void()> BAI::checkpointHistory()
+{
+	return [this, stats = state->lastStats, logs = state->attackLogs, units = state->logUnits, morale = state->isMorale] {
+		state->lastStats = stats;
+		state->attackLogs = std::vector<AttackLog>(logs);
+		state->logUnits = units;
+		state->isMorale = morale;
+		state->G.reset();
+		state->supdata.reset();
+	};
+}
+
+std::function<void()> BAI::checkpointBattleController()
+{
+	auto * nn = dynamic_cast<NNModel *>(model);
+	return [this, history = restoreDecisionHistory ? restoreDecisionHistory : checkpointHistory(),
+		round = roundcounter, calls = getActionTotalCalls, ms = getActionTotalMs, nn,
+		rng = nn ? std::optional{nn->rng} : std::nullopt] {
+		history();
+		roundcounter = round;
+		getActionTotalCalls = calls;
+		getActionTotalMs = ms;
+		lastAction.reset();
+		battleAIEvaluator.reset();
+		battleAIAction.reset();
+		if(nn)
+			nn->rng = *rng;
+	};
+}
+
+void BAI::battleRolloutEnded(const BattleResult & result)
+{
+	state->onBattleEnd(result, roundcounter);
+	const auto [action, _] = getNonRenderActionAndValue();
+	assert(action == Schema::ACTION_REWIND || action == Schema::ACTION_RESET);
+}
+#endif
 
 // XXX: battleEnd() is NOT called by CPlayerInterface (i.e. GUI)
 //      However, it's called by AAI (i.e. headless) and that's all we want
@@ -433,10 +475,19 @@ void BAI::_activeStack(const BattleID & bid, const CStack * astack)
 	logger.debug("Not conceding.");
 #endif
 
+#ifdef ENABLE_ML
+	if(model->getType() == Schema::ModelType::USER)
+		restoreDecisionHistory = checkpointHistory();
+#endif
 	state->onActiveStack(astack, roundcounter);
 
 	auto t0 = std::chrono::steady_clock::now();
 	const auto & [a, v] = getNonRenderActionAndValue();
+#ifdef ENABLE_ML
+	restoreDecisionHistory = {};
+	if(a == Schema::ACTION_REWIND)
+		return;
+#endif
 	auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
 	getActionTotalMs += static_cast<int>(dt);
 	getActionTotalCalls += 1;

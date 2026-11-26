@@ -196,6 +196,20 @@ void CBattleAI::battleStart(const BattleID & battleID, const CCreatureSet *army1
 	tacticsHandler = std::make_unique<TacticsHandler>(cb, battleID, tacticsSettings);
 }
 
+#ifdef ENABLE_ML
+std::function<void()> CBattleAI::checkpointBattleController()
+{
+	return [this, skipped = movesSkippedByDefense, count = lastEnemyCreatureCount, round = lastEnemyLossRound,
+		cast = heroCastBeforeUnit, breach = heroCanBreachWalls] {
+		movesSkippedByDefense = skipped;
+		lastEnemyCreatureCount = count;
+		lastEnemyLossRound = round;
+		heroCastBeforeUnit = cast;
+		heroCanBreachWalls = breach;
+	};
+}
+#endif
+
 void CBattleAI::print(const std::string &text) const
 {
 	logAi->trace("%s Battle AI[%p]: %s", playerID.toString(), this, text);

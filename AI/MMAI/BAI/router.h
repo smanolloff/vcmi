@@ -48,6 +48,10 @@ public:
 	void battleAttack(const BattleID & bid, const BattleAttack * ba) override;
 	void battleCatapultAttacked(const BattleID & bid, const CatapultAttack & ca) override;
 	void battleEnd(const BattleID & bid, const BattleResult * br, QuestionID questionID) override;
+#ifdef ENABLE_ML
+	std::function<void()> checkpointBattleController() override;
+	void battleRolloutEnded(const BattleResult & result) override;
+#endif
 	void battleGateStateChanged(const BattleID & bid, EGateState state) override;
 	void battleLogMessage(const BattleID & bid, const std::vector<MetaString> & lines) override;
 	void battleNewRound(const BattleID & bid) override;

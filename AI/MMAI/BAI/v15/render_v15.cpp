@@ -213,13 +213,13 @@ std::string Render(const State * state, const ActionPtr & action) // NOSONAR
 
 		if(alog.attacker)
 		{
-			attcol = alog.attacker->cstack.unitSide() == BattleSide::LEFT_SIDE ? "red" : "blue";
+			attcol = alog.attacker->side == BattleSide::LEFT_SIDE ? "red" : "blue";
 			attalias = alog.attacker->alias;
 		}
 
 		if(alog.defender)
 		{
-			defcol = alog.defender->cstack.unitSide() == BattleSide::LEFT_SIDE ? "red" : "blue";
+			defcol = alog.defender->side == BattleSide::LEFT_SIDE ? "red" : "blue";
 			defalias = alog.defender->alias;
 		}
 

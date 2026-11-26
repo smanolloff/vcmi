@@ -296,6 +296,18 @@ void Router::battleCatapultAttacked(const BattleID & bid, const CatapultAttack &
 	bai->battleCatapultAttacked(bid, ca);
 }
 
+#ifdef ENABLE_ML
+std::function<void()> Router::checkpointBattleController()
+{
+	return bai ? bai->checkpointBattleController() : std::function<void()>{};
+}
+
+void Router::battleRolloutEnded(const BattleResult & result)
+{
+	bai->battleRolloutEnded(result);
+}
+#endif
+
 void Router::battleEnd(const BattleID & bid, const BattleResult * br, QuestionID questionID)
 {
 	MMAI_LOG_TAG;

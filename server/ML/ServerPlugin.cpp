@@ -365,8 +365,9 @@ namespace {
 }
 
 ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config_)
-: gh(gh)
-, config(config_)
+: config(config_)
+, gh(gh)
+, gameState(*gs)
 , alltowns(InitTowns(gs))
 , heropools(InitHeroPools(gs, config))
 , battleterrains(InitBattleterrains(config.battlefieldPattern))
@@ -1326,6 +1327,8 @@ void ServerPlugin::endBattleHook(
     const CGHeroInstance * heroAttacker,
     const CGHeroInstance * heroDefender
 ) {
+    endingBattle = br->battleID;
+
     // don't record stats for retreats (i.e. env resets)
     // XXX: stats not updated with owner-based hero pools
     if (stats && br->result == EBattleResult::NORMAL) {

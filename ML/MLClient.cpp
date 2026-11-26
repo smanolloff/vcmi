@@ -55,7 +55,14 @@
 #include "media/CVideoHandler.h"
 #include "client/windows/CMessage.h"
 #include "client/CServerHandler.h"
+#include "client/Client.h"
 #include "client/ClientCommandManager.h"
+#include "lib/CRandomGenerator.h"
+#include "lib/battle/BattleInfo.h"
+#include "lib/gameState/CGameState.h"
+#include "lib/networkPacks/PacksForClientBattle.h"
+#include "lib/serializer/CMemorySerializer.h"
+#include "server/CGameHandler.h"
 #include "client/gui/CursorHandler.h"
 #include "client/render/Graphics.h"
 #include "client/CPlayerInterface.h"
@@ -394,6 +401,7 @@ namespace ML {
 		Settings(settings.write({"session", "disableVideo"}))->Bool() = true;
 		Settings(settings.write({"server", "localPort"}))->Integer() = 0;
 		Settings(settings.write({"server", "useProcess"}))->Bool() = false;
+
 		Settings(settings.write({"server", "seed"}))->Integer() = a.seed;
 		// Re-use seed from global server config
 		// (the ML server plugin uses a different RNG)
@@ -630,6 +638,123 @@ namespace ML {
 			clearPendingTerminalInput();
 			std::abort();
 		}
+	}
+
+	std::shared_ptr<const BattleCheckpoint> capture_server_checkpoint()
+	{
+		if(!headless || !GAME)
+			throw std::logic_error("Battle checkpoint requires a headless ML client");
+
+		auto & handler = GAME->server();
+		if(!handler.client || handler.client->gameState().currentBattles.size() != 1)
+			throw std::logic_error("Battle checkpoint requires exactly one active client battle");
+		return handler.captureBattleCheckpoint(handler.client->gameState().currentBattles.front()->getBattleID());
+	}
+
+	class DecisionCheckpoint
+	{
+	public:
+		std::weak_ptr<CGameState> clientState;
+		BattleID battleID;
+		PlayerColor player;
+		std::shared_ptr<const BattleCheckpoint> clientBattle;
+		std::shared_ptr<const BattleCheckpoint> serverBattle;
+		std::vector<std::function<void()>> controllers;
+		std::vector<std::byte> clientRng;
+	};
+
+	std::shared_ptr<const DecisionCheckpoint> checkpoint(int player)
+	{
+		if(!headless || !GAME)
+			throw std::logic_error("Battle checkpoint requires a headless ML client");
+		auto & handler = GAME->server();
+		if(!handler.client)
+			throw std::logic_error("Battle checkpoint requires an active client");
+		auto & client = *handler.client;
+		auto & state = client.gameState();
+		if(state.currentBattles.size() != 1 || client.currentBattleAction)
+			throw std::logic_error("Battle checkpoint requires one active battle between actions");
+
+		const auto & battle = *state.currentBattles.front();
+		const auto * unit = battle.battleActiveUnit();
+		const auto color = PlayerColor(player);
+		if(!unit || battle.getTacticDist() || battle.battleGetOwner(unit) != color)
+			throw std::logic_error("Battle checkpoint requires the current player's combat decision");
+
+		auto saved = std::make_shared<DecisionCheckpoint>();
+		saved->clientState = client.gameStatePtr();
+		saved->battleID = battle.getBattleID();
+		saved->player = color;
+		for(BattleSide side : {BattleSide::ATTACKER, BattleSide::DEFENDER})
+		{
+			const auto it = client.battleints.find(battle.getSidePlayer(side));
+			if(it == client.battleints.end())
+				throw std::logic_error("Both battle controllers must be hosted by the local client");
+			auto restore = it->second->checkpointBattleController();
+			if(!restore)
+				throw std::logic_error("Battle controller does not support checkpoints");
+			saved->controllers.push_back(std::move(restore));
+		}
+		saved->clientBattle = captureClientBattle(state, saved->battleID);
+		CMemorySerializer rng;
+		rng.oser & CRandomGenerator::getDefault();
+		saved->clientRng = rng.extractBuffer();
+
+		auto & clientLoop = handler.getNetworkHandler().getContext();
+		handler.runOnLocalGameServer([saved, &handler, &clientLoop](CGameHandler & server) {
+			saved->serverBattle = server.mlplugin->captureCheckpoint(saved->battleID);
+			server.mlplugin->beginRollout(saved->battleID, [&handler, &clientLoop, id = saved->battleID, color = saved->player, session = saved->clientState](RolloutResult outcome) {
+				boost::asio::post(clientLoop, [&handler, id, color, session, outcome] {
+					std::shared_ptr<CBattleGameInterface> controller;
+					{
+						std::unique_lock<std::mutex> interfaceLock;
+						if(ENGINE)
+							interfaceLock = std::unique_lock<std::mutex>(ENGINE->interfaceMutex);
+						if(!handler.client || session.lock() != handler.client->gameStatePtr() || !handler.client->gameState().getBattle(id))
+							return;
+						controller = handler.client->battleints.at(color);
+					}
+					BattleResult result;
+					result.battleID = id;
+					result.result = outcome.result;
+					result.winner = outcome.winner;
+					controller->battleRolloutEnded(result);
+				});
+			});
+		});
+		return saved;
+	}
+
+	void restore_checkpoint(std::shared_ptr<const DecisionCheckpoint> saved, int player, bool finish)
+	{
+		auto & handler = GAME->server();
+		if(!saved || !handler.client || saved->clientState.lock() != handler.client->gameStatePtr()
+			|| !handler.client->gameState().getBattle(saved->battleID) || saved->player != PlayerColor(player))
+			throw std::logic_error("Checkpoint does not belong to the current decision session");
+
+		handler.runOnLocalGameServer([saved, finish](CGameHandler & server) {
+			if(finish)
+				server.mlplugin->finishRollout(*saved->serverBattle);
+			else
+				server.mlplugin->restore(*saved->serverBattle);
+		});
+
+		// The active callback still holds stack references. Replace stacks only after it returns.
+		boost::asio::post(handler.getNetworkHandler().getContext(), [&handler, saved] {
+			std::unique_lock<std::mutex> interfaceLock;
+			if(ENGINE)
+				interfaceLock = std::unique_lock<std::mutex>(ENGINE->interfaceMutex);
+			if(!handler.client || saved->clientState.lock() != handler.client->gameStatePtr()
+				|| !handler.client->gameState().getBattle(saved->battleID))
+				return;
+			auto & client = *handler.client;
+			restoreClientBattle(client.gameState(), *saved->clientBattle);
+			for(const auto & restore : saved->controllers)
+				restore();
+			CMemorySerializer rng(saved->clientRng);
+			rng.iser & CRandomGenerator::getDefault();
+			client.startPlayerBattleAction(saved->battleID, saved->player);
+		});
 	}
 
 	void start_vcmi() {

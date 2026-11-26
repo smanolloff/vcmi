@@ -264,6 +264,10 @@ if(ENABLE_NULLKILLER2_AI)
 	)
 endif()
 
+if(ENABLE_ML)
+	list(APPEND test_SRCS ../server/ML/BattleCheckpointTest.cpp)
+endif()
+
 assign_source_group(${test_SRCS} ${test_HEADERS})
 
 set(mock_HEADERS
@@ -312,6 +316,9 @@ if(ENABLE_NULLKILLER2_AI)
 endif()
 
 set(vcmitest_LIBS gtest gmock vcmiMain vcmiservercommon ${SYSTEM_LIBS})
+if(ENABLE_ML)
+	list(APPEND vcmitest_LIBS mlserverplugin_test)
+endif()
 foreach(optional_vcmitest_target IN ITEMS vcmiLua EmptyAI StupidAI MMAI TBB::tbb)
 	if(TARGET ${optional_vcmitest_target})
 		list(APPEND vcmitest_LIBS ${optional_vcmitest_target})

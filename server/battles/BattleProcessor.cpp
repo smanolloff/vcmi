@@ -291,6 +291,9 @@ BattleID BattleProcessor::setupBattle(int3 tile, BattleSideArray<const CArmedIns
 
 bool BattleProcessor::checkBattleStateChanges(const CBattleInfoCallback & battle)
 {
+	ML(if(gameHandler->mlplugin && gameHandler->mlplugin->rolloutResult(battle.getBattle()->getBattleID()))
+		return true;)
+
 	//check if drawbridge state need to be changes
 	if (battle.battleGetFortifications().wallsHealth > 0)
 		updateGateState(battle);
@@ -372,8 +375,13 @@ bool BattleProcessor::makePlayerBattleAction(const BattleID & battleID, PlayerCo
 	if (!battle)
 		return false;
 
+	ML(if(gameHandler->mlplugin && gameHandler->mlplugin->rolloutResult(battleID))
+		return false;)
+
 	const bool tacticsPhase = battle->battleGetTacticDist() != 0;
 	bool result = actionsProcessor->makePlayerBattleAction(*battle, player, ba);
+	ML(if(gameHandler->mlplugin && gameHandler->mlplugin->rolloutResult(battleID))
+		return result;)
 	if (gameHandler->gameState().getBattle(battleID) == nullptr || resultProcessor->battleIsEnding(*battle))
 		return result;
 
@@ -422,10 +430,14 @@ void BattleProcessor::setBattleResult(const CBattleInfoCallback & battle, EBattl
 {
 	const BattleID battleID = battle.getBattle()->getBattleID();
 
-	resultProcessor->setBattleResult(battle, resultType, victoriusSide);
-	resultProcessor->endBattle(battle);
+	const bool speculative = IFML(gameHandler->mlplugin && gameHandler->mlplugin->captureRolloutResult(battleID, resultType, victoriusSide), false);
+	if(!speculative)
+	{
+		resultProcessor->setBattleResult(battle, resultType, victoriusSide);
+		resultProcessor->endBattle(battle);
+	}
 
-	// No event dispatch is valid after battle removal.
+	// Terminal branches must not dispatch events after restore.
 	actionsProcessor->forgetPendingEvents(battleID);
 }
 

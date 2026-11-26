@@ -276,6 +276,8 @@ public:
 
 	void giveResource(PlayerColor player, GameResID resource, int amount) override
 	{
+		ML(if(processor.gameHandler->mlplugin && processor.gameHandler->mlplugin->isRollingOut(battle.getBattle()->getBattleID()))
+			return;)
 		processor.gameHandler->giveResource(player, resource, amount);
 	}
 

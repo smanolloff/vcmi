@@ -54,6 +54,10 @@ public:
 	) override;
 
 	void battleEnd(const BattleID & bid, const BattleResult * br, QuestionID questionID) override;
+#ifdef ENABLE_ML
+	std::function<void()> checkpointBattleController() override;
+	void battleRolloutEnded(const BattleResult & result) override;
+#endif
 
 	/*
          * AAI call-ins

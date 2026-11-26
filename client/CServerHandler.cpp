@@ -205,6 +205,24 @@ INetworkHandler & CServerHandler::getNetworkHandler()
 	return *networkHandler;
 }
 
+#ifdef ENABLE_ML
+std::shared_ptr<const ML::BattleCheckpoint> CServerHandler::captureBattleCheckpoint(const BattleID & battleID) const
+{
+	const auto * runner = dynamic_cast<const ServerThreadRunner *>(serverRunner.get());
+	if(!runner)
+		throw std::logic_error("Battle checkpoint requires a local threaded server");
+	return runner->captureBattleCheckpoint(battleID);
+}
+
+void CServerHandler::runOnLocalGameServer(std::function<void(CGameHandler &)> operation) const
+{
+	const auto * runner = dynamic_cast<const ServerThreadRunner *>(serverRunner.get());
+	if(!runner)
+		throw std::logic_error("Battle checkpoint requires a local threaded server");
+	runner->runOnLocalGameServer(std::move(operation));
+}
+#endif
+
 void CServerHandler::startLocalServerAndConnect(bool connectToLobby)
 {
 	logNetwork->trace("\tLocal server startup has been requested");
@@ -1180,7 +1198,7 @@ void CServerHandler::visitForClient(CPackForClient & clientPack)
 	}
 
 	// not done in CGameState::apply() - lag compensation applies predictions and rollbacks there
-	if(client)
+	if(client && !IFML(settings["session"]["headless"].Bool(), false))
 		client->gameState().replayLog.recordPack(clientPack, client->gameState());
 
 	if (networkLagCompensator && networkLagCompensator->verifyReply(clientPack))

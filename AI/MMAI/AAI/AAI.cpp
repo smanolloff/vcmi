@@ -124,6 +124,18 @@ void AAI::battleStart(
 	battleAI->battleStart(bid, army1, army2, tile, hero1, hero2, side_, replayAllowed);
 }
 
+#ifdef ENABLE_ML
+std::function<void()> AAI::checkpointBattleController()
+{
+	return battleAI ? battleAI->checkpointBattleController() : std::function<void()>{};
+}
+
+void AAI::battleRolloutEnded(const BattleResult & result)
+{
+	battleAI->battleRolloutEnded(result);
+}
+#endif
+
 void AAI::battleEnd(const BattleID & bid, const BattleResult * br, QuestionID questionID)
 {
 	info("*** battleEnd (QuestionID: " + std::to_string(static_cast<int>(questionID)) + ") ***");

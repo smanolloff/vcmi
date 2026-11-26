@@ -43,6 +43,10 @@ class CBaseForLobbyApply;
 class GlobalLobbyClient;
 class GameChatHandler;
 class IServerRunner;
+#ifdef ENABLE_ML
+class CGameHandler;
+namespace ML { class BattleCheckpoint; }
+#endif
 
 enum class ESelectionScreen : ui8;
 enum class ELoadMode : ui8;
@@ -194,6 +198,10 @@ public:
 	GameChatHandler & getGameChat();
 	GlobalLobbyClient & getGlobalLobby();
 	INetworkHandler & getNetworkHandler();
+#ifdef ENABLE_ML
+	std::shared_ptr<const ML::BattleCheckpoint> captureBattleCheckpoint(const BattleID & battleID) const;
+	void runOnLocalGameServer(std::function<void(CGameHandler &)> operation) const;
+#endif
 
 	// Helpers for lobby state access
 	std::set<PlayerColor> getHumanColors();

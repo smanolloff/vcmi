@@ -55,6 +55,7 @@ constexpr Action ACTION_RETREAT = 0;
 constexpr Action ACTION_RESET = -1;
 constexpr Action ACTION_RENDER_ANSI = -2;
 constexpr Action ACTION_FALLBACK = -3;
+constexpr Action ACTION_REWIND = -4;
 
 class IState
 {

@@ -1924,6 +1924,9 @@ void CGameHandler::load(const StartInfo &info)
 
 void CGameHandler::configureReplayLog(bool gameIsNew)
 {
+	ML(if(settings["session"]["headless"].Bool())
+		return;)
+
 	const int roundsKept = std::max(0, static_cast<int>(settings["server"]["replayRoundsKept"].Integer()));
 
 	// a loaded game keeps the recording mode it was started with
