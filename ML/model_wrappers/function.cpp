@@ -53,5 +53,11 @@ namespace ML {
         double Function::getValue(const MMAI::Schema::IState * s) {
             return f_getValue(s);
         }
+
+        std::pair<int, double> Function::getActionAndValue(const MMAI::Schema::IState * s) {
+        	// not calling f_getValue here as it is the vcmi-gym connector's f_getValue which emits a warning
+        	return {f_getAction(s), -666};
+        }
+
     }
 }

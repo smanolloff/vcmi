@@ -112,6 +112,15 @@ char RiverPlacer::dump(const int3 & t)
 	return '?';
 }
 
+std::string RiverPlacer::dumpLegend() const
+{
+	return "@ river node\n"
+		"~ river\n"
+		"2 sink\n"
+		"1 source\n"
+		+ Modificator::dumpLegend();
+}
+
 void RiverPlacer::addRiverNode(const int3 & node)
 {
 	assert(zone.area()->contains(node));
@@ -310,7 +319,7 @@ void RiverPlacer::preprocess()
 	
 	if(source.empty())
 	{
-		logGlobal->info("River source is empty!");
+		logRmg->info("River source is empty!");
 		
 		//looking outside map
 		
@@ -323,7 +332,7 @@ void RiverPlacer::preprocess()
 	
 	if(sink.empty())
 	{
-		logGlobal->error("River sink is empty!");
+		logRmg->error("River sink is empty!");
 		for(auto & i : heightMap)
 		{
 			if(i.second <= 0)
@@ -369,7 +378,7 @@ void RiverPlacer::connectRiver(const int3 & tile)
 	
 	if(pathToSource.getPathArea().empty() || pathToSink.getPathArea().empty())
 	{
-		logGlobal->error("Cannot build river");
+		logRmg->error("Cannot build river");
 		return;
 	}
 	
@@ -380,11 +389,11 @@ void RiverPlacer::connectRiver(const int3 & tile)
 		assert(deltaPos.getTilesVector().size() == 1);
 		
 		auto pos = deltaPos.getTilesVector().front();
-		auto handler = LIBRARY->objtypeh->getHandlerFor(RIVER_DELTA_ID, RIVER_DELTA_SUBTYPE);
-		assert(handler->isStaticObject());
+		auto & handler = LIBRARY->objtypeh->getHandlerFor(RIVER_DELTA_ID, RIVER_DELTA_SUBTYPE);
+		assert(handler.isStaticObject());
 		
 		std::vector<std::shared_ptr<const ObjectTemplate>> tmplates;
-		for(auto & temp : handler->getTemplates())
+		for(auto & temp : handler.getTemplates())
 		{
 			if(temp->canBePlacedAt(zone.getTerrainType()))
 			   tmplates.push_back(temp);
@@ -401,7 +410,7 @@ void RiverPlacer::connectRiver(const int3 & tile)
 			{
 				if(templ->animationFile == targetTemplateName)
 				{
-					auto obj = handler->create(map.mapInstance->cb, templ);
+					auto obj = handler.create(map.mapInstance->cb, templ);
 					rmg::Object deltaObj(obj, deltaPositions[pos]);
 					deltaObj.finalize(map, zone.getRand());
 				}

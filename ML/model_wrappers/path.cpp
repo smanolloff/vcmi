@@ -52,6 +52,11 @@ namespace ML {
             return -666;
         };
 
+        std::pair<int, double> Path::getActionAndValue(const MMAI::Schema::IState * s) {
+	        warn("getActionAndValue", -666);
+	        return {-666, -666};
+        };
+
         MMAI::Schema::Side Path::getSide() {
             warn("getSide", -666);
             return MMAI::Schema::Side(666);

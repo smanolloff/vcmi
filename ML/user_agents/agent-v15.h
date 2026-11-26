@@ -29,6 +29,7 @@ namespace ML {
             int getVersion() override;
             int getAction(const MMAI::Schema::IState * s) override;
             double getValue(const MMAI::Schema::IState * s) override;
+            std::pair<int, double> getActionAndValue(const MMAI::Schema::IState * s) override;
         private:
             uint64_t steps = 0;
             uint64_t resets = 0;

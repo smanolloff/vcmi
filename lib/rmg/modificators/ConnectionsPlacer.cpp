@@ -337,16 +337,15 @@ void ConnectionsPlacer::selfSideDirectConnection(const rmg::ZoneConnection & con
 
 	//2. connect via water
 	bool waterMode = map.getMapGenOptions().getWaterContent() != EWaterContent::NONE;
-	if(waterMode && zone.isUnderground() == otherZone->isUnderground())
+	if(waterMode && zone.getPos().z == otherZone->getPos().z)
 	{
-		if(generator.getZoneWater() && generator.getZoneWater()->getModificator<WaterProxy>())
+		auto * waterZone = generator.getWaterZone(zone.getPos().z);
+		auto * waterProxy = waterZone ? waterZone->getModificator<WaterProxy>() : nullptr;
+		if(waterProxy && waterProxy->waterKeepConnection(connection, createRoad))
 		{
-			if(generator.getZoneWater()->getModificator<WaterProxy>()->waterKeepConnection(connection, createRoad))
-			{
-				assert(otherZone->getModificator<ConnectionsPlacer>());
-				otherZone->getModificator<ConnectionsPlacer>()->otherSideConnection(connection);
-				success = true;
-			}
+			assert(otherZone->getModificator<ConnectionsPlacer>());
+			otherZone->getModificator<ConnectionsPlacer>()->otherSideConnection(connection);
+			success = true;
 		}
 	}
 
@@ -384,8 +383,9 @@ bool ConnectionsPlacer::commitGatePair(const rmg::ZoneConnection & connection, G
 
 bool ConnectionsPlacer::placeGatePairInColumn(const rmg::ZoneConnection & connection, GatePair & gates, const rmg::Area & commonArea)
 {
+	const rmg::Area otherPossible = gates.otherZone.areaPossible().get();
 	rmg::Path path2(gates.otherZone.area().get());
-	rmg::Path path1 = gates.manager.placeAndConnectObject(commonArea, gates.gate1, [this, &gates, &path2](const int3 & tile)
+	rmg::Path path1 = gates.manager.placeAndConnectObject(commonArea, gates.gate1, [this, &gates, &path2, &otherPossible](const int3 & tile)
 	{
 		auto ti = map.getTileInfo(tile);
 		auto otherTi = map.getTileInfo(tile - gates.zShift);
@@ -397,11 +397,8 @@ bool ConnectionsPlacer::placeGatePairInColumn(const rmg::ZoneConnection & connec
 		//This could fail is accessibleArea is below the map
 		rmg::Area toPlace(gates.gate1.getArea());
 		toPlace.unite(toPlace.getBorderOutside()); // Add a bit of extra space around
-		toPlace.erase_if([this](const int3 & tile)
-		{
-			return !map.isOnMap(tile);
-		});
 		toPlace.translate(-gates.zShift);
+		toPlace.intersect(otherPossible);
 
 		path2 = gates.managerOther.placeAndConnectObject(toPlace, gates.gate2, GATE_MIN_DIST, gates.guarded2, true, ObjectManager::OptimizeType::NONE);
 
@@ -482,9 +479,9 @@ void ConnectionsPlacer::selfSideIndirectConnection(const rmg::ZoneConnection & c
 			auto & manager = *zone.getModificator<ObjectManager>();
 			auto & managerOther = *otherZone->getModificator<ObjectManager>();
 
-			auto factory = LIBRARY->objtypeh->getHandlerFor(Obj::SUBTERRANEAN_GATE, 0);
-			rmg::Object rmgGate1(factory->create(map.mapInstance->cb, nullptr));
-			rmg::Object rmgGate2(factory->create(map.mapInstance->cb, nullptr));
+			auto & factory = LIBRARY->objtypeh->getHandlerFor(Obj::SUBTERRANEAN_GATE, 0);
+			rmg::Object rmgGate1(factory.create(map.mapInstance->cb, nullptr));
+			rmg::Object rmgGate2(factory.create(map.mapInstance->cb, nullptr));
 			rmgGate1.setTemplate(zone.getTerrainType(), zone.getRand());
 			rmgGate2.setTemplate(otherZone->getTerrainType(), zone.getRand());
 
@@ -519,9 +516,9 @@ void ConnectionsPlacer::placeMonolithConnection(const rmg::ZoneConnection & conn
 
 	bool allowRoad = shouldGenerateRoad(connection);
 
-	auto factory = LIBRARY->objtypeh->getHandlerFor(Obj::MONOLITH_TWO_WAY, generator.getNextMonlithIndex());
-	auto teleport1 = factory->create(map.mapInstance->cb, nullptr);
-	auto teleport2 = factory->create(map.mapInstance->cb, nullptr);
+	auto & factory = LIBRARY->objtypeh->getHandlerFor(Obj::MONOLITH_TWO_WAY, generator.getNextMonlithIndex());
+	auto teleport1 = factory.create(map.mapInstance->cb, nullptr);
+	auto teleport2 = factory.create(map.mapInstance->cb, nullptr);
 
 	RequiredObjectInfo obj1(teleport1, connection.getGuardStrength(), allowRoad);
 	RequiredObjectInfo obj2(teleport2, connection.getGuardStrength(), allowRoad);
@@ -551,9 +548,9 @@ void ConnectionsPlacer::collectNeighbourZones()
 bool ConnectionsPlacer::shouldGenerateRoad(const rmg::ZoneConnection& connection) const
 {
 	if (connection.getRoadOption() == rmg::ERoadOption::ROAD_RANDOM)
-		logGlobal->error("Random road between zones %d and %d", connection.getZoneA(), connection.getZoneB());
+		logRmg->error("Random road between zones %d and %d", connection.getZoneA(), connection.getZoneB());
 	else
-		logGlobal->info("Should generate road between zones %d and %d: %d", connection.getZoneA(), connection.getZoneB(), connection.getRoadOption() == rmg::ERoadOption::ROAD_TRUE);
+		logRmg->info("Should generate road between zones %d and %d: %d", connection.getZoneA(), connection.getZoneB(), connection.getRoadOption() == rmg::ERoadOption::ROAD_TRUE);
 	return connection.getRoadOption() == rmg::ERoadOption::ROAD_TRUE;
 }
 

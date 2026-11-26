@@ -36,6 +36,7 @@ namespace ML {
             MMAI::Schema::Side getSide() override;
             int getAction(const MMAI::Schema::IState * s) override;
             double getValue(const MMAI::Schema::IState * s) override;
+            std::pair<int, double> getActionAndValue(const MMAI::Schema::IState * s) override;
         private:
             int version;
             MMAI::Schema::Side side;

@@ -30,6 +30,7 @@ namespace ML {
         std::string AgentV15::getName() { return "USER_AGENT"; };
         int AgentV15::getVersion() { return 15; };
         double AgentV15::getValue(const MMAI::Schema::IState * s) { return -666; };
+        std::pair<int, double> AgentV15::getActionAndValue(const MMAI::Schema::IState * s) { return {getAction(s), getValue(s)}; }
 
         MMAI::Schema::Action AgentV15::getAction(const MMAI::Schema::IState * s) {
             MMAI::Schema::Action act;

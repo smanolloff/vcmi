@@ -37,77 +37,6 @@ namespace
 		throw std::runtime_error(f.str());
 	}
 
-#ifdef ENABLE_ML
-	[[maybe_unused]] const char * nodeTypeName(ET type)
-	{
-		for(const auto & [candidateType, name, size] : S15::NODE_TYPES)
-			if(candidateType == type)
-				return name;
-
-		throwf("unknown node element type: %d", EU(type));
-	}
-
-	[[maybe_unused]] void printActionEdges(const IGraph * graph, int64_t actionId)
-	{
-		const auto * action = graph->getNode(ET::NODE_ACTION, actionId);
-
-		for(const auto & [edgeType, relationName, endpointTypes, size] : S15::EDGE_TYPES)
-		{
-			const auto & [srcType, dstType] = endpointTypes;
-			if(srcType != ET::NODE_ACTION && dstType != ET::NODE_ACTION)
-				continue;
-
-			std::cout << "  " << nodeTypeName(srcType) << "_" << relationName << "_" << nodeTypeName(dstType) << '\n';
-
-			for(const auto * edge : graph->getEdges(edgeType))
-			{
-				const auto [src, dst] = edge->endpoints();
-				if(src == action || dst == action)
-					std::cout << "    " << edge->name() << '\n';
-			}
-		}
-	}
-
-	void printMeleeDmgEdges(const IGraph * graph, int64_t actionId)
-	{
-		const auto * action = graph->getNode(ET::NODE_ACTION, actionId);
-		const S15::Graph::INode * actor = nullptr;
-		for(const auto * edge : graph->getEdgesBySrc(ET::EDGE_ACTION_BY_UNIT, action))
-		{
-			const auto & [srcNode, dstNode] = edge->endpoints();
-			if(action == srcNode)
-			{
-				actor = dstNode;
-				break;
-			}
-		}
-
-		if(!actor)
-			throw std::runtime_error("Actor not found!");
-
-		for(const auto * edge : graph->getEdgesBySrc(ET::EDGE_UNIT_MELEE_DMG_UNIT, actor))
-		{
-			const auto & [srcNode, dstNode] = edge->endpoints();
-			const auto * srcHex = graph->getEdgesBySrc(ET::EDGE_UNIT_OCCUPIES_HEX, srcNode).front()->endpoints().second;
-			const auto * dstHex = graph->getEdgesBySrc(ET::EDGE_UNIT_OCCUPIES_HEX, dstNode).front()->endpoints().second;
-			const auto & attrs = edge->rawAttributes();
-			using HA = S15::Graph::NodeAttributes::Hex;
-			using EA = S15::Graph::EdgeAttributes::Unit_MeleeDmg_Unit;
-
-			std::cout << "-------\n"
-					  << "src: " << srcNode->name() << " (y=" << srcHex->rawAttributes().at(EU(HA::Y_COORD))
-					  << " x=" << srcHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
-					  << "dst: " << dstNode->name() << " (y=" << dstHex->rawAttributes().at(EU(HA::Y_COORD))
-					  << " x=" << dstHex->rawAttributes().at(EU(HA::X_COORD)) << ")\n"
-					  << "ESTIMATED_NET_VALUE_REL_BF:         " << attrs.at(EI(EA::ESTIMATED_NET_VALUE_REL_BF)) << "\n"
-					  << "ESTIMATED_ATTACKER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_SELF)) << "\n"
-					  << "ESTIMATED_ATTACKER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_ATTACKER_HPDIFF_REL_BF)) << "\n"
-					  << "ESTIMATED_DEFENDER_HPDIFF_REL_SELF: " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_SELF)) << "\n"
-					  << "ESTIMATED_DEFENDER_HPDIFF_REL_BF:   " << attrs.at(EI(EA::ESTIMATED_DEFENDER_HPDIFF_REL_BF)) << "\n";
-		}
-	}
-#endif
-
 	template<typename T>
 	void assertValidTensor(const std::string & name, const Ort::Value & tensor, int ndim)
 	{
@@ -594,46 +523,43 @@ Schema::Side NNModel::getSide()
 	return side;
 };
 
-int NNModel::getAction(const MMAI::Schema::IState * s)
+NNModel::ModelResponse NNModel::runModel(const MMAI::Schema::IState * s)
 {
-	NestedLogTag _("getAction");
-	auto timer = ScopedTimer("call");
+	NestedLogTag _("runModel");
+
 	auto any = s->getSupplementaryData();
 
 	if(s->version() != version)
-		throwf("getAction: unsupported IState version: want: %d, have: %d", version, s->version());
+		throwf("runModel: unsupported IState version: want: %d, have: %d", version, s->version());
 
 	if(!any.has_value())
 		throw std::runtime_error("extractSupplementaryData: supdata is empty");
 	auto err = MMAI::Schema::AnyCastError(any, typeid(const S15::ISupplementaryData *));
 	if(!err.empty())
-		throwf("getAction: anycast failed: %s", err);
+		throwf("runModel: anycast failed: %s", err);
 
 	const auto * sup = std::any_cast<const S15::ISupplementaryData *>(any);
 	if(!sup)
-		throwf("getAction: null supplementary data");
+		throwf("runModel: null supplementary data");
 
 	if(sup->getType() != S15::ISupplementaryData::Type::REGULAR)
-		throwf("getAction: unsupported supplementary data type: %d", EI(sup->getType()));
+		throwf("runModel: unsupported supplementary data type: %d", EI(sup->getType()));
 
 	const auto * graph = sup->getGraph();
 	if(!graph)
-		throwf("getAction: null graph");
+		throwf("runModel: null graph");
 
 	const auto * gnode = graph->getNodes(ET::NODE_GLOBAL).at(0);
 	using GA = S15::Graph::NodeAttributes::Global;
 
 	if(gnode->rawAttributes().at(EU(GA::BATTLE_WINNER)) != EU(S15::CombatResult::NONE))
-	{
-		timer.name = boost::str(boost::format("MMAI action: %d (battle ended)") % MMAI::Schema::ACTION_RESET);
-		return MMAI::Schema::ACTION_RESET;
-	}
+		return {.actionName = "RESET", .action = MMAI::Schema::ACTION_RESET, .confidence = -42, .value = -42};
 
 	auto inputs = prepareInputs(graph);
 	auto outputs = container->session->Run(Ort::RunOptions(), inputNames.data(), inputs.data(), inputs.size(), outputNames.data(), outputNames.size());
 
 	if(outputs.size() != 4)
-		throwf("getAction: bad output size: want: 4, have: %d", outputs.size());
+		throwf("runModel: bad output size: want: 4, have: %d", outputs.size());
 
 	const auto activeActionIds = graph->getActiveActionIds();
 	const auto modelGreedyAction = toScalar<int64_t>("action", outputs[0]);
@@ -642,21 +568,21 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 	const auto activeActionIdsOut = toVec1D<int64_t>("active_action_ids_out", outputs[3], static_cast<int64_t>(activeActionIds.size()));
 
 	if(activeActionIds.empty())
-		throwf("getAction: no active actions");
+		throwf("runModel: no active actions");
 
 	if(activeActionIdsOut != activeActionIds)
-		throwf("getAction: active action ids output mismatch");
+		throwf("runModel: active action ids output mismatch");
 
 	const auto [sample, greedy] = categorical(activeProbs, temperature, rng, activeActionIds, graph);
 
 	if(sample.prob == 0)
-		throwf("getAction: sample has 0 probability");
+		throwf("runModel: sample has 0 probability");
 
 	const auto saction = activeActionIds.at(sample.index);
 	const auto gaction = activeActionIds.at(greedy.index);
 
 	if(modelGreedyAction != gaction)
-		throwf("getAction: model greedy action mismatch: output: %d, probabilities: %d", modelGreedyAction, gaction);
+		throwf("runModel: model greedy action mismatch: output: %d, probabilities: %d", modelGreedyAction, gaction);
 
 	const auto sname = graph->getNode(ET::NODE_ACTION, saction)->name();
 	const auto gname = graph->getNode(ET::NODE_ACTION, gaction)->name();
@@ -669,20 +595,35 @@ int NNModel::getAction(const MMAI::Schema::IState * s)
 		"sample: %d (prob=%.2f conf=%.2f value=%.4f). Detail: active_index=%d %s", saction, sample.prob, sample.confidence, value, sample.index, sname
 	);
 
-#ifdef ENABLE_ML
-	if(isMMAIVerbose())
-		printMeleeDmgEdges(graph, saction); // printActionEdges(graph, saction);
-#endif
+	const auto response = ModelResponse{.actionName = sname, .action = static_cast<int>(saction), .confidence = sample.confidence, .value = value};
 
-	timer.name = boost::str(boost::format("MMAI action: %d (confidence=%.2f): %s") % saction % sample.confidence % sname);
-	return static_cast<int>(saction);
+	return response;
 };
+
+int NNModel::getAction(const MMAI::Schema::IState * s)
+{
+	throw std::runtime_error("getAction: not implemented in v15");
+}
 
 double NNModel::getValue(const MMAI::Schema::IState * s)
 {
-	// This quantifies how good is the current state as perceived by the model
-	// (not used, not implemented)
-	return 0;
+	throw std::runtime_error("getValue: not implemented in v15");
+}
+
+std::pair<int, double> NNModel::getActionAndValue(const MMAI::Schema::IState * s)
+{
+	NestedLogTag _("getActionAndValue");
+	auto timer = ScopedTimer("call");
+
+	const auto response = runModel(s);
+	if(response.action == MMAI::Schema::ACTION_RESET)
+		timer.name = boost::str(boost::format("MMAI action=%d (battle ended)") % MMAI::Schema::ACTION_RESET);
+	else
+		timer.name = boost::str(
+			boost::format("MMAI action=%d (confidence=%.2f value=%.4f): %s") % response.action % response.confidence % response.value % response.actionName
+		);
+
+	return {response.action, response.value};
 }
 
 std::vector<Ort::Value> NNModel::prepareInputs(const S15::Graph::IGraph * graph)

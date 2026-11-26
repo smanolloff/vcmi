@@ -1,5 +1,4 @@
-SHELL := bash
-.SHELLFLAGS := -euxo pipefail -c
+SHELL := bash -eux
 .PHONY: help _require_cmake dependencies vastai-build build rel
 
 help:
@@ -13,9 +12,10 @@ _require-cmake:
 
 dependencies: _require-cmake
 dependencies:
-	tag=$$(git -C dependencies tag --points-at HEAD); echo "Dependencies tag: $$tag"; \
-	curl -LO https://github.com/vcmi/vcmi-dependencies/releases/download/$$(git -C dependencies tag --points-at HEAD)/dependencies-mac-arm.txz
-	conan cache restore dependencies-mac-arm.txz
+	[ -n "$$DEPENDENCIES_TAG" ] && tag=$$DEPENDENCIES_TAG || tag=$$(git -C dependencies tag --points-at HEAD); \
+	echo "Dependencies tag: $$tag"; \
+	curl -L https://github.com/vcmi/vcmi-dependencies/releases/download/$$tag/dependencies-mac-arm.txz -o dependencies-$$tag.txz; \
+	conan cache restore dependencies-$$tag.txz
 	conan install . \
 		--output-folder=conan-generated-debug \
 		--build=missing \
@@ -48,4 +48,3 @@ build:
 	cmake --build build/ -- -j$$(nproc)
 rel:
 	cmake --build rel/ -- -j$$(nproc)
-

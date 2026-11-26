@@ -54,6 +54,7 @@ using AttentionMask = std::vector<float>;
 constexpr Action ACTION_RETREAT = 0;
 constexpr Action ACTION_RESET = -1;
 constexpr Action ACTION_RENDER_ANSI = -2;
+constexpr Action ACTION_FALLBACK = -3;
 
 class IState
 {
@@ -94,6 +95,7 @@ public:
 	virtual int getVersion() = 0;
 	virtual int getAction(const IState *) = 0;
 	virtual double getValue(const IState *) = 0;
+	virtual std::pair<int, double> getActionAndValue(const IState *) = 0;
 	virtual Side getSide() = 0;
 
 	virtual ~IModel() = default;

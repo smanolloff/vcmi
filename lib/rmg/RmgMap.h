@@ -82,11 +82,10 @@ public:
 	ui32 getZoneCount(FactionID faction);
 	ui32 getTotalZoneCount() const;
 	void initTiles(CMapGenerator & generator, vstd::RNG & rand);
+	void addWaterZones(CMapGenerator & generator, vstd::RNG & rand);
 	void addModificators();
 
 	bool isAllowedSpell(const SpellID & sid) const;
-
-	void dump(bool zoneId) const;
 	
 private:
 	void assertOnMap(const int3 &tile) const; //throws

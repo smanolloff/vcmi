@@ -72,7 +72,7 @@ void CBattleAI::actionFinished(const BattleID & battleID, const BattleAction & a
 	tacticsHandler->onActionFinished(action);
 }
 
-static float getStrengthRatio(std::shared_ptr<CBattleInfoCallback> cb, BattleSide side)
+float CBattleAI::getStrengthRatio(std::shared_ptr<CBattleInfoCallback> cb, BattleSide side)
 {
 	auto stacks = cb->battleGetAllStacks();
 	uint64_t our = 0;

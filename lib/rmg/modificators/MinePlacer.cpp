@@ -32,7 +32,7 @@ void MinePlacer::process()
 	auto * manager = zone.getModificator<ObjectManager>();
 	if(!manager)
 	{
-		logGlobal->error("ObjectManager doesn't exist for zone %d, skip modificator %s", zone.getId(), getName());
+		logRmg->error("ObjectManager doesn't exist for zone %d, skip modificator %s", zone.getId(), getName());
 		return;
 	}
 
@@ -58,17 +58,17 @@ bool MinePlacer::placeMines(ObjectManager & manager)
 		const auto res = GameResID(mineInfo.first);
 		for(int i = 0; i < mineInfo.second; ++i)
 		{
-			std::vector<TObjectTypeHandler> compatibleMineHandlers;
+			std::vector<const AObjectTypeHandler *> compatibleMineHandlers;
 			for(auto & subObjID : LIBRARY->objtypeh->knownSubObjects(Obj::MINE))
 			{
-				auto handler = std::dynamic_pointer_cast<MineInstanceConstructor>(LIBRARY->objtypeh->getHandlerFor(Obj::MINE, subObjID));
-				if(handler->getResourceType() == res)
+				const auto * handler = dynamic_cast<const MineInstanceConstructor *>(&LIBRARY->objtypeh->getHandlerFor(Obj::MINE, subObjID));
+				if(handler->getResourceType() == res && !handler->getTemplates(zone.getTerrainType()).empty())
 					compatibleMineHandlers.push_back(handler);
 			}
 
 			if(compatibleMineHandlers.empty())
 			{
-				logGlobal->error("No mine for resource %s found!", res.toResource()->getJsonKey());
+				logRmg->error("No mine for resource %s found!", res.toResource()->getJsonKey());
 				continue;
 			}
 
@@ -106,7 +106,7 @@ bool MinePlacer::placeMines(ObjectManager & manager)
 		{
 			for(int rc = zone.getRand().nextInt(1, extraRes); rc > 0; --rc)
 			{
-				auto resource = std::dynamic_pointer_cast<CGResource>(LIBRARY->objtypeh->getHandlerFor(Obj::RESOURCE, mine->producedResource)->create(map.mapInstance->cb, nullptr));
+				auto resource = std::dynamic_pointer_cast<CGResource>(LIBRARY->objtypeh->getHandlerFor(Obj::RESOURCE, mine->producedResource).create(map.mapInstance->cb, nullptr));
 
 				RequiredObjectInfo roi;
 				roi.obj = resource;

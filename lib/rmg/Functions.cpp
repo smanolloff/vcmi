@@ -22,6 +22,7 @@
 #include "../CCreatureHandler.h"
 #include "../entities/faction/CFaction.h"
 #include "../entities/faction/CTown.h"
+#include "../mapObjects/MiscObjects.h"
 
 #include <vstd/RNG.h>
 
@@ -33,7 +34,7 @@ void replaceWithCurvedPath(rmg::Path & path, Zone & zone, const int3 & src, bool
 
 	if(tiles.size() < 2)
 	{
-		logGlobal->warn("Zone too small for curved path");
+		logRmg->warn("Zone too small for curved path");
 		return;
 	}
 
@@ -54,7 +55,7 @@ void replaceWithCurvedPath(rmg::Path & path, Zone & zone, const int3 & src, bool
 	}
 	else
 	{
-		logGlobal->warn("Failed to create curved path to %s", src.toString());
+		logRmg->warn("Failed to create curved path to %s", src.toString());
 	}
 }
 
@@ -75,7 +76,7 @@ int chooseRandomAppearance(vstd::RNG & generator, si32 ObjID, TerrainId terrain)
 	vstd::erase_if(factories, [ObjID, &terrain](si32 f)
 	{
 		//TODO: Use templates with lowest number of terrains (most specific)
-		return LIBRARY->objtypeh->getHandlerFor(ObjID, f)->getTemplates(terrain).empty();
+		return LIBRARY->objtypeh->getHandlerFor(ObjID, f).getTemplates(terrain).empty();
 	});
 	
 	return *RandomGeneratorUtil::nextItem(factories, generator);
@@ -116,4 +117,30 @@ ui32 getRandomDwellingValue(RmgMap & map, FactionID faction, int level)
 		return 0;
 
 	return getNativeDwellingValue(map, creature);
+}
+
+std::vector<int> waterZoneLevels(EWaterContent::EWaterContent water,
+	const std::vector<MapLayerId> & levelLayers, const std::set<int> & landZoneLevels)
+{
+	if(water == EWaterContent::NONE)
+		return {};
+
+	std::vector<int> result;
+	for(int level : landZoneLevels)
+	{
+		if(static_cast<size_t>(level) >= levelLayers.size())
+			continue;
+		if(levelLayers[level] != MapLayerId::UNDERGROUND)
+			result.push_back(level);
+	}
+	return result;
+}
+
+std::shared_ptr<CGObjectInstance> createSpellScroll(RmgMap & map, SpellID spell)
+{
+	const auto & factory = LIBRARY->objtypeh->getHandlerFor(Obj::SPELL_SCROLL, 0);
+	auto obj = std::dynamic_pointer_cast<CGArtifact>(factory.create(map.mapInstance->cb, nullptr));
+	const auto * a = map.getMapProxy()->createScroll(spell);
+	obj->setArtifactInstance(a);
+	return obj;
 }

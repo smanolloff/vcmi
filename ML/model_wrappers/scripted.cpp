@@ -62,6 +62,11 @@ namespace ML {
             return -666;
         };
 
+        std::pair<int, double> Scripted::getActionAndValue(const MMAI::Schema::IState * s) {
+	        warn("getActionAndValue", -666);
+	        return {-666, -666};
+        };
+
         void Scripted::warn(std::string m, int retval) {
             printf("WARNING: method %s called on a ModelWrapper object; returning %d\n", m.c_str(), retval);
         }
