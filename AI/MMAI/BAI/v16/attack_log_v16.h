@@ -1,0 +1,82 @@
+/*
+ * attack_log.h, part of VCMI engine
+ *
+ * Authors: listed in file AUTHORS in main folder
+ *
+ * License: GNU General Public License v2.0 or later
+ * Full text of license available in license.txt file, in main folder
+ *
+ */
+
+#pragma once
+
+#include "AI/MMAI/common.h" // IWYU pragma: keep
+
+#include "BAI/v16/graph/nodes/unit_v16.h"
+#include "networkPacks/PacksForClientBattle.h"
+#include "schema/v16/types.h"
+
+namespace MMAI::BAI::V16
+{
+
+class AttackLog : public Schema::V16::IAttackLog
+{
+public:
+	struct UnitInfo
+	{
+		BattleSide side;
+		std::string alias;
+	};
+
+	AttackLog(
+		const BattleStackAttacked & bsa,
+		const std::optional<UnitInfo> & attacker,
+		const std::optional<UnitInfo> & defender,
+		const int dmg,
+		const int dmgPermille,
+		const int units,
+		const int value,
+		const int valuePermille
+	)
+		: bsa(bsa), attacker(attacker), defender(defender), dmg(dmg), dmgPermille(dmgPermille), units(units), value(value), valuePermille(valuePermille) {};
+
+	int getDamageDealt() const override
+	{
+		return dmg;
+	}
+	int getDamageDealtPermille() const override
+	{
+		return dmgPermille;
+	}
+	int getUnitsKilled() const override
+	{
+		return units;
+	}
+	int getValueKilled() const override
+	{
+		return value;
+	}
+	int getValueKilledPermille() const override
+	{
+		return valuePermille;
+	}
+
+	/*
+	 * attacker dealing dmg might be our friendly fire
+	 * If we look at Attacker POV, we would count our friendly fire as "dmg dealt"
+	 * So we look at Defender POV, so our friendly fire is counted as "dmg received"
+	 * This means that if the enemy does friendly fire dmg,
+	 *  we would count it as our dmg dealt - that is OK (we have "tricked" the enemy!)
+	 * => store only defender slot
+	 */
+
+	const BattleStackAttacked bsa;
+	const std::optional<UnitInfo> attacker;
+	const std::optional<UnitInfo> defender;
+	const int dmg;
+	const int dmgPermille;
+	const int units;
+	const int value;
+	const int valuePermille;
+};
+}

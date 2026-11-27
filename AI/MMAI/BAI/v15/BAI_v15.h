@@ -48,10 +48,6 @@ public:
 
 	void battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & bte) override;
 	void battleEnd(const BattleID & bid, const BattleResult * br, QuestionID questionID) override;
-#ifdef ENABLE_ML
-	std::function<void()> checkpointBattleController() override;
-	void battleRolloutEnded(const BattleResult & result) override;
-#endif
 	void battleStart(
 		const BattleID & bid,
 		const CCreatureSet * army1,
@@ -69,10 +65,6 @@ public:
 	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);
 	std::unique_ptr<State> state = nullptr;
 	ActionPtr lastAction = nullptr;
-#ifdef ENABLE_ML
-	std::function<void()> restoreDecisionHistory;
-	std::function<void()> checkpointHistory();
-#endif
 
 	Schema::IModel * model;
 	const int version;

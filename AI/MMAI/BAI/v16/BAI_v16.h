@@ -1,0 +1,119 @@
+/*
+ * BAI.h, part of VCMI engine
+ *
+ * Authors: listed in file AUTHORS in main folder
+ *
+ * License: GNU General Public License v2.0 or later
+ * Full text of license available in license.txt file, in main folder
+ *
+ */
+
+#pragma once
+
+#include "AI/MMAI/common.h" // IWYU pragma: keep
+
+#include "AI/BattleAI/BattleEvaluator.h"
+
+#include "BAI/logger.h"
+#include "BAI/v16/state_v16.h"
+#include "TacticsHandler.h"
+#include "callback/CBattleGameInterface.h"
+
+namespace MMAI::BAI::V16
+{
+class BAI : public CBattleGameInterface
+{
+	using ActionPtr = std::shared_ptr<const Graph::Nodes::Action>;
+
+public:
+	BAI(Schema::IModel * model,
+		int version,
+		const std::shared_ptr<Environment> & env,
+		const std::shared_ptr<CBattleCallback> & cb,
+		double fallbackValueThreshold,
+		bool useCreatureSpells,
+		bool useHeroSpells,
+		bool enableTactics);
+
+	void activeStack(const BattleID & bid, const CStack * stack) override;
+	void battleNewRound(const BattleID & bid) override;
+	void yourTacticPhase(const BattleID & bid, int distance) override;
+	void actionFinished(const BattleID & bid, const BattleAction & action) override;
+
+	void battleStacksAttacked(
+		const BattleID & bid,
+		const std::vector<BattleStackAttacked> & bsa,
+		bool ranged
+	) override; //called when stack receives damage (after battleAttack())
+
+	void battleTriggerEffect(const BattleID & bid, const BattleTriggerEffect & bte) override;
+	void battleEnd(const BattleID & bid, const BattleResult * br, QuestionID questionID) override;
+#ifdef ENABLE_ML
+	std::function<void()> checkpointBattleController() override;
+	void battleRolloutEnded(const BattleResult & result) override;
+#endif
+	void battleStart(
+		const BattleID & bid,
+		const CCreatureSet * army1,
+		const CCreatureSet * army2,
+		int3 tile,
+		const CGHeroInstance * hero1,
+		const CGHeroInstance * hero2,
+		BattleSide side,
+		bool replayAllowed
+	) override; //called by engine when battle starts; side=0 - left, side=1 - right
+
+	std::pair<int, double> getNonRenderActionAndValue();
+
+	// Subsequent versions may override this with subclasses of State
+	virtual std::unique_ptr<State> initState(const CPlayerBattleCallback * battle);
+	std::unique_ptr<State> state = nullptr;
+	ActionPtr lastAction = nullptr;
+#ifdef ENABLE_ML
+	std::function<void()> restoreDecisionHistory;
+	std::function<void()> checkpointHistory();
+#endif
+
+	Schema::IModel * model;
+	const int version;
+	const Logger logger;
+	const std::shared_ptr<Environment> env;
+	const std::shared_ptr<CBattleCallback> cb;
+
+	const double fallbackValueThreshold;
+	const bool useCreatureSpells;
+	const bool useHeroSpells;
+	const bool enableTactics;
+
+	// consecutive invalid actions counter
+	int errcounter = 0;
+	int roundcounter = 0;
+	bool inFallback = false;
+	bool inTemporaryFallback = false;
+
+	int getActionTotalMs = 0;
+	int getActionTotalCalls = 0;
+
+	bool resetting = false;
+	std::shared_ptr<CPlayerBattleCallback> battle = nullptr;
+
+	std::shared_ptr<TacticsHandler> tacticsHandler;
+
+	std::unique_ptr<BattleEvaluator> battleAIEvaluator;
+	std::unique_ptr<BattleAction> battleAIAction;
+
+	std::string renderANSI() const;
+	std::shared_ptr<BattleAction> buildBattleAction(const ActionPtr & a, const CStack * acstack) const;
+	std::shared_ptr<BattleAction> maybeBuildAutoAction(const CStack * stack, const BattleID & bid) const;
+	float getBattleAIStrengthRatio() const;
+	BattleAction * getBattleAIAction(const CStack * stack, const BattleID & bid);
+	BattleEvaluator * getBattleAIEvaluator(const CStack * stack, const BattleID & bid);
+	bool maybeCastCreatureSpell(const CStack * stack, const BattleID & bid);
+	bool maybeCastSpell(const CStack * stack, const BattleID & bid);
+	void _activeStack(const BattleID & bid, const CStack * stack);
+	bool guardVip(const BattleID & bid, const CStack * guard, const CStack * vip);
+	void tacticMove(const BattleID & bid, const CStack * cstack, const BattleHex & bh);
+
+	std::optional<BattleAction> maybeFleeOrSurrender(const BattleID & bid);
+};
+}

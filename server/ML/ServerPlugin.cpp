@@ -58,7 +58,7 @@ namespace {
         return value;
     }
 
-    // XXX: copied from AI/MMAI/BAI/v15/graph/nodes/unit.cpp
+    // XXX: copied from AI/MMAI/BAI/v15/graph/nodes/unit_v15.cpp
     //      (may be outdated)
     int CalculateValue(const CCreature * cr)
     {

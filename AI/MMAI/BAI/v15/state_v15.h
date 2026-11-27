@@ -90,7 +90,6 @@ public:
 	std::shared_ptr<Graph::Graph> G;
 	std::unique_ptr<SupplementaryData> supdata = nullptr;
 	std::vector<AttackLog> attackLogs;
-	std::optional<std::map<uint32_t, AttackLog::UnitInfo>> logUnits;
 	const std::string colorname;
 	const BattleSide side;
 	bool isMorale = false;

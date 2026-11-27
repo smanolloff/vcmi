@@ -299,8 +299,7 @@ namespace
 					case A::BATTLE_SIDE:
 						break;
 					case A::IS_ACTIVE:
-						if(!ctx.ended)
-							vassert(v, cplayer == ctx.astack->getOwner(), "PLAYER.IS_ACTIVE");
+						vassert(v, cplayer == ctx.astack->getOwner(), "PLAYER.IS_ACTIVE");
 						break;
 					case A::ARMY_VALUE_NOW_REL0:
 					case A::ARMY_VALUE_NOW_REL:
@@ -352,8 +351,7 @@ namespace
 						// not verifying
 						break;
 					case A::IS_ACTIVE:
-						if(!ctx.ended)
-							vassert(v, cstack.unitId() == ctx.battle.battleActiveUnit()->unitId(), "UNIT.IS_ACTIVE", cstack.getDescription());
+						vassert(v, cstack.unitId() == ctx.battle.battleActiveUnit()->unitId(), "UNIT.IS_ACTIVE", cstack.getDescription());
 						break;
 					case A::IS_ENEMY:
 						vassert(v, cstack.unitSide() != ctx.battle.battleGetMySide(), "UNIT.IS_ENEMY", cstack.getDescription());
@@ -610,9 +608,8 @@ namespace
 
 	void Verify_NODE_ACTION(const Context & ctx)
 	{
-		if(!ctx.ended)
-			for(const auto & id : ctx.G.getActiveActionIds())
-				expect(ctx.G.getById<N::Action>(id, false) != nullptr, "active action not available: " + std::to_string(id));
+		for(const auto & id : ctx.G.getActiveActionIds())
+			expect(ctx.G.getById<N::Action>(id, false) != nullptr, "active action not active: " + std::to_string(id));
 
 		auto isReachable = [&ctx](const CStack & stack, const BattleHex & bh)
 		{
@@ -679,8 +676,7 @@ namespace
 						}
 						break;
 					case A::IS_ACTIVE:
-						if(!ctx.ended)
-							vassert(v, &actor == ctx.astack, "ACTION.ACTION_TYPE[IS_ACTIVE]: not active");
+						vassert(v, &actor == ctx.astack, "ACTION.ACTION_TYPE[IS_ACTIVE]: not active");
 						break;
 					default:
 						throwf("Unexpected Action attr: %1%", EI(a));

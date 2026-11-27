@@ -710,7 +710,7 @@ namespace
 			// or if it "appeared" after G was built, e.g. was summoned
 			if(al.attacker)
 			{
-				if(al.attacker->side == BattleSide::LEFT_SIDE)
+				if(al.attacker->cstack.unitSide() == BattleSide::LEFT_SIDE)
 				{
 					res.ldd += al.dmg;
 					res.lvk += al.value;
@@ -725,7 +725,7 @@ namespace
 			// defender is null if it "appeared" after G was built, e.g. was summoned
 			if(al.defender)
 			{
-				if(al.defender->side == BattleSide::LEFT_SIDE)
+				if(al.defender->cstack.unitSide() == BattleSide::LEFT_SIDE)
 				{
 					res.ldr += al.dmg;
 					res.lvl += al.value;
@@ -2353,14 +2353,11 @@ State::State(int version, const std::string & colorname, const CPlayerBattleCall
 
 void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 {
-	if(!logUnits)
+	if(!G)
+		// Ignore logs until our first turn starts
 		return;
 
-	const auto describeUnit = [this](uint32_t id) -> std::optional<AttackLog::UnitInfo>
-	{
-		const auto it = logUnits->find(id);
-		return it == logUnits->end() ? std::nullopt : std::optional{it->second};
-	};
+	auto cstacks = battle.battleGetStacks();
 
 	for(const auto & elem : bsa)
 	{
@@ -2378,9 +2375,11 @@ void State::onBattleStacksAttacked(const std::vector<BattleStackAttacked> & bsa)
 		auto value = elem.killedAmount * N::Unit::GetValue(defender->unitType());
 
 		attackLogs.emplace_back(
+			// attacker and/or defender CStack may be missing in G
+			// (e.g. resurrected after G was constructed)
 			elem,
-			attacker ? describeUnit(elem.attackerID) : std::nullopt,
-			describeUnit(elem.stackAttacked),
+			attacker ? G->getByExtraIndex<N::Unit>(attacker->unitId(), false) : nullptr,
+			G->getByExtraIndex<N::Unit>(defender->unitId(), false),
 			static_cast<int>(elem.damageAmount),
 			static_cast<int>(1000 * elem.damageAmount / bf_hpNow),
 			static_cast<int>(elem.killedAmount),
@@ -2466,9 +2465,6 @@ void State::onActiveStack(const CStack * acstack, int round, S15::CombatResult r
 		result
 	);
 
-	logUnits.emplace();
-	for(const auto & unit : G->getAll<N::Unit>())
-		logUnits->emplace(unit->cstack.unitId(), AttackLog::UnitInfo{unit->cstack.unitSide(), unit->alias});
 	attackLogs.clear(); // accumulate new logs until next turn
 	isMorale = false;
 	lastStats = stats;

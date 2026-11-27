@@ -1,6 +1,6 @@
 # Battle checkpoints
 
-## Headless v15 gym
+## Headless v16 gym
 
 ```python
 root = env.checkpoint()
@@ -17,14 +17,14 @@ obs, reward, terminated, truncated, info = env.step(selected)
 
 The connector posts work to the server thread while the client waits for input. On rewind it lets the old model callback return without sending a move, restores the client in place, and dispatches one decision without advancing the turn. It does not change the network protocol.
 
-This requires one Python-controlled v15 MMAI and a local BattleAI, StupidAI, or v15 MMAI model opponent. Battle timers and spell-charge artifacts are not supported; headless ML replay recording is disabled. The snapshot restores RNG exactly and does not resample chance outcomes. Smoke test: `python -m vcmi_gym.tools.checkpoint_smoke_v15` (optionally `--model <VCMI resource path>`).
+This requires one Python-controlled v16 MMAI and a local BattleAI, StupidAI, or v16 MMAI model opponent. Battle timers and spell-charge artifacts are not supported; headless ML replay recording is disabled. The snapshot restores RNG exactly and does not resample chance outcomes. Smoke test: `python -m vcmi_gym.tools.checkpoint_smoke_v16` (optionally `--model <VCMI resource path>`).
 
 ## Both players in Python
 
 Use one `BattleSession` per battle instead of two `VcmiEnv` instances:
 
 ```python
-from vcmi_gym.envs.v15 import BattleSession
+from vcmi_gym.envs.v16 import BattleSession
 
 players = {0: player0, 1: player1}
 battle = BattleSession(controllers=players)
@@ -46,7 +46,7 @@ Register stateful external controllers with `checkpoint()` and `restore(snapshot
 
 Use `print(battle.render())` to display the current decision as ANSI text, including after restore or at terminal. Rendering does not consume the decision ID.
 
-Smoke test: `python -m vcmi_gym.tools.battle_session_smoke_v15`.
+Smoke test: `python -m vcmi_gym.tools.battle_session_smoke_v16`.
 
 ## Server-only API
 

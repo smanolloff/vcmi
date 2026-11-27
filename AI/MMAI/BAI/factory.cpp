@@ -14,10 +14,10 @@
 #include "filesystem/Filesystem.h"
 #include <onnxruntime_c_api.h>
 
-#include "BAI/v13/BAI_v13.h"
-#include "BAI/v13/nn_model_v13.h"
 #include "BAI/v15/BAI_v15.h"
 #include "BAI/v15/nn_model_v15.h"
+#include "BAI/v16/BAI_v16.h"
+#include "BAI/v16/nn_model_v16.h"
 
 namespace MMAI::BAI
 {
@@ -60,8 +60,7 @@ namespace
 		 *   dtype=int
 		 *   shape=scalar
 		 *
-		 * Version of the model (current implementation is at version 13).
-		 * If needed, NNModel may be extended to support other versions as well.
+		 * Schema version used by the model.
 		 *
 		 */
 		int res = -1;
@@ -100,12 +99,11 @@ std::shared_ptr<MMAI::Schema::IModel> CreateNNModel(const std::string & path, fl
 {
 	auto container = CreateNNContainer(path);
 
-	if(container->version == 13)
-		return std::make_shared<V13::NNModel>(container, temperature, seed);
 	if(container->version == 15)
 		return std::make_shared<V15::NNModel>(container, temperature, seed);
-	else
-		throw std::runtime_error("CreateNNModel: unsupported schema version: " + std::to_string(container->version));
+	if(container->version == 16)
+		return std::make_shared<V16::NNModel>(container, temperature, seed);
+	throw std::runtime_error("CreateNNModel: unsupported schema version: " + std::to_string(container->version));
 }
 
 // Factory method for versioned derived BAI (e.g. BAI::V1)
@@ -119,17 +117,13 @@ std::shared_ptr<CBattleGameInterface> CreateBAI(
 	bool enableTactics
 )
 {
-	std::shared_ptr<CBattleGameInterface> res;
-	auto version = model->getVersion();
+	const auto version = model->getVersion();
 
-	if(version == 13)
-		return std::make_shared<V13::BAI>(model, version, env, cb, useHeroSpells);
-	else if(version == 15)
+	if(version == 15)
 		return std::make_shared<V15::BAI>(model, version, env, cb, fallbackValueThreshold, useCreatureSpells, useHeroSpells, enableTactics);
-	else
-		throw std::runtime_error("CreateBAI: unsupported schema version: " + std::to_string(version));
-
-	return res;
+	if(version == 16)
+		return std::make_shared<V16::BAI>(model, version, env, cb, fallbackValueThreshold, useCreatureSpells, useHeroSpells, enableTactics);
+	throw std::runtime_error("CreateBAI: unsupported schema version: " + std::to_string(version));
 }
 
 }

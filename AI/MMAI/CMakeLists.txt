@@ -21,35 +21,6 @@ set(MMAI_FILES
   BAI/scripted/HARBot.h
   BAI/scripted/HARBot.cpp
 
-  BAI/v13/BAI_v13.cpp
-  BAI/v13/BAI_v13.h
-  BAI/v13/nn_model_v13.h
-  BAI/v13/nn_model_v13.cpp
-  BAI/v13/action_v13.cpp
-  BAI/v13/action_v13.h
-  BAI/v13/attack_log_v13.h
-  BAI/v13/battlefield_v13.cpp
-  BAI/v13/battlefield_v13.h
-  BAI/v13/encoder_v13.h
-  BAI/v13/encoder_v13.cpp
-  BAI/v13/global_stats_v13.cpp
-  BAI/v13/global_stats_v13.h
-  BAI/v13/hex_v13.cpp
-  BAI/v13/hex_v13.h
-  BAI/v13/hexaction_v13.h
-  BAI/v13/hexactmask_v13.h
-  BAI/v13/links_v13.h
-  BAI/v13/player_stats_v13.cpp
-  BAI/v13/player_stats_v13.h
-  BAI/v13/render_v13.cpp
-  BAI/v13/render_v13.h
-  BAI/v13/stack_v13.cpp
-  BAI/v13/stack_v13.h
-  BAI/v13/state_v13.cpp
-  BAI/v13/state_v13.h
-  BAI/v13/supplementary_data_v13.cpp
-  BAI/v13/supplementary_data_v13.h
-
   BAI/v15/BAI_v15.cpp
   BAI/v15/BAI_v15.h
   BAI/v15/nn_model_v15.h
@@ -98,25 +69,73 @@ set(MMAI_FILES
   BAI/v15/verify_v15.cpp
   BAI/v15/verify_v15.h
 
+  BAI/v16/BAI_v16.cpp
+  BAI/v16/BAI_v16.h
+  BAI/v16/nn_model_v16.h
+  BAI/v16/nn_model_v16.cpp
+  BAI/v16/attack_log_v16.h
+  BAI/v16/encoder_v16.h
+  BAI/v16/enum_flags_v16.h
+  BAI/v16/fastbfs_v16.h
+  BAI/v16/graph/edge_store_v16.h
+  BAI/v16/graph/edges/action_ends_at_hex_v16.h
+  BAI/v16/graph/edges/base_v16.h
+  BAI/v16/graph/edges/generic_v16.h
+  BAI/v16/graph/edges/hex_adjacent_hex_v16.h
+  BAI/v16/graph/edges/hex_becomes_shoot_target_after_action_v16.h
+  BAI/v16/graph/edges/hex_is_end_of_action_v16.h
+  BAI/v16/graph/edges/unit_acts_before_unit_v16.h
+  BAI/v16/graph/edges/unit_becomes_shoot_target_after_action_v16.h
+  BAI/v16/graph/edges/unit_becomes_shoot_threat_after_action_v16.h
+  BAI/v16/graph/edges/unit_is_meleed_by_action_v16.h
+  BAI/v16/graph/edges/unit_is_shot_by_action_v16.h
+  BAI/v16/graph/edges/unit_melee_dmg_unit_v16.cpp
+  BAI/v16/graph/edges/unit_melee_dmg_unit_v16.h
+  BAI/v16/graph/edges/unit_shoot_dmg_unit_v16.cpp
+  BAI/v16/graph/edges/unit_shoot_dmg_unit_v16.h
+  BAI/v16/graph/element_v16.h
+  BAI/v16/graph/graph_v16.cpp
+  BAI/v16/graph/graph_v16.h
+  BAI/v16/graph/node_store_v16.h
+  BAI/v16/graph/nodes/action_v16.h
+  BAI/v16/graph/nodes/base_v16.h
+  BAI/v16/graph/nodes/global_v16.cpp
+  BAI/v16/graph/nodes/global_v16.h
+  BAI/v16/graph/nodes/hex_v16.cpp
+  BAI/v16/graph/nodes/hex_v16.h
+  BAI/v16/graph/nodes/player_v16.cpp
+  BAI/v16/graph/nodes/player_v16.h
+  BAI/v16/graph/nodes/unit_v16.cpp
+  BAI/v16/graph/nodes/unit_v16.h
+  BAI/v16/graph/util_v16.h
+  BAI/v16/render_v16.cpp
+  BAI/v16/render_v16.h
+  BAI/v16/state_v16.cpp
+  BAI/v16/state_v16.h
+  BAI/v16/supplementary_data_v16.cpp
+  BAI/v16/supplementary_data_v16.h
+  BAI/v16/verify_v16.cpp
+  BAI/v16/verify_v16.h
+
   schema/base.h
   schema/schema.h
-  schema/v13/constants.h
-  schema/v13/schema.h
-  schema/v13/types.h
-  schema/v13/util.h
   schema/v15/constants.h
   schema/v15/encoding.h
   schema/v15/graph.h
   schema/v15/schema.h
   schema/v15/types.h
   schema/v15/util.h
+  schema/v16/constants.h
+  schema/v16/encoding.h
+  schema/v16/graph.h
+  schema/v16/schema.h
+  schema/v16/types.h
+  schema/v16/util.h
 
   MMAI.h
   StdInc.h
   common.h
 )
-
-option(ENABLE_MMAI_TEST "Compile tests" OFF)
 
 set(MMAI_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -173,27 +192,6 @@ target_link_libraries(MMAI PRIVATE BattleAI StupidAI)
 # Used in schema/base.h to determine if it is imported by MMAI or vcmi-gym
 target_compile_definitions(MMAI PRIVATE MMAI_DLL=1)
 target_include_directories(MMAI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-if(ENABLE_MMAI_TEST)
-  include(GoogleTest)
-  include(CheckCXXCompilerFlag)
-  enable_testing()
-
-  target_link_libraries(MMAI PUBLIC gtest gtest_main)
-
-  target_include_directories(MMAI PRIVATE "${CMAKE_SOURCE_DIR}/test/googletest/googletest/include")
-  add_subdirectory(${CMAKE_SOURCE_DIR}/test/googletest ${CMAKE_SOURCE_DIR}/test/googletest/build EXCLUDE_FROM_ALL)
-  add_executable(MMAI_test test/encoder_test.cpp)
-  target_link_libraries(MMAI_test PRIVATE MMAI)
-  gtest_discover_tests(MMAI_test)
-
-  # default visibility is needed for testing
-  set_target_properties(MMAI PROPERTIES CXX_VISIBILITY_PRESET "default")
-  set_target_properties(MMAI_test PROPERTIES CXX_VISIBILITY_PRESET "default")
-
-  # Run tests with:
-  # ctest --test-dir build/AI/MMAI/
-endif()
 
 vcmi_set_output_dir(MMAI "AI")
 enable_pch(MMAI)

@@ -55,7 +55,7 @@ $ cmake -S . -B rel -Wno-dev \
 $ cmake --build rel/
 ```
 
-_(Optional)_ For a debug build with IDE support and tests:
+_(Optional)_ For a debug build with IDE support:
 
 ```bash
 $ cmake -S . -B build -Wno-dev \
@@ -66,8 +66,7 @@ $ cmake -S . -B build -Wno-dev \
     -D ENABLE_NULLKILLER_AI=0 \
     -D ENABLE_LAUNCHER=0 \
     -D ENABLE_ML=1 \
-    -D ENABLE_MMAI=1 \
-    -D ENABLE_MMAI_TEST=1
+    -D ENABLE_MMAI=1
 
 $ cmake --build build/
 ```

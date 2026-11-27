@@ -41,7 +41,7 @@ struct NNContainer
 	}
 };
 
-// Factory method for versioned derived NNModel (e.g. BAI::V13::NNModel)
+// Factory method for versioned derived NNModel (e.g. BAI::V16::NNModel)
 std::shared_ptr<MMAI::Schema::IModel> CreateNNModel(const std::string & path, float temperature = 1.0, uint64_t seed = 0);
 
 std::shared_ptr<CBattleGameInterface> CreateBAI(

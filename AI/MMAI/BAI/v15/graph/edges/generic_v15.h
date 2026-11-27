@@ -78,6 +78,8 @@ GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeThreatAfter, Action);
 GENERIC_EDGE_ELEMENT(Unit, BecomesMeleeTargetAfter, Action);
 GENERIC_EDGE_ELEMENT(Hex, BecomesMeleeTargetAfter, Action);
 
+#undef GENERIC_EDGE_ELEMENT
+
 static_assert(static_cast<int>(S15::Graph::ElementType::_count) == 35);
 
 }
