@@ -725,11 +725,11 @@ namespace ML {
 		return saved;
 	}
 
-	void restore_checkpoint(std::shared_ptr<const DecisionCheckpoint> saved, int player, bool finish)
+	void restore_checkpoint(std::shared_ptr<const DecisionCheckpoint> saved, bool finish)
 	{
 		auto & handler = GAME->server();
 		if(!saved || !handler.client || saved->clientState.lock() != handler.client->gameStatePtr()
-			|| !handler.client->gameState().getBattle(saved->battleID) || saved->player != PlayerColor(player))
+			|| !handler.client->gameState().getBattle(saved->battleID))
 			throw std::logic_error("Checkpoint does not belong to the current decision session");
 
 		handler.runOnLocalGameServer([saved, finish](CGameHandler & server) {

@@ -114,6 +114,6 @@ namespace ML {
     std::shared_ptr<const BattleCheckpoint> MMAI_DLL_LINKAGE capture_server_checkpoint();
     std::shared_ptr<const DecisionCheckpoint> MMAI_DLL_LINKAGE checkpoint(int player);
     /// Schedule the client restore after the parked model callback returns ACTION_REWIND.
-    void MMAI_DLL_LINKAGE restore_checkpoint(std::shared_ptr<const DecisionCheckpoint> checkpoint, int player, bool finish);
+    void MMAI_DLL_LINKAGE restore_checkpoint(std::shared_ptr<const DecisionCheckpoint> checkpoint, bool finish);
 }
 [[noreturn]] void handleFatalError(const std::string & message, bool terminate);
