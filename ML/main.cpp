@@ -380,7 +380,6 @@ namespace ML {
         return {leftModel, rightModel, {
             .leftModelFile="",
             .rightModelFile="",
-            .useCreatureSpells=useCreatureSpells,
             .temperature=temperature,
             .mapname=omap.at("map"),
             .maxBattles=maxBattles,
@@ -389,6 +388,7 @@ namespace ML {
             .randomObstacles=randomObstacles,
             .townChance=townChance,
             .warmachineChance=warmachineChance,
+            .useCreatureSpells=useCreatureSpells,
             .mirrorArmies=mirrorArmies,
             .randomArmies=randomArmies,
             .randomArmyValueMin=randomArmyValueMin,
