@@ -525,7 +525,8 @@ void CBonusSystemNode::exportBonus(const std::shared_ptr<Bonus> & b)
 	{
 		propagateBonus(b, *this);
 	}
-	else
+	// Initialization can export a local bonus again after addNewBonus already exported it.
+	else if(!vstd::contains(bonuses, b))
 	{
 		bonuses.push_back(b);
 		nodeHasChanged();

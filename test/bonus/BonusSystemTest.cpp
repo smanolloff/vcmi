@@ -28,6 +28,7 @@ class TestBonusSystemNode : public CBonusSystemNode
 {
 public:
 	using CBonusSystemNode::CBonusSystemNode;
+	using CBonusSystemNode::exportBonuses;
 
 	MOCK_CONST_METHOD0(getOwner, PlayerColor());
 
@@ -116,6 +117,24 @@ protected:
 		creatureDevil.addNewBonus(luckBonusEnemies);
 	}
 };
+
+TEST(BonusSystemInvalidationTest, ReexportedLocalBonusIsFullyRemovedBeforeRestoringACopy)
+{
+	TestBonusSystemNode battle{BonusNodeType::BATTLE_WIDE};
+	CBonusSystemNode stack{BonusNodeType::STACK_BATTLE};
+	stack.attachTo(battle);
+
+	const auto bonus = std::make_shared<Bonus>(
+		BonusDuration::ONE_BATTLE, BonusType::STACKS_SPEED, BonusSource::TERRAIN_NATIVE, 1, BonusSourceID());
+	battle.addNewBonus(bonus);
+	battle.exportBonuses();
+	EXPECT_EQ(stack.valOfBonuses(BonusType::STACKS_SPEED), 1);
+
+	battle.removeBonuses(Selector::all);
+	EXPECT_EQ(stack.valOfBonuses(BonusType::STACKS_SPEED), 0);
+	battle.addNewBonus(std::make_shared<Bonus>(*bonus));
+	EXPECT_EQ(stack.valOfBonuses(BonusType::STACKS_SPEED), 1);
+}
 
 TEST(BonusSystemInvalidationTest, AttachingChildKeepsUnchangedBranchVersions)
 {
